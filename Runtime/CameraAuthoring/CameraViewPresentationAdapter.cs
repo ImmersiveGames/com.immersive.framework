@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Immersive.Framework.Camera;
 using Unity.Cinemachine;
@@ -128,13 +129,12 @@ namespace Immersive.Framework.CameraAuthoring
                     "Applied direct single-Subject presentation to the existing Cinemachine Camera.");
             }
 
-            ClearOwnedGroupProjection();
-            _composer.CinemachineCamera.Follow = null;
-            _composer.CinemachineCamera.LookAt = null;
-            RecordAppliedEvidence(input, compositionInput);
-
             if (projection.Status == CameraViewTargetProjectionStatus.SucceededNoTargets)
             {
+                ClearOwnedGroupProjection();
+                _composer.CinemachineCamera.Follow = null;
+                _composer.CinemachineCamera.LookAt = null;
+                RecordAppliedEvidence(input, compositionInput);
                 return ViewApplyResult(
                     CameraViewPresentationApplyStatus.SucceededFixedNoTargets,
                     input,
@@ -171,6 +171,186 @@ namespace Immersive.Framework.CameraAuthoring
                 null,
                 "Cleared explicit presentation without releasing the Composer, Cinemachine Camera or output.");
         }
+
+        internal CameraRigPresentationState CaptureState()
+        {
+            CinemachineTargetGroup group = _composer.FrameworkOwnedGroupTargetGroup;
+            CinemachineGroupFraming framing = _composer.FrameworkOwnedGroupFraming;
+            List<CinemachineTargetGroup.Target> targets = group != null ? group.Targets : null;
+
+            return new CameraRigPresentationState(
+                _composer,
+                _composer.CinemachineCamera != null ? _composer.CinemachineCamera.Follow : null,
+                _composer.CinemachineCamera != null ? _composer.CinemachineCamera.LookAt : null,
+                group != null,
+                targets == null,
+                targets != null
+                    ? new List<CinemachineTargetGroup.Target>(targets).ToArray()
+                    : Array.Empty<CinemachineTargetGroup.Target>(),
+                group != null ? group.PositionMode : default,
+                group != null ? group.RotationMode : default,
+                group != null ? group.UpdateMethod : default,
+                framing != null,
+                framing != null && framing.enabled,
+                framing != null ? framing.FramingMode : default,
+                framing != null ? framing.SizeAdjustment : default,
+                framing != null ? framing.LateralAdjustment : default,
+                framing != null ? framing.FramingSize : 0f,
+                framing != null ? framing.Damping : 0f,
+                framing != null ? framing.FovRange : default,
+                framing != null ? framing.DollyRange : default,
+                framing != null ? framing.OrthoSizeRange : default,
+                appliedViewAssignmentContextId,
+                appliedViewAssignmentRevision,
+                appliedViewAvailabilityContextId,
+                appliedViewAvailabilityRevision,
+                appliedMembershipContextId,
+                appliedMembershipRevision,
+                appliedMembershipAvailabilityContextId,
+                appliedMembershipAvailabilityRevision);
+        }
+
+        internal CameraRigPresentationRestoreResult RestoreState(
+            CameraRigPresentationState previous,
+            CameraRigPresentationState expectedCurrent)
+        {
+            if (previous == null || expectedCurrent == null ||
+                !ReferenceEquals(previous.Composer, _composer) ||
+                !ReferenceEquals(expectedCurrent.Composer, _composer))
+            {
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.RejectedInvalidState,
+                    "Camera presentation rollback requires states captured from the exact same Composer.");
+            }
+
+            CameraRigPresentationState current = CaptureState();
+            if (!Matches(current, expectedCurrent))
+            {
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.RejectedStaleTransaction,
+                    "Camera presentation rollback rejected because newer or foreign presentation evidence is already applied.");
+            }
+
+            if (previous.HasGroupTargetGroup && _composer.FrameworkOwnedGroupTargetGroup == null)
+            {
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.CriticalRestoreFailure,
+                    "Camera presentation rollback cannot restore Group members because the owned Target Group is missing.");
+            }
+
+            if (previous.HasGroupFraming && _composer.FrameworkOwnedGroupFraming == null)
+            {
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.CriticalRestoreFailure,
+                    "Camera presentation rollback cannot restore Group framing because the owned Group Framing component is missing.");
+            }
+
+            try
+            {
+                if (_composer.CinemachineCamera != null)
+                {
+                    _composer.CinemachineCamera.Follow = previous.Follow;
+                    _composer.CinemachineCamera.LookAt = previous.LookAt;
+                }
+
+                if (previous.HasGroupTargetGroup)
+                {
+                    CinemachineTargetGroup group = _composer.FrameworkOwnedGroupTargetGroup;
+                    group.Targets = previous.GroupTargetsWereNull
+                        ? null
+                        : new List<CinemachineTargetGroup.Target>(previous.GroupTargets);
+                    group.PositionMode = previous.GroupPositionMode;
+                    group.RotationMode = previous.GroupRotationMode;
+                    group.UpdateMethod = previous.GroupUpdateMethod;
+                }
+
+                if (previous.HasGroupFraming)
+                {
+                    CinemachineGroupFraming framing = _composer.FrameworkOwnedGroupFraming;
+                    framing.FramingMode = previous.FramingMode;
+                    framing.SizeAdjustment = previous.SizeAdjustment;
+                    framing.LateralAdjustment = previous.LateralAdjustment;
+                    framing.FramingSize = previous.FramingSize;
+                    framing.Damping = previous.Damping;
+                    framing.FovRange = previous.FovRange;
+                    framing.DollyRange = previous.DollyRange;
+                    framing.OrthoSizeRange = previous.OrthoSizeRange;
+                    framing.enabled = previous.GroupFramingEnabled;
+                }
+
+                appliedViewAssignmentContextId = previous.ViewAssignmentContextId;
+                appliedViewAssignmentRevision = previous.ViewAssignmentRevision;
+                appliedViewAvailabilityContextId = previous.ViewAvailabilityContextId;
+                appliedViewAvailabilityRevision = previous.ViewAvailabilityRevision;
+                appliedMembershipContextId = previous.MembershipContextId;
+                appliedMembershipRevision = previous.MembershipRevision;
+                appliedMembershipAvailabilityContextId = previous.MembershipAvailabilityContextId;
+                appliedMembershipAvailabilityRevision = previous.MembershipAvailabilityRevision;
+
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.Succeeded,
+                    "Camera presentation rollback restored the previous Composer state.");
+            }
+            catch (Exception exception)
+            {
+                return RestoreResult(
+                    CameraRigPresentationRestoreStatus.CriticalRestoreFailure,
+                    $"Camera presentation rollback failed while restoring Composer state: {exception.Message}");
+            }
+        }
+
+        private static bool Matches(
+            CameraRigPresentationState left,
+            CameraRigPresentationState right)
+        {
+            if (left.Follow != right.Follow || left.LookAt != right.LookAt ||
+                left.HasGroupTargetGroup != right.HasGroupTargetGroup ||
+                left.GroupTargetsWereNull != right.GroupTargetsWereNull ||
+                left.HasGroupFraming != right.HasGroupFraming ||
+                left.GroupPositionMode != right.GroupPositionMode ||
+                left.GroupRotationMode != right.GroupRotationMode ||
+                left.GroupUpdateMethod != right.GroupUpdateMethod ||
+                left.GroupFramingEnabled != right.GroupFramingEnabled ||
+                left.FramingMode != right.FramingMode ||
+                left.SizeAdjustment != right.SizeAdjustment ||
+                left.LateralAdjustment != right.LateralAdjustment ||
+                !left.FramingSize.Equals(right.FramingSize) ||
+                !left.Damping.Equals(right.Damping) ||
+                left.FovRange != right.FovRange ||
+                left.DollyRange != right.DollyRange ||
+                left.OrthoSizeRange != right.OrthoSizeRange ||
+                left.ViewAssignmentContextId != right.ViewAssignmentContextId ||
+                left.ViewAssignmentRevision != right.ViewAssignmentRevision ||
+                left.ViewAvailabilityContextId != right.ViewAvailabilityContextId ||
+                left.ViewAvailabilityRevision != right.ViewAvailabilityRevision ||
+                left.MembershipContextId != right.MembershipContextId ||
+                left.MembershipRevision != right.MembershipRevision ||
+                left.MembershipAvailabilityContextId != right.MembershipAvailabilityContextId ||
+                left.MembershipAvailabilityRevision != right.MembershipAvailabilityRevision ||
+                left.GroupTargets.Count != right.GroupTargets.Count)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < left.GroupTargets.Count; index++)
+            {
+                CinemachineTargetGroup.Target leftTarget = left.GroupTargets[index];
+                CinemachineTargetGroup.Target rightTarget = right.GroupTargets[index];
+                if (leftTarget.Object != rightTarget.Object ||
+                    !leftTarget.Weight.Equals(rightTarget.Weight) ||
+                    !leftTarget.Radius.Equals(rightTarget.Radius))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static CameraRigPresentationRestoreResult RestoreResult(
+            CameraRigPresentationRestoreStatus status,
+            string diagnostic) =>
+            new CameraRigPresentationRestoreResult(status, diagnostic);
 
         private void ReconcileGroupMembers(CameraViewPresentationInput input)
         {

@@ -7,7 +7,7 @@ using Unity.Cinemachine;
 namespace Immersive.Framework.Camera
 {
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    public sealed class CameraOutputRigApplicator
+    public sealed class CameraOutputRigApplicator : ICameraOutputApplication
     {
         private readonly CameraOutputBinding _binding;
 

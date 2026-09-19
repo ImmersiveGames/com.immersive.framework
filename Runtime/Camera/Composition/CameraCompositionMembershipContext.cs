@@ -319,6 +319,79 @@ namespace Immersive.Framework.Camera
                 removed > 0 ? "Composition membership cleared." : "Composition membership was already empty.");
         }
 
+        internal bool CanRestore(
+            CameraCompositionMembershipSnapshot previous,
+            CameraCompositionMembershipSnapshot expectedCurrent,
+            out string diagnostic)
+        {
+            if (previous == null || expectedCurrent == null ||
+                previous.ContextId != ContextId || expectedCurrent.ContextId != ContextId ||
+                previous.AvailabilityContextId != AvailabilityContextId ||
+                expectedCurrent.AvailabilityContextId != AvailabilityContextId)
+            {
+                diagnostic = "Composition membership rollback requires snapshots from the exact bound contexts.";
+                return false;
+            }
+
+            if (!Matches(CreateSnapshot(), expectedCurrent))
+            {
+                diagnostic = "Composition membership rollback rejected because newer or foreign membership evidence is already current.";
+                return false;
+            }
+
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        internal bool TryRestore(
+            CameraCompositionMembershipSnapshot previous,
+            CameraCompositionMembershipSnapshot expectedCurrent,
+            out string diagnostic)
+        {
+            if (!CanRestore(previous, expectedCurrent, out diagnostic))
+                return false;
+
+            _entries.Clear();
+            for (int index = 0; index < previous.Entries.Count; index++)
+            {
+                CameraCompositionMembershipEntry entry = previous.Entries[index];
+                _entries.Add(entry.SubjectId, entry);
+            }
+            _revision = previous.Revision;
+            _availabilityRevision = previous.AvailabilityRevision;
+            diagnostic = "Composition membership rollback restored the previous ordered Subject evidence.";
+            return true;
+        }
+
+        private static bool Matches(
+            CameraCompositionMembershipSnapshot left,
+            CameraCompositionMembershipSnapshot right)
+        {
+            if (left.ContextId != right.ContextId ||
+                left.AvailabilityContextId != right.AvailabilityContextId ||
+                left.AvailabilityRevision != right.AvailabilityRevision ||
+                left.Revision != right.Revision ||
+                left.Count != right.Count)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < left.Count; index++)
+            {
+                CameraCompositionMembershipEntry leftEntry = left.Entries[index];
+                CameraCompositionMembershipEntry rightEntry = right.Entries[index];
+                if (leftEntry.SubjectId != rightEntry.SubjectId ||
+                    leftEntry.Token != rightEntry.Token ||
+                    leftEntry.Subject.Token != rightEntry.Subject.Token ||
+                    leftEntry.Subject.Subject.Observation != rightEntry.Subject.Subject.Observation)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private CameraCompositionMembershipSnapshot CreateSnapshot()
         {
             var entries = new List<CameraCompositionMembershipEntry>(_entries.Values);

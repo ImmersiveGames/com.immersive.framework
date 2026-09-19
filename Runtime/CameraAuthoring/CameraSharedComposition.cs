@@ -12,7 +12,7 @@ namespace Immersive.Framework.CameraAuthoring
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Shared Camera Composition")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-029-C Composition request participation.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-029-D transactional Composition reconciliation.")]
     public sealed class CameraSharedComposition : MonoBehaviour,
         ICameraSubjectAvailabilityConsumer,
         ICameraOutputSessionConsumer,
@@ -96,7 +96,9 @@ namespace Immersive.Framework.CameraAuthoring
                 TryStartComposition();
                 return;
             }
-            StopComposition();
+            if (!StopComposition())
+                throw new InvalidOperationException(
+                    $"Camera composition '{name}' could not replace Subject availability because teardown failed: {Snapshot.LastBlockingIssue}");
             _availability = availabilitySource;
             TryStartComposition();
         }
@@ -108,15 +110,17 @@ namespace Immersive.Framework.CameraAuthoring
             if (!ReferenceEquals(binding.OutputDefinition, outputDefinition) || binding.OutputId != RequestedOutputId)
                 throw new InvalidOperationException(
                     $"Shared Camera composition '{name}' requires its exact Output definition '{outputDefinition.name}'; the injected physical Output references a different definition.");
-            StopComposition();
+            if (!StopComposition())
+                throw new InvalidOperationException(
+                    $"Camera composition '{name}' could not replace its Output because teardown failed: {Snapshot.LastBlockingIssue}");
             _output = binding;
             TryStartComposition();
         }
 
         public void DetachOutputSession(string reason)
         {
-            StopComposition();
-            _output = null;
+            if (StopComposition())
+                _output = null;
         }
 
         public CameraSharedCompositionSnapshot Reconcile(CameraSubjectAvailabilitySnapshot availability)
@@ -130,6 +134,10 @@ namespace Immersive.Framework.CameraAuthoring
                         : CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
                     availability, 0, 0,
                     CameraViewPresentationApplyStatus.None, rigDiagnostic);
+
+            CameraCompositionMembershipSnapshot previousMembership = _membership.Snapshot;
+            CameraRigPresentationState previousPresentation =
+                compositionRig.CapturePresentationState();
 
             IReadOnlyList<CameraSubjectId> desired = availability != null &&
                 availability.ContextId == _membership.AvailabilityContextId
@@ -154,55 +162,107 @@ namespace Immersive.Framework.CameraAuthoring
             CameraViewPresentationInputResult projection = CameraViewPresentationInputProjection.TryCreate(_currentMembership);
             if (!projection.Succeeded)
             {
-                if (!TryReleaseRequest(out string releaseDiagnostic))
-                    return Record(CameraSharedCompositionReconcileStatus.BlockedRequestFailure, availability,
-                        membership.AddedCount, membership.RemovedCount,
-                        CameraViewPresentationApplyStatus.None, releaseDiagnostic);
-                CameraViewPresentationApplyStatus clearStatus =
-                    compositionRig.ClearViewPresentation().Status;
-                return Record(CameraSharedCompositionReconcileStatus.BlockedProjectionFailure, availability,
-                    membership.AddedCount, membership.RemovedCount, clearStatus, projection.Message);
+                return RollbackAndRecord(
+                    "presentation input projection",
+                    CameraSharedCompositionReconcileStatus.BlockedProjectionFailure,
+                    availability,
+                    membership,
+                    previousMembership,
+                    previousPresentation,
+                    compositionRig.CapturePresentationState(),
+                    CameraViewPresentationApplyStatus.None,
+                    false,
+                    projection.Message);
             }
 
             CameraViewTargetProjectionResult targetProjection =
                 compositionRig.ResolveViewPresentationTargets(projection.Input);
             if (!targetProjection.Succeeded)
             {
-                if (!TryReleaseRequest(out string releaseDiagnostic))
-                    return Record(CameraSharedCompositionReconcileStatus.BlockedRequestFailure, availability,
-                        membership.AddedCount, membership.RemovedCount, CameraViewPresentationApplyStatus.None, releaseDiagnostic);
-
-                CameraViewPresentationApplyStatus clearStatus =
-                    compositionRig.ClearViewPresentation().Status;
-                if (targetProjection.Status == CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing &&
-                    projection.Input.SubjectCount == 0)
+                bool lostRequiredSubjects =
+                    targetProjection.Status == CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing &&
+                    projection.Input.SubjectCount == 0;
+                if (!lostRequiredSubjects)
                 {
-                    return Record(CameraSharedCompositionReconcileStatus.SucceededAwaitingSubjects, availability,
-                        membership.AddedCount, membership.RemovedCount, clearStatus, string.Empty);
+                    return RollbackAndRecord(
+                        "Composition target projection",
+                        CameraSharedCompositionReconcileStatus.BlockedProjectionFailure,
+                        availability,
+                        membership,
+                        previousMembership,
+                        previousPresentation,
+                        compositionRig.CapturePresentationState(),
+                        CameraViewPresentationApplyStatus.None,
+                        false,
+                        targetProjection.BlockingIssue);
                 }
 
-                return Record(CameraSharedCompositionReconcileStatus.BlockedProjectionFailure, availability,
-                    membership.AddedCount, membership.RemovedCount, clearStatus, targetProjection.BlockingIssue);
+                CameraViewPresentationApplyResult cleared =
+                    compositionRig.ClearViewPresentation();
+                if (!cleared.Succeeded)
+                {
+                    return RollbackAndRecord(
+                        "unpresentable presentation clear",
+                        CameraSharedCompositionReconcileStatus.BlockedPresentationFailure,
+                        availability,
+                        membership,
+                        previousMembership,
+                        previousPresentation,
+                        compositionRig.CapturePresentationState(),
+                        cleared.Status,
+                        false,
+                        cleared.Diagnostic);
+                }
+
+                if (!TryReleaseRequest(out bool releaseOutputRollbackFailed, out string releaseDiagnostic))
+                {
+                    return RollbackAndRecord(
+                        "Composition request release",
+                        CameraSharedCompositionReconcileStatus.BlockedRequestFailure,
+                        availability,
+                        membership,
+                        previousMembership,
+                        previousPresentation,
+                        compositionRig.CapturePresentationState(),
+                        cleared.Status,
+                        releaseOutputRollbackFailed,
+                        releaseDiagnostic);
+                }
+
+                return Record(CameraSharedCompositionReconcileStatus.SucceededAwaitingSubjects, availability,
+                    membership.AddedCount, membership.RemovedCount, cleared.Status, string.Empty);
             }
 
             CameraViewPresentationApplyResult presentation =
                 compositionRig.ApplyCompositionPresentation(projection.Input, _currentMembership);
             if (!presentation.Succeeded)
             {
-                if (!TryReleaseRequest(out string releaseDiagnostic))
-                    return Record(CameraSharedCompositionReconcileStatus.BlockedRequestFailure, availability,
-                        membership.AddedCount, membership.RemovedCount, presentation.Status, releaseDiagnostic);
-                CameraViewPresentationApplyStatus clearStatus =
-                    compositionRig.ClearViewPresentation().Status;
-                return Record(CameraSharedCompositionReconcileStatus.BlockedPresentationFailure, availability,
-                    membership.AddedCount, membership.RemovedCount, clearStatus, presentation.Diagnostic);
+                return RollbackAndRecord(
+                    "Composition presentation apply",
+                    CameraSharedCompositionReconcileStatus.BlockedPresentationFailure,
+                    availability,
+                    membership,
+                    previousMembership,
+                    previousPresentation,
+                    compositionRig.CapturePresentationState(),
+                    presentation.Status,
+                    false,
+                    presentation.Diagnostic);
             }
 
-            if (!TryEnsureRequestPublished(out string requestDiagnostic))
+            if (!TryEnsureRequestPublished(out bool admitOutputRollbackFailed, out string requestDiagnostic))
             {
-                compositionRig.ClearViewPresentation();
-                return Record(CameraSharedCompositionReconcileStatus.BlockedRequestFailure, availability,
-                    membership.AddedCount, membership.RemovedCount, presentation.Status, requestDiagnostic);
+                return RollbackAndRecord(
+                    "Composition request admission",
+                    CameraSharedCompositionReconcileStatus.BlockedRequestFailure,
+                    availability,
+                    membership,
+                    previousMembership,
+                    previousPresentation,
+                    compositionRig.CapturePresentationState(),
+                    presentation.Status,
+                    admitOutputRollbackFailed,
+                    requestDiagnostic);
             }
 
             return Record(
@@ -235,6 +295,7 @@ namespace Immersive.Framework.CameraAuthoring
         private void TryStartComposition()
         {
             if (!isActiveAndEnabled || _subscribed || _availability == null) return;
+            if (_membership != null && !StopComposition()) return;
             CameraSubjectAvailabilitySnapshot availability = _availability.CreateSnapshot();
             if (!TryValidateDefinitions(out string definitionDiagnostic))
             {
@@ -285,35 +346,60 @@ namespace Immersive.Framework.CameraAuthoring
             Reconcile(availability);
         }
 
-        private void StopComposition()
+        private bool StopComposition()
         {
             bool wasActive = _membership != null;
             if (_subscribed && _availability != null)
                 _availability.AvailabilityChanged -= HandleAvailabilityChanged;
             _subscribed = false;
 
-            bool requestReleased = TryReleaseRequest(out string requestDiagnostic);
-            CameraViewPresentationApplyStatus clearStatus = CameraViewPresentationApplyStatus.None;
-            if (wasActive && compositionRig != null)
-                clearStatus = compositionRig.ClearViewPresentation().Status;
+            if (!wasActive)
+                return true;
+
+            CameraCompositionMembershipSnapshot previousMembership = _membership.Snapshot;
+            CameraRigPresentationState previousPresentation =
+                compositionRig != null ? compositionRig.CapturePresentationState() : null;
+            CameraViewPresentationApplyResult cleared =
+                compositionRig != null ? compositionRig.ClearViewPresentation() : null;
+
+            if (cleared == null || !cleared.Succeeded)
+            {
+                string clearDiagnostic = cleared?.Diagnostic ??
+                    "Composition teardown requires its explicit Composition Rig.";
+                RollbackTeardownAndRecord(
+                    "teardown presentation clear",
+                    previousMembership,
+                    previousPresentation,
+                    compositionRig != null ? compositionRig.CapturePresentationState() : null,
+                    cleared?.Status ?? CameraViewPresentationApplyStatus.None,
+                    false,
+                    clearDiagnostic);
+                return false;
+            }
+
+            if (!TryReleaseRequest(out bool outputRollbackFailed, out string requestDiagnostic))
+            {
+                RollbackTeardownAndRecord(
+                    "teardown request release",
+                    previousMembership,
+                    previousPresentation,
+                    compositionRig.CapturePresentationState(),
+                    cleared.Status,
+                    outputRollbackFailed,
+                    requestDiagnostic);
+                return false;
+            }
 
             int removed = 0;
-            if (_membership != null)
-            {
-                CameraCompositionMembershipResult cleared = _membership.Clear();
-                _currentMembership = cleared.Snapshot;
-                removed = cleared.RemovedCount;
-            }
-            if (wasActive)
-                Record(requestReleased
-                        ? CameraSharedCompositionReconcileStatus.SucceededStopped
-                        : CameraSharedCompositionReconcileStatus.BlockedRequestFailure,
-                    _availability?.CreateSnapshot(),
-                    0, removed, clearStatus, requestDiagnostic);
+            CameraCompositionMembershipResult membershipCleared = _membership.Clear();
+            _currentMembership = membershipCleared.Snapshot;
+            removed = membershipCleared.RemovedCount;
+            Record(CameraSharedCompositionReconcileStatus.SucceededStopped,
+                _availability?.CreateSnapshot(), 0, removed, cleared.Status, string.Empty);
             _membership = null;
             _currentMembership = null;
-            if (_requestPublisher?.IsPublished != true)
-                _requestPublisher = null;
+            _requestPublisher = null;
+            return true;
         }
 
         private void HandleAvailabilityChanged(CameraSubjectAvailabilitySnapshot availability) => Reconcile(availability);
@@ -339,8 +425,11 @@ namespace Immersive.Framework.CameraAuthoring
             return true;
         }
 
-        private bool TryEnsureRequestPublished(out string diagnostic)
+        private bool TryEnsureRequestPublished(
+            out bool outputRollbackFailed,
+            out string diagnostic)
         {
+            outputRollbackFailed = false;
             if (_requestPublisher != null)
             {
                 if (_requestPublisher.Request.Rig.Composer != compositionRig ||
@@ -351,6 +440,8 @@ namespace Immersive.Framework.CameraAuthoring
                 }
 
                 CameraRequestPublisherResult preserved = _requestPublisher.Publish();
+                outputRollbackFailed = preserved.HasSessionResult &&
+                    preserved.SessionResult.RollbackFailed;
                 diagnostic = preserved.DiagnosticSummary;
                 return preserved.Succeeded;
             }
@@ -394,8 +485,12 @@ namespace Immersive.Framework.CameraAuthoring
             }
 
             CameraRequestPublisherResult publication = creation.Publisher.Publish();
+            outputRollbackFailed = publication.HasSessionResult &&
+                publication.SessionResult.RollbackFailed;
             if (!publication.Succeeded)
             {
+                if (creation.Publisher.IsPublished)
+                    _requestPublisher = creation.Publisher;
                 diagnostic = publication.DiagnosticSummary;
                 return false;
             }
@@ -405,8 +500,11 @@ namespace Immersive.Framework.CameraAuthoring
             return true;
         }
 
-        private bool TryReleaseRequest(out string diagnostic)
+        private bool TryReleaseRequest(
+            out bool outputRollbackFailed,
+            out string diagnostic)
         {
+            outputRollbackFailed = false;
             if (_requestPublisher == null)
             {
                 diagnostic = string.Empty;
@@ -414,8 +512,143 @@ namespace Immersive.Framework.CameraAuthoring
             }
 
             CameraRequestPublisherResult release = _requestPublisher.Release();
+            outputRollbackFailed = release.HasSessionResult &&
+                release.SessionResult.RollbackFailed;
             diagnostic = release.DiagnosticSummary;
             return release.Succeeded;
+        }
+
+        private CameraSharedCompositionSnapshot RollbackAndRecord(
+            string operation,
+            CameraSharedCompositionReconcileStatus failureStatus,
+            CameraSubjectAvailabilitySnapshot availability,
+            CameraCompositionMembershipResult failedMembership,
+            CameraCompositionMembershipSnapshot previousMembership,
+            CameraRigPresentationState previousPresentation,
+            CameraRigPresentationState failedPresentation,
+            CameraViewPresentationApplyStatus presentationStatus,
+            bool outputRollbackFailed,
+            string originalFailure)
+        {
+            bool restored = TryRollbackState(
+                previousMembership,
+                failedMembership.Snapshot,
+                previousPresentation,
+                failedPresentation,
+                out string rollbackDiagnostic);
+
+            bool critical = outputRollbackFailed || !restored;
+            string diagnostic = BuildTransactionFailureDiagnostic(
+                operation,
+                originalFailure,
+                outputRollbackFailed
+                    ? $"CameraOutputSession rollback failed. {rollbackDiagnostic}"
+                    : rollbackDiagnostic);
+
+            return Record(
+                critical
+                    ? CameraSharedCompositionReconcileStatus.CriticalRollbackFailure
+                    : failureStatus,
+                availability,
+                failedMembership.AddedCount,
+                failedMembership.RemovedCount,
+                presentationStatus,
+                diagnostic);
+        }
+
+        private CameraSharedCompositionSnapshot RollbackTeardownAndRecord(
+            string operation,
+            CameraCompositionMembershipSnapshot previousMembership,
+            CameraRigPresentationState previousPresentation,
+            CameraRigPresentationState failedPresentation,
+            CameraViewPresentationApplyStatus presentationStatus,
+            bool outputRollbackFailed,
+            string originalFailure)
+        {
+            CameraCompositionMembershipSnapshot failedMembership = _membership.Snapshot;
+            bool restored = TryRollbackState(
+                previousMembership,
+                failedMembership,
+                previousPresentation,
+                failedPresentation,
+                out string rollbackDiagnostic);
+            bool critical = outputRollbackFailed || !restored;
+            string diagnostic = BuildTransactionFailureDiagnostic(
+                operation,
+                originalFailure,
+                outputRollbackFailed
+                    ? $"CameraOutputSession rollback failed. {rollbackDiagnostic}"
+                    : rollbackDiagnostic);
+
+            return Record(
+                critical
+                    ? CameraSharedCompositionReconcileStatus.CriticalRollbackFailure
+                    : CameraSharedCompositionReconcileStatus.BlockedRequestFailure,
+                _availability?.CreateSnapshot(),
+                0,
+                0,
+                presentationStatus,
+                diagnostic);
+        }
+
+        private bool TryRollbackState(
+            CameraCompositionMembershipSnapshot previousMembership,
+            CameraCompositionMembershipSnapshot expectedCurrentMembership,
+            CameraRigPresentationState previousPresentation,
+            CameraRigPresentationState expectedCurrentPresentation,
+            out string diagnostic)
+        {
+            string membershipPreflightDiagnostic =
+                "Composition membership rollback authority is unavailable.";
+            if (_membership == null ||
+                !_membership.CanRestore(
+                    previousMembership,
+                    expectedCurrentMembership,
+                    out membershipPreflightDiagnostic))
+            {
+                diagnostic = $"Membership rollback preflight failed: {membershipPreflightDiagnostic}";
+                return false;
+            }
+
+            if (compositionRig == null || previousPresentation == null ||
+                expectedCurrentPresentation == null)
+            {
+                diagnostic = "Presentation rollback preflight failed because exact Composer state is unavailable.";
+                return false;
+            }
+
+            CameraRigPresentationRestoreResult presentationRestore =
+                compositionRig.RestorePresentationState(
+                    previousPresentation,
+                    expectedCurrentPresentation);
+            if (!presentationRestore.Succeeded)
+            {
+                diagnostic = $"Presentation rollback failed: {presentationRestore.Diagnostic}";
+                return false;
+            }
+
+            if (!_membership.TryRestore(
+                    previousMembership,
+                    expectedCurrentMembership,
+                    out string membershipRestoreDiagnostic))
+            {
+                diagnostic = $"Membership rollback failed after presentation restore: {membershipRestoreDiagnostic}";
+                return false;
+            }
+
+            _currentMembership = previousMembership;
+            diagnostic = "Composition presentation and membership rollback restored the previous coherent state.";
+            return true;
+        }
+
+        private string BuildTransactionFailureDiagnostic(
+            string operation,
+            string originalFailure,
+            string rollbackDiagnostic)
+        {
+            return $"Camera Composition transaction failed. operation='{operation}' " +
+                $"composition='{membershipContextId}' request='{RequestId}' output='{RequestedOutputId}' " +
+                $"original='{originalFailure}' rollback='{rollbackDiagnostic}'.";
         }
 
         private CameraSharedCompositionSnapshot Record(

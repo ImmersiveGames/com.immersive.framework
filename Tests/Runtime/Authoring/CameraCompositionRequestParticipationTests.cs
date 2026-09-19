@@ -196,6 +196,278 @@ namespace Immersive.Framework.Authoring.Tests
                 Is.Not.EqualTo(fixture.Composition.ViewIdText));
         }
 
+        [Test]
+        public void PresentationApplyFailurePreservesMembershipPresentationAndRequestState()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            SetField(fixture.CompositionRig.BehaviorDefinition, "followOffset",
+                new Vector3(float.NaN, 0f, 0f));
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedPresentationFailure));
+            AssertDefault(fixture);
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.Zero);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.Null);
+        }
+
+        [Test]
+        public void TargetProjectionFailurePreservesCurrentRequestAndFollowEvidence()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            fixture.AddSubject("subject-a");
+            Transform previousFollow = fixture.CompositionRig.CinemachineCamera.Follow;
+
+            fixture.AddSubject("subject-b");
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedProjectionFailure));
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.EqualTo(1));
+            Assert.That(fixture.Composition.IsRequestPublished, Is.True);
+            Assert.That(fixture.Context.Contains(fixture.Composition.RequestId), Is.True);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow,
+                Is.SameAs(previousFollow));
+        }
+
+        [Test]
+        public void RequestAdmissionFailureRestoresPresentationAndMembership()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            CameraRequest conflicting = fixture.CreateRequest(
+                "conflicting", fixture.CreateRig(CameraRigPresentationIntent.Fixed), 10,
+                fixture.Composition.MembershipContextIdText);
+            Assert.That(fixture.Session.Admit(conflicting).Succeeded, Is.True);
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            Assert.That(fixture.Context.AdmittedRequestCount, Is.EqualTo(1));
+            Assert.That(fixture.Context.Winner.RequestId, Is.EqualTo(conflicting.RequestId));
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.Zero);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.Null);
+        }
+
+        [Test]
+        public void PhysicalOutputFailureDuringAdmissionRestoresPresentationAfterSessionRollback()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            fixture.Application.FailNextApply();
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            AssertDefault(fixture);
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.Zero);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.Null);
+        }
+
+        [Test]
+        public void RequestReleaseFailureRestoresFollowTargetAndPublication()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            CameraSubjectAvailabilityToken token = fixture.AddSubject("subject-a");
+            Transform previousFollow = fixture.CompositionRig.CinemachineCamera.Follow;
+            ICameraRequestPublisher current =
+                GetField<ICameraRequestPublisher>(fixture.Composition, "_requestPublisher");
+            SetField(fixture.Composition, "_requestPublisher",
+                new RejectingCameraRequestPublisher(current.Request));
+
+            fixture.RemoveSubject(token);
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            Assert.That(fixture.Composition.IsRequestPublished, Is.True);
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.EqualTo(1));
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.SameAs(previousFollow));
+        }
+
+        [Test]
+        public void PhysicalOutputFailureDuringReleaseRestoresRequestAndFollowTarget()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            CameraSubjectAvailabilityToken token = fixture.AddSubject("subject-a");
+            Transform previousFollow = fixture.CompositionRig.CinemachineCamera.Follow;
+            fixture.Application.FailNextApply();
+
+            fixture.RemoveSubject(token);
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            Assert.That(fixture.Context.Contains(fixture.Composition.RequestId), Is.True);
+            Assert.That(fixture.Composition.IsRequestPublished, Is.True);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.SameAs(previousFollow));
+            Assert.That(fixture.Applicator.AppliedCamera,
+                Is.SameAs(fixture.CompositionRig.CinemachineCamera));
+        }
+
+        [Test]
+        public void GroupReleaseRollbackRestoresOrderedMembersWeightsRadiiAndFraming()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Group);
+            fixture.AddSubject("subject-a");
+            fixture.AddSubject("subject-b");
+            CinemachineTargetGroup group = fixture.CompositionRig.FrameworkOwnedGroupTargetGroup;
+            CinemachineGroupFraming framing = fixture.CompositionRig.FrameworkOwnedGroupFraming;
+            group.Targets[0] = new CinemachineTargetGroup.Target
+            {
+                Object = group.Targets[0].Object,
+                Weight = 3.25f,
+                Radius = 1.75f
+            };
+            group.Targets[1] = new CinemachineTargetGroup.Target
+            {
+                Object = group.Targets[1].Object,
+                Weight = 4.5f,
+                Radius = 2.25f
+            };
+            Transform firstMember = group.Targets[0].Object;
+            Transform secondMember = group.Targets[1].Object;
+            framing.FramingSize = 0.63f;
+            framing.Damping = 2.75f;
+            fixture.Application.FailNextApply();
+
+            Assert.That(fixture.ReleaseAllSubjects(), Is.EqualTo(2));
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            Assert.That(group.Targets.Count, Is.EqualTo(2));
+            Assert.That(group.Targets[0].Object, Is.SameAs(firstMember));
+            Assert.That(group.Targets[0].Weight, Is.EqualTo(3.25f));
+            Assert.That(group.Targets[0].Radius, Is.EqualTo(1.75f));
+            Assert.That(group.Targets[1].Object, Is.SameAs(secondMember));
+            Assert.That(group.Targets[1].Weight, Is.EqualTo(4.5f));
+            Assert.That(group.Targets[1].Radius, Is.EqualTo(2.25f));
+            Assert.That(framing.enabled, Is.True);
+            Assert.That(framing.FramingSize, Is.EqualTo(0.63f));
+            Assert.That(framing.Damping, Is.EqualTo(2.75f));
+        }
+
+        [Test]
+        public void StalePresentationRollbackCannotOverwriteNewerAppliedEvidence()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Group);
+            fixture.AddSubject("subject-a");
+            CameraRigPresentationState previous = fixture.CompositionRig.CapturePresentationState();
+            fixture.AddSubject("subject-b");
+            CameraRigPresentationState expectedCurrent = fixture.CompositionRig.CapturePresentationState();
+            fixture.AddSubject("subject-c");
+
+            CameraRigPresentationRestoreResult restored =
+                fixture.CompositionRig.RestorePresentationState(previous, expectedCurrent);
+
+            Assert.That(restored.Succeeded, Is.False);
+            Assert.That(restored.Status,
+                Is.EqualTo(CameraRigPresentationRestoreStatus.RejectedStaleTransaction));
+            Assert.That(fixture.CompositionRig.FrameworkOwnedGroupTargetGroup.Targets.Count,
+                Is.EqualTo(3));
+        }
+
+        [Test]
+        public void StaleMembershipRollbackCannotOverwriteNewerCompositionEvidence()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Group);
+            fixture.AddSubject("subject-a");
+            CameraCompositionMembershipContext membership =
+                GetField<CameraCompositionMembershipContext>(fixture.Composition, "_membership");
+            CameraCompositionMembershipSnapshot previous = membership.Snapshot;
+            fixture.AddSubject("subject-b");
+            CameraCompositionMembershipSnapshot expectedCurrent = membership.Snapshot;
+            fixture.AddSubject("subject-c");
+
+            bool restored = membership.TryRestore(
+                previous, expectedCurrent, out string diagnostic);
+
+            Assert.That(restored, Is.False);
+            Assert.That(diagnostic, Does.Contain("newer"));
+            Assert.That(membership.Count, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void CompetingWinnerRemainsCorrectAfterCompositionAdmissionRollback()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            CameraRequest higher = fixture.CreateRequest(
+                "higher", fixture.CreateRig(CameraRigPresentationIntent.Fixed), 100);
+            Assert.That(fixture.Session.Admit(higher).Succeeded, Is.True);
+            fixture.Application.FailNextApply();
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Context.Winner.RequestId, Is.EqualTo(higher.RequestId));
+            Assert.That(fixture.Context.Contains(fixture.Composition.RequestId), Is.False);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.Null);
+        }
+
+        [Test]
+        public void ForceDefaultRemainsEffectiveAfterCompositionAdmissionRollback()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            var owner = new CameraOutputForceDefaultOwnerId("transaction-force-default");
+            Assert.That(fixture.Session.ForceDefault(owner).Succeeded, Is.True);
+            fixture.Application.FailNextApply();
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Session.IsDefaultForced, Is.True);
+            Assert.That(fixture.Context.Contains(fixture.Composition.RequestId), Is.False);
+            Assert.That(fixture.Applicator.HasAppliedDefault, Is.True);
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.Null);
+        }
+
+        [Test]
+        public void OutputRollbackFailureReturnsCriticalCompositionFailure()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            fixture.Application.FailNextApply(rollbackAlsoFails: true);
+
+            fixture.AddSubject("subject-a");
+
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.CriticalRollbackFailure));
+            Assert.That(fixture.Composition.Snapshot.LastBlockingIssue,
+                Does.Contain("rollback"));
+            Assert.That(fixture.Composition.Snapshot.IsReady, Is.False);
+            Assert.That(fixture.Composition.IsRequestPublished,
+                Is.EqualTo(fixture.Context.Contains(fixture.Composition.RequestId)));
+        }
+
+        [Test]
+        public void TeardownReleaseFailurePreservesPublicationAndRecoveryEvidence()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            fixture.AddSubject("subject-a");
+            Transform previousFollow = fixture.CompositionRig.CinemachineCamera.Follow;
+            fixture.Application.FailNextApply();
+
+            fixture.Composition.gameObject.SetActive(false);
+
+            Assert.That(fixture.Composition.IsRequestPublished, Is.True);
+            Assert.That(fixture.Composition.Snapshot.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.BlockedRequestFailure));
+            Assert.That(fixture.Composition.Snapshot.SubjectCount, Is.EqualTo(1));
+            Assert.That(fixture.CompositionRig.CinemachineCamera.Follow, Is.SameAs(previousFollow));
+        }
+
+        [Test]
+        public void RetryAfterSuccessfulReleaseRollbackCanComplete()
+        {
+            using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
+            CameraSubjectAvailabilityToken token = fixture.AddSubject("subject-a");
+            fixture.Application.FailNextApply();
+            fixture.RemoveSubject(token);
+            Assert.That(fixture.Composition.IsRequestPublished, Is.True);
+
+            CameraSharedCompositionSnapshot retry =
+                fixture.Composition.Reconcile(fixture.Availability.CreateSnapshot());
+
+            Assert.That(retry.LastReconcileStatus,
+                Is.EqualTo(CameraSharedCompositionReconcileStatus.SucceededAwaitingSubjects));
+            AssertDefault(fixture);
+        }
+
         private static void AssertDefault(Fixture fixture)
         {
             Assert.That(fixture.Composition.IsRequestPublished, Is.False);
@@ -242,8 +514,9 @@ namespace Immersive.Framework.Authoring.Tests
                 Context = new CameraOutputContext(OutputDefinition.OutputId);
                 Applicator = new CameraOutputRigApplicator(
                     new CameraOutputBinding(OutputDefinition.OutputId, unityCamera, brain));
+                Application = new ScriptedCameraOutputApplication(Applicator);
                 Session = new CameraOutputSession(
-                    Context, Applicator, CameraRigReference.FromComposer(DefaultRig));
+                    Context, Application, CameraRigReference.FromComposer(DefaultRig));
                 Assert.That(Session.Synchronize().Succeeded, Is.True);
                 SetField(Output, "_context", Context);
                 SetField(Output, "_applicator", Applicator);
@@ -273,6 +546,7 @@ namespace Immersive.Framework.Authoring.Tests
             internal CameraOutputAuthoring Output { get; }
             internal CameraOutputContext Context { get; }
             internal CameraOutputRigApplicator Applicator { get; }
+            internal ScriptedCameraOutputApplication Application { get; }
             internal CameraOutputSession Session { get; }
             internal CameraSubjectAvailabilityContext Availability { get; }
             internal CameraSharedComposition Composition { get; }
@@ -297,6 +571,8 @@ namespace Immersive.Framework.Authoring.Tests
                 CameraSubjectAvailabilityResult result = Availability.TryMakeUnavailable(token);
                 Assert.That(result.Succeeded, Is.True, result.Message);
             }
+
+            internal int ReleaseAllSubjects() => Availability.ReleaseOwner(_subjectOwner);
 
             internal CameraRigComposer CreateRig(CameraRigPresentationIntent intent)
             {
@@ -329,7 +605,11 @@ namespace Immersive.Framework.Authoring.Tests
                 return composer;
             }
 
-            internal CameraRequest CreateRequest(string id, CameraRigComposer rig, int precedence)
+            internal CameraRequest CreateRequest(
+                string id,
+                CameraRigComposer rig,
+                int precedence,
+                string tieBreaker = null)
             {
                 CameraRequestCreateResult result = CameraRequestCreateResult.Create(
                     new CameraRequestId($"{_suffix}-{id}"), Context.OutputId,
@@ -340,7 +620,8 @@ namespace Immersive.Framework.Authoring.Tests
                     CameraRigReference.FromComposer(rig),
                     CameraTargetSourceDescriptor.Logical(CameraTargetSourceKind.Activity,
                         $"{_suffix}-{id}-target"),
-                    new CameraRequestPolicy(precedence, $"{_suffix}-{id}-tie"),
+                    new CameraRequestPolicy(precedence,
+                        tieBreaker ?? $"{_suffix}-{id}-tie"),
                     CameraRequestReleaseCondition.ExplicitRelease,
                     nameof(CameraCompositionRequestParticipationTests), id);
                 Assert.That(result.IsSucceeded, Is.True, result.BlockingIssue);
@@ -391,12 +672,99 @@ namespace Immersive.Framework.Authoring.Tests
             }
         }
 
+        private sealed class ScriptedCameraOutputApplication : ICameraOutputApplication
+        {
+            private readonly CameraOutputRigApplicator _inner;
+            private readonly Queue<bool> _failures = new Queue<bool>();
+
+            internal ScriptedCameraOutputApplication(CameraOutputRigApplicator inner)
+            {
+                _inner = inner;
+            }
+
+            public CameraOutputBinding Binding => _inner.Binding;
+            public CinemachineCamera AppliedCamera => _inner.AppliedCamera;
+
+            internal void FailNextApply(bool rollbackAlsoFails = false)
+            {
+                _failures.Enqueue(true);
+                _failures.Enqueue(rollbackAlsoFails);
+            }
+
+            public CameraOutputApplyResult Apply(
+                CameraOutputContext context,
+                CameraRigReference defaultRig,
+                bool forceDefault)
+            {
+                if (_failures.Count == 0 || !_failures.Dequeue())
+                    return _inner.Apply(context, defaultRig, forceDefault);
+
+                CameraRequest request = context.HasWinner ? context.Winner : default;
+                return new CameraOutputApplyResult(
+                    CameraOutputApplyKind.Blocked,
+                    request,
+                    _inner.AppliedCamera,
+                    _inner.AppliedCamera,
+                    new[]
+                    {
+                        CameraIssue.Blocking(
+                            "camera.output-apply.test-failure",
+                            "Scripted physical Camera Output application failure.")
+                    },
+                    "Scripted physical Camera Output application failure.");
+            }
+
+            public CameraOutputApplyResult Clear() => _inner.Clear();
+        }
+
+        private sealed class RejectingCameraRequestPublisher : ICameraRequestPublisher
+        {
+            internal RejectingCameraRequestPublisher(CameraRequest request)
+            {
+                Request = request;
+            }
+
+            public CameraRequest Request { get; }
+            public bool IsPublished => true;
+
+            public CameraRequestPublisherResult Publish() =>
+                new CameraRequestPublisherResult(
+                    CameraRequestPublisherOperationKind.Preserved,
+                    Request,
+                    false,
+                    default,
+                    Array.Empty<CameraIssue>(),
+                    "Test publisher preserved its admitted request.");
+
+            public CameraRequestPublisherResult Release() =>
+                new CameraRequestPublisherResult(
+                    CameraRequestPublisherOperationKind.Rejected,
+                    Request,
+                    false,
+                    default,
+                    new[]
+                    {
+                        CameraIssue.Blocking(
+                            "camera.request-publisher.test-release-rejected",
+                            "Scripted request release rejection.")
+                    },
+                    "Scripted request release rejection.");
+        }
+
         private static void SetField(object target, string name, object value)
         {
             FieldInfo field = target.GetType().GetField(name,
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(field, Is.Not.Null, $"Missing field '{name}' on '{target.GetType().Name}'.");
             field.SetValue(target, value);
+        }
+
+        private static T GetField<T>(object target, string name)
+        {
+            FieldInfo field = target.GetType().GetField(name,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, $"Missing field '{name}' on '{target.GetType().Name}'.");
+            return (T)field.GetValue(target);
         }
     }
 }

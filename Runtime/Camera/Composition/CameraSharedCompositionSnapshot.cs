@@ -10,7 +10,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-029-C Composition membership and request participation diagnostics.")]
+        "CAMERA-029-D transactional Composition reconciliation diagnostics.")]
     public readonly struct CameraSharedCompositionSnapshot
     {
         public CameraSharedCompositionSnapshot(

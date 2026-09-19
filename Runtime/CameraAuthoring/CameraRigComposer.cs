@@ -175,6 +175,20 @@ namespace Immersive.Framework.CameraAuthoring
             return _presentation.ClearViewPresentation();
         }
 
+        internal CameraRigPresentationState CapturePresentationState()
+        {
+            _presentation ??= new CameraViewPresentationAdapter(this);
+            return _presentation.CaptureState();
+        }
+
+        internal CameraRigPresentationRestoreResult RestorePresentationState(
+            CameraRigPresentationState previous,
+            CameraRigPresentationState expectedCurrent)
+        {
+            _presentation ??= new CameraViewPresentationAdapter(this);
+            return _presentation.RestoreState(previous, expectedCurrent);
+        }
+
         public bool TryValidateForApply(
             out string issue)
         {

@@ -1,6 +1,6 @@
 # IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal
 
-Status: **Accepted architecture — implementation pending**
+Status: **Accepted architecture — implementation in progress**
 Proposed: **2026-09-18**
 Accepted: **2026-09-18**
 Type: architecture / Camera composition / presentation / output participation
@@ -8,7 +8,7 @@ Reconciles: IF-ADR-004, IF-ADR-022, IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-028 external physical-presentation ownership
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
-Implementation: **CAMERA-029-A, CAMERA-029-B and CAMERA-029-C implemented locally; CAMERA-029-D/E/F pending**
+Implementation: **CAMERA-029-A, CAMERA-029-B, CAMERA-029-C and CAMERA-029-D implemented locally; CAMERA-029-E/F pending**
 Technical certification: **pending**
 
 ## 1. Context
@@ -668,6 +668,8 @@ no View participation tier
 
 ### CAMERA-029-D — Transactional presentation reconciliation
 
+Local implementation status: **implemented; tests authored; static Runtime/test compilation passed; Unity tests pending**
+
 Required result:
 
 ```text
@@ -870,10 +872,10 @@ Group presentation intent                 ACCEPTED
 SharedFollow implicit multi-target mode   SUPERSEDED
 PlayerInputManager split layout authority RETAINED
 physical Camera layout outside Framework  RETAINED
-implementation                            PENDING
+implementation                            PARTIAL — CAMERA-029-A/B/C/D implemented locally
 technical certification                   PENDING
 consumer migration                        PENDING
 ```
 
-The next step is CAMERA-029-A through CAMERA-029-D implementation with focused Framework
-tests before deleting the legacy View surfaces in CAMERA-029-E.
+The next step is CAMERA-029-E after Unity validation of the focused Framework tests for
+CAMERA-029-A through CAMERA-029-D.

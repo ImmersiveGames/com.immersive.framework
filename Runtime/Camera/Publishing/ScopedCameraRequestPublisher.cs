@@ -42,6 +42,7 @@ namespace Immersive.Framework.Camera
 
             if (!sessionResult.Succeeded)
             {
+                _isPublished = _session.Context.Contains(_request.RequestId);
                 return Rejected(
                     sessionResult,
                     $"Camera request publisher failed to publish request '{_request.RequestId}'.");
@@ -78,6 +79,7 @@ namespace Immersive.Framework.Camera
 
             if (!sessionResult.Succeeded)
             {
+                _isPublished = _session.Context.Contains(_request.RequestId);
                 return Rejected(
                     sessionResult,
                     $"Camera request publisher failed to release request '{_request.RequestId}'.");

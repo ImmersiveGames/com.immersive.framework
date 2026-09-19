@@ -15,6 +15,7 @@ namespace Immersive.Framework.Camera
     {
         private readonly CameraOutputContext _context;
         private readonly CameraOutputRigApplicator _applicator;
+        private readonly ICameraOutputApplication _application;
         private readonly CameraRigReference _defaultRig;
         private readonly HashSet<CameraOutputForceDefaultOwnerId> _forceDefaultOwners =
             new HashSet<CameraOutputForceDefaultOwnerId>();
@@ -23,18 +24,36 @@ namespace Immersive.Framework.Camera
             CameraOutputContext context,
             CameraOutputRigApplicator applicator,
             CameraRigReference defaultRig)
+            : this(context, applicator, defaultRig, applicator)
+        {
+        }
+
+        internal CameraOutputSession(
+            CameraOutputContext context,
+            ICameraOutputApplication application,
+            CameraRigReference defaultRig)
+            : this(context, application as CameraOutputRigApplicator, defaultRig, application)
+        {
+        }
+
+        private CameraOutputSession(
+            CameraOutputContext context,
+            CameraOutputRigApplicator applicator,
+            CameraRigReference defaultRig,
+            ICameraOutputApplication application)
         {
             this._context = context ??
                 throw new ArgumentNullException(nameof(context));
 
-            this._applicator = applicator ??
-                throw new ArgumentNullException(nameof(applicator));
+            this._application = application ??
+                throw new ArgumentNullException(nameof(application));
+            this._applicator = applicator;
 
-            if (context.OutputId != applicator.Binding.OutputId)
+            if (context.OutputId != application.Binding.OutputId)
             {
                 throw new ArgumentException(
-                    $"Camera output context '{context.OutputId}' does not match applicator binding '{applicator.Binding.OutputId}'.",
-                    nameof(applicator));
+                    $"Camera output context '{context.OutputId}' does not match applicator binding '{application.Binding.OutputId}'.",
+                    nameof(application));
             }
 
             if (!defaultRig.IsValid)
@@ -220,12 +239,12 @@ namespace Immersive.Framework.Camera
         public CameraOutputApplyResult Teardown()
         {
             _forceDefaultOwners.Clear();
-            return _applicator.Clear();
+            return _application.Clear();
         }
 
         private CameraOutputApplyResult ApplyEffectivePresentation()
         {
-            return _applicator.Apply(
+            return _application.Apply(
                 _context,
                 _defaultRig,
                 _forceDefaultOwners.Count > 0);
@@ -242,8 +261,8 @@ namespace Immersive.Framework.Camera
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Blocked,
                 default,
-                _applicator.AppliedCamera,
-                _applicator.AppliedCamera,
+                _application.AppliedCamera,
+                _application.AppliedCamera,
                 new[]
                 {
                     CameraIssue.Blocking(code, normalized)
