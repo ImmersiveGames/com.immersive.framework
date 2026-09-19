@@ -5,99 +5,70 @@ using Unity.Cinemachine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
-    internal sealed class CameraViewPresentationAdapter
+    internal sealed class CameraRigPresentationAdapter
     {
         private readonly CameraRigComposer _composer;
-        private ViewAssignmentContextId appliedViewAssignmentContextId;
-        private int appliedViewAssignmentRevision = -1;
-        private SubjectAvailabilityContextId appliedViewAvailabilityContextId;
-        private int appliedViewAvailabilityRevision = -1;
         private CameraCompositionMembershipContextId appliedMembershipContextId;
         private int appliedMembershipRevision = -1;
         private SubjectAvailabilityContextId appliedMembershipAvailabilityContextId;
         private int appliedMembershipAvailabilityRevision = -1;
 
-        internal CameraViewPresentationAdapter(CameraRigComposer composer)
+        internal CameraRigPresentationAdapter(CameraRigComposer composer)
         {
             _composer = composer;
         }
 
-        public CameraViewPresentationApplyResult ApplyViewPresentation(
-            CameraViewPresentationInput input,
-            CameraViewAssignmentSnapshot currentSnapshot)
+        public CameraRigPresentationApplyResult ApplyCompositionPresentation(
+            CameraCompositionPresentationInput input,
+            CameraCompositionMembershipSnapshot currentSnapshot)
         {
             if (input == null || currentSnapshot == null || !input.IsValid)
             {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedInvalidInput,
-                    input,
-                    "View presentation apply requires valid input and its current logical snapshot.");
-            }
-
-            if (!input.IsCurrentFor(currentSnapshot) || IsOlderThanAppliedEvidence(input))
-            {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedStaleInput,
-                    input,
-                    "Stale View presentation input cannot overwrite newer applied membership.");
-            }
-
-            return ApplyCurrent(input, false);
-        }
-
-        public CameraViewPresentationApplyResult ApplyCompositionPresentation(
-            CameraViewPresentationInput input,
-            CameraCompositionMembershipSnapshot currentSnapshot)
-        {
-            if (input == null || currentSnapshot == null || !input.IsValid ||
-                !input.IsCompositionMembershipInput)
-            {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedInvalidInput,
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.RejectedInvalidInput,
                     input,
                     "Composition presentation apply requires valid composition membership input and its current snapshot.");
             }
 
             if (!input.IsCurrentFor(currentSnapshot) || IsOlderThanAppliedCompositionEvidence(input))
             {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedStaleInput,
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.RejectedStaleInput,
                     input,
                     "Stale composition presentation input cannot overwrite newer applied membership.");
             }
 
-            return ApplyCurrent(input, true);
+            return ApplyCurrent(input);
         }
 
-        private CameraViewPresentationApplyResult ApplyCurrent(
-            CameraViewPresentationInput input,
-            bool compositionInput)
+        private CameraRigPresentationApplyResult ApplyCurrent(
+            CameraCompositionPresentationInput input)
         {
             if (!_composer.TryValidateForApply(out string settingsIssue))
             {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedInvalidSettings,
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.RejectedInvalidSettings,
                     input,
                     settingsIssue);
             }
 
             if (_composer.CinemachineCamera == null)
             {
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.RejectedMissingCinemachineCamera,
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.RejectedMissingCinemachineCamera,
                     input,
-                    "View presentation requires the Composer's existing materialized Cinemachine Camera.");
+                    "Rig presentation requires the Composer's existing materialized Cinemachine Camera.");
             }
 
-            CameraViewTargetProjectionResult projection =
-                _composer.ResolveViewPresentationTargets(input);
+            CameraRigTargetProjectionResult projection =
+                _composer.ResolvePresentationTargets(input);
 
-            if (projection.Status == CameraViewTargetProjectionStatus.SucceededGroup)
+            if (projection.Status == CameraRigTargetProjectionStatus.SucceededGroup)
             {
                 if (!CameraGroupProvenance.Validate(_composer, true, out string ownershipIssue))
                 {
-                    return ViewApplyResult(
-                        CameraViewPresentationApplyStatus.RejectedOwnershipConflict,
+                    return ApplyResult(
+                        CameraRigPresentationApplyStatus.RejectedOwnershipConflict,
                         input,
                         ownershipIssue);
                 }
@@ -110,46 +81,46 @@ namespace Immersive.Framework.CameraAuthoring
                     _composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed
                         ? null
                         : _composer.FrameworkOwnedGroupTargetGroup.transform;
-                RecordAppliedEvidence(input, compositionInput);
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.SucceededGroup,
+                RecordAppliedEvidence(input);
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.SucceededGroup,
                     input,
                     $"Applied Group presentation with '{input.SubjectCount}' ordered Subjects.");
             }
 
-            if (projection.Status == CameraViewTargetProjectionStatus.SucceededSingleSubject)
+            if (projection.Status == CameraRigTargetProjectionStatus.SucceededSingleSubject)
             {
                 ClearOwnedGroupProjection();
                 _composer.CinemachineCamera.Follow = projection.Targets.FollowTarget;
                 _composer.CinemachineCamera.LookAt = projection.Targets.LookAtTarget;
-                RecordAppliedEvidence(input, compositionInput);
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.SucceededSingleSubject,
+                RecordAppliedEvidence(input);
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.SucceededSingleSubject,
                     input,
                     "Applied direct single-Subject presentation to the existing Cinemachine Camera.");
             }
 
-            if (projection.Status == CameraViewTargetProjectionStatus.SucceededNoTargets)
+            if (projection.Status == CameraRigTargetProjectionStatus.SucceededNoTargets)
             {
                 ClearOwnedGroupProjection();
                 _composer.CinemachineCamera.Follow = null;
                 _composer.CinemachineCamera.LookAt = null;
-                RecordAppliedEvidence(input, compositionInput);
-                return ViewApplyResult(
-                    CameraViewPresentationApplyStatus.SucceededFixedNoTargets,
+                RecordAppliedEvidence(input);
+                return ApplyResult(
+                    CameraRigPresentationApplyStatus.SucceededFixedNoTargets,
                     input,
                     "Applied target-independent Fixed presentation.");
             }
 
-            return ViewApplyResult(
-                projection.Status == CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing
-                    ? CameraViewPresentationApplyStatus.BlockedRequiredSubjectMissing
-                    : CameraViewPresentationApplyStatus.BlockedUnsupportedPresentation,
+            return ApplyResult(
+                projection.Status == CameraRigTargetProjectionStatus.BlockedRequiredSubjectMissing
+                    ? CameraRigPresentationApplyStatus.BlockedRequiredSubjectMissing
+                    : CameraRigPresentationApplyStatus.BlockedUnsupportedPresentation,
                 input,
                 projection.BlockingIssue);
         }
 
-        public CameraViewPresentationApplyResult ClearViewPresentation()
+        public CameraRigPresentationApplyResult ClearPresentation()
         {
             ClearOwnedGroupProjection();
             if (_composer.CinemachineCamera != null)
@@ -158,16 +129,12 @@ namespace Immersive.Framework.CameraAuthoring
                 _composer.CinemachineCamera.LookAt = null;
             }
 
-            appliedViewAssignmentContextId = default;
-            appliedViewAssignmentRevision = -1;
-            appliedViewAvailabilityContextId = default;
-            appliedViewAvailabilityRevision = -1;
             appliedMembershipContextId = default;
             appliedMembershipRevision = -1;
             appliedMembershipAvailabilityContextId = default;
             appliedMembershipAvailabilityRevision = -1;
-            return ViewApplyResult(
-                CameraViewPresentationApplyStatus.SucceededCleared,
+            return ApplyResult(
+                CameraRigPresentationApplyStatus.SucceededCleared,
                 null,
                 "Cleared explicit presentation without releasing the Composer, Cinemachine Camera or output.");
         }
@@ -200,10 +167,6 @@ namespace Immersive.Framework.CameraAuthoring
                 framing != null ? framing.FovRange : default,
                 framing != null ? framing.DollyRange : default,
                 framing != null ? framing.OrthoSizeRange : default,
-                appliedViewAssignmentContextId,
-                appliedViewAssignmentRevision,
-                appliedViewAvailabilityContextId,
-                appliedViewAvailabilityRevision,
                 appliedMembershipContextId,
                 appliedMembershipRevision,
                 appliedMembershipAvailabilityContextId,
@@ -278,10 +241,6 @@ namespace Immersive.Framework.CameraAuthoring
                     framing.enabled = previous.GroupFramingEnabled;
                 }
 
-                appliedViewAssignmentContextId = previous.ViewAssignmentContextId;
-                appliedViewAssignmentRevision = previous.ViewAssignmentRevision;
-                appliedViewAvailabilityContextId = previous.ViewAvailabilityContextId;
-                appliedViewAvailabilityRevision = previous.ViewAvailabilityRevision;
                 appliedMembershipContextId = previous.MembershipContextId;
                 appliedMembershipRevision = previous.MembershipRevision;
                 appliedMembershipAvailabilityContextId = previous.MembershipAvailabilityContextId;
@@ -319,10 +278,6 @@ namespace Immersive.Framework.CameraAuthoring
                 left.FovRange != right.FovRange ||
                 left.DollyRange != right.DollyRange ||
                 left.OrthoSizeRange != right.OrthoSizeRange ||
-                left.ViewAssignmentContextId != right.ViewAssignmentContextId ||
-                left.ViewAssignmentRevision != right.ViewAssignmentRevision ||
-                left.ViewAvailabilityContextId != right.ViewAvailabilityContextId ||
-                left.ViewAvailabilityRevision != right.ViewAvailabilityRevision ||
                 left.MembershipContextId != right.MembershipContextId ||
                 left.MembershipRevision != right.MembershipRevision ||
                 left.MembershipAvailabilityContextId != right.MembershipAvailabilityContextId ||
@@ -352,7 +307,7 @@ namespace Immersive.Framework.CameraAuthoring
             string diagnostic) =>
             new CameraRigPresentationRestoreResult(status, diagnostic);
 
-        private void ReconcileGroupMembers(CameraViewPresentationInput input)
+        private void ReconcileGroupMembers(CameraCompositionPresentationInput input)
         {
             _composer.FrameworkOwnedGroupTargetGroup.Targets ??=
                 new List<CinemachineTargetGroup.Target>();
@@ -412,19 +367,7 @@ namespace Immersive.Framework.CameraAuthoring
             }
         }
 
-        private bool IsOlderThanAppliedEvidence(CameraViewPresentationInput input)
-        {
-            if (appliedViewAssignmentContextId != input.AssignmentContextId)
-            {
-                return false;
-            }
-
-            return input.AssignmentRevision < appliedViewAssignmentRevision ||
-                   ((appliedViewAvailabilityContextId == input.AvailabilityContextId) &&
-                    input.AvailabilityRevision < appliedViewAvailabilityRevision);
-        }
-
-        private bool IsOlderThanAppliedCompositionEvidence(CameraViewPresentationInput input)
+        private bool IsOlderThanAppliedCompositionEvidence(CameraCompositionPresentationInput input)
         {
             if (appliedMembershipContextId != input.MembershipContextId)
                 return false;
@@ -434,28 +377,20 @@ namespace Immersive.Framework.CameraAuthoring
                  input.AvailabilityRevision < appliedMembershipAvailabilityRevision);
         }
 
-        private void RecordAppliedEvidence(CameraViewPresentationInput input, bool compositionInput)
+        private void RecordAppliedEvidence(CameraCompositionPresentationInput input)
         {
-            if (compositionInput)
-            {
-                appliedMembershipContextId = input.MembershipContextId;
-                appliedMembershipRevision = input.MembershipRevision;
-                appliedMembershipAvailabilityContextId = input.AvailabilityContextId;
-                appliedMembershipAvailabilityRevision = input.AvailabilityRevision;
-                return;
-            }
-            appliedViewAssignmentContextId = input.AssignmentContextId;
-            appliedViewAssignmentRevision = input.AssignmentRevision;
-            appliedViewAvailabilityContextId = input.AvailabilityContextId;
-            appliedViewAvailabilityRevision = input.AvailabilityRevision;
+            appliedMembershipContextId = input.MembershipContextId;
+            appliedMembershipRevision = input.MembershipRevision;
+            appliedMembershipAvailabilityContextId = input.AvailabilityContextId;
+            appliedMembershipAvailabilityRevision = input.AvailabilityRevision;
         }
 
-        private CameraViewPresentationApplyResult ViewApplyResult(
-            CameraViewPresentationApplyStatus status,
-            CameraViewPresentationInput input,
+        private CameraRigPresentationApplyResult ApplyResult(
+            CameraRigPresentationApplyStatus status,
+            CameraCompositionPresentationInput input,
             string diagnostic)
         {
-            return new CameraViewPresentationApplyResult(
+            return new CameraRigPresentationApplyResult(
                 status,
                 input,
                 _composer.CinemachineCamera,

@@ -4,8 +4,8 @@ namespace Immersive.Framework.CameraAuthoring
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-D physical View presentation apply status.")]
-    public enum CameraViewPresentationApplyStatus
+        "CAMERA-029-E physical Rig presentation apply status.")]
+    public enum CameraRigPresentationApplyStatus
     {
         None = 0,
         SucceededFixedNoTargets = 10,

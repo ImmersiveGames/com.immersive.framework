@@ -107,7 +107,7 @@ namespace Immersive.Framework.Authoring.Tests
             using var f = new Fixture();
             f.Add("a");
             CameraCompositionMembershipSnapshot first = f.Reconcile("a").Snapshot;
-            CameraViewPresentationInput input = CameraViewPresentationInputProjection.TryCreate(first).Input;
+            CameraCompositionPresentationInput input = CameraCompositionPresentationInputProjection.TryCreate(first).Input;
             f.Add("b");
             CameraCompositionMembershipSnapshot second = f.Reconcile("a", "b").Snapshot;
             Assert.That(input.IsCurrentFor(first), Is.True);
@@ -115,7 +115,7 @@ namespace Immersive.Framework.Authoring.Tests
         }
 
         [Test]
-        public void MembershipContractsDoNotExposeCameraViewIdentity()
+        public void MembershipContractsExposeOnlyCompositionIdentity()
         {
             Type[] contracts = { typeof(CameraCompositionMembershipContext),
                 typeof(CameraCompositionMembershipSnapshot), typeof(CameraCompositionMembershipEntry),
@@ -124,8 +124,6 @@ namespace Immersive.Framework.Authoring.Tests
             {
                 Assert.That(contract.GetMembers(BindingFlags.Public | BindingFlags.Instance)
                     .Any(member => member.Name.Contains("View", StringComparison.Ordinal)), Is.False, contract.Name);
-                Assert.That(contract.GetProperties().Any(property => property.PropertyType == typeof(CameraViewId)),
-                    Is.False, contract.Name);
             }
         }
 
@@ -153,9 +151,11 @@ namespace Immersive.Framework.Authoring.Tests
             try
             {
                 var composition = root.AddComponent<CameraSharedComposition>();
+                var rig = root.AddComponent<CameraRigComposer>();
                 SetField(composition, "_availability", f.Availability);
                 SetField(composition, "_membership", f.Membership);
                 SetField(composition, "_currentMembership", snapshot);
+                SetField(composition, "compositionRig", rig);
                 Invoke(composition, "StopComposition");
                 Assert.That(composition.Snapshot.LastReconcileStatus,
                     Is.EqualTo(CameraSharedCompositionReconcileStatus.SucceededStopped));

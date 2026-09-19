@@ -540,36 +540,6 @@ namespace Immersive.Framework.Editor.Validation
                 }
             }
 
-            CameraViewOutputPolicyAuthoring[] viewOutputPolicies =
-                GetSceneComponents<CameraViewOutputPolicyAuthoring>(scene);
-            CameraSharedComposition[] sharedCompositions =
-                GetSceneComponents<CameraSharedComposition>(scene);
-            CameraViewOutputTopology viewOutputTopology = null;
-            if (!CameraViewOutputAssociationProjection.TryCreate(
-                    sharedCompositions,
-                    viewOutputPolicies,
-                    outputBindings,
-                    out viewOutputTopology,
-                    out _,
-                    out string viewOutputIssue))
-            {
-                report.AddError(viewOutputIssue, owner);
-            }
-            else
-            {
-                CameraViewOutputTopologySnapshot snapshot = viewOutputTopology.CaptureSnapshot();
-                for (int bindingIndex = 0; bindingIndex < snapshot.BindingCount; bindingIndex++)
-                {
-                    CameraViewOutputBinding binding = snapshot.Bindings[bindingIndex];
-                    if (!outputIds.ContainsKey(binding.OutputId.Value))
-                    {
-                        report.AddError(
-                            $"Camera View-to-Output association references unknown Camera Output ID '{binding.OutputId}'.",
-                            owner);
-                    }
-                }
-            }
-
             PlayerInputManager[] playerInputManagers =
                 GetSceneComponents<PlayerInputManager>(scene);
             for (int managerIndex = 0; managerIndex < playerInputManagers.Length; managerIndex++)
@@ -592,6 +562,8 @@ namespace Immersive.Framework.Editor.Validation
                     sessionBindings[sessionIndex]);
             }
 
+            CameraSharedComposition[] sharedCompositions =
+                GetSceneComponents<CameraSharedComposition>(scene);
             for (int compositionIndex = 0; compositionIndex < sharedCompositions.Length; compositionIndex++)
             {
                 CameraSharedComposition composition = sharedCompositions[compositionIndex];
@@ -622,16 +594,6 @@ namespace Immersive.Framework.Editor.Validation
                 {
                     report.AddError(
                         "Shared Camera Composition Rig must be distinct from the Output Default Camera Rig.",
-                        composition);
-                }
-                else if (viewOutputTopology != null &&
-                         !viewOutputTopology.TryGetBinding(
-                             composition.ViewId,
-                             composition.RequestedOutputId,
-                             out _))
-                {
-                    report.AddError(
-                        $"Shared Camera Composition View '{composition.ViewIdText}' is not present in the admitted Camera View-to-Output topology.",
                         composition);
                 }
             }

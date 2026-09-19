@@ -4,9 +4,6 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
-    [CustomEditor(typeof(CameraViewDefinition))]
-    internal sealed class CameraViewDefinitionEditor : CameraDefinitionEditor { }
-
     [CustomEditor(typeof(CameraOutputDefinition))]
     internal sealed class CameraOutputDefinitionEditor : CameraDefinitionEditor { }
 

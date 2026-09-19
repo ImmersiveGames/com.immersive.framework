@@ -293,14 +293,10 @@ namespace Immersive.Framework.GlobalUi
 
         internal bool TryResolveCameraPresentation(
             out IReadOnlyList<CameraOutputAuthoring> outputSessions,
-            out IReadOnlyList<CameraSharedComposition> compositions,
-            out IReadOnlyList<CameraViewOutputPolicyAuthoring> viewOutputPolicies,
             out IReadOnlyList<PlayerCameraOutputPolicyAuthoring> playerOutputPolicies,
             out bool automaticSplitScreenEnabled,
             out string diagnostic)
         {
-            compositions = Array.Empty<CameraSharedComposition>();
-            viewOutputPolicies = Array.Empty<CameraViewOutputPolicyAuthoring>();
             playerOutputPolicies = Array.Empty<PlayerCameraOutputPolicyAuthoring>();
             automaticSplitScreenEnabled = false;
             List<CameraOutputAuthoring> outputCandidates =
@@ -310,16 +306,6 @@ namespace Immersive.Framework.GlobalUi
             {
                 diagnostic =
                     "Persistent Content requires at least one explicit CameraOutputAuthoring.";
-                outputSessions = Array.Empty<CameraOutputAuthoring>();
-                return false;
-            }
-
-            List<CameraViewOutputPolicyAuthoring> policyCandidates =
-                FindAll<CameraViewOutputPolicyAuthoring>();
-            if (policyCandidates.Count > 1)
-            {
-                diagnostic =
-                    $"Persistent Content requires at most one Camera View Output Policy, but found '{policyCandidates.Count}'.";
                 outputSessions = Array.Empty<CameraOutputAuthoring>();
                 return false;
             }
@@ -345,8 +331,6 @@ namespace Immersive.Framework.GlobalUi
             }
 
             outputSessions = outputCandidates.AsReadOnly();
-            compositions = FindAll<CameraSharedComposition>().AsReadOnly();
-            viewOutputPolicies = policyCandidates.AsReadOnly();
             playerOutputPolicies = playerPolicyCandidates.AsReadOnly();
             diagnostic = string.Empty;
             return true;

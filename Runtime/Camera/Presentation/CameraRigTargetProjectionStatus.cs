@@ -4,8 +4,8 @@ namespace Immersive.Framework.Camera
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-C/D View presentation target-projection status.")]
-    public enum CameraViewTargetProjectionStatus
+        "CAMERA-029-E Rig presentation target-projection status.")]
+    public enum CameraRigTargetProjectionStatus
     {
         None = 0,
         SucceededNoTargets = 10,

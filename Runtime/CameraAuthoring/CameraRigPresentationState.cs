@@ -31,10 +31,6 @@ namespace Immersive.Framework.CameraAuthoring
             Vector2 fovRange,
             Vector2 dollyRange,
             Vector2 orthoSizeRange,
-            ViewAssignmentContextId viewAssignmentContextId,
-            int viewAssignmentRevision,
-            SubjectAvailabilityContextId viewAvailabilityContextId,
-            int viewAvailabilityRevision,
             CameraCompositionMembershipContextId membershipContextId,
             int membershipRevision,
             SubjectAvailabilityContextId membershipAvailabilityContextId,
@@ -61,10 +57,6 @@ namespace Immersive.Framework.CameraAuthoring
             FovRange = fovRange;
             DollyRange = dollyRange;
             OrthoSizeRange = orthoSizeRange;
-            ViewAssignmentContextId = viewAssignmentContextId;
-            ViewAssignmentRevision = viewAssignmentRevision;
-            ViewAvailabilityContextId = viewAvailabilityContextId;
-            ViewAvailabilityRevision = viewAvailabilityRevision;
             MembershipContextId = membershipContextId;
             MembershipRevision = membershipRevision;
             MembershipAvailabilityContextId = membershipAvailabilityContextId;
@@ -90,10 +82,6 @@ namespace Immersive.Framework.CameraAuthoring
         internal Vector2 FovRange { get; }
         internal Vector2 DollyRange { get; }
         internal Vector2 OrthoSizeRange { get; }
-        internal ViewAssignmentContextId ViewAssignmentContextId { get; }
-        internal int ViewAssignmentRevision { get; }
-        internal SubjectAvailabilityContextId ViewAvailabilityContextId { get; }
-        internal int ViewAvailabilityRevision { get; }
         internal CameraCompositionMembershipContextId MembershipContextId { get; }
         internal int MembershipRevision { get; }
         internal SubjectAvailabilityContextId MembershipAvailabilityContextId { get; }

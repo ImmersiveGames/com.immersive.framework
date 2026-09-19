@@ -193,7 +193,7 @@ namespace Immersive.Framework.Authoring.Tests
             Assert.That(request.TargetSource.LogicalSourceId,
                 Is.EqualTo(fixture.Composition.MembershipContextIdText));
             Assert.That(request.TargetSource.LogicalSourceId,
-                Is.Not.EqualTo(fixture.Composition.ViewIdText));
+                Is.Not.EqualTo(fixture.Composition.OutputIdText));
         }
 
         [Test]
@@ -497,7 +497,6 @@ namespace Immersive.Framework.Authoring.Tests
             {
                 _suffix = suffix;
                 OutputDefinition = Definition<CameraOutputDefinition>();
-                ViewDefinition = Definition<CameraViewDefinition>();
                 DefaultRig = CreateRig(CameraRigPresentationIntent.Fixed);
                 CompositionRig = CreateRig(intent);
 
@@ -532,7 +531,7 @@ namespace Immersive.Framework.Authoring.Tests
                 Composition = compositionRoot.AddComponent<CameraSharedComposition>();
                 SetField(Composition, "compositionRig", CompositionRig);
                 SetField(Composition, "requestPrecedence", 10);
-                Composition.Configure(ViewDefinition, OutputDefinition,
+                Composition.Configure(OutputDefinition,
                     CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
                 Composition.AttachOutputSession(Output);
                 Composition.AttachCameraSubjectAvailability(Availability);
@@ -540,7 +539,6 @@ namespace Immersive.Framework.Authoring.Tests
             }
 
             internal CameraOutputDefinition OutputDefinition { get; }
-            internal CameraViewDefinition ViewDefinition { get; }
             internal CameraRigComposer DefaultRig { get; }
             internal CameraRigComposer CompositionRig { get; }
             internal CameraOutputAuthoring Output { get; }
@@ -631,7 +629,6 @@ namespace Immersive.Framework.Authoring.Tests
             internal CameraSharedComposition CreateComposition(
                 string id, CameraRigComposer rig, int precedence)
             {
-                CameraViewDefinition view = Definition<CameraViewDefinition>();
                 var availability = new CameraSubjectAvailabilityContext(
                     new SubjectAvailabilityContextId($"{_suffix}-{id}-availability"));
                 GameObject root = Root($"{_suffix}-{id}-composition");
@@ -639,7 +636,7 @@ namespace Immersive.Framework.Authoring.Tests
                 var composition = root.AddComponent<CameraSharedComposition>();
                 SetField(composition, "compositionRig", rig);
                 SetField(composition, "requestPrecedence", precedence);
-                composition.Configure(view, OutputDefinition,
+                composition.Configure(OutputDefinition,
                     CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects);
                 composition.AttachOutputSession(Output);
                 composition.AttachCameraSubjectAvailability(availability);

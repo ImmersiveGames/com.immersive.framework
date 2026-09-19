@@ -12,7 +12,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
-            CameraOutputReferenceGUI.DrawDefinitionReference(serializedObject.FindProperty("viewDefinition"), "View Definition");
             EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
             _outputs.DrawReference(serializedObject.FindProperty("outputDefinition"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("compositionRig"));
@@ -23,17 +22,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 var composition = (CameraSharedComposition)target;
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    EditorGUILayout.TextField("View ID", composition.ViewIdText);
                     EditorGUILayout.TextField("Output ID", composition.OutputIdText);
                     EditorGUILayout.TextField("Membership Context ID", composition.MembershipContextIdText);
                     EditorGUILayout.TextField("Request ID", composition.RequestId.ToString());
                     EditorGUILayout.Toggle("Request Published", composition.IsRequestPublished);
-                    if (composition.TryCreateAssociationBinding(out var binding, out _))
-                    {
-                        EditorGUILayout.TextField(
-                            "Projected Binding",
-                            $"{binding.ViewId} -> {binding.OutputId}");
-                    }
                 }
             }
             serializedObject.ApplyModifiedProperties();

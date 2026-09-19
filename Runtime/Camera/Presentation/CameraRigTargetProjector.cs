@@ -9,11 +9,11 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-C/D explicit View input adapter for current presentation capability.")]
-    public static class CameraViewTargetProjector
+        "CAMERA-029-E Rig target projection for Composition presentation input.")]
+    public static class CameraRigTargetProjector
     {
-        public static CameraViewTargetProjectionResult Project(
-            CameraViewPresentationInput input,
+        public static CameraRigTargetProjectionResult Project(
+            CameraCompositionPresentationInput input,
             CameraRigPresentationIntent presentationIntent,
             CameraTargetRequirement followRequirement,
             CameraTargetRequirement lookAtRequirement)
@@ -21,9 +21,9 @@ namespace Immersive.Framework.Camera
             if (input == null || !input.IsValid)
             {
                 return Rejected(
-                    CameraViewTargetProjectionStatus.RejectedInvalidInput,
+                    CameraRigTargetProjectionStatus.RejectedInvalidInput,
                     input,
-                    "View target projection requires valid resolved presentation input.");
+                    "Rig target projection requires valid resolved Composition presentation input.");
             }
 
             if (presentationIntent == CameraRigPresentationIntent.Undefined ||
@@ -31,15 +31,15 @@ namespace Immersive.Framework.Camera
                 !IsDefined(lookAtRequirement))
             {
                 return Rejected(
-                    CameraViewTargetProjectionStatus.RejectedInvalidPresentation,
+                    CameraRigTargetProjectionStatus.RejectedInvalidPresentation,
                     input,
-                    "View target projection requires defined presentation intent and target requirements.");
+                    "Rig target projection requires defined presentation intent and target requirements.");
             }
 
             if (presentationIntent == CameraRigPresentationIntent.Fixed)
             {
-                return new CameraViewTargetProjectionResult(
-                    CameraViewTargetProjectionStatus.SucceededNoTargets,
+                return new CameraRigTargetProjectionResult(
+                    CameraRigTargetProjectionStatus.SucceededNoTargets,
                     input,
                     CameraResolvedTargets.None,
                     System.Array.Empty<CameraIssue>(),
@@ -48,10 +48,10 @@ namespace Immersive.Framework.Camera
             }
 
             if (presentationIntent == CameraRigPresentationIntent.Group &&
-                input.Cardinality != CameraViewSubjectCardinality.Zero)
+                input.Cardinality != CameraSubjectCardinality.Zero)
             {
-                return new CameraViewTargetProjectionResult(
-                    CameraViewTargetProjectionStatus.SucceededGroup,
+                return new CameraRigTargetProjectionResult(
+                    CameraRigTargetProjectionStatus.SucceededGroup,
                     input,
                     CameraResolvedTargets.None,
                     System.Array.Empty<CameraIssue>(),
@@ -59,43 +59,43 @@ namespace Immersive.Framework.Camera
                     $"Group presentation retained '{input.SubjectCount}' ordered Subjects for physical group projection.");
             }
 
-            if (input.Cardinality == CameraViewSubjectCardinality.Many)
+            if (input.Cardinality == CameraSubjectCardinality.Many)
             {
                 const string issue =
                     "Multiple Subjects require explicit Group presentation; Follow remains single-target.";
-                return new CameraViewTargetProjectionResult(
-                    CameraViewTargetProjectionStatus.BlockedMultipleSubjectsUnsupported,
+                return new CameraRigTargetProjectionResult(
+                    CameraRigTargetProjectionStatus.BlockedMultipleSubjectsUnsupported,
                     input,
                     CameraResolvedTargets.None,
                     new[]
                     {
                         CameraIssue.Blocking(
-                            "camera.view-presentation.multiple-subjects-unsupported",
+                            "camera.rig-presentation.multiple-subjects-unsupported",
                             issue)
                     },
                     issue,
-                    "Logical View remains valid; no implicit presentation transformation was applied.");
+                    "Composition input remains valid; no implicit presentation transformation was applied.");
             }
 
-            if (input.Cardinality == CameraViewSubjectCardinality.Zero)
+            if (input.Cardinality == CameraSubjectCardinality.Zero)
             {
                 if (followRequirement == CameraTargetRequirement.Required ||
                     lookAtRequirement == CameraTargetRequirement.Required)
                 {
                     const string issue =
-                        "Tracking presentation requires one resolved Camera Subject, but the View is empty.";
-                    return new CameraViewTargetProjectionResult(
-                        CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing,
+                        "Tracking presentation requires one resolved Camera Subject, but the Composition input is empty.";
+                    return new CameraRigTargetProjectionResult(
+                        CameraRigTargetProjectionStatus.BlockedRequiredSubjectMissing,
                         input,
                         CameraResolvedTargets.None,
                         new[]
                         {
                             CameraIssue.Blocking(
-                                "camera.view-presentation.subject-required",
+                                "camera.rig-presentation.subject-required",
                                 issue)
                         },
                         issue,
-                        "Required View Subject is unavailable; no legacy target fallback was used.");
+                        "Required Composition Subject is unavailable; no target fallback was used.");
                 }
 
                 CameraIssue[] optionalIssues =
@@ -103,17 +103,17 @@ namespace Immersive.Framework.Camera
                         ? new[]
                         {
                             CameraIssue.Warning(
-                                "camera.view-presentation.look-at.optional-missing",
-                                "Optional View-derived look-at target was not resolved.")
+                                "camera.rig-presentation.look-at.optional-missing",
+                                "Optional Composition-derived look-at target was not resolved.")
                         }
                         : System.Array.Empty<CameraIssue>();
-                return new CameraViewTargetProjectionResult(
-                    CameraViewTargetProjectionStatus.SucceededNoTargets,
+                return new CameraRigTargetProjectionResult(
+                    CameraRigTargetProjectionStatus.SucceededNoTargets,
                     input,
                     CameraResolvedTargets.None,
                     optionalIssues,
                     string.Empty,
-                    "View presentation input contains zero Subjects and requires no tracking target.");
+                    "Composition presentation input contains zero Subjects and requires no tracking target.");
             }
 
             Transform observation = input.Subjects[0].Subject.Observation;
@@ -124,8 +124,8 @@ namespace Immersive.Framework.Camera
                 lookAtRequirement == CameraTargetRequirement.NotUsed
                     ? null
                     : observation);
-            return new CameraViewTargetProjectionResult(
-                CameraViewTargetProjectionStatus.SucceededSingleSubject,
+            return new CameraRigTargetProjectionResult(
+                CameraRigTargetProjectionStatus.SucceededSingleSubject,
                 input,
                 targets,
                 System.Array.Empty<CameraIssue>(),
@@ -133,19 +133,19 @@ namespace Immersive.Framework.Camera
                 "The single role-neutral Subject observation was projected to each active presentation target role.");
         }
 
-        private static CameraViewTargetProjectionResult Rejected(
-            CameraViewTargetProjectionStatus status,
-            CameraViewPresentationInput input,
+        private static CameraRigTargetProjectionResult Rejected(
+            CameraRigTargetProjectionStatus status,
+            CameraCompositionPresentationInput input,
             string issue)
         {
-            return new CameraViewTargetProjectionResult(
+            return new CameraRigTargetProjectionResult(
                 status,
                 input,
                 CameraResolvedTargets.None,
                 new[]
                 {
                     CameraIssue.Blocking(
-                        "camera.view-presentation.invalid",
+                        "camera.rig-presentation.invalid",
                         issue)
                 },
                 issue,

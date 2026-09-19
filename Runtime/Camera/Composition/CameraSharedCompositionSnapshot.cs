@@ -24,7 +24,7 @@ namespace Immersive.Framework.Camera
             int removedMembershipCount,
             CameraSharedCompositionReconcileStatus lastReconcileStatus,
             string lastBlockingIssue,
-            CameraViewPresentationApplyStatus lastPresentationApplyStatus)
+            CameraRigPresentationApplyStatus lastPresentationApplyStatus)
         {
             IsReady = isReady;
             AvailabilityContextId = availabilityContextId;
@@ -49,6 +49,6 @@ namespace Immersive.Framework.Camera
         public int RemovedMembershipCount { get; }
         public CameraSharedCompositionReconcileStatus LastReconcileStatus { get; }
         public string LastBlockingIssue { get; }
-        public CameraViewPresentationApplyStatus LastPresentationApplyStatus { get; }
+        public CameraRigPresentationApplyStatus LastPresentationApplyStatus { get; }
     }
 }

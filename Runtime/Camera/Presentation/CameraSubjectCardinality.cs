@@ -2,11 +2,11 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
-    /// <summary>Explicit logical cardinality of resolved Subjects in one View input.</summary>
+    /// <summary>Explicit logical cardinality of resolved Camera Subjects.</summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-C resolved Camera View Subject cardinality.")]
-    public enum CameraViewSubjectCardinality
+        "CAMERA-029-E resolved Camera Subject cardinality.")]
+    public enum CameraSubjectCardinality
     {
         Zero = 0,
         One = 10,

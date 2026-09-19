@@ -8,7 +8,7 @@ Reconciles: IF-ADR-004, IF-ADR-022, IF-ADR-026, IF-ADR-027 and IF-ADR-028
 Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF-ADR-028 external physical-presentation ownership
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
-Implementation: **CAMERA-029-A, CAMERA-029-B, CAMERA-029-C and CAMERA-029-D implemented locally; CAMERA-029-E/F pending**
+Implementation: **CAMERA-029-A/B/C/D/E implemented locally; CAMERA-029-F pending**
 Technical certification: **pending**
 
 ## 1. Context
@@ -681,6 +681,8 @@ IF-ADR-004 rollback guarantees preserved
 
 ### CAMERA-029-E — Camera View removal
 
+Local implementation status: **implemented; tests migrated/authored; static Runtime/Editor/test compilation passed; Unity tests pending**
+
 Required result:
 
 ```text
@@ -872,10 +874,10 @@ Group presentation intent                 ACCEPTED
 SharedFollow implicit multi-target mode   SUPERSEDED
 PlayerInputManager split layout authority RETAINED
 physical Camera layout outside Framework  RETAINED
-implementation                            PARTIAL — CAMERA-029-A/B/C/D implemented locally
+implementation                            PARTIAL — CAMERA-029-A/B/C/D/E implemented locally
 technical certification                   PENDING
 consumer migration                        PENDING
 ```
 
-The next step is CAMERA-029-E after Unity validation of the focused Framework tests for
-CAMERA-029-A through CAMERA-029-D.
+The next step is CAMERA-029-F after Unity validation of the focused Framework tests for
+CAMERA-029-A through CAMERA-029-E.

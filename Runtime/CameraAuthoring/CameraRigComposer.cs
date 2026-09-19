@@ -61,7 +61,7 @@ namespace Immersive.Framework.CameraAuthoring
         [FormerlySerializedAs("frameworkOwnedSharedFollowGroupFraming")]
         private CinemachineGroupFraming frameworkOwnedGroupFraming;
 
-        private CameraViewPresentationAdapter _presentation;
+        private CameraRigPresentationAdapter _presentation;
 
         [SerializeField, HideInInspector]
         private int materializationRevision;
@@ -154,30 +154,23 @@ namespace Immersive.Framework.CameraAuthoring
         public string LastMaterializationSummary =>
             lastMaterializationSummary.NormalizeText();
 
-        public CameraViewPresentationApplyResult ApplyViewPresentation(
-            CameraViewPresentationInput input, CameraViewAssignmentSnapshot currentSnapshot)
-        {
-            _presentation ??= new CameraViewPresentationAdapter(this);
-            return _presentation.ApplyViewPresentation(input, currentSnapshot);
-        }
-
-        public CameraViewPresentationApplyResult ApplyCompositionPresentation(
-            CameraViewPresentationInput input,
+        public CameraRigPresentationApplyResult ApplyCompositionPresentation(
+            CameraCompositionPresentationInput input,
             CameraCompositionMembershipSnapshot currentSnapshot)
         {
-            _presentation ??= new CameraViewPresentationAdapter(this);
+            _presentation ??= new CameraRigPresentationAdapter(this);
             return _presentation.ApplyCompositionPresentation(input, currentSnapshot);
         }
 
-        public CameraViewPresentationApplyResult ClearViewPresentation()
+        public CameraRigPresentationApplyResult ClearPresentation()
         {
-            _presentation ??= new CameraViewPresentationAdapter(this);
-            return _presentation.ClearViewPresentation();
+            _presentation ??= new CameraRigPresentationAdapter(this);
+            return _presentation.ClearPresentation();
         }
 
         internal CameraRigPresentationState CapturePresentationState()
         {
-            _presentation ??= new CameraViewPresentationAdapter(this);
+            _presentation ??= new CameraRigPresentationAdapter(this);
             return _presentation.CaptureState();
         }
 
@@ -185,7 +178,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraRigPresentationState previous,
             CameraRigPresentationState expectedCurrent)
         {
-            _presentation ??= new CameraViewPresentationAdapter(this);
+            _presentation ??= new CameraRigPresentationAdapter(this);
             return _presentation.RestoreState(previous, expectedCurrent);
         }
 
@@ -219,12 +212,12 @@ namespace Immersive.Framework.CameraAuthoring
         }
 
         /// <summary>
-        /// Projects resolved View input according to this rig's presentation policy.
+        /// Projects resolved Composition input according to this rig's presentation policy.
         /// </summary>
-        public CameraViewTargetProjectionResult ResolveViewPresentationTargets(
-            CameraViewPresentationInput input)
+        public CameraRigTargetProjectionResult ResolvePresentationTargets(
+            CameraCompositionPresentationInput input)
         {
-            return CameraViewTargetProjector.Project(
+            return CameraRigTargetProjector.Project(
                 input,
                 PresentationIntent,
                 EffectiveFollowRequirement,

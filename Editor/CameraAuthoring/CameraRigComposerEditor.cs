@@ -74,7 +74,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             CameraRigPresentationIntent presentation =
                 ResolvePresentationIntent();
 
-            EditorGUILayout.HelpBox("Targets are supplied by View / Subject composition at runtime. Apply / Rebuild creates the rig structure without Subjects.", MessageType.Info);
+            EditorGUILayout.HelpBox("Targets are supplied by Camera Composition at runtime. Apply / Rebuild creates the rig structure without Subjects.", MessageType.Info);
 
             bool authoringChanged =
                 EditorGUI.EndChangeCheck();

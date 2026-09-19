@@ -7,27 +7,23 @@ using UnityEngine;
 namespace Immersive.Framework.CameraAuthoring
 {
     /// <summary>
-    /// Runtime authority for one Camera Composition. Productive Subject membership is
-    /// Composition-scoped; the View definition remains only as a temporary legacy association.
+    /// Runtime authority for one Camera Composition and its request participation.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Shared Camera Composition")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-029-D transactional Composition reconciliation.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-029-E Composition-owned presentation and Output participation.")]
     public sealed class CameraSharedComposition : MonoBehaviour,
         ICameraSubjectAvailabilityConsumer,
         ICameraOutputSessionConsumer,
-        ICameraOutputDefinitionConsumer,
-        ICameraViewOutputBindingConsumer
+        ICameraOutputDefinitionConsumer
     {
-        [Header("Logical View (legacy association until CAMERA-029-E)")]
-        [SerializeField] private CameraViewDefinition viewDefinition;
         private readonly string membershipContextId = Guid.NewGuid().ToString("N");
 
         [Header("Subject Selection")]
         [SerializeField] private CameraSharedCompositionSubjectPolicyKind subjectPolicy =
             CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects;
 
-        [Header("Logical View / Output Association")]
+        [Header("Camera Output")]
         [SerializeField] private CameraOutputDefinition outputDefinition;
 
         [Header("Composition Rig")]
@@ -45,47 +41,28 @@ namespace Immersive.Framework.CameraAuthoring
         private CameraOutputAuthoring _output;
         private ICameraRequestPublisher _requestPublisher;
 
-        public CameraViewDefinition ViewDefinition => viewDefinition;
         public CameraOutputDefinition OutputDefinition => outputDefinition;
         public CameraRigComposer CompositionRig => compositionRig;
         public int RequestPrecedence => requestPrecedence;
         public CameraRequestId RequestId => new CameraRequestId(requestId);
         public bool IsRequestPublished => _requestPublisher?.IsPublished == true;
         public string MembershipContextIdText => membershipContextId;
-        public CameraViewId ViewId => viewDefinition != null && viewDefinition.HasValidId
-            ? viewDefinition.ViewId : default;
-        public string ViewIdText => ViewId.Value ?? string.Empty;
-        CameraViewId ICameraViewOutputBindingConsumer.RequestedViewId => new CameraViewId(ViewIdText);
         public string OutputIdText => outputDefinition != null && outputDefinition.HasValidId
             ? outputDefinition.OutputId.Value : string.Empty;
         public CameraOutputId RequestedOutputId => new CameraOutputId(OutputIdText);
         public CameraOutputAuthoring Output => _output;
         public CameraSharedCompositionSnapshot Snapshot { get; private set; }
 
-        public void Configure(CameraViewDefinition view, CameraOutputDefinition output,
+        public void Configure(CameraOutputDefinition output,
             CameraSharedCompositionSubjectPolicyKind policy)
         {
             if (_membership != null || _subscribed)
                 throw new InvalidOperationException("An active shared Camera composition cannot be reconfigured.");
-            CameraDefinitionValidation.ValidateViews(new[] { view });
             CameraDefinitionValidation.ValidateOutputs(new[] { output });
             if (!ReferenceEquals(outputDefinition, output)) _output = null;
-            viewDefinition = view;
             outputDefinition = output;
             subjectPolicy = policy;
             TryStartComposition();
-        }
-
-        public bool TryCreateAssociationBinding(out CameraViewOutputBinding binding, out string diagnostic)
-        {
-            if (!TryValidateDefinitions(out diagnostic))
-            {
-                binding = default;
-                return false;
-            }
-            binding = new CameraViewOutputBinding(viewDefinition.ViewId, outputDefinition.OutputId);
-            diagnostic = string.Empty;
-            return true;
         }
 
         public void AttachCameraSubjectAvailability(ICameraSubjectAvailabilitySource availabilitySource)
@@ -127,13 +104,13 @@ namespace Immersive.Framework.CameraAuthoring
         {
             if (_membership == null)
                 return Record(CameraSharedCompositionReconcileStatus.BlockedInvalidMembership, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, "Shared Camera composition has no active membership context.");
+                    CameraRigPresentationApplyStatus.None, "Shared Camera composition has no active membership context.");
             if (!TryValidateCompositionRig(out string rigDiagnostic))
                 return Record(ReferenceEquals(compositionRig, _output?.DefaultCameraRig)
                         ? CameraSharedCompositionReconcileStatus.BlockedCompositionRigIsDefault
                         : CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
                     availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, rigDiagnostic);
+                    CameraRigPresentationApplyStatus.None, rigDiagnostic);
 
             CameraCompositionMembershipSnapshot previousMembership = _membership.Snapshot;
             CameraRigPresentationState previousPresentation =
@@ -156,10 +133,10 @@ namespace Immersive.Framework.CameraAuthoring
                     _ => CameraSharedCompositionReconcileStatus.BlockedMembershipFailure
                 };
                 return Record(status, availability, membership.AddedCount, membership.RemovedCount,
-                    CameraViewPresentationApplyStatus.None, membership.Message);
+                    CameraRigPresentationApplyStatus.None, membership.Message);
             }
 
-            CameraViewPresentationInputResult projection = CameraViewPresentationInputProjection.TryCreate(_currentMembership);
+            CameraCompositionPresentationInputResult projection = CameraCompositionPresentationInputProjection.TryCreate(_currentMembership);
             if (!projection.Succeeded)
             {
                 return RollbackAndRecord(
@@ -170,17 +147,17 @@ namespace Immersive.Framework.CameraAuthoring
                     previousMembership,
                     previousPresentation,
                     compositionRig.CapturePresentationState(),
-                    CameraViewPresentationApplyStatus.None,
+                    CameraRigPresentationApplyStatus.None,
                     false,
                     projection.Message);
             }
 
-            CameraViewTargetProjectionResult targetProjection =
-                compositionRig.ResolveViewPresentationTargets(projection.Input);
+            CameraRigTargetProjectionResult targetProjection =
+                compositionRig.ResolvePresentationTargets(projection.Input);
             if (!targetProjection.Succeeded)
             {
                 bool lostRequiredSubjects =
-                    targetProjection.Status == CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing &&
+                    targetProjection.Status == CameraRigTargetProjectionStatus.BlockedRequiredSubjectMissing &&
                     projection.Input.SubjectCount == 0;
                 if (!lostRequiredSubjects)
                 {
@@ -192,13 +169,13 @@ namespace Immersive.Framework.CameraAuthoring
                         previousMembership,
                         previousPresentation,
                         compositionRig.CapturePresentationState(),
-                        CameraViewPresentationApplyStatus.None,
+                        CameraRigPresentationApplyStatus.None,
                         false,
                         targetProjection.BlockingIssue);
                 }
 
-                CameraViewPresentationApplyResult cleared =
-                    compositionRig.ClearViewPresentation();
+                CameraRigPresentationApplyResult cleared =
+                    compositionRig.ClearPresentation();
                 if (!cleared.Succeeded)
                 {
                     return RollbackAndRecord(
@@ -233,7 +210,7 @@ namespace Immersive.Framework.CameraAuthoring
                     membership.AddedCount, membership.RemovedCount, cleared.Status, string.Empty);
             }
 
-            CameraViewPresentationApplyResult presentation =
+            CameraRigPresentationApplyResult presentation =
                 compositionRig.ApplyCompositionPresentation(projection.Input, _currentMembership);
             if (!presentation.Succeeded)
             {
@@ -276,7 +253,6 @@ namespace Immersive.Framework.CameraAuthoring
         {
             try
             {
-                CameraDefinitionValidation.ValidateViews(new[] { viewDefinition });
                 CameraDefinitionValidation.ValidateOutputs(new[] { outputDefinition });
                 diagnostic = string.Empty;
                 return true;
@@ -300,13 +276,13 @@ namespace Immersive.Framework.CameraAuthoring
             if (!TryValidateDefinitions(out string definitionDiagnostic))
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedInvalidMembership, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, definitionDiagnostic);
+                    CameraRigPresentationApplyStatus.None, definitionDiagnostic);
                 return;
             }
             if (subjectPolicy != CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects)
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedMembershipFailure, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, "Shared Camera composition requires an explicitly supported Subject selection policy.");
+                    CameraRigPresentationApplyStatus.None, "Shared Camera composition requires an explicitly supported Subject selection policy.");
                 return;
             }
             if (!RequestedOutputId.IsValid || _output == null ||
@@ -314,27 +290,27 @@ namespace Immersive.Framework.CameraAuthoring
                 _output.DefaultCameraRig == null)
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedInvalidComposer, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, "Shared Camera composition requires its exact injected Output and an explicit Default Camera Rig.");
+                    CameraRigPresentationApplyStatus.None, "Shared Camera composition requires its exact injected Output and an explicit Default Camera Rig.");
                 return;
             }
             if (compositionRig == null)
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedInvalidComposer, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None,
+                    CameraRigPresentationApplyStatus.None,
                     "Shared Camera composition requires an explicit Composition Camera Rig.");
                 return;
             }
             if (ReferenceEquals(compositionRig, _output.DefaultCameraRig))
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedCompositionRigIsDefault, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None,
+                    CameraRigPresentationApplyStatus.None,
                     "Composition Camera Rig must be distinct from the Output Default Camera Rig.");
                 return;
             }
             if (!_output.TryGetSession(out _, out string sessionDiagnostic))
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedRequestFailure, availability, 0, 0,
-                    CameraViewPresentationApplyStatus.None, sessionDiagnostic);
+                    CameraRigPresentationApplyStatus.None, sessionDiagnostic);
                 return;
             }
 
@@ -359,8 +335,8 @@ namespace Immersive.Framework.CameraAuthoring
             CameraCompositionMembershipSnapshot previousMembership = _membership.Snapshot;
             CameraRigPresentationState previousPresentation =
                 compositionRig != null ? compositionRig.CapturePresentationState() : null;
-            CameraViewPresentationApplyResult cleared =
-                compositionRig != null ? compositionRig.ClearViewPresentation() : null;
+            CameraRigPresentationApplyResult cleared =
+                compositionRig != null ? compositionRig.ClearPresentation() : null;
 
             if (cleared == null || !cleared.Succeeded)
             {
@@ -371,7 +347,7 @@ namespace Immersive.Framework.CameraAuthoring
                     previousMembership,
                     previousPresentation,
                     compositionRig != null ? compositionRig.CapturePresentationState() : null,
-                    cleared?.Status ?? CameraViewPresentationApplyStatus.None,
+                    cleared?.Status ?? CameraRigPresentationApplyStatus.None,
                     false,
                     clearDiagnostic);
                 return false;
@@ -526,7 +502,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraCompositionMembershipSnapshot previousMembership,
             CameraRigPresentationState previousPresentation,
             CameraRigPresentationState failedPresentation,
-            CameraViewPresentationApplyStatus presentationStatus,
+            CameraRigPresentationApplyStatus presentationStatus,
             bool outputRollbackFailed,
             string originalFailure)
         {
@@ -561,7 +537,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraCompositionMembershipSnapshot previousMembership,
             CameraRigPresentationState previousPresentation,
             CameraRigPresentationState failedPresentation,
-            CameraViewPresentationApplyStatus presentationStatus,
+            CameraRigPresentationApplyStatus presentationStatus,
             bool outputRollbackFailed,
             string originalFailure)
         {
@@ -656,7 +632,7 @@ namespace Immersive.Framework.CameraAuthoring
             CameraSubjectAvailabilitySnapshot availability,
             int added,
             int removed,
-            CameraViewPresentationApplyStatus presentationStatus,
+            CameraRigPresentationApplyStatus presentationStatus,
             string issue)
         {
             CameraCompositionMembershipSnapshot membership = _currentMembership ?? _membership?.Snapshot;

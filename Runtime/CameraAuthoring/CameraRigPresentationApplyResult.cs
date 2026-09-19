@@ -7,12 +7,12 @@ namespace Immersive.Framework.CameraAuthoring
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-026-D physical View-to-Cinemachine presentation result.")]
-    public sealed class CameraViewPresentationApplyResult
+        "CAMERA-029-E physical Rig presentation result.")]
+    public sealed class CameraRigPresentationApplyResult
     {
-        internal CameraViewPresentationApplyResult(
-            CameraViewPresentationApplyStatus status,
-            CameraViewPresentationInput input,
+        internal CameraRigPresentationApplyResult(
+            CameraRigPresentationApplyStatus status,
+            CameraCompositionPresentationInput input,
             CinemachineCamera cinemachineCamera,
             CinemachineTargetGroup targetGroup,
             CinemachineGroupFraming groupFraming,
@@ -26,8 +26,8 @@ namespace Immersive.Framework.CameraAuthoring
             Diagnostic = diagnostic.NormalizeText();
         }
 
-        public CameraViewPresentationApplyStatus Status { get; }
-        public CameraViewPresentationInput Input { get; }
+        public CameraRigPresentationApplyStatus Status { get; }
+        public CameraCompositionPresentationInput Input { get; }
         public CinemachineCamera CinemachineCamera { get; }
         public CinemachineTargetGroup TargetGroup { get; }
         public CinemachineGroupFraming GroupFraming { get; }
@@ -37,9 +37,9 @@ namespace Immersive.Framework.CameraAuthoring
                 : 0;
         public string Diagnostic { get; }
         public bool Succeeded => Status is
-            CameraViewPresentationApplyStatus.SucceededFixedNoTargets or
-            CameraViewPresentationApplyStatus.SucceededSingleSubject or
-            CameraViewPresentationApplyStatus.SucceededGroup or
-            CameraViewPresentationApplyStatus.SucceededCleared;
+            CameraRigPresentationApplyStatus.SucceededFixedNoTargets or
+            CameraRigPresentationApplyStatus.SucceededSingleSubject or
+            CameraRigPresentationApplyStatus.SucceededGroup or
+            CameraRigPresentationApplyStatus.SucceededCleared;
     }
 }

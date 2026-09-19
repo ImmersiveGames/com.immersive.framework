@@ -17,12 +17,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             using var fixture = new PresentationFixture("subject-a");
 
-            CameraViewTargetProjectionResult projection = Project(
+            CameraRigTargetProjectionResult projection = Project(
                 fixture.Input,
                 CameraRigPresentationIntent.Follow);
 
             Assert.That(projection.Status, Is.EqualTo(
-                CameraViewTargetProjectionStatus.SucceededSingleSubject));
+                CameraRigTargetProjectionStatus.SucceededSingleSubject));
             Assert.That(projection.Targets.FollowTarget, Is.SameAs(
                 fixture.Observations["subject-a"]));
         }
@@ -32,12 +32,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             using var fixture = new PresentationFixture("subject-b", "subject-a");
 
-            CameraViewTargetProjectionResult projection = Project(
+            CameraRigTargetProjectionResult projection = Project(
                 fixture.Input,
                 CameraRigPresentationIntent.Follow);
 
             Assert.That(projection.Status, Is.EqualTo(
-                CameraViewTargetProjectionStatus.BlockedMultipleSubjectsUnsupported));
+                CameraRigTargetProjectionStatus.BlockedMultipleSubjectsUnsupported));
             Assert.That(projection.Succeeded, Is.False);
         }
 
@@ -50,12 +50,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 : new[] { "subject-c", "subject-a", "subject-b" };
             using var fixture = new PresentationFixture(ids);
 
-            CameraViewTargetProjectionResult projection = Project(
+            CameraRigTargetProjectionResult projection = Project(
                 fixture.Input,
                 CameraRigPresentationIntent.Group);
 
             Assert.That(projection.Status, Is.EqualTo(
-                CameraViewTargetProjectionStatus.SucceededGroup));
+                CameraRigTargetProjectionStatus.SucceededGroup));
             Assert.That(projection.Input.SubjectCount, Is.EqualTo(subjectCount));
         }
 
@@ -64,12 +64,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             using var fixture = new PresentationFixture();
 
-            CameraViewTargetProjectionResult projection = Project(
+            CameraRigTargetProjectionResult projection = Project(
                 fixture.Input,
                 CameraRigPresentationIntent.Group);
 
             Assert.That(projection.Status, Is.EqualTo(
-                CameraViewTargetProjectionStatus.BlockedRequiredSubjectMissing));
+                CameraRigTargetProjectionStatus.BlockedRequiredSubjectMissing));
         }
 
         [Test]
@@ -89,12 +89,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                         false);
                 Assert.That(materialization.Succeeded, Is.True, materialization.BlockingIssue);
 
-                CameraViewPresentationApplyResult applied = composer.ApplyCompositionPresentation(
+                CameraRigPresentationApplyResult applied = composer.ApplyCompositionPresentation(
                     fixture.Input,
                     fixture.Snapshot);
 
                 Assert.That(applied.Status, Is.EqualTo(
-                    CameraViewPresentationApplyStatus.SucceededGroup));
+                    CameraRigPresentationApplyStatus.SucceededGroup));
                 Assert.That(applied.MemberCount, Is.EqualTo(1));
                 Assert.That(composer.CinemachineCamera.Follow, Is.SameAs(
                     applied.TargetGroup.transform));
@@ -141,12 +141,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     ((CinemachineFollow)composer.FrameworkOwnedPositionControl).FollowOffset,
                     Is.EqualTo(followOffset));
 
-                CameraViewPresentationApplyResult applied = composer.ApplyCompositionPresentation(
+                CameraRigPresentationApplyResult applied = composer.ApplyCompositionPresentation(
                     fixture.Input,
                     fixture.Snapshot);
 
                 Assert.That(applied.Status, Is.EqualTo(
-                    CameraViewPresentationApplyStatus.SucceededGroup));
+                    CameraRigPresentationApplyStatus.SucceededGroup));
                 Assert.That(applied.MemberCount, Is.EqualTo(3));
                 Assert.That(applied.TargetGroup.Targets[0].Object, Is.SameAs(
                     fixture.Observations["subject-a"]));
@@ -179,11 +179,11 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         public void OlderCompositionPresentationCannotOverwriteNewerAppliedMembership()
         {
             using var fixture = new PresentationFixture("subject-a");
-            CameraViewPresentationInput olderInput = fixture.Input;
+            CameraCompositionPresentationInput olderInput = fixture.Input;
             CameraCompositionMembershipSnapshot olderSnapshot = fixture.Snapshot;
             CameraCompositionMembershipSnapshot newerSnapshot = fixture.AddSubject("subject-b");
-            CameraViewPresentationInput newerInput =
-                CameraViewPresentationInputProjection.TryCreate(newerSnapshot).Input;
+            CameraCompositionPresentationInput newerInput =
+                CameraCompositionPresentationInputProjection.TryCreate(newerSnapshot).Input;
             var root = new GameObject("stale-composition-presentation-test");
             var behavior = ScriptableObject.CreateInstance<GroupCameraRigBehaviorDefinition>();
             try
@@ -194,7 +194,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     composer, false, false).Succeeded, Is.True);
                 Assert.That(composer.ApplyCompositionPresentation(newerInput, newerSnapshot).Succeeded, Is.True);
                 Assert.That(composer.ApplyCompositionPresentation(olderInput, olderSnapshot).Status,
-                    Is.EqualTo(CameraViewPresentationApplyStatus.RejectedStaleInput));
+                    Is.EqualTo(CameraRigPresentationApplyStatus.RejectedStaleInput));
             }
             finally
             {
@@ -203,11 +203,11 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             }
         }
 
-        private static CameraViewTargetProjectionResult Project(
-            CameraViewPresentationInput input,
+        private static CameraRigTargetProjectionResult Project(
+            CameraCompositionPresentationInput input,
             CameraRigPresentationIntent intent)
         {
-            return CameraViewTargetProjector.Project(
+            return CameraRigTargetProjector.Project(
                 input,
                 intent,
                 CameraTargetRequirement.Required,
@@ -259,15 +259,15 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     _membership.Reconcile(availabilitySnapshot, desired);
                 Assert.That(membershipResult.Succeeded, Is.True, membershipResult.Message);
                 Snapshot = membershipResult.Snapshot;
-                CameraViewPresentationInputResult projection =
-                    CameraViewPresentationInputProjection.TryCreate(Snapshot);
+                CameraCompositionPresentationInputResult projection =
+                    CameraCompositionPresentationInputProjection.TryCreate(Snapshot);
                 Assert.That(projection.Succeeded, Is.True, projection.Message);
                 Input = projection.Input;
             }
 
             internal IReadOnlyDictionary<string, Transform> Observations => _observations;
             internal CameraCompositionMembershipSnapshot Snapshot { get; }
-            internal CameraViewPresentationInput Input { get; }
+            internal CameraCompositionPresentationInput Input { get; }
 
             internal CameraCompositionMembershipSnapshot AddSubject(string id)
             {

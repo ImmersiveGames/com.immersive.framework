@@ -171,8 +171,8 @@ namespace Immersive.Framework.Camera
     }
 
     /// <summary>
-    /// Scoped authority for one Composition's ordered Subject membership. It owns no View,
-    /// request, rig or output identity and accepts only evidence from its bound availability context.
+    /// Scoped authority for one Composition's ordered Subject membership. It owns no request,
+    /// rig or output identity and accepts only evidence from its bound availability context.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-029-B single-composition Subject membership authority.")]
     public sealed class CameraCompositionMembershipContext

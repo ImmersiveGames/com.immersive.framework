@@ -16,24 +16,14 @@ namespace Immersive.Framework.Camera
     internal sealed class CameraOutputInjectionRuntime : IDisposable
     {
         private readonly CameraOutputSessionTopology _topology;
-        private readonly CameraViewOutputTopology _viewOutputs;
-        private readonly CameraViewDefinition[] _viewDefinitions;
         private readonly Dictionary<ICameraOutputSessionConsumer, AttachedConsumer>
             _attachedConsumers =
                 new Dictionary<ICameraOutputSessionConsumer, AttachedConsumer>(
                     ConsumerReferenceComparer.Instance);
 
-        internal CameraOutputInjectionRuntime(
-            CameraOutputSessionTopology topology,
-            CameraViewOutputTopology viewOutputs,
-            IReadOnlyList<CameraViewDefinition> viewDefinitions)
+        internal CameraOutputInjectionRuntime(CameraOutputSessionTopology topology)
         {
             _topology = topology ?? throw new ArgumentNullException(nameof(topology));
-            _viewOutputs = viewOutputs ?? throw new ArgumentNullException(nameof(viewOutputs));
-            if (viewDefinitions == null) throw new ArgumentNullException(nameof(viewDefinitions));
-            _viewDefinitions = new CameraViewDefinition[viewDefinitions.Count];
-            for (int i = 0; i < viewDefinitions.Count; i++) _viewDefinitions[i] = viewDefinitions[i];
-            CameraDefinitionValidation.ValidateViews(_viewDefinitions);
             SceneManager.sceneLoaded += OnSceneLoaded;
 
             for (int index = 0; index < SceneManager.sceneCount; index++)
@@ -149,25 +139,6 @@ namespace Immersive.Framework.Camera
                     rejected);
                 return rejected;
             }
-            if (consumer is ICameraViewOutputBindingConsumer viewConsumer &&
-                !_viewOutputs.TryGetBinding(
-                    viewConsumer.RequestedViewId,
-                    requestedOutputId,
-                    out _))
-            {
-                diagnostic =
-                    $"Camera consumer requires an explicit View '{viewConsumer.RequestedViewId}' to Output '{consumer.RequestedOutputId}' binding in the active composition policy.";
-                consumer.DetachOutputSession(diagnostic);
-                CameraOutputInjectionResult rejected =
-                    CameraOutputInjectionResult.Rejected(
-                        CameraOutputInjectionStatus.RejectedViewOutputBinding,
-                        diagnostic);
-                RememberAttachment(
-                    consumer,
-                    requestedOutputId,
-                    rejected);
-                return rejected;
-            }
             consumer.AttachOutputSession(output);
             CameraOutputInjectionResult attached =
                 CameraOutputInjectionResult.Attached();
@@ -194,23 +165,6 @@ namespace Immersive.Framework.Camera
                                 "Requested Output definition differs from the exact definition of the physical Output.");
                     }
                 }
-                if (consumer is CameraSharedComposition composition)
-                {
-                    var views = new List<CameraViewDefinition> { composition.ViewDefinition };
-                    views.AddRange(_viewDefinitions);
-                    CameraDefinitionValidation.ValidateViews(views);
-                    bool exactView = false;
-                    foreach (var definition in _viewDefinitions)
-                        if (ReferenceEquals(definition, composition.ViewDefinition)) exactView = true;
-                    if (!exactView)
-                        throw new InvalidOperationException(
-                            "Shared Camera composition requires its exact View definition in the admitted policy.");
-                    foreach (var entry in _attachedConsumers)
-                        if (!ReferenceEquals(entry.Key, consumer) && entry.Value.Result.Succeeded &&
-                            entry.Key is CameraSharedComposition other && other != null)
-                            views.Add(other.ViewDefinition);
-                    CameraDefinitionValidation.ValidateViews(views);
-                }
                 diagnostic = string.Empty;
                 return true;
             }
@@ -231,9 +185,7 @@ namespace Immersive.Framework.Camera
                     out AttachedConsumer attached) &&
                 attached.OutputId == requestedOutputId &&
                 ReferenceEquals(attached.OutputDefinition,
-                    (consumer as ICameraOutputDefinitionConsumer)?.OutputDefinition) &&
-                ReferenceEquals(attached.ViewDefinition,
-                    (consumer as CameraSharedComposition)?.ViewDefinition))
+                    (consumer as ICameraOutputDefinitionConsumer)?.OutputDefinition))
             {
                 result = attached.Result;
                 return true;
@@ -252,7 +204,6 @@ namespace Immersive.Framework.Camera
                 new AttachedConsumer(
                     requestedOutputId,
                     (consumer as ICameraOutputDefinitionConsumer)?.OutputDefinition,
-                    (consumer as CameraSharedComposition)?.ViewDefinition,
                     result);
         }
 
@@ -267,19 +218,15 @@ namespace Immersive.Framework.Camera
             internal AttachedConsumer(
                 CameraOutputId outputId,
                 CameraOutputDefinition outputDefinition,
-                CameraViewDefinition viewDefinition,
                 CameraOutputInjectionResult result)
             {
                 OutputId = outputId;
                 OutputDefinition = outputDefinition;
-                ViewDefinition = viewDefinition;
                 Result = result;
             }
 
             internal CameraOutputId OutputId { get; }
             internal CameraOutputDefinition OutputDefinition { get; }
-            internal CameraViewDefinition ViewDefinition { get; }
-
             internal CameraOutputInjectionResult Result { get; }
         }
 
@@ -308,7 +255,6 @@ namespace Immersive.Framework.Camera
         RejectedMissingConsumer = 3,
         RejectedInvalidOutputId = 4,
         RejectedUnknownOutput = 5,
-        RejectedViewOutputBinding = 6,
         RejectedDefinition = 7
     }
 
