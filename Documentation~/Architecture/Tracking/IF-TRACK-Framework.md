@@ -340,14 +340,14 @@ Implementation status:
 
 ~~~text
 IF-ADR-032          ACCEPTED
-CAMERA-032-A        IMPLEMENTED / COMPILES / QAFramework NOT RUN
+CAMERA-032-A        TECHNICALLY VALIDATED / 31/31 FOCUSED QA PASS
 CAMERA-032-B        NOT STARTED
 CAMERA-032-C        NOT STARTED
 CAMERA-032-D        NOT STARTED
 CAMERA-032-E        NOT STARTED
 CAMERA-032-F        NOT STARTED
 Unity compile       PASS — consumer reported
-QAFramework         NOT RUN
+Focused QA          31/31 PASS
 Consumer migrated   NO
 IF-ADR-032 certified NO
 ~~~
@@ -364,7 +364,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-032 is the single target architecture. CAMERA-032-A is implemented and compiles: mutable Composition runtime state was extracted into non-MonoBehaviour `CameraPresentationRuntime`, while `CameraSharedComposition` is now a transitional Unity authoring/lifecycle adapter. Focused QAFramework validation is pending: Structural 10/10 + Shared 10/10 + Generic request/output 11/11. CAMERA-032-B..F remain pending; CAMERA-031-C is superseded.
+3. **Camera** — IF-ADR-032 is the single target architecture. CAMERA-032-A is technically validated: `CameraPresentationRuntime` extraction compiles and focused QA passed Structural 10/10 + Shared 10/10 + Generic request/output 11/11 (31/31). The later Full Camera aggregate failure is historical ADR-004B duplicate-Output harness evidence and is non-blocking for CUT A. CAMERA-032-B..F remain pending; CAMERA-031-C is superseded.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
