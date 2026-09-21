@@ -1,6 +1,6 @@
 # IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle
 
-Status: **Accepted target architecture / CAMERA-032-A implemented / migration continues**  
+Status: **Accepted target architecture / CAMERA-032-A technically validated / migration continues**  
 Accepted: **2026-09-21**  
 Type: architecture / Camera / authoring / runtime lifecycle / physical output / multiplayer  
 Normative authority: **This is the single current Camera architecture decision for Immersive Framework.**
@@ -725,9 +725,9 @@ Validation state:
 ~~~text
 Static code review                 PASS
 Unity import/compile               PASS — consumer reported
-QAFramework Structural             NOT RUN
-QAFramework Shared                 NOT RUN
-QAFramework Generic request/output NOT RUN
+QAFramework Structural             10/10 PASS
+QAFramework Shared                 10/10 PASS
+QAFramework Generic request/output 11/11 PASS
 Consumer migration                 NOT STARTED
 ~~~
 
@@ -745,7 +745,15 @@ CAMERA-032-A focused QA            31/31
 
 Package-local NUnit tests may remain supporting implementation tests, but they are not the technical certification gate for this project.
 
-CUT A is implementation-complete but not technically certified until the focused QAFramework evidence is recorded.
+Focused CAMERA-032-A QA is complete: 31/31 PASS.
+
+The later Full Camera aggregate failure belongs to historical ADR-004B duplicate-Output negative-integrity evidence and does not block CUT A.
+
+Evidence:
+
+- [IF-ADR-032-A Camera Presentation Runtime Focused Validation — 2026-09-21](../Reconciliation/IF-ADR-032-A-CAMERA-PRESENTATION-RUNTIME-FOCUSED-VALIDATION-2026-09-21.md)
+
+CAMERA-032-A is technically validated. Full IF-ADR-032 certification remains pending later migration cuts.
 
 ### CAMERA-032-B — Presentation definition and Rig prefab
 
