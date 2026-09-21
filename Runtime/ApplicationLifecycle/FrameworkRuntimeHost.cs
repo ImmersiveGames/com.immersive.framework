@@ -71,6 +71,11 @@ namespace Immersive.Framework.ApplicationLifecycle
         private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
         private CameraOutputSessionTopology _cameraOutputTopology;
         private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
+        private CameraPresentationMaterializationRuntime
+            _cameraPresentationMaterializationRuntime;
+        private readonly List<CameraPresentationMaterializationHandle>
+            _sessionCameraPresentationHandles =
+                new List<CameraPresentationMaterializationHandle>();
         private PlayerCameraOutputIntegrationRuntime
             _playerCameraOutputIntegrationRuntime;
         private PlayerActorCameraSubjectIntegrationRuntime
@@ -503,6 +508,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "camera-session-reinitialize",
+                    out string previousSessionPresentationReleaseIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Previous Session Camera Presentation release failed. " +
+                    previousSessionPresentationReleaseIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+
             _cameraOutputTopology?.Dispose();
             if (!CameraOutputSessionTopology.TryCreate(
                     cameraOutputs,
@@ -536,6 +555,17 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _globalUiSceneRuntime.PersistedRoots);
             _playerCameraCompositionIntegrationRuntime?.Dispose();
             _playerCameraCompositionIntegrationRuntime = null;
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "framework-runtime-host-destroy",
+                    out string sessionPresentationReleaseIssue))
+            {
+                _logger?.Warning(
+                    "Session Camera Presentation release failed during FrameworkRuntimeHost destruction.",
+                    LogFields.Field(
+                        "issue",
+                        sessionPresentationReleaseIssue));
+            }
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();
@@ -727,6 +757,14 @@ namespace Immersive.Framework.ApplicationLifecycle
                     return failed;
                 }
             }
+            if (_cameraSubjectAvailabilityContext == null)
+            {
+                _cameraSubjectAvailabilityContext =
+                    new CameraSubjectAvailabilityContext(
+                        new SubjectAvailabilityContextId(
+                            $"camera-subjects:{_runtimeSessionScopeResult.Owner.OwnerId}"));
+            }
+
             if (_gameApplication.PlayerSessionEnabled &&
                 !PlayerSessionScopedAccessRuntimeHostModule.TryAttach(
                     this,
@@ -780,8 +818,33 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
+            if (!TryInitializeSessionCameraPresentations(
+                    out string sessionCameraPresentationIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Session Camera Presentation initialization failed. " +
+                    sessionCameraPresentationIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+
             FrameworkGameFlowStartResult result =
                 await StartGameFlowWithActivityEntryLoadingProgressAsync();
+
+            if (!result.Succeeded &&
+                !TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "camera-session-presentation-boot-failure",
+                    out string failedBootPresentationReleaseIssue))
+            {
+                _logger.Warning(
+                    "Session Camera Presentation rollback failed after Game Flow start failure.",
+                    LogFields.Field(
+                        "issue",
+                        failedBootPresentationReleaseIssue));
+            }
 
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
             PublishCurrentActivityReadinessPresentation();
@@ -1887,6 +1950,221 @@ namespace Immersive.Framework.ApplicationLifecycle
                 cameraOutputTopology);
         }
 
+
+        private bool TryInitializeSessionCameraPresentations(
+            out string issue)
+        {
+            issue = string.Empty;
+            IReadOnlyList<CameraPresentationDefinition> definitions =
+                _gameApplication.SessionCameraPresentations;
+            if (definitions == null || definitions.Count == 0)
+            {
+                return true;
+            }
+
+            if (_cameraOutputTopology == null)
+            {
+                issue =
+                    "Session Camera Presentations require an initialized Camera Output topology.";
+                return false;
+            }
+
+            if (_cameraSubjectAvailabilityContext == null)
+            {
+                issue =
+                    "Session Camera Presentations require a Camera Subject availability context.";
+                return false;
+            }
+
+            if (!TryCreateSessionRuntimeScopeContext(
+                    "FrameworkRuntimeHost",
+                    "camera-session-presentation",
+                    out RuntimeScopeContext sessionContext,
+                    out issue))
+            {
+                return false;
+            }
+
+            _cameraPresentationMaterializationRuntime ??=
+                new CameraPresentationMaterializationRuntime(
+                    _runtimeContentRuntime);
+
+            var seenDefinitions =
+                new HashSet<CameraPresentationDefinition>();
+            var seenIds =
+                new HashSet<CameraPresentationId>();
+
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                CameraPresentationDefinition definition =
+                    definitions[index];
+                if (definition == null)
+                {
+                    issue =
+                        $"Session Camera Presentations[{index}] is missing.";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                if (!seenDefinitions.Add(definition) ||
+                    !definition.HasValidId ||
+                    !seenIds.Add(definition.PresentationId))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' is duplicated or has invalid identity.";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                if (!definition.TryValidate(
+                        out string definitionIssue))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' is invalid. {definitionIssue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                CameraPresentationMaterializationResult materialized =
+                    _cameraPresentationMaterializationRuntime.Materialize(
+                        sessionContext,
+                        definition,
+                        transform,
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation");
+                if (!materialized.Succeeded ||
+                    materialized.Handle == null)
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' materialization failed. {materialized.Issue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                CameraPresentationMaterializationHandle handle =
+                    materialized.Handle;
+                _sessionCameraPresentationHandles.Add(handle);
+
+                try
+                {
+                    if (!_cameraOutputTopology.TryGetOutput(
+                            definition.OutputDefinition.OutputId,
+                            out CameraOutputAuthoring output,
+                            out string outputIssue))
+                    {
+                        issue =
+                            $"Session Camera Presentation '{definition.name}' targets an unavailable Session Output. {outputIssue}";
+                        TryReleaseSessionCameraPresentations(
+                            "FrameworkRuntimeHost",
+                            "camera-session-presentation-init-rollback",
+                            out _);
+                        return false;
+                    }
+
+                    handle.PresentationRuntime.AttachOutputSession(
+                        output);
+                    handle.PresentationRuntime
+                        .AttachCameraSubjectAvailability(
+                            _cameraSubjectAvailabilityContext);
+                    handle.PresentationRuntime.SetEnabled(true);
+                }
+                catch (Exception exception)
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' activation failed. {exception.Message}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                _logger.Debug(
+                    "Session Camera Presentation materialized.",
+                    LogFields.Field(
+                        "presentation",
+                        definition.name),
+                    LogFields.Field(
+                        "presentationId",
+                        definition.PresentationId.Value),
+                    LogFields.Field(
+                        "output",
+                        definition.OutputDefinition.OutputId.Value),
+                    LogFields.Field(
+                        "subjectPolicy",
+                        definition.SubjectPolicy),
+                    LogFields.Field(
+                        "requestPrecedence",
+                        definition.RequestPrecedence));
+            }
+
+            return true;
+        }
+
+        private bool TryReleaseSessionCameraPresentations(
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_sessionCameraPresentationHandles.Count == 0)
+            {
+                return true;
+            }
+
+            if (_cameraPresentationMaterializationRuntime == null)
+            {
+                issue =
+                    "Session Camera Presentation handles exist without a materialization runtime.";
+                return false;
+            }
+
+            bool succeeded = true;
+            var issues = new List<string>();
+            for (int index =
+                    _sessionCameraPresentationHandles.Count - 1;
+                index >= 0;
+                index--)
+            {
+                CameraPresentationMaterializationHandle handle =
+                    _sessionCameraPresentationHandles[index];
+                CameraPresentationMaterializationResult release =
+                    _cameraPresentationMaterializationRuntime.Release(
+                        handle,
+                        source,
+                        reason);
+                if (!release.Succeeded)
+                {
+                    succeeded = false;
+                    issues.Add(
+                        $"presentation='{handle.Definition.name}' issue='{release.Issue}'");
+                    continue;
+                }
+
+                _sessionCameraPresentationHandles.RemoveAt(index);
+            }
+
+            if (succeeded)
+            {
+                _cameraPresentationMaterializationRuntime = null;
+                return true;
+            }
+
+            issue = string.Join("; ", issues);
+            return false;
+        }
 
         private RuntimeScopeLifecycleResult CreateSessionScopeRoot(GameApplicationAsset application, string source, string reason)
         {
@@ -3118,6 +3396,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             _activityReadinessBinding = null;
             _playerCameraCompositionIntegrationRuntime?.Dispose();
             _playerCameraCompositionIntegrationRuntime = null;
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "framework-runtime-host-destroy",
+                    out string sessionPresentationReleaseIssue))
+            {
+                _logger?.Warning(
+                    "Session Camera Presentation release failed during FrameworkRuntimeHost destruction.",
+                    LogFields.Field(
+                        "issue",
+                        sessionPresentationReleaseIssue));
+            }
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();

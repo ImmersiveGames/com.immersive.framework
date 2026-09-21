@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.ProgressionSave;
 using UnityEngine;
@@ -8,8 +11,9 @@ namespace Immersive.Framework.Authoring
     /// <summary>
     /// API status: Stable. Public authoring root for one Immersive game/application.
     ///
-    /// The asset owns application-level intent only. Mutable Session, Player, Route, Activity,
-    /// Camera, Progression Save and scene runtime state remain outside this asset.
+    /// The asset owns application-level intent only. It may reference reusable Session Camera
+    /// Presentation definitions, while every mutable Session, Player, Route, Activity, Camera
+    /// occurrence, Progression Save and scene runtime state remains outside this asset.
     /// Project-level frame pacing is owned by Project Settings > Immersive Framework.
     /// </summary>
     [CreateAssetMenu(
@@ -47,6 +51,12 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Authored backend intent used to materialize the application-scoped Progression Save Runtime. Runtime store state remains outside this asset.")]
         private ProgressionSaveProfile defaultProgressionSaveProfile;
+
+        [Header("Camera")]
+        [SerializeField]
+        [Tooltip("Optional Session-owned Camera Presentations. Each definition materializes one Rig prefab occurrence under the Session RuntimeContent scope. Physical Outputs remain supplied by the current Persistent Content topology until CAMERA-032-D.")]
+        private CameraPresentationDefinition[] sessionCameraPresentations =
+            Array.Empty<CameraPresentationDefinition>();
 
         [SerializeField]
         [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
@@ -98,6 +108,15 @@ namespace Immersive.Framework.Authoring
         /// </summary>
         public ProgressionSaveProfile DefaultProgressionSaveProfile =>
             defaultProgressionSaveProfile;
+
+        public IReadOnlyList<CameraPresentationDefinition>
+            SessionCameraPresentations =>
+            sessionCameraPresentations ??
+            Array.Empty<CameraPresentationDefinition>();
+
+        public bool HasSessionCameraPresentations =>
+            sessionCameraPresentations != null &&
+            sessionCameraPresentations.Length > 0;
 
         public PersistentContentComposition PersistentContent =>
             persistentContent;

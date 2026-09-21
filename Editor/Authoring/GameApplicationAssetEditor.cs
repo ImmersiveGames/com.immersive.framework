@@ -42,10 +42,15 @@ namespace Immersive.Framework.Editor.Authoring
                 "Default Progression Save Profile (Required)",
                 "Reusable authored backend intent materialized once during application boot.");
 
+        private static readonly GUIContent SessionCameraPresentationsLabel =
+            new GUIContent(
+                "Session Presentations",
+                "Optional reusable Camera Presentations materialized for the Session. Their Output references must resolve against the current Session Camera topology.");
+
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
                 "Content Scene",
-                "Scene kept for the lifetime of this Game Application. It owns application-persistent Camera, UI and other shared content.");
+                "Scene kept for the lifetime of this Game Application. It owns application-persistent UI and other shared scene content. Camera topology is migrating out under IF-ADR-032.");
 
         private static readonly GUIContent ValidationModeLabel =
             new GUIContent(
@@ -64,6 +69,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
         private SerializedProperty _progressionSaveEnabled;
         private SerializedProperty _defaultProgressionSaveProfile;
+        private SerializedProperty _sessionCameraPresentations;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
@@ -95,6 +101,8 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("progressionSaveEnabled");
             _defaultProgressionSaveProfile =
                 serializedObject.FindProperty("defaultProgressionSaveProfile");
+            _sessionCameraPresentations =
+                serializedObject.FindProperty("sessionCameraPresentations");
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
@@ -119,6 +127,7 @@ namespace Immersive.Framework.Editor.Authoring
             DrawStartup();
             DrawPlayerSession();
             DrawProgressionSave();
+            DrawCamera();
             DrawPersistentContent();
             DrawValidation();
             DrawAdvancedDebug();
@@ -427,6 +436,48 @@ namespace Immersive.Framework.Editor.Authoring
                 new GUIContent(
                     "Actor Selection Duplicates",
                     "Session Actor-selection policy. This is distinct from Player Session initial Actor Resolution."));
+        }
+
+        private void DrawCamera()
+        {
+            DrawSection("Camera");
+
+            EditorGUILayout.HelpBox(
+                "CAMERA-032-B: Session Presentations are reusable CameraPresentationDefinition assets. Create/configure the asset and its Rig prefab manually; the Framework materializes the Rig at Session boot. Physical Outputs still come from the current Persistent Content topology until CAMERA-032-D.",
+                MessageType.Info);
+
+            EditorGUILayout.PropertyField(
+                _sessionCameraPresentations,
+                SessionCameraPresentationsLabel,
+                true);
+
+            if (_sessionCameraPresentations == null ||
+                !_sessionCameraPresentations.isArray ||
+                _sessionCameraPresentations.arraySize == 0)
+            {
+                DrawStatusRow(
+                    "Configuration",
+                    "Optional — no Session Camera Presentation configured.");
+                return;
+            }
+
+            int configured = 0;
+            for (int index = 0;
+                 index < _sessionCameraPresentations.arraySize;
+                 index++)
+            {
+                SerializedProperty element =
+                    _sessionCameraPresentations
+                        .GetArrayElementAtIndex(index);
+                if (element.objectReferenceValue != null)
+                {
+                    configured++;
+                }
+            }
+
+            DrawStatusRow(
+                "Configuration",
+                $"{configured}/{_sessionCameraPresentations.arraySize} Presentation reference(s) assigned.");
         }
 
         private void DrawPersistentContent()

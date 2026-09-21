@@ -1,6 +1,6 @@
 # IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle
 
-Status: **Accepted target architecture / CAMERA-032-A technically validated / migration continues**  
+Status: **Accepted target architecture / CAMERA-032-A validated / CAMERA-032-B implemented / migration continues**  
 Accepted: **2026-09-21**  
 Type: architecture / Camera / authoring / runtime lifecycle / physical output / multiplayer  
 Normative authority: **This is the single current Camera architecture decision for Immersive Framework.**
@@ -755,12 +755,53 @@ Evidence:
 
 CAMERA-032-A is technically validated. Full IF-ADR-032 certification remains pending later migration cuts.
 
-### CAMERA-032-B — Presentation definition and Rig prefab
+### CAMERA-032-B — Presentation definition and Rig prefab — IMPLEMENTED / UNITY VALIDATION PENDING
 
-- introduce CameraPresentationDefinition or equivalent reusable authored recipe;
-- reference a materialized Rig prefab rather than a scene Rig instance;
-- materialize/release through RuntimeContent;
-- prove one Presentation against the existing Output baseline.
+Delivered in this cut:
+
+- public `CameraPresentationDefinition` ScriptableObject with explicit stable `CameraPresentationId`;
+- exact `CameraOutputDefinition` participation reference;
+- explicit materialized Rig prefab reference;
+- preserved `AllAvailableSubjects` / `ExplicitSelection` policy selection;
+- explicit normal request precedence;
+- authoring validation rejects missing identity, invalid Output, missing Rig prefab, multiple Composers, embedded CameraOutputAuthoring, embedded CameraSharedComposition, invalid Rig behavior and missing materialized CinemachineCamera;
+- `CameraPresentationMaterializationRuntime` creates/releases one Rig occurrence under exact RuntimeContent ownership;
+- one Presentation definition may materialize only once per exact owner;
+- materialized Rig starts physically non-participating until normal CameraRequest arbitration selects it;
+- GameApplication exposes optional Session Camera Presentations as the first product proof surface;
+- FrameworkRuntimeHost materializes Session Presentations under the persistent runtime host transform, resolves the exact existing Session Output, attaches current Camera Subject availability and releases the occurrence before Output teardown;
+- current Persistent Content Output topology is intentionally retained for CUT B and is removed only by CAMERA-032-D;
+- package-local implementation tests cover definition validation, RuntimeContent owner identity, duplicate occurrence rejection and idempotent release.
+
+Manual composition remains consumer-owned:
+
+~~~text
+Rig prefab
+  -> CameraRigComposer
+  -> CameraRigBehaviorDefinition
+  -> Apply/Rebuild materialized CinemachineCamera
+
+CameraPresentationDefinition
+  -> exact Output Definition
+  -> Rig Prefab
+  -> Subject Policy
+  -> Request Precedence
+
+GameApplication
+  -> Session Presentations[]
+  -> CameraPresentationDefinition
+~~~
+
+Validation state:
+
+~~~text
+Static code review        PASS
+Unity import/compile      NOT RUN for CUT B
+Manual Presentation proof NOT RUN
+QAFramework               NOT RUN for CUT B
+~~~
+
+CUT B is implementation-complete but not technically validated until one manually authored Presentation proves materialization, request participation and release against the existing Output baseline.
 
 ### CAMERA-032-C — Route / Activity lifecycle integration
 

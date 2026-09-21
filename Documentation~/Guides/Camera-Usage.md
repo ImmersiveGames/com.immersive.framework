@@ -1,6 +1,6 @@
 # Camera Usage
 
-Status: **IF-ADR-032 target architecture / CAMERA-032-A implemented / B–F pending**  
+Status: **IF-ADR-032 target architecture / CAMERA-032-A validated / CAMERA-032-B implemented / C–F pending**  
 Last updated: **2026-09-21**
 
 Normative Camera authority:
@@ -90,6 +90,68 @@ The definition contains no mutable runtime state.
 A live CameraPresentationRuntime occurrence owns current Subject membership, Rig application, request publication/release and rollback.
 
 Session, Route and Activity may declare optional Camera Presentations.
+
+## CAMERA-032-B manual authoring proof
+
+CUT B intentionally does not create assets or prefabs automatically.
+
+Create the first proof manually in Unity:
+
+~~~text
+1. Create or duplicate a Camera Rig prefab.
+2. Keep exactly one CameraRigComposer in that prefab.
+3. Assign the desired CameraRigBehaviorDefinition.
+4. Run Apply/Rebuild so the prefab already contains the materialized CinemachineCamera.
+5. Do not put CameraOutputAuthoring or CameraSharedComposition in the Rig prefab.
+
+6. Create:
+   Create > Immersive Framework > Camera > Camera Presentation
+
+7. In CameraPresentationDefinition:
+   Generate Stable Identity
+   Output Definition = exact existing CameraOutputDefinition
+   Rig Prefab = prefab from steps 1-5
+   Subject Policy = AllAvailableSubjects for the first proof
+   Request Precedence = explicit value appropriate for the proof topology
+
+8. Open the active GameApplication.
+9. Camera > Session Presentations:
+   add the CameraPresentationDefinition.
+
+10. Keep the current physical Camera Output in Persistent Content for CUT B.
+    Do not move/delete it yet; physical Output migration belongs to CAMERA-032-D.
+~~~
+
+Expected boot behavior:
+
+~~~text
+GameApplication
+  -> Session Presentation definition
+  -> Session RuntimeContent scope
+  -> instantiate Rig prefab under FrameworkRuntimeHost
+  -> resolve exact existing Camera Output
+  -> attach Camera Subject availability
+  -> CameraPresentationRuntime
+  -> normal CameraRequest
+  -> CameraOutputSession arbitration
+~~~
+
+The materialized Rig's CinemachineCamera is disabled before participation and is enabled only when its CameraRequest becomes the Output winner.
+
+For the first proof, prefer a topology with no competing legacy normal Camera request. The Output Default is fine and should be replaced by the Presentation when its request becomes eligible, then restored when the Presentation is released.
+
+### What CUT B does not change
+
+~~~text
+Persistent physical Output topology
+Player Slot -> Output policy
+RouteAsset Camera authoring
+ActivityAsset Camera authoring
+Player -> Presentation explicit selection adapter
+Camera.rect / split-screen ownership
+~~~
+
+Those belong to later CAMERA-032 cuts.
 
 ## Rig authoring
 
@@ -243,7 +305,7 @@ Those types are migration input, not target product architecture.
 
 Do not use their continued presence as authority to extend the former design.
 
-Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). The later Full Camera failure is confined to historical ADR-004B duplicate-Output harness evidence and does not block CUT A. Package NUnit tests remain supporting implementation tests only.
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). CAMERA-032-B is implemented and awaits Unity compile/manual proof using a consumer-authored Rig prefab + CameraPresentationDefinition + GameApplication Session Presentation reference. Package NUnit tests remain supporting implementation tests only.
 
 ## Validation target
 
