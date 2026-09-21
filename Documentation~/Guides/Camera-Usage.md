@@ -1,200 +1,247 @@
 # Camera Usage
 
-Status: **CURRENT — IF-ADR-029 architecture; Unity validation pending**
+Status: **IF-ADR-032 target architecture accepted / runtime migration pending**  
+Last updated: **2026-09-21**
 
-Normative decisions:
+Normative Camera authority:
 
-- [IF-ADR-004 — Camera Requests and Output Authority](../Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md)
-- [IF-ADR-022 — Camera Rig Presentation Models](../Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
-- [IF-ADR-028 — Camera Output Participation and Physical Presentation Ownership](../Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
-- [IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal](../Architecture/ADRs/IF-ADR-029-Camera-Composition-Group-Presentation-and-Camera-View-Removal.md)
-- [IF-ADR-030 — Camera Subject Framing Evidence](../Architecture/ADRs/IF-ADR-030-Camera-Subject-Framing-Evidence.md)
+- [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](../Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
 
-## Current architecture
+Historical Camera reconciliation/certification records remain dated evidence only. They do not override IF-ADR-032 and do not certify the migrated IF-ADR-032 implementation.
 
-```text
-Camera Subject(s)
-        ↓
-Camera Composition
-        ↓
-CameraRigComposer
-        ↓
-CameraRequest
-        ↓
-CameraOutputSession
-        ↓
-Camera Output
-```
+## Target architecture
 
-The boundaries are explicit:
+~~~text
+GameApplication / Session
+  -> explicit physical Camera Outputs + Defaults
+
+Session / Route / Activity
+  -> CameraPresentationDefinition
+  -> CameraPresentationRuntime
+  -> materialized CameraRigComposer
+  -> CameraRequest
+  -> CameraOutputSession
+  -> Camera Output
+~~~
+
+The main boundaries are:
 
 | Owner | Responsibility |
 |---|---|
-| Subject authoring | Expose typed observation evidence, an exact observation Transform and optional presentation-space framing radius |
-| Composition | Select `1..N` Subjects, own membership revisions/stale protection, project current presentation input and publish/release its request |
-| Rig | Own one local presentation behavior, Cinemachine materialization and provenance |
-| Request | Participate in one explicit Output with deterministic arbitration evidence |
-| Output | Own the Unity `Camera`, `CinemachineBrain`, Default Rig and `CameraOutputSession` |
-| `PlayerInputManager` | Own split count, `Camera.rect` and split recomposition |
+| Camera Session configuration | Declare explicit Session Output capacity and optional Player Slot -> Output bindings |
+| Camera Presentation Definition | Reusable authored Rig/output/Subject-selection/request intent |
+| Camera Presentation Runtime | One live occurrence: membership, presentation application, request publication/release and rollback |
+| Camera Subject | Exact observable runtime evidence with occurrence safety and optional framing radius |
+| CameraRigComposer | One local materialized Cinemachine Rig and supported presentation behavior |
+| CameraRequest | Participate in one explicit Output |
+| CameraOutputContext | Deterministically select the normal request winner |
+| CameraOutputSession | Transactionally apply winner/Default and own force-default state |
+| Camera Output | Unity Camera, CinemachineBrain and persistent Default Rig |
+| PlayerInputManager | Own Unity automatic split-screen count and Camera.rect recomposition |
 
-No intermediate logical identity or parallel topology is required between Composition and Output participation.
+## Session Outputs
 
-## Presentation intents
+The target application declares 1..N physical Outputs as Session capacity.
 
-`CameraRigPresentationIntent` uses frozen explicit values:
+Each Output requires:
 
-```text
+~~~text
+CameraOutputDefinition
+Unity Camera
+CinemachineBrain
+Default Camera Rig
+~~~
+
+Output count is explicit and is never inferred from Player count.
+
+Route and Activity do not create physical Outputs.
+
+The Default Rig is not a request and has no precedence.
+
+Selection remains:
+
+~~~text
+force-default
+  -> Default
+
+otherwise normal request winner
+  -> winner Rig
+
+otherwise
+  -> Default
+~~~
+
+## Camera Presentations
+
+Normal gameplay Camera authoring moves away from scene-owned CameraSharedComposition components.
+
+A reusable Camera Presentation is target authoring intent similar to:
+
+~~~text
+CameraPresentationDefinition
+  Rig Prefab
+  Output Definition
+  Subject Selection Policy
+  Request Policy
+~~~
+
+The definition contains no mutable runtime state.
+
+A live CameraPresentationRuntime occurrence owns current Subject membership, Rig application, request publication/release and rollback.
+
+Session, Route and Activity may declare optional Camera Presentations.
+
+## Rig authoring
+
+CameraRigComposer remains the local Rig authority.
+
+Supported behavior family:
+
+~~~text
 Follow      = 10
 Fixed       = 20
 Mounted     = 30
 ThirdPerson = 40
 Group       = 50
-```
+~~~
 
-Semantics:
+CameraRigBehaviorDefinition contains reusable behavior tuning.
 
-- `Fixed`: target-independent authored pose.
-- `Follow`: exactly one Subject.
-- `Mounted`: exactly one Subject/mount using hard lock and target rotation.
-- `ThirdPerson`: exactly one Subject using `CinemachineThirdPersonFollow`.
-- `Group`: one or more Subjects through `CinemachineTargetGroup` and `CinemachineGroupFraming`.
+Apply/Rebuild remains Editor-owned and materializes supported Cinemachine structure before runtime.
 
-Many Subjects with `Follow` is rejected. It is never reinterpreted as `Group`.
+The target runtime instantiates a prefab that already contains the materialized Rig; it does not build an arbitrary Cinemachine graph at runtime.
 
-## Authoring a physical Output
+## Camera Subjects
 
-Create one `CameraOutputAuthoring` for each explicitly composed physical Output and assign:
+Actor Camera Subjects continue to publish:
 
-```text
-Output Definition
-Unity Camera
-CinemachineBrain
-Default Camera Rig
-```
+~~~text
+Camera Subject
+  identity
+  Observation Transform
+  optional Framing Radius
+~~~
 
-The Default Rig is required, target-independent and normally uses `Fixed`. It is not a request and carries no precedence.
+Framing Radius = 0 means unspecified.
 
-Output selection remains:
+Subject occurrence, availability revision and stale-token protections remain mandatory.
 
-```text
-force-default owner active
-  -> Default Rig
+Selection modes remain:
 
-otherwise normal CameraRequest winner exists
-  -> winner Rig
+~~~text
+AllAvailableSubjects
+ExplicitSelection
+~~~
 
-otherwise
-  -> Default Rig
-```
+Camera core does not interpret PlayerSlotId, Player index, ActorProfile, GameObject name or hierarchy.
 
-One Output may serve multiple local rigs. Do not create another Unity Camera or another Output merely to distinguish Default from gameplay presentation.
+## Player and local multiplayer integration
 
-## Authoring a Camera Composition
+Two relations remain separate:
 
-`CameraSharedComposition` owns shared gameplay participation. Assign:
+~~~text
+Player Slot -> Camera Output
 
-```text
-Subject Policy = AllAvailableSubjects
-Output Definition = exact target Output definition
-Composition Rig = explicit non-Default CameraRigComposer
-Request Precedence = explicit policy value
-```
+Player Slot -> current Camera Subject selection for a Presentation occurrence
+~~~
 
-The Composition Rig must be distinct from the Output Default Rig.
+For split-screen:
 
-Runtime flow:
+~~~text
+Player Slot -> exact Output
+  -> PlayerInput.camera
+  -> PlayerInputManager owns Camera.rect
+~~~
 
-```text
-required Subject available
-  -> current membership input
-  -> Rig presentation applied
-  -> Composition request published
+Camera does not write screen partition layout.
 
-last required Subject unavailable
-  -> Rig presentation cleared
-  -> Composition request released
-  -> Output restores winner or Default
-```
+A two-player Session therefore explicitly declares two Outputs when the game needs two physical Cameras. Player count alone never creates the second Output.
 
-Membership, presentation and request mutation are one transactional boundary. Failure restores the previous membership, rig presentation and request/output state; rollback failure remains explicit terminal diagnostic evidence.
+## Game Flow lifecycle
 
-## Actor Camera Subject
+Target lifecycle:
 
-Use `ActorCameraSubjectAuthoring` on the Actor Presentation root:
+~~~text
+Session starts
+  -> Session Outputs / Session Presentations materialize
 
-```text
-Actor Presentation
-  ActorCameraSubjectAuthoring
-    Observation Transform = exact presentation anchor / framing center
-    Framing Radius = 0 (unspecified) or positive presentation-space radius
-```
+Route enters
+  -> Route Presentations materialize
 
-`Framing Radius = 0` preserves existing behavior: a Group rig uses its authored
-`memberRadius` fallback. A positive Subject radius is consumed per member by Group
-presentation and does not alter Subject selection, request ownership or Output arbitration.
+Activity enters
+  -> Activity Presentations materialize
 
-The Actor supplies Subject evidence only. Do not move Camera request, rig or Output authority into `LocalPlayerHost`, `PlayerInput`, a Player prefab or the Player GameObject.
+Activity exits
+  -> release only Activity Presentations
 
-## Split-screen and multi-output
+Route exits
+  -> release only Route Presentations
 
-Output identity remains independent and supports explicit `1..N` Outputs. Output count is never inferred from Player count.
+Session ends
+  -> release Session camera content
+~~~
 
-For Unity automatic split-screen:
+Materialization/release uses RuntimeContent Session/Route/Activity scopes rather than a Camera-specific global manager.
 
-```text
-Player Slot -> Camera Output policy
-  -> PlayerInput.camera receives exact physical Camera
-  -> PlayerInputManager owns split layout
-```
+## Transition continuity
 
-Framework Camera does not write `Camera.rect`, `pixelRect`, target display or target texture from Composition/request topology.
+Output Defaults remain alive across gameplay presentation changes.
 
-## Request arbitration
+During covered transitions the Session Camera transition orchestration may force Default.
 
-Normal requests carry explicit identity, Output, owner/lifetime, rig, precedence and deterministic tie-break evidence.
-
-```text
-higher precedence wins
-equal precedence uses explicit deterministic tie-break
-release restores the next winner or Default
-```
-
-Route, Activity, Session and specialized policies may publish normal requests through their accepted owners. Ordinary Player/Actor participation contributes Subjects and does not intrinsically own a request.
-
-## Apply / Rebuild
-
-`CameraRigComposer` Apply/Rebuild is Editor-owned and preflights the complete model switch before mutation. It may replace only components proven Framework-owned through exact provenance. Compatible external components remain external; conflicts block explicitly.
-
-Runtime assemblies do not depend on Editor assemblies and do not discover targets through scene lookup.
+This allows outgoing Route/Activity presentation to release while loading/transition remains physically visible.
 
 ## Invalid patterns
 
 Do not introduce:
 
-- `Camera.main` or object/name/tag/hierarchy lookup;
-- service locator, global Camera registry or generic Camera manager;
-- silent fallback between presentation intents;
-- gameplay Camera request authoring on ordinary Player prefabs;
-- Route/Activity overrides to emulate ordinary Subject availability;
-- a Default Rig that requires a Subject;
-- one rig acting as both Default and Composition Rig;
-- Camera-domain writers for split-screen rectangles.
+- Camera.main authority;
+- FindObjectOfType/name/tag/hierarchy discovery as functional identity;
+- a global Camera manager/service locator;
+- Player count -> Output count inference;
+- Route/Activity-created physical Outputs;
+- gameplay and Default sharing one Rig;
+- mutable runtime state in CameraPresentationDefinition;
+- Player identity inside Camera core Subject contracts;
+- Camera request topology writing Camera.rect or other split-layout properties;
+- a second normal winner-selection system beside CameraOutputContext.
 
-## Validation checklist
+## Migration status
 
-```text
-[ ] one explicit Unity Camera and CinemachineBrain per Output
-[ ] exact CameraOutputDefinition reference
-[ ] Fixed target-independent Default Rig
-[ ] distinct gameplay Composition Rig
-[ ] explicit Composition request precedence
-[ ] Actor/Subject observation Transform is exact
-[ ] optional Subject framing radius is intentional; Group fallback remains explicit
-[ ] no request when required Subjects are absent
-[ ] request active when current Subjects are available
-[ ] leave restores Default; rejoin uses the new Subject occurrence
-[ ] no stale Follow/LookAt or stale membership revision
-[ ] PlayerInputManager remains the split-layout writer
-```
+IF-ADR-032 is the accepted target, but the package runtime is not yet migrated.
 
-Implementation and authored/static test coverage for IF-ADR-029 are present. Unity import, Edit Mode/Play Mode execution and consumer lifecycle validation must be reported separately and must not be inferred from static checks.
+Current transitional code still contains former architecture such as:
+
+~~~text
+CameraSharedComposition
+SessionCameraOverride
+RouteCameraOverride
+ActivityCameraOverride
+PlayerCameraOutputPolicyAuthoring
+PlayerCameraCompositionPolicyAuthoring
+Persistent-root Camera Output discovery
+~~~
+
+Those types are migration input, not target product architecture.
+
+Do not use their continued presence as authority to extend the former design.
+
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032.
+
+## Validation target
+
+The migrated architecture must prove at minimum:
+
+~~~text
+Default -> Presentation -> Default
+Activity -> Route restoration
+Route -> Session/Default restoration
+transition force-default continuity
+fresh Subject occurrence after rejoin/replacement
+stale evidence rejection
+transaction rollback integrity
+2 explicit Outputs for 2-camera local multiplayer
+P1/P2 Subject isolation
+PlayerInputManager remains Camera.rect writer
+Persistent Content contains no required gameplay Camera composition
+~~~

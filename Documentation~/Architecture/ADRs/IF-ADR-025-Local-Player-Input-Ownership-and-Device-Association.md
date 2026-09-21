@@ -435,12 +435,15 @@ per-device Camera
 per-Slot Camera output
 ```
 
-IF-ADR-026 changes the Camera boundary to explicit `1..N` output composition and separates
-Player Subject contribution from Camera ownership. CAMERA-026-A through H are implemented;
-the Shared runtime boundary is certified while Split/full aggregate and FIRSTGAME remain
-pending.
+IF-ADR-032 defines Camera as explicit Session-owned `1..N` Output capacity and keeps
+Player Subject contribution separate from Camera ownership. Player count never creates
+Camera Outputs and PlayerInputManager remains the external physical split-layout writer.
 
-A Local Multiplayer Sample may therefore use one Activity-owned shared Camera while independently proving multiple Player input ownership.
+The IF-ADR-032 runtime migration is pending. Historical Camera QA remains evidence for
+the former boundaries only and does not change this ADR's input-ownership contract.
+
+A Local Multiplayer Sample may prove multiple Player input ownership independently from
+the selected Camera Presentation topology.
 
 ## Public contract requirements
 
@@ -713,7 +716,7 @@ Clearing the Framework technical gate does **not** itself certify the FIRSTGAME 
 - Silent fallback from explicit device Join to device-less Join.
 - Reusing old input ownership after Slot reuse.
 - Duplicating gameplay input authority outside the existing binding/reader chain.
-- implementation of split-screen or multi-output Camera work (owned by IF-ADR-026).
+- implementation of split-screen or multi-output Camera work (owned by IF-ADR-032).
 - Treating device disconnect by itself as Session Player Leave.
 
 ## Consequences
@@ -790,4 +793,4 @@ Remaining work is consumer/sample work:
 - Device reassignment during a still-current Player occurrence.
 - Device disconnect/reconnect policy beyond current Unity Input System behavior.
 - Scene-Provided device acquisition/rebinding semantics beyond observable adopted `PlayerInput` evidence.
-- Split-screen or multi-output Camera implementation details under IF-ADR-026.
+- Split-screen or multi-output Camera implementation details under IF-ADR-032.

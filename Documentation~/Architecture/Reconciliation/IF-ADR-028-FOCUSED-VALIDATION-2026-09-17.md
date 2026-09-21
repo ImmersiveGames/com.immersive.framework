@@ -1,11 +1,13 @@
 # IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17
 
+> Historical validation only. Current normative Camera authority: [IF-ADR-032](../ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md).
+
 Status: **IMPLEMENTED = YES / TESTED = YES / INTEGRATED = YES / VALIDATED = NO**
 
 Scope: IF-ADR-028 CAMERA-028-C / CAMERA-028-D closure audit after the focused PlayerInput split-screen implementation.
 
 Related:
-- [IF-ADR-028 — Camera Output Participation and Physical Presentation Ownership](../ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
+- IF-ADR-028 — Camera Output Participation and Physical Presentation Ownership (historical boundary)
 - [Camera Output Participation and Physical Presentation Ownership Reconciliation](IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 - [Camera Full Technical Certification — 2026-09-16](IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-16.md)
 

@@ -1,16 +1,16 @@
 # IF-ADR-010 — Editor and Inspector Product Surface Authority
 
-Status: **Accepted / Reconciled for Camera ADR-022 2026-08-15**  
+Status: **Accepted / Camera Class C contract consolidated by IF-ADR-032; historical ADR-022 evidence retained**  
 Last updated: **2026-08-20**  
 Normative classification: **Minimum product-surface standard accepted**  
 Package conformity audit: **CLOSED — IF-ADR-010B**  
 Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
 IF-ADR-010C: **CANCELLED / NOT REQUIRED**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-004, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-022
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-032
 
 > ADR-010 defines the product-surface rules.
 > It does not require equal tooling depth for every feature.
-> IF-ADR-022 is now a concrete Class C example of deterministic,
+> IF-ADR-032 preserves CameraRigComposer as a concrete Class C example of deterministic,
 > ownership-safe Editor materialization.
 
 ## 1. Context
@@ -492,7 +492,7 @@ diagnostics
 Editor safety
 ```
 
-`CameraRigComposer` under IF-ADR-022 is the current canonical Class C example.
+`CameraRigComposer` under IF-ADR-032 remains the current canonical Class C example.
 
 ## 7. Architecture by need, not checklist
 
@@ -533,10 +533,10 @@ Current package classification:
 
 The original package audit found no generalized missing-tooling program.
 
-IF-ADR-022 is an independently justified Camera-specific Class C expansion, not
+The Camera Class C materialization contract now consolidated by IF-ADR-032 remains an independently justified Camera-specific expansion, not
 a reversal of IF-ADR-010B.
 
-## 9. Camera reconciliation — IF-ADR-022
+## 9. Camera product-surface reconciliation — IF-ADR-032
 
 The previous Camera note that Camera was only a future Class C reference is now
 superseded by an implemented concrete surface.
@@ -638,7 +638,7 @@ Advanced / Diagnostics
 
 ADR-010 still does **not** require synthetic Inspector UX certification.
 
-The IF-ADR-022 QA exists because Camera Class C materialization has deterministic
+The historical Camera Class C QA remains relevant because materialization has deterministic
 technical risks:
 
 ```text
@@ -681,8 +681,7 @@ Consumer UX Evidence
   real-game observation in FIRSTGAME
 ```
 
-The Camera package surface and its technical materialization are complete for
-IF-ADR-022 C1-C5.
+The former Camera Class C boundary was technically certified under historical IF-ADR-022 C1-C5. IF-ADR-032 is now the normative Camera authority and preserves those materialization invariants while reopening broader Camera authoring/lifecycle.
 
 FIRSTGAME C6 remains real-consumer proof and does not demote the technical
 certification.
@@ -703,7 +702,7 @@ IF-ADR-010C — Canonical Editor Product-Surface QA
 If a system needs technical Editor QA, that test belongs to the system's own
 technical contract.
 
-IF-ADR-022 follows that rule.
+The Camera materialization contract consolidated by IF-ADR-032 follows that rule.
 
 ## 13. Consequences
 
@@ -731,7 +730,7 @@ Class C features carry stronger technical QA obligations
 
 The normative ADR remains complete.
 
-The Camera-specific reconciliation is also complete for IF-ADR-022 C1-C5.
+The historical Camera-specific Class C reconciliation remains complete for its executed boundary; current Camera architecture authority is IF-ADR-032.
 
 No generalized ADR-010 implementation program is reopened.
 

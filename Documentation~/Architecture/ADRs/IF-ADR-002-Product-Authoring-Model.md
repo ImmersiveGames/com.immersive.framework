@@ -269,8 +269,8 @@ IF-ADR-003 / 012 / 015 / 016
   Player participation, provisioning and session profiles demonstrate direct authoring
   plus reusable Profile intent where reuse is real
 
-IF-ADR-004
-  Camera demonstrates justified technical materialization rather than a universal pattern
+IF-ADR-032
+  Camera demonstrates justified technical materialization and reusable Presentation authoring rather than a universal pattern
 
 IF-ADR-005
   Pause / Input / Reset demonstrates small direct trigger/component authoring

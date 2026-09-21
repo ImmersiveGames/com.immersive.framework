@@ -38,19 +38,19 @@ ADRs decide architecture. Reconciliation records preserve what was actually impl
 
 ### Camera — current normative baseline
 
-- [IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
-- [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
-- [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
-- [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
-- [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](Architecture/Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)
+- [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
 - [Camera Usage](Guides/Camera-Usage.md)
 
-Historical Camera evidence:
+IF-ADR-032 is the single current Camera architecture authority. The former Camera ADR chain (004, 004C, 022, 026–031) has been removed from the active ADR set after consolidation.
 
+Historical Camera reconciliation/certification records remain dated evidence for the implementation boundaries they executed; they are not normative IF-ADR-032 architecture and do not certify the pending migration.
+
+Historical Camera evidence includes:
+
+- [IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](Architecture/Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md)
 - [Camera Full Technical Certification — 2026-09-12](Architecture/Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 - [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Architecture/Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 - [Camera Presentation Technical Certification — 2026-08-15](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-CAMERA-PRESENTATION-TECHNICAL-CERTIFICATION-2026-08-15.md)
-- [Camera Default Output Presentation Authority — 2026-08-17](Architecture/Reconciliation/IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
 
 ### Player — current normative baseline
 
@@ -107,36 +107,26 @@ Scene-Provided prepared physical Actor replacement remains outside the current A
 
 ### Camera
 
-The current Camera architecture is governed by IF-ADR-029. Earlier certification records remain dated evidence and do not certify this final boundary.
+The current normative Camera architecture is IF-ADR-032.
 
-Current normative separation:
+~~~text
+GameApplication / Session
+  -> explicit physical Outputs + Defaults
 
-```text
-Camera Subject(s)
-  -> Camera Composition
-  -> CameraRigComposer
+Session / Route / Activity
+  -> CameraPresentationDefinition
+  -> CameraPresentationRuntime
+  -> materialized CameraRigComposer
   -> CameraRequest
   -> CameraOutputSession
   -> Camera Output
-```
+~~~
 
-Presentation intents are `Fixed`, `Follow`, `Mounted`, `ThirdPerson` and `Group`. Composition owns Subject membership and request participation; Rig owns local presentation; Output owns the Unity Camera, CinemachineBrain, Default Rig and arbitration/session.
+Session owns physical Camera capacity. Session / Route / Activity own Presentation intent. Camera Subjects provide current observable evidence. CameraOutputContext remains the only normal winner authority. PlayerInputManager remains the physical split-layout writer.
 
-`PlayerInputManager` remains responsible only for physical split count, `Camera.rect` and split recomposition. Player count does not determine Output count.
+IF-ADR-032 is accepted target architecture; runtime migration is pending through CAMERA-032-A..F.
 
-Current implementation state:
-
-```text
-CAMERA-029-A..E  IMPLEMENTED / COMMITTED
-CAMERA-029-F     IMPLEMENTED LOCALLY
-Unity tested     NO
-Validated        NO
-Certified        NO
-```
-
-See `Architecture/Reconciliation/` for historical certification records scoped to their original boundaries.
-
-Request arbitration, output-owned Default Rig semantics, force-default ownership, typed Output/Rig Behavior definitions and `CameraRigComposer` materialization authority remain preserved.
+The 2026-09-21 IF-ADR-029/030 certification remains historical evidence for the former CameraSharedComposition implementation and must not be represented as IF-ADR-032 certification.
 
 ### Activity content / visibility
 
@@ -157,7 +147,6 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [001](Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md) | Core lifecycle and runtime authority | Accepted / Reconciled / Implemented |
 | [002](Architecture/ADRs/IF-ADR-002-Product-Authoring-Model.md) | Product authoring model | Accepted / Reconciled / Implemented |
 | [003](Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md) | Player participation and Actor lifecycle | Accepted / Reconciled / Implemented |
-| [004](Architecture/ADRs/IF-ADR-004-Camera-Requests-and-Output-Authority.md) | Camera requests and output authority | Request/Default core preserved; evolved topology/layout governed by 026/028 |
 | [005](Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) | Input, Pause, Gate and Reset | Accepted / Reconciled / Implemented |
 | [006](Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md) | Loading, transition, persistence and diagnostics | Accepted / Reconciled / Implemented |
 | [007](Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md) | Activity entry readiness and reveal gating | Accepted / Reconciled |
@@ -175,14 +164,10 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented |
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route Spatial Entry and Activity explicit relocation | Accepted / Reconciled / Implemented |
-| [022](Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md) | Camera Rig presentation models and materialization authority | Accepted / Implemented; Group added by 029 |
 | [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
-| [026](Architecture/ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md) | Camera Subjects, Composition and multi-output topology | Accepted / reconciled by 029 |
-| [027](Architecture/ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md) | Camera authoring definitions and composition authority | Accepted / reconciled by 029 |
-| [028](Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md) | Camera Output participation and physical presentation ownership | Accepted / participation reconciled by 029 |
-| [029](Architecture/ADRs/IF-ADR-029-Camera-Composition-Group-Presentation-and-Camera-View-Removal.md) | Camera Composition, Group presentation and removal of the former intermediate authority | A–E committed; F implemented locally; Unity validation pending |
+| [032](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md) | Camera unified authority, Session Outputs, Presentations, Subjects and lifecycle | Accepted target architecture / implementation migration pending |
 
 ## Current reconciliation / certification records
 
