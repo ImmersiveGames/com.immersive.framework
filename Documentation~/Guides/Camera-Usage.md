@@ -1,6 +1,6 @@
 # Camera Usage
 
-Status: **IF-ADR-032 target architecture accepted / runtime migration pending**  
+Status: **IF-ADR-032 target architecture / CAMERA-032-A implemented / B–F pending**  
 Last updated: **2026-09-21**
 
 Normative Camera authority:
@@ -208,7 +208,24 @@ Do not introduce:
 
 ## Migration status
 
-IF-ADR-032 is the accepted target, but the package runtime is not yet migrated.
+IF-ADR-032 is the accepted target. CAMERA-032-A has started the runtime migration.
+
+Current CUT A split:
+
+~~~text
+CameraSharedComposition
+  serialized transitional authoring + Unity lifecycle adapter
+        |
+        v
+CameraPresentationRuntime
+  membership
+  availability / selection subscriptions
+  Rig transaction
+  request publication / release
+  rollback
+~~~
+
+The extracted runtime is not a MonoBehaviour. Outputs and Game Flow authoring are intentionally unchanged until later cuts.
 
 Current transitional code still contains former architecture such as:
 
@@ -226,7 +243,7 @@ Those types are migration input, not target product architecture.
 
 Do not use their continued presence as authority to extend the former design.
 
-Migration is tracked by CAMERA-032-A..F in IF-ADR-032.
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is implemented but Unity import/tests have not yet been executed; do not treat CUT A as certified.
 
 ## Validation target
 

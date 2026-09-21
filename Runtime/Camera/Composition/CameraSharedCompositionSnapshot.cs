@@ -5,12 +5,12 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Minimal deterministic diagnostic snapshot of one Camera composition's current state.
+    /// Minimal deterministic diagnostic snapshot of one Camera Presentation occurrence's current state.
     /// It exposes evidence for QA without exposing large internal implementation objects.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-029-D transactional Composition reconciliation diagnostics.")]
+        "CAMERA-032-A preserved Presentation runtime transaction diagnostics.")]
     public readonly struct CameraSharedCompositionSnapshot
     {
         public CameraSharedCompositionSnapshot(

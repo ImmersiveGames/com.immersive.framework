@@ -1,6 +1,6 @@
 # IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle
 
-Status: **Accepted target architecture / implementation migration pending**  
+Status: **Accepted target architecture / CAMERA-032-A implemented / migration continues**  
 Accepted: **2026-09-21**  
 Type: architecture / Camera / authoring / runtime lifecycle / physical output / multiplayer  
 Normative authority: **This is the single current Camera architecture decision for Immersive Framework.**
@@ -708,12 +708,29 @@ preserving scene-object Camera composition only for backward compatibility
 
 IF-ADR-032 is accepted before runtime migration. Current code remains a transitional implementation until the cuts below complete.
 
-### CAMERA-032-A — Presentation runtime extraction
+### CAMERA-032-A — Presentation runtime extraction — IMPLEMENTED
 
-- extract the runtime state/transaction behavior currently concentrated in CameraSharedComposition;
-- create CameraPresentationRuntime or equivalent non-MonoBehaviour occurrence authority;
-- preserve membership, stale protection, request participation and rollback tests;
-- do not yet move Outputs or Game Flow authoring.
+Delivered in this cut:
+
+- `CameraPresentationRuntime` is the non-MonoBehaviour occurrence authority;
+- membership, availability/selection subscriptions, consumed-selection revision, Rig transaction, request publication/release and rollback moved out of `CameraSharedComposition`;
+- `CameraSharedComposition` is reduced to serialized authoring fields, dependency-injection interfaces and Unity enable/disable adaptation;
+- existing serialized Camera authoring shape is intentionally retained for migration safety during CUT A;
+- request owner/lifetime remains `Composition` in this cut and is not yet reconciled to Session/Route/Activity;
+- Outputs and Game Flow authoring are intentionally unchanged;
+- package tests that inspected old private composition state now inspect the extracted runtime instead.
+
+Validation state:
+
+~~~text
+Static code review       PASS
+Unity import/compile     NOT RUN in this cut
+Package Unity tests      NOT RUN in this cut
+QAFramework              NOT RUN
+Consumer migration       NOT STARTED
+~~~
+
+CUT A is implementation-complete but not technically certified until Unity execution evidence is recorded.
 
 ### CAMERA-032-B — Presentation definition and Rig prefab
 

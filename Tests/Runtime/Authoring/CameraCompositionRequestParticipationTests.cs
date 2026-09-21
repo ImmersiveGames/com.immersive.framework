@@ -270,9 +270,11 @@ namespace Immersive.Framework.Authoring.Tests
             using var fixture = new Fixture(CameraRigPresentationIntent.Follow);
             CameraSubjectAvailabilityToken token = fixture.AddSubject("subject-a");
             Transform previousFollow = fixture.CompositionRig.CinemachineCamera.Follow;
+            object runtime =
+                GetField<object>(fixture.Composition, "_runtime");
             ICameraRequestPublisher current =
-                GetField<ICameraRequestPublisher>(fixture.Composition, "_requestPublisher");
-            SetField(fixture.Composition, "_requestPublisher",
+                GetField<ICameraRequestPublisher>(runtime, "_requestPublisher");
+            SetField(runtime, "_requestPublisher",
                 new RejectingCameraRequestPublisher(current.Request));
 
             fixture.RemoveSubject(token);
@@ -370,8 +372,10 @@ namespace Immersive.Framework.Authoring.Tests
         {
             using var fixture = new Fixture(CameraRigPresentationIntent.Group);
             fixture.AddSubject("subject-a");
+            object runtime =
+                GetField<object>(fixture.Composition, "_runtime");
             CameraCompositionMembershipContext membership =
-                GetField<CameraCompositionMembershipContext>(fixture.Composition, "_membership");
+                GetField<CameraCompositionMembershipContext>(runtime, "_membership");
             CameraCompositionMembershipSnapshot previous = membership.Snapshot;
             fixture.AddSubject("subject-b");
             CameraCompositionMembershipSnapshot expectedCurrent = membership.Snapshot;

@@ -340,7 +340,7 @@ Implementation status:
 
 ~~~text
 IF-ADR-032          ACCEPTED
-CAMERA-032-A        NOT STARTED
+CAMERA-032-A        IMPLEMENTED / UNITY NOT RUN
 CAMERA-032-B        NOT STARTED
 CAMERA-032-C        NOT STARTED
 CAMERA-032-D        NOT STARTED
@@ -364,7 +364,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-032 is accepted as the single target architecture. Runtime migration CAMERA-032-A..F is pending. CAMERA-031-C is superseded and must not be implemented against the former persistent Composition topology. Prior 029/030/031 evidence remains historical.
+3. **Camera** — IF-ADR-032 is the single target architecture. CAMERA-032-A is implemented: mutable Composition runtime state was extracted into non-MonoBehaviour `CameraPresentationRuntime`, while `CameraSharedComposition` is now a transitional Unity authoring/lifecycle adapter. Unity/package QA has not been run for CUT A. CAMERA-032-B..F remain pending; CAMERA-031-C is superseded.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
