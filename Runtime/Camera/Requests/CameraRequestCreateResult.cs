@@ -51,6 +51,33 @@ namespace Immersive.Framework.Camera
             string diagnosticSource,
             string diagnosticReason)
         {
+            return Create(
+                requestId,
+                outputId,
+                owner,
+                lifetime,
+                rig,
+                targetSource,
+                policy,
+                CameraPresentationTransitionMode.Blend,
+                releaseCondition,
+                diagnosticSource,
+                diagnosticReason);
+        }
+
+        public static CameraRequestCreateResult Create(
+            CameraRequestId requestId,
+            CameraOutputId outputId,
+            CameraRequestOwner owner,
+            CameraRequestLifetime lifetime,
+            CameraRigReference rig,
+            CameraTargetSourceDescriptor targetSource,
+            CameraRequestPolicy policy,
+            CameraPresentationTransitionMode presentationTransitionMode,
+            CameraRequestReleaseCondition releaseCondition,
+            string diagnosticSource,
+            string diagnosticReason)
+        {
             if (!requestId.IsValid)
                 return Blocked("camera.request.id.missing", "Camera request id is required.");
 
@@ -68,6 +95,16 @@ namespace Immersive.Framework.Camera
 
             if (targetSource.IsNone)
                 return Blocked("camera.request.target-source.missing", "Camera request target source is required.");
+
+            if (presentationTransitionMode !=
+                    CameraPresentationTransitionMode.Blend &&
+                presentationTransitionMode !=
+                    CameraPresentationTransitionMode.Cut)
+            {
+                return Blocked(
+                    "camera.request.presentation-transition.invalid",
+                    "Camera request requires an explicitly supported Presentation transition mode.");
+            }
 
             if (releaseCondition == CameraRequestReleaseCondition.Undefined)
                 return Blocked("camera.request.release-condition.missing", "Camera request release condition is required.");
@@ -88,6 +125,7 @@ namespace Immersive.Framework.Camera
                 rig,
                 targetSource,
                 policy,
+                presentationTransitionMode,
                 releaseCondition,
                 normalizedDiagnosticSource,
                 normalizedDiagnosticReason);

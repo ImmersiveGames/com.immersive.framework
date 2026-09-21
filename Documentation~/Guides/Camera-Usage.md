@@ -113,6 +113,7 @@ Create the first proof manually in Unity:
    Rig Prefab = prefab from steps 1-5
    Subject Policy = AllAvailableSubjects for the first proof
    Request Precedence = explicit value appropriate for the proof topology
+- **Transition Mode** — `Blend` preserves the Camera Output Brain's authored blend/custom-blend policy; `Cut` enters this Presentation immediately without visual interpolation.
 
 8. Open the active GameApplication.
 9. Camera > Session Presentations:

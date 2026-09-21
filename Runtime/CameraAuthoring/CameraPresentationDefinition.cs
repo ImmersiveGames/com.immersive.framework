@@ -37,6 +37,12 @@ namespace Immersive.Framework.CameraAuthoring
         [Tooltip("Prefab containing exactly one already-materialized CameraRigComposer. Runtime instantiates this prefab; it does not rebuild Cinemachine structure.")]
         private GameObject rigPrefab;
 
+        [Header("Transition")]
+        [SerializeField]
+        [Tooltip("Controls how this Presentation enters when it becomes the winning request. Blend uses the Output Brain's authored blend settings; Cut enters the view immediately.")]
+        private CameraPresentationTransitionMode transitionMode =
+            CameraPresentationTransitionMode.Blend;
+
         [Header("Subjects")]
         [SerializeField]
         [Tooltip("Selects how current Camera Subjects are chosen for this Presentation occurrence.")]
@@ -65,6 +71,9 @@ namespace Immersive.Framework.CameraAuthoring
 
         public GameObject RigPrefab => rigPrefab;
 
+        public CameraPresentationTransitionMode TransitionMode =>
+            transitionMode;
+
         public CameraSharedCompositionSubjectPolicyKind SubjectPolicy =>
             subjectPolicy;
 
@@ -90,6 +99,16 @@ namespace Immersive.Framework.CameraAuthoring
             {
                 issue =
                     "Camera Presentation definition requires an explicit Rig Prefab.";
+                return false;
+            }
+
+            if (transitionMode !=
+                    CameraPresentationTransitionMode.Blend &&
+                transitionMode !=
+                    CameraPresentationTransitionMode.Cut)
+            {
+                issue =
+                    "Camera Presentation definition requires an explicitly supported Transition mode.";
                 return false;
             }
 

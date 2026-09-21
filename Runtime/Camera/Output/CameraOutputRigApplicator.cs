@@ -10,6 +10,8 @@ namespace Immersive.Framework.Camera
     public sealed class CameraOutputRigApplicator : ICameraOutputApplication
     {
         private readonly CameraOutputBinding _binding;
+        private readonly CinemachineBlendDefinition _baselineDefaultBlend;
+        private readonly CinemachineBlenderSettings _baselineCustomBlends;
 
         private bool _hasAppliedRequest;
         private bool _hasAppliedDefault;
@@ -26,6 +28,8 @@ namespace Immersive.Framework.Camera
             }
 
             this._binding = binding;
+            _baselineDefaultBlend = binding.Brain.DefaultBlend;
+            _baselineCustomBlends = binding.Brain.CustomBlends;
         }
 
         public CameraOutputBinding Binding => _binding;
@@ -79,6 +83,8 @@ namespace Immersive.Framework.Camera
             {
                 _appliedCamera.enabled = false;
             }
+
+            RestoreOutputBlendPolicy();
 
             _hasAppliedRequest = false;
             _hasAppliedDefault = false;
@@ -140,6 +146,8 @@ namespace Immersive.Framework.Camera
             }
 
             CinemachineCamera previous = _appliedCamera;
+
+            RestoreOutputBlendPolicy();
 
             if (previous != null && previous != targetCamera)
             {
@@ -224,12 +232,21 @@ namespace Immersive.Framework.Camera
 
             CinemachineCamera previous = _appliedCamera;
 
+            ApplyPresentationTransitionPolicy(
+                winner.PresentationTransitionMode);
+
             if (previous != null && previous != targetCamera)
             {
                 previous.enabled = false;
             }
 
             targetCamera.enabled = true;
+
+            if (winner.PresentationTransitionMode ==
+                    CameraPresentationTransitionMode.Cut)
+            {
+                _binding.Brain.ActiveBlend = null;
+            }
 
             _hasAppliedRequest = true;
             _hasAppliedDefault = false;
@@ -242,7 +259,29 @@ namespace Immersive.Framework.Camera
                 previous,
                 targetCamera,
                 Array.Empty<CameraIssue>(),
-                $"Camera output applied winner. request='{winner.RequestId}' camera='{targetCamera.name}' output='{_binding.OutputId}'.");
+                $"Camera output applied winner. request='{winner.RequestId}' camera='{targetCamera.name}' output='{_binding.OutputId}' transition='{winner.PresentationTransitionMode}'.");
+        }
+
+        private void ApplyPresentationTransitionPolicy(
+            CameraPresentationTransitionMode transitionMode)
+        {
+            if (transitionMode == CameraPresentationTransitionMode.Cut)
+            {
+                _binding.Brain.CustomBlends = null;
+                _binding.Brain.DefaultBlend =
+                    new CinemachineBlendDefinition(
+                        CinemachineBlendDefinition.Styles.Cut,
+                        0f);
+                return;
+            }
+
+            RestoreOutputBlendPolicy();
+        }
+
+        private void RestoreOutputBlendPolicy()
+        {
+            _binding.Brain.DefaultBlend = _baselineDefaultBlend;
+            _binding.Brain.CustomBlends = _baselineCustomBlends;
         }
 
         private CameraOutputApplyResult Blocked(

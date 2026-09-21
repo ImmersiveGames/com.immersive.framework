@@ -40,6 +40,26 @@ namespace Immersive.Framework.Authoring.Tests
             Assert.That(
                 fixture.Definition.RigPrefab,
                 Is.SameAs(fixture.RigPrefab));
+            Assert.That(
+                fixture.Definition.TransitionMode,
+                Is.EqualTo(CameraPresentationTransitionMode.Cut));
+        }
+
+        [Test]
+        public void DefinitionRejectsUnsupportedTransitionMode()
+        {
+            using var fixture = new Fixture();
+            SetField(
+                fixture.Definition,
+                "transitionMode",
+                CameraPresentationTransitionMode.Undefined);
+
+            Assert.That(
+                fixture.Definition.TryValidate(out string issue),
+                Is.False);
+            Assert.That(
+                issue,
+                Does.Contain("Transition mode"));
         }
 
         [Test]
@@ -84,6 +104,9 @@ namespace Immersive.Framework.Authoring.Tests
             Assert.That(result.Handle.RigRoot, Is.Not.Null);
             Assert.That(result.Handle.RigComposer, Is.Not.Null);
             Assert.That(result.Handle.PresentationRuntime, Is.Not.Null);
+            Assert.That(
+                result.Handle.PresentationRuntime.TransitionMode,
+                Is.EqualTo(CameraPresentationTransitionMode.Cut));
             Assert.That(
                 result.Handle.PresentationRuntime,
                 Is.Not.InstanceOf<MonoBehaviour>());
@@ -234,6 +257,10 @@ namespace Immersive.Framework.Authoring.Tests
                     "subjectPolicy",
                     CameraSharedCompositionSubjectPolicyKind
                         .AllAvailableSubjects);
+                SetField(
+                    Definition,
+                    "transitionMode",
+                    CameraPresentationTransitionMode.Cut);
                 SetField(
                     Definition,
                     "requestPrecedence",

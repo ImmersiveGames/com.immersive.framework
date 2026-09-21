@@ -2109,6 +2109,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                         "subjectPolicy",
                         definition.SubjectPolicy),
                     LogFields.Field(
+                        "transitionMode",
+                        definition.TransitionMode),
+                    LogFields.Field(
                         "requestPrecedence",
                         definition.RequestPrecedence));
             }

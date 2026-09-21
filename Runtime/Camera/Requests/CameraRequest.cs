@@ -18,6 +18,7 @@ namespace Immersive.Framework.Camera
             CameraRigReference rig,
             CameraTargetSourceDescriptor targetSource,
             CameraRequestPolicy policy,
+            CameraPresentationTransitionMode presentationTransitionMode,
             CameraRequestReleaseCondition releaseCondition,
             string diagnosticSource,
             string diagnosticReason)
@@ -29,6 +30,7 @@ namespace Immersive.Framework.Camera
             Rig = rig;
             TargetSource = targetSource;
             Policy = policy;
+            PresentationTransitionMode = presentationTransitionMode;
             ReleaseCondition = releaseCondition;
             DiagnosticSource = diagnosticSource.NormalizeText();
             DiagnosticReason = diagnosticReason.NormalizeText();
@@ -48,6 +50,8 @@ namespace Immersive.Framework.Camera
 
         public CameraRequestPolicy Policy { get; }
 
+        public CameraPresentationTransitionMode PresentationTransitionMode { get; }
+
         public CameraRequestReleaseCondition ReleaseCondition { get; }
 
         public string DiagnosticSource { get; }
@@ -61,6 +65,10 @@ namespace Immersive.Framework.Camera
             Lifetime.IsValid &&
             Rig.IsValid &&
             !TargetSource.IsNone &&
+            (PresentationTransitionMode ==
+                 CameraPresentationTransitionMode.Blend ||
+             PresentationTransitionMode ==
+                 CameraPresentationTransitionMode.Cut) &&
             ReleaseCondition != CameraRequestReleaseCondition.Undefined &&
             !string.IsNullOrWhiteSpace(DiagnosticSource) &&
             !string.IsNullOrWhiteSpace(DiagnosticReason);

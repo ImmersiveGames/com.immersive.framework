@@ -22,6 +22,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(serializedObject.FindProperty("outputDefinition"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("rigPrefab"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("transitionMode"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("requestPrecedence"));
         }

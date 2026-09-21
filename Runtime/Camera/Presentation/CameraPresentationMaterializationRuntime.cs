@@ -183,7 +183,8 @@ namespace Immersive.Framework.Camera
                     definition.OutputDefinition,
                     definition.SubjectPolicy,
                     rigComposer,
-                    definition.RequestPrecedence);
+                    definition.RequestPrecedence,
+                    definition.TransitionMode);
 
                 var handle =
                     new CameraPresentationMaterializationHandle(

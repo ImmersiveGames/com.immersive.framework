@@ -27,6 +27,8 @@ namespace Immersive.Framework.Camera
         private CameraOutputDefinition _outputDefinition;
         private CameraRigComposer _compositionRig;
         private int _requestPrecedence;
+        private CameraPresentationTransitionMode _transitionMode =
+            CameraPresentationTransitionMode.Blend;
 
         private bool _enabled;
         private bool _disposed;
@@ -53,6 +55,9 @@ namespace Immersive.Framework.Camera
 
         internal CameraOutputAuthoring Output => _output;
 
+        internal CameraPresentationTransitionMode TransitionMode =>
+            _transitionMode;
+
         internal ICameraCompositionSubjectSelectionSource SubjectSelectionSource =>
             _selection;
 
@@ -77,7 +82,8 @@ namespace Immersive.Framework.Camera
             CameraOutputDefinition outputDefinition,
             CameraSharedCompositionSubjectPolicyKind subjectPolicy,
             CameraRigComposer compositionRig,
-            int requestPrecedence)
+            int requestPrecedence,
+            CameraPresentationTransitionMode transitionMode)
         {
             ThrowIfDisposed();
 
@@ -85,7 +91,8 @@ namespace Immersive.Framework.Camera
                 ReferenceEquals(_outputDefinition, outputDefinition) &&
                 _subjectPolicy == subjectPolicy &&
                 ReferenceEquals(_compositionRig, compositionRig) &&
-                _requestPrecedence == requestPrecedence;
+                _requestPrecedence == requestPrecedence &&
+                _transitionMode == transitionMode;
             if (unchanged)
             {
                 return;
@@ -106,6 +113,7 @@ namespace Immersive.Framework.Camera
             _subjectPolicy = subjectPolicy;
             _compositionRig = compositionRig;
             _requestPrecedence = requestPrecedence;
+            _transitionMode = transitionMode;
         }
 
         internal void SetEnabled(bool enabled)
@@ -906,6 +914,7 @@ namespace Immersive.Framework.Camera
                     new CameraRequestPolicy(
                         _requestPrecedence,
                         _membershipContextId),
+                    _transitionMode,
                     CameraRequestReleaseCondition.EligibilityLost,
                     nameof(CameraPresentationRuntime),
                     "Current Camera Presentation is presentable.");
