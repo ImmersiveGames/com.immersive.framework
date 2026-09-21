@@ -723,14 +723,29 @@ Delivered in this cut:
 Validation state:
 
 ~~~text
-Static code review       PASS
-Unity import/compile     NOT RUN in this cut
-Package Unity tests      NOT RUN in this cut
-QAFramework              NOT RUN
-Consumer migration       NOT STARTED
+Static code review                 PASS
+Unity import/compile               PASS — consumer reported
+QAFramework Structural             NOT RUN
+QAFramework Shared                 NOT RUN
+QAFramework Generic request/output NOT RUN
+Consumer migration                 NOT STARTED
 ~~~
 
-CUT A is implementation-complete but not technically certified until Unity execution evidence is recorded.
+Primary CUT A validation is the QAFramework Camera rail, not package NUnit tests.
+
+Required focused evidence:
+
+~~~text
+Structural regression              10/10
+Shared Camera lifecycle            10/10
+Generic request/output fixture     11/11
+----------------------------------------
+CAMERA-032-A focused QA            31/31
+~~~
+
+Package-local NUnit tests may remain supporting implementation tests, but they are not the technical certification gate for this project.
+
+CUT A is implementation-complete but not technically certified until the focused QAFramework evidence is recorded.
 
 ### CAMERA-032-B — Presentation definition and Rig prefab
 
