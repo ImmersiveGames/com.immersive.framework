@@ -53,8 +53,9 @@ namespace Immersive.Framework.Camera
                     "Camera Presentation materialization requires a valid RuntimeContent scope context.");
             }
 
+            string definitionIssue = string.Empty;
             if (definition == null ||
-                !definition.TryValidate(out string definitionIssue))
+                !definition.TryValidate(out definitionIssue))
             {
                 return CameraPresentationMaterializationResult.Failure(
                     CameraPresentationMaterializationStatus
