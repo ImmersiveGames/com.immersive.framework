@@ -7,7 +7,9 @@ Type: architecture / Camera Subject / Group framing
 Reconciles: IF-ADR-026 and IF-ADR-029
 
 Implementation: **CAMERA-030-A implemented; package-local contract test authored**
-Unity tested: **NO**
+Consumer integration: **YES — LocalMultiplayer current Group Camera consumer**
+Consumer Unity tested: **YES — manual Play Mode, 2026-09-20**
+Package-local Unity tests executed: **NO**
 QAFramework tested: **NO**
 Technically validated: **NO**
 Certified: **NO**
@@ -122,3 +124,18 @@ existing Subject producers remain source-compatible
 
 Package-local tests may prove the projection contract, but they are not treated as executed
 QA evidence until run through the accepted QAFramework environment.
+
+
+## 7. Consumer integration evidence — 2026-09-20
+
+Dated consumer evidence is preserved in:
+
+[IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20](../Reconciliation/IF-ADR-030-LOCAL-MULTIPLAYER-CONSUMER-UNITY-PROOF-2026-09-20.md)
+
+The Local Multiplayer consumer uses dedicated Group Actor Presentations with explicit
+`ActorCameraSubjectAuthoring` observation anchors and per-Subject framing radii. Manual
+Play Mode confirmed the current consumer path is functional with the dedicated P1/P2 Actor
+profiles, local-multiplayer movement and shared Group Camera presentation.
+
+This evidence proves consumer integration of CAMERA-030-A. It does not relabel the
+package-local test as executed QA evidence and does not certify the broader Camera suite.

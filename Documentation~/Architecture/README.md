@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-17**
+Last updated: **2026-09-20**
 
 ## Normative architecture
 
@@ -299,11 +299,12 @@ Composition owns membership, stale protection and current presentation input. Ri
 Current Camera architecture state:
 
 ```text
-CAMERA-029-A..E  IMPLEMENTED / COMMITTED
-CAMERA-029-F     IMPLEMENTED LOCALLY
-Unity tested     NO
-Validated        NO
-Certified        NO
+CAMERA-029-A..F  IMPLEMENTED / COMMITTED
+CAMERA-030-A      IMPLEMENTED / COMMITTED
+Consumer Unity    PASS — LocalMultiplayer manual Play Mode 2026-09-20
+Framework QA      NOT RUN for CAMERA-029/030 final boundary
+Validated         NO
+Certified         NO
 ```
 
 Historical integrated Camera evidence:
@@ -328,6 +329,8 @@ Shared baseline restore                                PASS
 ```
 
 The 2026-09-14 run certifies the logical View→Output / Output-participation boundary through CAMERA-028-B and CAMERA-027-D2. CAMERA-026-I was certified on 2026-09-16. The 2026-09-17 focused session adds CAMERA-028-C physical-presentation behavior PASS and CAMERA-028-D 33/33 functional PASS; final ADR-028 validation remains open on read-only preflight and cleanup/reentrancy evidence.
+
+Current consumer evidence for the post-CAMERA-029 Group path is recorded separately in [IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20](Reconciliation/IF-ADR-030-LOCAL-MULTIPLAYER-CONSUMER-UNITY-PROOF-2026-09-20.md). It proves the Local Multiplayer consumer path with per-Subject framing evidence; it is not a replacement for QAFramework certification.
 
 Previous focused Shared Camera evidence remains:
 
@@ -481,7 +484,7 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified and revalidated; I remains pending. Corrected Full Camera is 39/39 established cases, ADR-026 2/2, active dimensions 8/8.
 - IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is implemented/certified 2026-09-14; E remains deferred; F final consumer closure waits corrected layout/integration implementation.
 - IF-ADR-028 — **Accepted / implemented / tested / integrated; validation open**. CAMERA-028-A/B are certified, CAMERA-028-C focused behavior is PASS, and CAMERA-028-D has 33/33 focused functional PASS. Final validation awaits read-only preflight and cleanup/reentrancy proof.
-- IF-ADR-030 — **Accepted / implemented; Unity and QA validation pending**. Camera Subjects may publish an optional presentation-space framing radius centered on their Observation; Group consumes it per member and retains the Group Behavior member radius as fallback.
+- IF-ADR-030 — **Accepted / implemented / consumer-integrated**. Local Multiplayer manual Play Mode PASS on 2026-09-20 proves the current Group consumer uses per-Subject framing evidence; QAFramework execution, technical validation and certification remain pending.
 
 ## Historical certification records
 
