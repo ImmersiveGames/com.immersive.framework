@@ -2,7 +2,7 @@
 
 Status: **Active — current implemented baseline + Stage B consumer evidence; CAMERA-028 A/B certified, C focused behavior PASS, D implemented/tested/integrated with 33/33 functional PASS; final ADR-028 validation and consumer closure remain open**
 
-Last updated: **2026-09-17**
+Last updated: **2026-09-21**
 
 ## Authority and status model
 
@@ -142,6 +142,8 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 026 | REOPENED — A..G retained; H superseded; H2 certified; I certified 2026-09-16 | corrected Full Camera 39/39 + ADR-026 2/2 + Player→Camera integration PASS | viewport-free topology and Player→Camera Subject integration current |
 | 027 | REOPENED — A/B/C retained; D2 certified; E deferred; F final closure waits corrected boundary | D2 corrected logical association certified 2026-09-14 | authoring viewport removed; final consumer closure pending |
 | 028 | ACCEPTED / IMPLEMENTED — A/B certified; C focused behavior PASS; D implemented/tested/integrated | CAMERA-028-D 33/33 focused functional PASS; adjacent regressions PASS | VALIDATION OPEN — read-only preflight + cleanup/reentrancy proof pending |
+| 029 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Structural 10/10 + Shared 10/10 + Generic 11/11; consumer PASS | current Composition → Rig → Request → Output and Group boundary certified 2026-09-21 |
+| 030 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Shared framing proof PASS: explicit + fallback + fresh occurrence + TerminalClean | current Camera Subject framing-evidence contract certified 2026-09-21 |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -290,7 +292,7 @@ Certification and reconciliation records:
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 
-## Current Camera architecture — IF-ADR-029 / IF-ADR-030 — 2026-09-20
+## Current Camera architecture — IF-ADR-029 / IF-ADR-030 — 2026-09-21
 
 Current normative model:
 
@@ -311,12 +313,14 @@ Current disposition:
 CAMERA-029-A..F  IMPLEMENTED / COMMITTED
 CAMERA-030-A      IMPLEMENTED / COMMITTED
 Consumer Unity    PASS — LocalMultiplayer manual Play Mode 2026-09-20
-QAFramework       NOT RUN for current CAMERA-029/030 boundary
-Validated         NO
-Certified         NO
+Structural QA     10/10 PASS
+Shared QA         10/10 PASS — ExplicitAndFallbackPASS / TerminalClean
+Generic Camera QA 11/11 PASS
+Validated         YES — IF-ADR-029/030 scope
+Certified         YES — 2026-09-21
 ```
 
-Historical Camera evidence remains under `Architecture/Reconciliation` and is not relabeled as proof of the final IF-ADR-029 boundary. Local Multiplayer now supplies current consumer Unity evidence for the Group path and CAMERA-030 per-Subject framing. The remaining Framework gate is QAFramework execution and technical/certification closure; visual Camera tuning in the sample is consumer authoring, not an architecture blocker.
+Current IF-ADR-029/030 certification is recorded in [IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](../Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md). Structural 10/10, Shared 10/10 and Generic 11/11 are current QAFramework evidence; Shared reports `subjectFraming='ExplicitAndFallbackPASS'` and `cleanup='TerminalClean'`. The later ADR-004B case-17 failure is a legacy harness evidence-name mismatch outside this certification scope, so it does not reopen IF-ADR-029/030 and is not represented as a Full Camera suite PASS.
 
 Historical certification record:
 
@@ -330,7 +334,7 @@ Current reconciliation record:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — CAMERA-029-A..F and CAMERA-030-A are committed. Local Multiplayer manual Play Mode proves the current shared Group consumer and per-Subject framing path. QAFramework/technical validation remains pending; visual tuning is consumer-owned authoring.
+3. **Camera** — IF-ADR-029 and IF-ADR-030 are implemented, integrated, technically validated and certified as of 2026-09-21. LocalMultiplayer visual tuning remains consumer-owned authoring. Remaining legacy QA harness cleanup is maintenance and does not block the certified Composition/Group/framing contract.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
@@ -367,6 +371,7 @@ Current reconciliation record:
 - [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](../ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](../ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [IF-ADR-030 — Camera Subject Framing Evidence](../ADRs/IF-ADR-030-Camera-Subject-Framing-Evidence.md)
+- [IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](../Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md)
 - [IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20](../Reconciliation/IF-ADR-030-LOCAL-MULTIPLAYER-CONSUMER-UNITY-PROOF-2026-09-20.md)
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 - [IF-ADR-028 Focused Physical Presentation / PlayerInput Validation — 2026-09-17](../Reconciliation/IF-ADR-028-FOCUSED-VALIDATION-2026-09-17.md)

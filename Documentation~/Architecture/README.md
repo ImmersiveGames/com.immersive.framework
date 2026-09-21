@@ -1,6 +1,6 @@
 # Immersive Framework Architecture Documentation
 
-Last updated: **2026-09-20**
+Last updated: **2026-09-21**
 
 ## Normative architecture
 
@@ -302,9 +302,11 @@ Current Camera architecture state:
 CAMERA-029-A..F  IMPLEMENTED / COMMITTED
 CAMERA-030-A      IMPLEMENTED / COMMITTED
 Consumer Unity    PASS — LocalMultiplayer manual Play Mode 2026-09-20
-Framework QA      NOT RUN for CAMERA-029/030 final boundary
-Validated         NO
-Certified         NO
+Structural QA     10/10 PASS — 2026-09-21
+Shared QA         10/10 PASS — subjectFraming ExplicitAndFallbackPASS / TerminalClean
+Generic Camera QA 11/11 PASS
+Validated         YES — IF-ADR-029/030 scope
+Certified         YES — IF-ADR-029/030 scope, 2026-09-21
 ```
 
 Historical integrated Camera evidence:
@@ -330,7 +332,7 @@ Shared baseline restore                                PASS
 
 The 2026-09-14 run certifies the logical View→Output / Output-participation boundary through CAMERA-028-B and CAMERA-027-D2. CAMERA-026-I was certified on 2026-09-16. The 2026-09-17 focused session adds CAMERA-028-C physical-presentation behavior PASS and CAMERA-028-D 33/33 functional PASS; final ADR-028 validation remains open on read-only preflight and cleanup/reentrancy evidence.
 
-Current consumer evidence for the post-CAMERA-029 Group path is recorded separately in [IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20](Reconciliation/IF-ADR-030-LOCAL-MULTIPLAYER-CONSUMER-UNITY-PROOF-2026-09-20.md). It proves the Local Multiplayer consumer path with per-Subject framing evidence; it is not a replacement for QAFramework certification.
+Current post-CAMERA-029/030 certification evidence is recorded in [IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md). It combines the LocalMultiplayer consumer proof with current QAFramework Structural 10/10, Shared 10/10 and Generic 11/11 evidence. The later ADR-004B harness adapter failure is recorded as unrelated to the certified IF-ADR-029/030 boundary and is not relabeled as a Full Camera suite PASS.
 
 Previous focused Shared Camera evidence remains:
 
@@ -484,7 +486,8 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified and revalidated; I remains pending. Corrected Full Camera is 39/39 established cases, ADR-026 2/2, active dimensions 8/8.
 - IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is implemented/certified 2026-09-14; E remains deferred; F final consumer closure waits corrected layout/integration implementation.
 - IF-ADR-028 — **Accepted / implemented / tested / integrated; validation open**. CAMERA-028-A/B are certified, CAMERA-028-C focused behavior is PASS, and CAMERA-028-D has 33/33 focused functional PASS. Final validation awaits read-only preflight and cleanup/reentrancy proof.
-- IF-ADR-030 — **Accepted / implemented / consumer-integrated**. Local Multiplayer manual Play Mode PASS on 2026-09-20 proves the current Group consumer uses per-Subject framing evidence; QAFramework execution, technical validation and certification remain pending.
+- IF-ADR-029 — **Accepted / implemented / technically validated / certified 2026-09-21**. Current Structural 10/10, Shared 10/10 and Generic 11/11 evidence certifies the Composition → Rig → Request → Output boundary and Group lifecycle; LocalMultiplayer consumer evidence is also PASS.
+- IF-ADR-030 — **Accepted / implemented / technically validated / certified 2026-09-21**. Current Shared QA proves explicit per-Subject framing radius, Group fallback radius, fresh occurrence framing evidence and terminal cleanup.
 
 ## Historical certification records
 

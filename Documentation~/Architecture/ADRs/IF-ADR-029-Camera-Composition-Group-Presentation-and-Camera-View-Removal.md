@@ -1,6 +1,6 @@
 # IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal
 
-Status: **Accepted architecture — CAMERA-029-A through F committed**
+Status: **Accepted / implemented / technically validated / certified — CAMERA-029-A through F committed**
 Proposed: **2026-09-18**
 Accepted: **2026-09-18**
 Type: architecture / Camera composition / presentation / output participation
@@ -9,9 +9,10 @@ Preserves: IF-ADR-004 request arbitration and output-owned Default semantics; IF
 Supersedes: Camera View as an independent runtime/authoring authority, View→Output topology as the normal participation path, and SharedFollow as an implicit cardinality-dependent Follow mode
 
 Implementation: **A implemented; B implemented; C implemented; D implemented; E implemented; F implemented; all committed**
-Unity tested: **NO**
-Technically validated: **NO**
-Certified: **NO**
+Unity tested: **YES — LocalMultiplayer consumer Play Mode 2026-09-20 + QAFramework targeted Camera run 2026-09-21**
+QAFramework scope evidence: **PASS — Structural 10/10, Shared 10/10, Generic 11/11**
+Technically validated: **YES — 2026-09-21**
+Certified: **YES — IF-ADR-029 scope, 2026-09-21**
 
 ## 1. Context
 
@@ -882,11 +883,19 @@ SharedFollow implicit multi-target mode   SUPERSEDED
 PlayerInputManager split layout authority RETAINED
 physical Camera layout outside Framework  RETAINED
 implementation                            A/B/C/D/E/F committed
-Unity tested                              NO
-technically validated                     NO
-certified                                 NO
+Unity tested                              YES
+QAFramework structural scope              10/10 PASS
+QAFramework shared scope                  10/10 PASS
+QAFramework generic arbitration           11/11 PASS
+technically validated                     YES — 2026-09-21
+certified                                 YES — IF-ADR-029 scope
 consumer/documentation migration          COMMITTED
 ```
 
-The next gate is Unity import, focused Framework test execution and consumer lifecycle
-validation. Static checks do not promote this ADR to technically validated or certified.
+Technical certification evidence is recorded in
+[IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](../Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md).
+
+The certification is scoped to the IF-ADR-029/030 architecture boundary. The same QA run later
+encountered a legacy ADR-004B harness evidence-name mismatch after the Structural, Shared and
+Generic Camera evidence had already passed; that unrelated harness failure is not relabeled as
+a Full Camera suite certification and does not revoke the completed IF-ADR-029 evidence.

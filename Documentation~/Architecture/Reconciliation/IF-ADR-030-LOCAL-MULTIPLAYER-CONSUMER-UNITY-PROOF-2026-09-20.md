@@ -1,6 +1,6 @@
 # IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20
 
-Status: **IMPLEMENTED = YES / CONSUMER UNITY TESTED = YES / INTEGRATED = YES / VALIDATED = NO**
+Status: **IMPLEMENTED = YES / CONSUMER UNITY TESTED = YES / INTEGRATED = YES / CONSUMER PROOF PASS**
 
 Scope: IF-ADR-030 CAMERA-030-A consumer integration through the current Local Multiplayer Group Camera sample.
 
@@ -91,3 +91,14 @@ INTEGRATED           = YES
 VALIDATED            = NO
 CERTIFIED            = NO
 ```
+
+
+## 4. Subsequent certification
+
+This consumer proof is now complemented by the current QAFramework certification record:
+
+[IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md)
+
+That later evidence promotes the IF-ADR-029 and IF-ADR-030 boundaries to technically validated
+and certified. This dated consumer record remains scoped to the LocalMultiplayer Play Mode
+proof itself.

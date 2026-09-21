@@ -1,6 +1,6 @@
 # IF-ADR-030 — Camera Subject Framing Evidence
 
-Status: **Accepted architecture — CAMERA-030-A implemented**
+Status: **Accepted / implemented / technically validated / certified — CAMERA-030-A**
 Proposed: **2026-09-20**
 Accepted: **2026-09-20**
 Type: architecture / Camera Subject / Group framing
@@ -10,9 +10,10 @@ Implementation: **CAMERA-030-A implemented; package-local contract test authored
 Consumer integration: **YES — LocalMultiplayer current Group Camera consumer**
 Consumer Unity tested: **YES — manual Play Mode, 2026-09-20**
 Package-local Unity tests executed: **NO**
-QAFramework tested: **NO**
-Technically validated: **NO**
-Certified: **NO**
+QAFramework tested: **YES — targeted Shared Camera evidence, 2026-09-21**
+QAFramework framing evidence: **PASS — explicit Subject radius + Group fallback + fresh occurrence**
+Technically validated: **YES — 2026-09-21**
+Certified: **YES — IF-ADR-030 scope, 2026-09-21**
 
 ## 1. Context
 
@@ -139,3 +140,47 @@ profiles, local-multiplayer movement and shared Group Camera presentation.
 
 This evidence proves consumer integration of CAMERA-030-A. It does not relabel the
 package-local test as executed QA evidence and does not certify the broader Camera suite.
+
+
+## 8. Technical certification — 2026-09-21
+
+Current certification record:
+
+[IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](../Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md)
+
+The QAFramework Shared Camera proof completed all ten current cases and reported:
+
+```text
+cases='10/10'
+subjectFraming='ExplicitAndFallbackPASS'
+cleanup='TerminalClean'
+```
+
+Within that proof:
+
+```text
+P1 default Subject
+  -> framing radius unspecified
+  -> Group behavior fallback radius
+
+Camera-owned replacement Subject
+  -> explicit framing radius
+  -> exact TargetGroup member radius
+
+P2 Subject
+  -> framing radius unspecified
+  -> Group behavior fallback radius
+
+fresh P1 occurrence
+  -> stale occurrence rejected
+  -> current framing evidence republished
+```
+
+This is direct runtime evidence for the CAMERA-030 contract rather than inference from the
+consumer visual result alone.
+
+The broader Full Camera harness later stopped in an unrelated historical ADR-004B adapter
+because its evidence consumer expected a different case-name string from the structural
+producer. That harness defect occurred after the framing proof had already passed and is not
+part of the IF-ADR-030 contract. The Full Camera suite is therefore not relabeled as globally
+certified by this record.
