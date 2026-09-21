@@ -144,7 +144,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 028 | ACCEPTED / IMPLEMENTED — A/B certified; C focused behavior PASS; D implemented/tested/integrated | CAMERA-028-D 33/33 focused functional PASS; adjacent regressions PASS | VALIDATION OPEN — read-only preflight + cleanup/reentrancy proof pending |
 | 029 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Structural 10/10 + Shared 10/10 + Generic 11/11; consumer PASS | current Composition → Rig → Request → Output and Group boundary certified 2026-09-21 |
 | 030 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Shared framing proof PASS: explicit + fallback + fresh occurrence + TerminalClean | current Camera Subject framing-evidence contract certified 2026-09-21 |
-| 031 | PROPOSED — explicit Camera Composition Subject selection | implementation not started | enables exact per-Composition Subject binding without Camera-core Player dependency; first consumer Character Selection split-screen |
+| 031 | ACCEPTED — CAMERA-031-A/B IMPLEMENTED; CAMERA-031-C NOT STARTED | package-local tests authored; Unity and QAFramework not run | explicit per-Composition Subject selection and Player Slot adapter; Character Selection split-screen consumer not started |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -331,11 +331,37 @@ Current reconciliation record:
 
 [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)
 
+## Current Camera explicit Subject selection — IF-ADR-031 — 2026-09-21
+
+Accepted boundary:
+
+```text
+Player Slot
+  -> current Camera Subject occurrence
+  -> explicit Camera-domain selection
+  -> one Camera Composition
+```
+
+Camera core does not learn Player Slot, Player index, or Subject-id parsing. Slot to Composition is a separate adapter from Slot to Camera Output.
+
+```text
+CAMERA-031-A   IMPLEMENTED
+CAMERA-031-B   IMPLEMENTED
+CAMERA-031-C   NOT STARTED
+Unity tested   NO
+QAFramework    NO
+Consumer       NO
+Validated      NO
+Certified      NO
+```
+
+Package-local Edit Mode tests are authored for the selection context, ExplicitSelection reconciliation, and the Player Slot adapter. They were not executed in this cut. Character Selection multiplayer scenes, prefabs, Outputs, and Rigs remain manual Unity work.
+
 ## Current Stage B / FIRSTGAME priorities
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-029 and IF-ADR-030 are implemented, integrated, technically validated and certified as of 2026-09-21. IF-ADR-031 is proposed for explicit per-Composition Subject selection, enabling the Character Selection local-multiplayer Third Person split-screen consumer without coupling Camera core to Player. LocalMultiplayer visual tuning remains consumer-owned authoring.
+3. **Camera** — IF-ADR-029 and IF-ADR-030 are implemented, integrated, technically validated and certified as of 2026-09-21. IF-ADR-031 is accepted: CAMERA-031-A and CAMERA-031-B are implemented for explicit per-Composition Subject selection and the separate Player Slot adapter, without coupling Camera core to Player. CAMERA-031-C, the Character Selection split-screen consumer, is not started. Unity tested = NO. QAFramework tested = NO. Consumer integrated = NO. Technically validated = NO. Certified = NO. LocalMultiplayer visual tuning remains consumer-owned authoring.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

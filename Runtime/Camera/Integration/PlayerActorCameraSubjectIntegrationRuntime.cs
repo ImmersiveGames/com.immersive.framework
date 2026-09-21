@@ -14,14 +14,17 @@ namespace Immersive.Framework.Camera
         {
             internal Publication(
                 PlayerActorPreparationToken preparationToken,
-                CameraSubjectAvailabilityToken availabilityToken)
+                CameraSubjectAvailabilityToken availabilityToken,
+                CameraSubjectId subjectId)
             {
                 PreparationToken = preparationToken;
                 AvailabilityToken = availabilityToken;
+                SubjectId = subjectId;
             }
 
             internal PlayerActorPreparationToken PreparationToken { get; }
             internal CameraSubjectAvailabilityToken AvailabilityToken { get; }
+            internal CameraSubjectId SubjectId { get; }
         }
 
         private readonly IPlayerPreparedActorOccurrenceSource _playerActors;
@@ -55,6 +58,24 @@ namespace Immersive.Framework.Camera
         internal bool LastReconciliationSucceeded { get; private set; }
         internal string Diagnostic { get; private set; }
 
+        internal event Action<PlayerSlotId> SubjectChanged;
+
+        internal bool TryGetCurrentSubjectId(
+            PlayerSlotId playerSlotId,
+            out CameraSubjectId subjectId)
+        {
+            subjectId = default;
+            if (_disposed || !playerSlotId.IsValid ||
+                !_publications.TryGetValue(playerSlotId, out Publication publication) ||
+                !publication.SubjectId.IsValid)
+            {
+                return false;
+            }
+
+            subjectId = publication.SubjectId;
+            return true;
+        }
+
         public void Dispose()
         {
             if (_disposed)
@@ -64,8 +85,14 @@ namespace Immersive.Framework.Camera
 
             _disposed = true;
             _playerActors.CurrentActorInvalidated -= OnCurrentActorInvalidated;
+            var slots = new List<PlayerSlotId>(_publications.Keys);
             _availability.ReleaseOwner(_ownerId);
             _publications.Clear();
+            for (int index = 0; index < slots.Count; index++)
+            {
+                SubjectChanged?.Invoke(slots[index]);
+            }
+
             LastReconciliationSucceeded = true;
             Diagnostic = "Player Actor Camera Subject integration was released.";
         }
@@ -89,6 +116,24 @@ namespace Immersive.Framework.Camera
         }
 
         private bool Reconcile(PlayerSlotId playerSlotId, out string issue)
+        {
+            bool hadSubject = TryGetCurrentSubjectId(
+                playerSlotId,
+                out CameraSubjectId previousSubjectId);
+            bool succeeded = ReconcilePublication(playerSlotId, out issue);
+            bool hasSubject = TryGetCurrentSubjectId(
+                playerSlotId,
+                out CameraSubjectId currentSubjectId);
+            if (hadSubject != hasSubject ||
+                (hasSubject && currentSubjectId != previousSubjectId))
+            {
+                SubjectChanged?.Invoke(playerSlotId);
+            }
+
+            return succeeded;
+        }
+
+        private bool ReconcilePublication(PlayerSlotId playerSlotId, out string issue)
         {
             issue = string.Empty;
             if (_disposed || !playerSlotId.IsValid)
@@ -158,7 +203,8 @@ namespace Immersive.Framework.Camera
 
             _publications[playerSlotId] = new Publication(
                 occurrence.PreparationToken,
-                publication.Token);
+                publication.Token,
+                subject.SubjectId);
             return true;
         }
 

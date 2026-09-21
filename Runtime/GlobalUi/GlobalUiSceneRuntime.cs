@@ -336,6 +336,15 @@ namespace Immersive.Framework.GlobalUi
             return true;
         }
 
+        internal bool TryResolvePlayerCameraCompositionPolicies(
+            out IReadOnlyList<PlayerCameraCompositionPolicyAuthoring> policies,
+            out string diagnostic)
+        {
+            policies = FindAll<PlayerCameraCompositionPolicyAuthoring>().AsReadOnly();
+            diagnostic = string.Empty;
+            return true;
+        }
+
         internal bool TryResolveLocalPlayerProvisioning(
             out LocalPlayerProvisioningAuthoring authoring,
             out bool isConfigured,

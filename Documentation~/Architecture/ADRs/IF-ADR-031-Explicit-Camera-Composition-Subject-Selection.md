@@ -1,13 +1,20 @@
 # IF-ADR-031 — Explicit Camera Composition Subject Selection
 
-Status: **Proposed**
+Status: **Accepted**
 Proposed: **2026-09-21**
+Accepted: **2026-09-21**
 Type: architecture / Camera composition / Subject selection / Player integration
 Reconciles: IF-ADR-026, IF-ADR-029 and IF-ADR-030
 Preserves: IF-ADR-028 physical split-screen ownership and Player Slot → Camera Output integration
 
-Implementation: **NOT STARTED**
+Implementation:
+- CAMERA-031-A — **Implemented**
+- CAMERA-031-B — **Implemented**
+- CAMERA-031-C — **Not Started**
+
 Unity tested: **NO**
+QAFramework tested: **NO**
+Consumer integrated: **NO**
 Technically validated: **NO**
 Certified: **NO**
 
@@ -459,6 +466,8 @@ Those abstractions are not required by the current consumer.
 
 ### CAMERA-031-A — Camera explicit Subject selection
 
+Status: **Implemented**
+
 Required result:
 
 ```text
@@ -471,6 +480,8 @@ AllAvailableSubjects behavior unchanged
 
 ### CAMERA-031-B — Player Slot adapter
 
+Status: **Implemented**
+
 Required result:
 
 ```text
@@ -482,6 +493,8 @@ no Camera-core Player dependency
 ```
 
 ### CAMERA-031-C — Character Selection split-screen consumer
+
+Status: **Not Started**
 
 Required result:
 
@@ -533,13 +546,16 @@ repeat symmetrically for P2
 ## 15. Disposition
 
 ```text
-explicit Camera-domain Subject selection      PROPOSED
+explicit Camera-domain Subject selection      ACCEPTED / CAMERA-031-A IMPLEMENTED
 Camera core Player dependency                 REJECTED
-Player Slot -> Composition adapter            PROPOSED
+Player Slot -> Composition adapter            ACCEPTED / CAMERA-031-B IMPLEMENTED
 Player Slot -> Camera Output policy           RETAINED
 PlayerInputManager split layout authority     RETAINED
-Character Selection split-screen consumer     PROPOSED
-implementation                                NOT STARTED
+Character Selection split-screen consumer     NOT STARTED (CAMERA-031-C)
+implementation                                CAMERA-031-A/B IMPLEMENTED; CAMERA-031-C NOT STARTED
+Unity tested                                  NO
+QAFramework tested                            NO
+Consumer integrated                           NO
 technically validated                         NO
 certified                                     NO
 ```

@@ -35,9 +35,12 @@ namespace Immersive.Framework.CameraAuthoring
         private readonly string requestId = Guid.NewGuid().ToString("N");
 
         private ICameraSubjectAvailabilitySource _availability;
+        private ICameraCompositionSubjectSelectionSource _selection;
         private CameraCompositionMembershipContext _membership;
         private CameraCompositionMembershipSnapshot _currentMembership;
         private bool _subscribed;
+        private bool _selectionSubscribed;
+        private int _consumedSelectionRevision = -1;
         private CameraOutputAuthoring _output;
         private ICameraRequestPublisher _requestPublisher;
 
@@ -51,6 +54,8 @@ namespace Immersive.Framework.CameraAuthoring
             ? outputDefinition.OutputId.Value : string.Empty;
         public CameraOutputId RequestedOutputId => new CameraOutputId(OutputIdText);
         public CameraOutputAuthoring Output => _output;
+        public CameraSharedCompositionSubjectPolicyKind SubjectPolicy => subjectPolicy;
+        public ICameraCompositionSubjectSelectionSource SubjectSelectionSource => _selection;
         public CameraSharedCompositionSnapshot Snapshot { get; private set; }
 
         public void Configure(CameraOutputDefinition output,
@@ -80,6 +85,42 @@ namespace Immersive.Framework.CameraAuthoring
             TryStartComposition();
         }
 
+        public void AttachSubjectSelectionSource(ICameraCompositionSubjectSelectionSource selectionSource)
+        {
+            if (selectionSource == null) throw new ArgumentNullException(nameof(selectionSource));
+            if (!selectionSource.ContextId.IsValid)
+                throw new ArgumentException(
+                    "Camera Composition Subject selection requires a valid context id.",
+                    nameof(selectionSource));
+            if (ReferenceEquals(_selection, selectionSource))
+            {
+                TryStartComposition();
+                return;
+            }
+
+            if (subjectPolicy == CameraSharedCompositionSubjectPolicyKind.ExplicitSelection &&
+                !StopComposition())
+            {
+                throw new InvalidOperationException(
+                    $"Camera composition '{name}' could not replace Subject selection because teardown failed: {Snapshot.LastBlockingIssue}");
+            }
+
+            _selection = selectionSource;
+            _consumedSelectionRevision = -1;
+            TryStartComposition();
+        }
+
+        public void DetachSubjectSelectionSource(string reason)
+        {
+            if (_selection == null && !_selectionSubscribed)
+                return;
+            if (subjectPolicy == CameraSharedCompositionSubjectPolicyKind.ExplicitSelection &&
+                !StopComposition())
+                return;
+            _selection = null;
+            _consumedSelectionRevision = -1;
+        }
+
         public void AttachOutputSession(CameraOutputAuthoring binding)
         {
             if (binding == null) throw new ArgumentNullException(nameof(binding));
@@ -100,7 +141,12 @@ namespace Immersive.Framework.CameraAuthoring
                 _output = null;
         }
 
-        public CameraSharedCompositionSnapshot Reconcile(CameraSubjectAvailabilitySnapshot availability)
+        public CameraSharedCompositionSnapshot Reconcile(CameraSubjectAvailabilitySnapshot availability) =>
+            Reconcile(availability, _selection?.CurrentSnapshot);
+
+        public CameraSharedCompositionSnapshot Reconcile(
+            CameraSubjectAvailabilitySnapshot availability,
+            CameraCompositionSubjectSelectionSnapshot selection)
         {
             if (_membership == null)
                 return Record(CameraSharedCompositionReconcileStatus.BlockedInvalidMembership, availability, 0, 0,
@@ -111,6 +157,10 @@ namespace Immersive.Framework.CameraAuthoring
                         : CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
                     availability, 0, 0,
                     CameraRigPresentationApplyStatus.None, rigDiagnostic);
+            if (!TryAcceptSubjectSelection(selection, out CameraSharedCompositionReconcileStatus selectionStatus,
+                    out string selectionDiagnostic))
+                return Record(selectionStatus, availability, 0, 0,
+                    CameraRigPresentationApplyStatus.None, selectionDiagnostic);
 
             CameraCompositionMembershipSnapshot previousMembership = _membership.Snapshot;
             CameraRigPresentationState previousPresentation =
@@ -118,7 +168,8 @@ namespace Immersive.Framework.CameraAuthoring
 
             IReadOnlyList<CameraSubjectId> desired = availability != null &&
                 availability.ContextId == _membership.AvailabilityContextId
-                    ? CameraSharedCompositionSubjectPolicy.SelectDesiredSubjects(subjectPolicy, availability)
+                    ? CameraSharedCompositionSubjectPolicy.SelectDesiredSubjects(
+                        subjectPolicy, availability, selection)
                     : Array.Empty<CameraSubjectId>();
             CameraCompositionMembershipResult membership = _membership.Reconcile(availability, desired);
             _currentMembership = membership.Snapshot;
@@ -206,6 +257,7 @@ namespace Immersive.Framework.CameraAuthoring
                         releaseDiagnostic);
                 }
 
+                CommitAcceptedSubjectSelection(selection);
                 return Record(CameraSharedCompositionReconcileStatus.SucceededAwaitingSubjects, availability,
                     membership.AddedCount, membership.RemovedCount, cleared.Status, string.Empty);
             }
@@ -242,6 +294,7 @@ namespace Immersive.Framework.CameraAuthoring
                     requestDiagnostic);
             }
 
+            CommitAcceptedSubjectSelection(selection);
             return Record(
                 membership.Status == CameraCompositionMembershipStatus.SucceededNoChange
                     ? CameraSharedCompositionReconcileStatus.SucceededNoChange
@@ -279,10 +332,19 @@ namespace Immersive.Framework.CameraAuthoring
                     CameraRigPresentationApplyStatus.None, definitionDiagnostic);
                 return;
             }
-            if (subjectPolicy != CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects)
+            if (subjectPolicy != CameraSharedCompositionSubjectPolicyKind.AllAvailableSubjects &&
+                subjectPolicy != CameraSharedCompositionSubjectPolicyKind.ExplicitSelection)
             {
                 Record(CameraSharedCompositionReconcileStatus.BlockedMembershipFailure, availability, 0, 0,
                     CameraRigPresentationApplyStatus.None, "Shared Camera composition requires an explicitly supported Subject selection policy.");
+                return;
+            }
+            if (subjectPolicy == CameraSharedCompositionSubjectPolicyKind.ExplicitSelection &&
+                _selection == null)
+            {
+                Record(CameraSharedCompositionReconcileStatus.BlockedMissingSubjectSelection, availability, 0, 0,
+                    CameraRigPresentationApplyStatus.None,
+                    "Explicit Camera Subject selection requires an attached selection source.");
                 return;
             }
             if (!RequestedOutputId.IsValid || _output == null ||
@@ -319,15 +381,18 @@ namespace Immersive.Framework.CameraAuthoring
             _currentMembership = _membership.Snapshot;
             _availability.AvailabilityChanged += HandleAvailabilityChanged;
             _subscribed = true;
-            Reconcile(availability);
+            if (subjectPolicy == CameraSharedCompositionSubjectPolicyKind.ExplicitSelection)
+            {
+                _selection.SelectionChanged += HandleSelectionChanged;
+                _selectionSubscribed = true;
+            }
+            Reconcile(availability, _selection?.CurrentSnapshot);
         }
 
         private bool StopComposition()
         {
             bool wasActive = _membership != null;
-            if (_subscribed && _availability != null)
-                _availability.AvailabilityChanged -= HandleAvailabilityChanged;
-            _subscribed = false;
+            UnsubscribeSources();
 
             if (!wasActive)
                 return true;
@@ -375,10 +440,65 @@ namespace Immersive.Framework.CameraAuthoring
             _membership = null;
             _currentMembership = null;
             _requestPublisher = null;
+            _consumedSelectionRevision = -1;
             return true;
         }
 
-        private void HandleAvailabilityChanged(CameraSubjectAvailabilitySnapshot availability) => Reconcile(availability);
+        private void UnsubscribeSources()
+        {
+            if (_subscribed && _availability != null)
+                _availability.AvailabilityChanged -= HandleAvailabilityChanged;
+            if (_selectionSubscribed && _selection != null)
+                _selection.SelectionChanged -= HandleSelectionChanged;
+            _subscribed = false;
+            _selectionSubscribed = false;
+        }
+
+        private void HandleAvailabilityChanged(CameraSubjectAvailabilitySnapshot availability) =>
+            Reconcile(availability, _selection?.CurrentSnapshot);
+
+        private void HandleSelectionChanged(CameraCompositionSubjectSelectionSnapshot selection) =>
+            Reconcile(_availability != null ? _availability.CreateSnapshot() : null, selection);
+
+        private bool TryAcceptSubjectSelection(
+            CameraCompositionSubjectSelectionSnapshot selection,
+            out CameraSharedCompositionReconcileStatus status,
+            out string diagnostic)
+        {
+            status = CameraSharedCompositionReconcileStatus.None;
+            diagnostic = string.Empty;
+            if (subjectPolicy != CameraSharedCompositionSubjectPolicyKind.ExplicitSelection)
+                return true;
+            if (_selection == null || selection == null)
+            {
+                status = CameraSharedCompositionReconcileStatus.BlockedMissingSubjectSelection;
+                diagnostic = "Explicit Camera Subject selection requires an attached selection source.";
+                return false;
+            }
+            if (selection.ContextId != _selection.ContextId)
+            {
+                status = CameraSharedCompositionReconcileStatus.RejectedForeignSubjectSelectionContext;
+                diagnostic = "Subject selection evidence belongs to another Composition selection context.";
+                return false;
+            }
+            if (selection.Revision < _consumedSelectionRevision)
+            {
+                status = CameraSharedCompositionReconcileStatus.RejectedStaleSubjectSelectionSnapshot;
+                diagnostic = "Subject selection evidence regressed and cannot restore an older Subject occurrence.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private void CommitAcceptedSubjectSelection(CameraCompositionSubjectSelectionSnapshot selection)
+        {
+            if (subjectPolicy != CameraSharedCompositionSubjectPolicyKind.ExplicitSelection ||
+                selection == null ||
+                selection.Revision <= _consumedSelectionRevision)
+                return;
+            _consumedSelectionRevision = selection.Revision;
+        }
 
         private bool TryValidateCompositionRig(out string diagnostic)
         {

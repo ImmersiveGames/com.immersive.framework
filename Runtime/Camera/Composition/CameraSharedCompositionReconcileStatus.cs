@@ -25,6 +25,9 @@ namespace Immersive.Framework.Camera
         BlockedPresentationFailure = 160,
         BlockedCompositionRigIsDefault = 170,
         BlockedRequestFailure = 180,
-        CriticalRollbackFailure = 190
+        CriticalRollbackFailure = 190,
+        RejectedForeignSubjectSelectionContext = 200,
+        RejectedStaleSubjectSelectionSnapshot = 210,
+        BlockedMissingSubjectSelection = 220
     }
 }
