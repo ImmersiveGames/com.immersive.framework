@@ -125,10 +125,11 @@ namespace Immersive.Framework.Camera
                 _publications.Remove(playerSlotId);
             }
 
-            if (!TryResolveObservation(
+            if (!TryResolveSubjectEvidence(
                     occurrence.ActorDeclaration,
                     occurrence.Presentation,
                     out Transform observation,
+                    out float framingRadius,
                     out issue))
             {
                 TryRemoveCurrent(playerSlotId, out string removalIssue);
@@ -145,7 +146,8 @@ namespace Immersive.Framework.Camera
                 new CameraSubjectId(
                     $"camera.subject.player-actor:{occurrence.PreparationToken.StableText}"),
                 observation,
-                $"Current Session Player Actor for {playerSlotId.StableText}");
+                $"Current Session Player Actor for {playerSlotId.StableText}",
+                framingRadius);
             CameraSubjectAvailabilityResult publication =
                 _availability.TryMakeAvailable(subject, _ownerId);
             if (!publication.Succeeded)
@@ -180,13 +182,15 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        private static bool TryResolveObservation(
+        private static bool TryResolveSubjectEvidence(
             PlayerActorDeclaration actor,
             GameObject presentation,
             out Transform observation,
+            out float framingRadius,
             out string issue)
         {
             observation = null;
+            framingRadius = 0f;
             issue = string.Empty;
             if (actor == null || actor.transform == null ||
                 presentation == null || presentation.transform == null)
@@ -210,9 +214,10 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (!authoredSubjects[0].TryResolveObservation(
+            if (!authoredSubjects[0].TryResolveSubject(
                     presentation.transform,
                     out observation,
+                    out framingRadius,
                     out issue))
             {
                 issue = "Prepared Actor Camera Subject is invalid. " + issue;

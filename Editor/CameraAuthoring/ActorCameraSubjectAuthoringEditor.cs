@@ -8,11 +8,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     internal sealed class ActorCameraSubjectAuthoringEditor : UnityEditor.Editor
     {
         private SerializedProperty _observationTransform;
+        private SerializedProperty _framingRadius;
 
         private void OnEnable()
         {
             _observationTransform =
                 serializedObject.FindProperty("observationTransform");
+            _framingRadius =
+                serializedObject.FindProperty("framingRadius");
         }
 
         public override void OnInspectorGUI()
@@ -31,6 +34,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 new GUIContent(
                     "Transform",
                     "Exact Transform observed by Camera presentation for this Actor occurrence."));
+
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField("Framing", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(
+                _framingRadius,
+                new GUIContent(
+                    "Radius",
+                    "Optional presentation-space radius centered on the Observation Transform. " +
+                    "Use 0 to let the consuming presentation use its fallback radius."));
 
             serializedObject.ApplyModifiedProperties();
 

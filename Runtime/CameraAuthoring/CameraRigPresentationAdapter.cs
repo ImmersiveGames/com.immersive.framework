@@ -314,12 +314,15 @@ namespace Immersive.Framework.CameraAuthoring
             _composer.FrameworkOwnedGroupTargetGroup.Targets.Clear();
             for (int index = 0; index < input.SubjectCount; index++)
             {
+                CameraSubject subject = input.Subjects[index].Subject;
                 _composer.FrameworkOwnedGroupTargetGroup.Targets.Add(
                     new CinemachineTargetGroup.Target
                     {
-                        Object = input.Subjects[index].Subject.Observation,
+                        Object = subject.Observation,
                         Weight = _composer.GroupMemberWeight,
-                        Radius = _composer.GroupMemberRadius
+                        Radius = subject.HasFramingRadius
+                            ? subject.FramingRadius
+                            : _composer.GroupMemberRadius
                     });
             }
 

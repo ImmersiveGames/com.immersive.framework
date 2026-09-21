@@ -8,6 +8,7 @@ Normative decisions:
 - [IF-ADR-022 — Camera Rig Presentation Models](../Architecture/ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Physical Presentation Ownership](../Architecture/ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal](../Architecture/ADRs/IF-ADR-029-Camera-Composition-Group-Presentation-and-Camera-View-Removal.md)
+- [IF-ADR-030 — Camera Subject Framing Evidence](../Architecture/ADRs/IF-ADR-030-Camera-Subject-Framing-Evidence.md)
 
 ## Current architecture
 
@@ -29,7 +30,7 @@ The boundaries are explicit:
 
 | Owner | Responsibility |
 |---|---|
-| Subject authoring | Expose typed observation evidence and an exact observation Transform |
+| Subject authoring | Expose typed observation evidence, an exact observation Transform and optional presentation-space framing radius |
 | Composition | Select `1..N` Subjects, own membership revisions/stale protection, project current presentation input and publish/release its request |
 | Rig | Own one local presentation behavior, Cinemachine materialization and provenance |
 | Request | Participate in one explicit Output with deterministic arbitration evidence |
@@ -124,8 +125,13 @@ Use `ActorCameraSubjectAuthoring` on the Actor Presentation root:
 ```text
 Actor Presentation
   ActorCameraSubjectAuthoring
-    Observation Transform = exact CameraMount/pivot
+    Observation Transform = exact presentation anchor / framing center
+    Framing Radius = 0 (unspecified) or positive presentation-space radius
 ```
+
+`Framing Radius = 0` preserves existing behavior: a Group rig uses its authored
+`memberRadius` fallback. A positive Subject radius is consumed per member by Group
+presentation and does not alter Subject selection, request ownership or Output arbitration.
 
 The Actor supplies Subject evidence only. Do not move Camera request, rig or Output authority into `LocalPlayerHost`, `PlayerInput`, a Player prefab or the Player GameObject.
 
@@ -183,6 +189,7 @@ Do not introduce:
 [ ] distinct gameplay Composition Rig
 [ ] explicit Composition request precedence
 [ ] Actor/Subject observation Transform is exact
+[ ] optional Subject framing radius is intentional; Group fallback remains explicit
 [ ] no request when required Subjects are absent
 [ ] request active when current Subjects are available
 [ ] leave restores Default; rejoin uses the new Subject occurrence

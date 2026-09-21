@@ -176,6 +176,48 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
+        public void GroupUsesSubjectFramingRadiusAndFallsBackToBehaviorRadius()
+        {
+            var framingRadii = new Dictionary<string, float>
+            {
+                { "subject-a", 1.75f }
+            };
+            using var fixture = new PresentationFixture(
+                framingRadii,
+                "subject-b",
+                "subject-a");
+            var root = new GameObject("group-subject-framing-test");
+            var behavior = ScriptableObject.CreateInstance<GroupCameraRigBehaviorDefinition>();
+            try
+            {
+                SetField(behavior, "memberRadius", 0.6f);
+
+                var composer = root.AddComponent<CameraRigComposer>();
+                SetField(composer, "behaviorDefinition", behavior);
+                Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(
+                    composer, false, false).Succeeded, Is.True);
+
+                CameraRigPresentationApplyResult applied = composer.ApplyCompositionPresentation(
+                    fixture.Input,
+                    fixture.Snapshot);
+
+                Assert.That(applied.Status, Is.EqualTo(
+                    CameraRigPresentationApplyStatus.SucceededGroup));
+                Assert.That(applied.TargetGroup.Targets[0].Object, Is.SameAs(
+                    fixture.Observations["subject-a"]));
+                Assert.That(applied.TargetGroup.Targets[0].Radius, Is.EqualTo(1.75f));
+                Assert.That(applied.TargetGroup.Targets[1].Object, Is.SameAs(
+                    fixture.Observations["subject-b"]));
+                Assert.That(applied.TargetGroup.Targets[1].Radius, Is.EqualTo(0.6f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(behavior);
+            }
+        }
+
+        [Test]
         public void OlderCompositionPresentationCannotOverwriteNewerAppliedMembership()
         {
             using var fixture = new PresentationFixture("subject-a");
@@ -229,6 +271,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 new Dictionary<string, Transform>();
 
             internal PresentationFixture(params string[] subjectIds)
+                : this(null, subjectIds)
+            {
+            }
+
+            internal PresentationFixture(
+                IReadOnlyDictionary<string, float> framingRadii,
+                params string[] subjectIds)
             {
                 _availability = new CameraSubjectAvailabilityContext(
                     new SubjectAvailabilityContextId("group-presentation-subjects"));
@@ -240,8 +289,18 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     var root = new GameObject(id);
                     _roots.Add(root);
                     _observations.Add(id, root.transform);
+                    float framingRadius = 0f;
+                    if (framingRadii != null)
+                    {
+                        framingRadii.TryGetValue(id, out framingRadius);
+                    }
+
                     CameraSubjectAvailabilityResult available = _availability.TryMakeAvailable(
-                        new CameraSubject(new CameraSubjectId(id), root.transform, id),
+                        new CameraSubject(
+                            new CameraSubjectId(id),
+                            root.transform,
+                            id,
+                            framingRadius),
                         _availabilityOwner);
                     Assert.That(available.Succeeded, Is.True, available.Message);
                 }

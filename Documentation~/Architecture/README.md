@@ -481,6 +481,7 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-026 — **Reopened** 2026-09-12. CAMERA-026-A..G remain implemented; original H all-Output/viewport assumptions are superseded; H2 is certified and revalidated; I remains pending. Corrected Full Camera is 39/39 established cases, ADR-026 2/2, active dimensions 8/8.
 - IF-ADR-027 — **Reopened** 2026-09-12. CAMERA-027-A/B/C remain implemented; D2 is implemented/certified 2026-09-14; E remains deferred; F final consumer closure waits corrected layout/integration implementation.
 - IF-ADR-028 — **Accepted / implemented / tested / integrated; validation open**. CAMERA-028-A/B are certified, CAMERA-028-C focused behavior is PASS, and CAMERA-028-D has 33/33 focused functional PASS. Final validation awaits read-only preflight and cleanup/reentrancy proof.
+- IF-ADR-030 — **Accepted / implemented; Unity and QA validation pending**. Camera Subjects may publish an optional presentation-space framing radius centered on their Observation; Group consumes it per member and retains the Group Behavior member radius as fallback.
 
 ## Historical certification records
 

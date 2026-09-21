@@ -355,7 +355,7 @@ Group owns group-specific presentation configuration such as:
 
 ```text
 member weight
-member radius
+default member radius
 framing size
 damping
 FOV range
@@ -369,6 +369,11 @@ receive more than one Subject.
 The Composition decides **which** Subjects participate.
 
 The Group presentation decides **how** the resolved set is presented.
+
+IF-ADR-030 narrows the member-radius rule: a Camera Subject may publish an optional
+presentation-space framing radius centered on its Observation. Group uses that radius for
+the corresponding member when present; `GroupCameraRigBehaviorDefinition.memberRadius`
+remains the explicit fallback when the Subject does not publish one.
 
 Neither Group nor `CameraRigComposer` discovers Players, Actors or scene objects.
 
