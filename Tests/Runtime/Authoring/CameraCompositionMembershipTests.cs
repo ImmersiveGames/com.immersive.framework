@@ -142,26 +142,42 @@ namespace Immersive.Framework.Authoring.Tests
         }
 
         [Test]
-        public void CompositionTeardownClearsMembershipAndIsIdempotent()
+        public void PresentationRuntimeTeardownClearsMembershipAndIsIdempotent()
         {
             using var f = new Fixture();
             f.Add("a");
             CameraCompositionMembershipSnapshot snapshot = f.Reconcile("a").Snapshot;
-            var root = new GameObject("composition-teardown-test");
+            var root = new GameObject("presentation-runtime-teardown-test");
             try
             {
                 var composition = root.AddComponent<CameraSharedComposition>();
                 var rig = root.AddComponent<CameraRigComposer>();
-                SetField(composition, "_availability", f.Availability);
-                SetField(composition, "_membership", f.Membership);
-                SetField(composition, "_currentMembership", snapshot);
-                SetField(composition, "compositionRig", rig);
-                Invoke(composition, "StopComposition");
+
+                _ = composition.RequestId;
+                object runtime = GetField<object>(composition, "_runtime");
+
+                Assert.That(runtime, Is.Not.Null);
+                Assert.That(runtime, Is.Not.InstanceOf<MonoBehaviour>());
+                Assert.That(
+                    typeof(CameraSharedComposition).GetField(
+                        "_membership",
+                        BindingFlags.Instance | BindingFlags.NonPublic),
+                    Is.Null,
+                    "CameraSharedComposition must not retain mutable membership state after CAMERA-032-A.");
+
+                SetField(runtime, "_availability", f.Availability);
+                SetField(runtime, "_membership", f.Membership);
+                SetField(runtime, "_currentMembership", snapshot);
+                SetField(runtime, "_compositionRig", rig);
+
+                Invoke(runtime, "StopPresentation");
+
                 Assert.That(composition.Snapshot.LastReconcileStatus,
                     Is.EqualTo(CameraSharedCompositionReconcileStatus.SucceededStopped));
                 Assert.That(composition.Snapshot.RemovedMembershipCount, Is.EqualTo(1));
                 Assert.That(f.Membership.Count, Is.Zero);
-                Invoke(composition, "StopComposition");
+
+                Invoke(runtime, "StopPresentation");
                 Assert.That(f.Membership.Count, Is.Zero);
             }
             finally
@@ -173,6 +189,12 @@ namespace Immersive.Framework.Authoring.Tests
         private static void SetField(object target, string name, object value) =>
             target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(target, value);
+
+        private static T GetField<T>(object target, string name) =>
+            (T)target.GetType().GetField(
+                name,
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(target);
 
         private static void Invoke(object target, string name) =>
             target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)

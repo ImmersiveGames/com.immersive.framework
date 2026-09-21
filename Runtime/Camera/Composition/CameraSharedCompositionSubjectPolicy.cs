@@ -14,7 +14,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-029-E explicit Camera Composition Subject selection policy.")]
+        "IF-ADR-032 preserved Camera Presentation Subject selection policy.")]
     public enum CameraSharedCompositionSubjectPolicyKind
     {
         Undefined = 0,
@@ -42,7 +42,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-029-E deterministic Camera Composition Subject selection policy evaluator.")]
+        "IF-ADR-032 preserved deterministic Camera Presentation Subject selection policy evaluator.")]
     public static class CameraSharedCompositionSubjectPolicy
     {
         public static IReadOnlyList<CameraSubjectId> SelectDesiredSubjects(

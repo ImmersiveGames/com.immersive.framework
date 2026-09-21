@@ -3,12 +3,12 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Explicit outcome of one Camera composition reconciliation pass. Zero currently
+    /// Explicit outcome of one Camera Presentation reconciliation pass. Zero currently
     /// assigned Subjects is a valid dormant state (SucceededAwaitingSubjects), not a failure.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-029-B composition-owned membership reconciliation status.")]
+        "CAMERA-032-A preserved Presentation runtime reconciliation status.")]
     public enum CameraSharedCompositionReconcileStatus
     {
         None = 0,
