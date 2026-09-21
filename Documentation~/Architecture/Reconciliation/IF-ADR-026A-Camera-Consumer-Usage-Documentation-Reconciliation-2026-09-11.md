@@ -1,5 +1,7 @@
 # IF-ADR-026A — Camera Consumer Usage Documentation Reconciliation
 
+> Historical reconciliation only. Current normative Camera authority: [IF-ADR-032](../ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md).
+
 Date: **2026-09-11**  
 Status: **RECONCILED — documentation-only**
 
@@ -16,9 +18,9 @@ Authoritative product guide after this reconciliation:
 
 Normative architecture remains:
 
-- [IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](../ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
+- IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology (historical boundary)
 - [IF-ADR-004D — Camera Default Output Presentation Authority](IF-ADR-004D-Camera-Default-Output-Presentation-Authority-2026-08-17.md)
-- [IF-ADR-022 — Camera Rig Presentation Models](../ADRs/IF-ADR-022-Camera-Rig-Presentation-Models-and-Materialization-Authority.md)
+- IF-ADR-022 — Camera Rig Presentation Models (historical boundary)
 
 ## Problem
 

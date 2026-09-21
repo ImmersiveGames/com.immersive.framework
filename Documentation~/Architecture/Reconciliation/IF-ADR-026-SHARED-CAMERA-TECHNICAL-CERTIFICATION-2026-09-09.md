@@ -1,7 +1,10 @@
 # IF-ADR-026 — Shared Camera Technical Certification — 2026-09-09
 
 Status: **CERTIFIED — Shared Camera composition boundary only**
-ADR: [IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology](../ADRs/IF-ADR-026-Camera-Subjects-Assignment-and-Multi-Output-Topology.md)
+Historical boundary: IF-ADR-026 — Camera Subjects, Assignment and Multi-Output Topology  
+Current normative authority: [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](../ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
+
+> Historical evidence only. This record certifies the former IF-ADR-026 boundary and does not certify IF-ADR-032.
 Evidence owner: `QAFramework/Assets/ImmersiveFrameworkQA/Camera/Scripts/Runtime/QaC9RCameraOverrideAuthorityFixture.cs`
 
 > Shared certification is not complete IF-ADR-026 certification. Split runtime, the Full

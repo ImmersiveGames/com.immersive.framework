@@ -1,12 +1,14 @@
 # IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20
 
+> Historical consumer proof only. Current normative Camera authority: [IF-ADR-032](../ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md).
+
 Status: **IMPLEMENTED = YES / CONSUMER UNITY TESTED = YES / INTEGRATED = YES / CONSUMER PROOF PASS**
 
 Scope: IF-ADR-030 CAMERA-030-A consumer integration through the current Local Multiplayer Group Camera sample.
 
 Related:
-- [IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal](../ADRs/IF-ADR-029-Camera-Composition-Group-Presentation-and-Camera-View-Removal.md)
-- [IF-ADR-030 — Camera Subject Framing Evidence](../ADRs/IF-ADR-030-Camera-Subject-Framing-Evidence.md)
+- IF-ADR-029 — Camera Composition, Group Presentation and Camera View Removal (historical boundary)
+- IF-ADR-030 — Camera Subject Framing Evidence (historical boundary)
 
 ## 1. Purpose
 

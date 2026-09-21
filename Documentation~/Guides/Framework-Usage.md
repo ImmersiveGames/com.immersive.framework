@@ -88,31 +88,27 @@ package source scene
 The Scene Template pipeline validates the instantiated scene but does not create,
 repair, save or assign consumer assets.
 
-The current minimal Scene Template starts with the framework-owned persistent
-camera structure and the UI event authority required by the product baseline:
+Under IF-ADR-032, the target minimal Persistent Content Scene is no longer required to own Camera Outputs or gameplay Camera Presentations.
 
-```text
-Persistent Camera
-├── Camera Output
-├── Session Camera Target
-└── Session Camera Rig
+The target persistent baseline contains only application-persistent scene content that genuinely requires scene authoring, for example:
 
+~~~text
 EventSystem
-```
+  InputSystemUIInputModule
 
-The concrete scene remains owned by the consumer game. Presentation Canvas,
-Transition, Loading, Pause presentation, Player provisioning and Audio integration
-are added only when the game needs them; they are not silently materialized by the
-template pipeline.
+optional
+  Transition presentation
+  Loading presentation
+  Pause presentation
+  Audio
+  Player provisioning
+~~~
 
-The minimal template starts with one physical Camera Output. IF-ADR-029 supports `1..N`
-explicit physical Outputs with Composition participation through normal Camera requests.
-Player count never creates Outputs implicitly. Screen viewport,
-display and RenderTexture layout are separate presentation authority under IF-ADR-028 and
-must not be inferred from the persistent Camera hierarchy. The current minimal template
-also carries one `EventSystem` with `InputSystemUIInputModule`.
+Physical Camera Outputs become Session-owned capacity declared from the GameApplication Camera Session configuration. Session / Route / Activity declare reusable Camera Presentations. Player count never creates Outputs implicitly, and PlayerInputManager remains the external physical split-layout writer.
 
-For current Camera authoring, use `Camera-Usage.md` together with IF-ADR-029.
+The current package is still in CAMERA-032 migration, so existing templates/validators may temporarily contain or require the former persistent Camera structure. Do not treat that transitional requirement as target authority.
+
+For Camera authoring and migration status, use Camera-Usage.md together with IF-ADR-032.
 
 ### 4.1 Game Application Inspector workflow
 
