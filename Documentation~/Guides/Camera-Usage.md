@@ -243,7 +243,7 @@ Those types are migration input, not target product architecture.
 
 Do not use their continued presence as authority to extend the former design.
 
-Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is implemented and compiles. Its acceptance gate is focused QAFramework Camera evidence: Structural 10/10, Shared 10/10 and Generic request/output 11/11. Package NUnit tests are supporting implementation tests only and are not the certification gate.
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). The later Full Camera failure is confined to historical ADR-004B duplicate-Output harness evidence and does not block CUT A. Package NUnit tests remain supporting implementation tests only.
 
 ## Validation target
 
