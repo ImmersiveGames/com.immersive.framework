@@ -833,17 +833,20 @@ namespace Immersive.Framework.ApplicationLifecycle
             FrameworkGameFlowStartResult result =
                 await StartGameFlowWithActivityEntryLoadingProgressAsync();
 
-            if (!result.Succeeded &&
-                !TryReleaseSessionCameraPresentations(
-                    "FrameworkRuntimeHost",
-                    "camera-session-presentation-boot-failure",
-                    out string failedBootPresentationReleaseIssue))
+            if (!result.Started)
             {
-                _logger.Warning(
-                    "Session Camera Presentation rollback failed after Game Flow start failure.",
-                    LogFields.Field(
-                        "issue",
-                        failedBootPresentationReleaseIssue));
+                string failedBootPresentationReleaseIssue = string.Empty;
+                if (!TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-boot-failure",
+                        out failedBootPresentationReleaseIssue))
+                {
+                    _logger.Warning(
+                        "Session Camera Presentation rollback failed after Game Flow start failure.",
+                        LogFields.Field(
+                            "issue",
+                            failedBootPresentationReleaseIssue));
+                }
             }
 
             _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
