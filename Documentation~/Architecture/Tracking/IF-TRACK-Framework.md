@@ -341,7 +341,7 @@ Implementation status:
 ~~~text
 IF-ADR-032          ACCEPTED
 CAMERA-032-A        TECHNICALLY VALIDATED / 31/31 FOCUSED QA PASS
-CAMERA-032-B        NOT STARTED
+CAMERA-032-B        IMPLEMENTED / UNITY VALIDATION PENDING
 CAMERA-032-C        NOT STARTED
 CAMERA-032-D        NOT STARTED
 CAMERA-032-E        NOT STARTED
@@ -364,7 +364,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-032 is the single target architecture. CAMERA-032-A is technically validated: `CameraPresentationRuntime` extraction compiles and focused QA passed Structural 10/10 + Shared 10/10 + Generic request/output 11/11 (31/31). The later Full Camera aggregate failure is historical ADR-004B duplicate-Output harness evidence and is non-blocking for CUT A. CAMERA-032-B..F remain pending; CAMERA-031-C is superseded.
+3. **Camera** — IF-ADR-032 is the single target architecture. CAMERA-032-A is technically validated (31/31 focused QA). CAMERA-032-B is implemented: reusable `CameraPresentationDefinition`, stable Presentation identity, RuntimeContent-backed Rig prefab materialization/release, and optional GameApplication Session Presentations against the existing Output baseline. Unity/manual proof for CUT B is pending. CAMERA-032-C..F remain pending; CAMERA-031-C is superseded.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

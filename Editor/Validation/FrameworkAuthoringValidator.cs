@@ -261,6 +261,10 @@ namespace Immersive.Framework.Editor.Validation
                         validationMode));
             }
 
+            ValidateSessionCameraPresentations(
+                report,
+                gameApplication);
+
             ValidatePersistentContentComposition(
                 report,
                 gameApplication,
@@ -285,6 +289,59 @@ namespace Immersive.Framework.Editor.Validation
             }
 
             return report;
+        }
+
+        private static void ValidateSessionCameraPresentations(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset gameApplication)
+        {
+            IReadOnlyList<CameraPresentationDefinition> presentations =
+                gameApplication.SessionCameraPresentations;
+            if (presentations == null || presentations.Count == 0)
+            {
+                return;
+            }
+
+            var definitionOwners =
+                new HashSet<CameraPresentationDefinition>();
+            var identityOwners =
+                new HashSet<CameraPresentationId>();
+
+            for (int index = 0; index < presentations.Count; index++)
+            {
+                CameraPresentationDefinition definition =
+                    presentations[index];
+                if (definition == null)
+                {
+                    report.AddError(
+                        $"Session Camera Presentations[{index}] is missing.",
+                        gameApplication);
+                    continue;
+                }
+
+                if (!definitionOwners.Add(definition))
+                {
+                    report.AddError(
+                        $"Session Camera Presentations repeats definition '{definition.name}' at index '{index}'. One definition may materialize only once for one Session owner.",
+                        gameApplication);
+                    continue;
+                }
+
+                if (!definition.TryValidate(out string issue))
+                {
+                    report.AddError(
+                        $"Session Camera Presentation '{definition.name}' is invalid. {issue}",
+                        definition);
+                    continue;
+                }
+
+                if (!identityOwners.Add(definition.PresentationId))
+                {
+                    report.AddError(
+                        $"Session Camera Presentations contains duplicate CameraPresentationId '{definition.PresentationId}' at '{definition.name}'.",
+                        definition);
+                }
+            }
         }
 
         private static void ValidatePersistentContentComposition(

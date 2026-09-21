@@ -29,8 +29,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         public static string Validate(ScriptableObject definition)
         {
             SerializedDefinition(definition);
-            bool valid = ((CameraOutputDefinition)definition).HasValidId;
-            if (!valid) return "Stable ID is missing or invalid. Generate identity explicitly for a new definition.";
+            bool valid = HasValidId(definition);
+            if (!valid)
+                return "Stable ID is missing or invalid. Generate identity explicitly for a new definition.";
+
             var collision = FindCollision(definition);
             return collision == null ? null :
                 "Stable ID collision with " + AssetDatabase.GetAssetPath(collision) +
@@ -40,9 +42,25 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private static SerializedObject SerializedDefinition(ScriptableObject definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
-            if (!(definition is CameraOutputDefinition))
-                throw new ArgumentException("Expected a Camera Output definition.", nameof(definition));
+            if (!(definition is CameraOutputDefinition) &&
+                !(definition is CameraPresentationDefinition))
+            {
+                throw new ArgumentException(
+                    "Expected a supported Camera definition.",
+                    nameof(definition));
+            }
+
             return new SerializedObject(definition);
+        }
+
+        private static bool HasValidId(ScriptableObject definition)
+        {
+            return definition switch
+            {
+                CameraOutputDefinition output => output.HasValidId,
+                CameraPresentationDefinition presentation => presentation.HasValidId,
+                _ => false
+            };
         }
 
         private static IEnumerable<ScriptableObject> Definitions(Type type)
