@@ -144,6 +144,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 028 | ACCEPTED / IMPLEMENTED — A/B certified; C focused behavior PASS; D implemented/tested/integrated | CAMERA-028-D 33/33 focused functional PASS; adjacent regressions PASS | VALIDATION OPEN — read-only preflight + cleanup/reentrancy proof pending |
 | 029 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Structural 10/10 + Shared 10/10 + Generic 11/11; consumer PASS | current Composition → Rig → Request → Output and Group boundary certified 2026-09-21 |
 | 030 | ACCEPTED / IMPLEMENTED / TECHNICALLY VALIDATED / CERTIFIED | Shared framing proof PASS: explicit + fallback + fresh occurrence + TerminalClean | current Camera Subject framing-evidence contract certified 2026-09-21 |
+| 031 | PROPOSED — explicit Camera Composition Subject selection | implementation not started | enables exact per-Composition Subject binding without Camera-core Player dependency; first consumer Character Selection split-screen |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -334,7 +335,7 @@ Current reconciliation record:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-029 and IF-ADR-030 are implemented, integrated, technically validated and certified as of 2026-09-21. LocalMultiplayer visual tuning remains consumer-owned authoring. Remaining legacy QA harness cleanup is maintenance and does not block the certified Composition/Group/framing contract.
+3. **Camera** — IF-ADR-029 and IF-ADR-030 are implemented, integrated, technically validated and certified as of 2026-09-21. IF-ADR-031 is proposed for explicit per-Composition Subject selection, enabling the Character Selection local-multiplayer Third Person split-screen consumer without coupling Camera core to Player. LocalMultiplayer visual tuning remains consumer-owned authoring.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
@@ -371,6 +372,7 @@ Current reconciliation record:
 - [IF-ADR-027 — Camera Authoring Definitions and Composition Authority](../ADRs/IF-ADR-027-Camera-Authoring-Definitions-and-Composition-Authority.md)
 - [IF-ADR-028 — Camera Output Participation and Presentation Layout Authority](../ADRs/IF-ADR-028-Camera-Output-Participation-and-Presentation-Layout-Authority.md)
 - [IF-ADR-030 — Camera Subject Framing Evidence](../ADRs/IF-ADR-030-Camera-Subject-Framing-Evidence.md)
+- [IF-ADR-031 — Explicit Camera Composition Subject Selection](../ADRs/IF-ADR-031-Explicit-Camera-Composition-Subject-Selection.md)
 - [IF-ADR-029/030 Camera Composition and Framing Technical Certification — 2026-09-21](../Reconciliation/IF-ADR-029-030-CAMERA-COMPOSITION-FRAMING-TECHNICAL-CERTIFICATION-2026-09-21.md)
 - [IF-ADR-030 Local Multiplayer Consumer Unity Proof — 2026-09-20](../Reconciliation/IF-ADR-030-LOCAL-MULTIPLAYER-CONSUMER-UNITY-PROOF-2026-09-20.md)
 - [Camera Output Participation and Layout Authority Reconciliation — 2026-09-12](../Reconciliation/IF-CAMERA-OUTPUT-LAYOUT-AUTHORITY-RECONCILIATION-2026-09-12.md)

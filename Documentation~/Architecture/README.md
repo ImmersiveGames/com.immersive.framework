@@ -488,6 +488,7 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-028 — **Accepted / implemented / tested / integrated; validation open**. CAMERA-028-A/B are certified, CAMERA-028-C focused behavior is PASS, and CAMERA-028-D has 33/33 focused functional PASS. Final validation awaits read-only preflight and cleanup/reentrancy proof.
 - IF-ADR-029 — **Accepted / implemented / technically validated / certified 2026-09-21**. Current Structural 10/10, Shared 10/10 and Generic 11/11 evidence certifies the Composition → Rig → Request → Output boundary and Group lifecycle; LocalMultiplayer consumer evidence is also PASS.
 - IF-ADR-030 — **Accepted / implemented / technically validated / certified 2026-09-21**. Current Shared QA proves explicit per-Subject framing radius, Group fallback radius, fresh occurrence framing evidence and terminal cleanup.
+- IF-ADR-031 — **Proposed 2026-09-21**. Adds explicit Camera-domain Subject selection per Composition so independent Third Person compositions can follow exact current Subject occurrences without introducing Player dependencies into Camera core; first consumer is Character Selection local multiplayer split-screen.
 
 ## Historical certification records
 
