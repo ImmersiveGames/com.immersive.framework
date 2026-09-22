@@ -24,6 +24,8 @@ namespace Immersive.Framework.Camera
         private readonly CameraPresentationMaterializationRuntime _materializer;
         private readonly CameraOutputSessionTopology _outputTopology;
         private readonly CameraSubjectAvailabilityContext _availability;
+        private readonly PlayerCameraPresentationSelectionRuntime
+            _playerSelection;
         private readonly Transform _physicalParent;
         private readonly FrameworkLogger _logger =
             FrameworkLogger.Create<CameraPresentationLifecycleRuntime>();
@@ -37,6 +39,7 @@ namespace Immersive.Framework.Camera
             CameraPresentationMaterializationRuntime materializer,
             CameraOutputSessionTopology outputTopology,
             CameraSubjectAvailabilityContext availability,
+            PlayerCameraPresentationSelectionRuntime playerSelection,
             Transform physicalParent)
         {
             _materializer = materializer ??
@@ -45,6 +48,7 @@ namespace Immersive.Framework.Camera
                 throw new ArgumentNullException(nameof(outputTopology));
             _availability = availability ??
                 throw new ArgumentNullException(nameof(availability));
+            _playerSelection = playerSelection;
             _physicalParent = physicalParent;
         }
 
@@ -208,6 +212,18 @@ namespace Immersive.Framework.Camera
                     materialized.Handle;
                 created.Add(handle);
 
+                if (_playerSelection != null &&
+                    !_playerSelection.TryAttach(
+                        handle,
+                        out _,
+                        out string selectionIssue))
+                {
+                    issue =
+                        $"{ownerKind} '{ownerName}' Camera Presentation '{definition.name}' Player Subject selection attachment failed. {selectionIssue}";
+                    RollbackCreated(created, source, reason);
+                    return false;
+                }
+
                 if (!_outputTopology.TryGetOutput(
                         definition.OutputDefinition.OutputId,
                         out CameraOutputAuthoring output,
@@ -305,6 +321,8 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
 
+                _playerSelection?.ForgetReleased(handle);
+
                 _logger.Debug(
                     $"{ownerKind} Camera Presentation released.",
                     LogFields.Field("owner", ownerName),
@@ -375,10 +393,17 @@ namespace Immersive.Framework.Camera
         {
             for (int index = created.Count - 1; index >= 0; index--)
             {
-                _materializer.Release(
-                    created[index],
-                    source,
-                    reason);
+                CameraPresentationMaterializationHandle handle =
+                    created[index];
+                CameraPresentationMaterializationResult released =
+                    _materializer.Release(
+                        handle,
+                        source,
+                        reason);
+                if (released.Succeeded)
+                {
+                    _playerSelection?.ForgetReleased(handle);
+                }
             }
         }
 
