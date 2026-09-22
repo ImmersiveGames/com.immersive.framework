@@ -323,6 +323,14 @@ namespace Immersive.Framework.Editor.Validation
                     "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.",
                     gameApplication);
             }
+
+            if (!gameApplication.PlayerSessionEnabled &&
+                configuration.PlayerPresentationBindings.Count > 0)
+            {
+                report.AddError(
+                    "Game Application Camera Session Player Slot -> Presentation bindings require an enabled Player Session.",
+                    gameApplication);
+            }
         }
 
         private static void ValidateSessionCameraPresentations(
@@ -577,6 +585,20 @@ namespace Immersive.Framework.Editor.Validation
                 report.AddError(
                     "Persistent Content must not contain PlayerCameraOutputPolicyAuthoring under CAMERA-032-D. Move Player Slot -> Output bindings to GameApplication Camera Session configuration.",
                     legacyOutputPolicies[index]);
+            }
+
+            PlayerCameraCompositionPolicyAuthoring[]
+                legacyCompositionPolicies =
+                    GetSceneComponents<
+                        PlayerCameraCompositionPolicyAuthoring>(
+                            scene);
+            for (int index = 0;
+                 index < legacyCompositionPolicies.Length;
+                 index++)
+            {
+                report.AddError(
+                    "Persistent Content must not contain PlayerCameraCompositionPolicyAuthoring under CAMERA-032-E. Move Player Slot -> Presentation bindings to GameApplication Camera Session configuration.",
+                    legacyCompositionPolicies[index]);
             }
 
             PlayerInputManager[] playerInputManagers =
