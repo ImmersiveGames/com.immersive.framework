@@ -163,6 +163,37 @@ namespace Immersive.Framework.Authoring.Tests
         }
 
         [Test]
+        public void DuplicatePresentationIdentityAcrossDifferentAssetsIsRejected()
+        {
+            using var fixture = new ValidationFixture();
+            CameraPresentationDefinition first =
+                fixture.CreatePresentation(
+                    CameraSharedCompositionSubjectPolicyKind
+                        .ExplicitSelection);
+            CameraPresentationDefinition second =
+                fixture.CreatePresentation(
+                    CameraSharedCompositionSubjectPolicyKind
+                        .ExplicitSelection);
+            fixture.CopyPresentationIdentity(
+                first,
+                second);
+
+            Assert.That(
+                PlayerCameraPresentationTopology.TryCreate(
+                    new[]
+                    {
+                        fixture.Binding("player.1", first),
+                        fixture.Binding("player.2", second)
+                    },
+                    out _,
+                    out string issue),
+                Is.False);
+            Assert.That(
+                issue,
+                Does.Contain("duplicate CameraPresentationId"));
+        }
+
+        [Test]
         public void PlayerBindingRequiresExplicitSelectionPresentation()
         {
             using var fixture = new ValidationFixture();
@@ -574,6 +605,21 @@ namespace Immersive.Framework.Authoring.Tests
                     "rigPrefab",
                     rigRoot);
                 return definition;
+            }
+
+            internal void CopyPresentationIdentity(
+                CameraPresentationDefinition source,
+                CameraPresentationDefinition target)
+            {
+                FieldInfo field =
+                    typeof(CameraPresentationDefinition).GetField(
+                        "stableId",
+                        BindingFlags.Instance |
+                        BindingFlags.NonPublic);
+                Assert.That(field, Is.Not.Null);
+                field.SetValue(
+                    target,
+                    field.GetValue(source));
             }
 
             internal PlayerCameraPresentationBindingAuthoring Binding(
