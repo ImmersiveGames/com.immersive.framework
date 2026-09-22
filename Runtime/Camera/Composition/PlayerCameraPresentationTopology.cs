@@ -111,8 +111,14 @@ namespace Immersive.Framework.Camera
                 }
 
                 var profile = authored.PlayerSlotProfile;
-                if (profile == null ||
-                    !profile.TryGetPlayerSlotId(
+                if (profile == null)
+                {
+                    diagnostic =
+                        $"Camera Session Player Presentation binding at index '{index}' requires a valid PlayerSlotProfile.";
+                    return false;
+                }
+
+                if (!profile.TryGetPlayerSlotId(
                         out PlayerSlotId playerSlotId,
                         out string slotIssue))
                 {
@@ -123,8 +129,14 @@ namespace Immersive.Framework.Camera
 
                 CameraPresentationDefinition presentation =
                     authored.PresentationDefinition;
-                if (presentation == null ||
-                    !presentation.TryValidate(
+                if (presentation == null)
+                {
+                    diagnostic =
+                        $"Camera Session Player Presentation binding for Slot '{playerSlotId.StableText}' requires a CameraPresentationDefinition.";
+                    return false;
+                }
+
+                if (!presentation.TryValidate(
                         out string presentationIssue))
                 {
                     diagnostic =
