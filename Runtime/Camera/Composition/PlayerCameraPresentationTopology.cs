@@ -96,6 +96,8 @@ namespace Immersive.Framework.Camera
                     authoredBindings.Count];
             var seenPresentations =
                 new HashSet<CameraPresentationDefinition>();
+            var seenPresentationIds =
+                new HashSet<CameraPresentationId>();
 
             for (int index = 0;
                  index < authoredBindings.Count;
@@ -157,6 +159,14 @@ namespace Immersive.Framework.Camera
                 {
                     diagnostic =
                         $"Camera Presentation '{presentation.name}' may be bound to only one Player Slot.";
+                    return false;
+                }
+
+                if (!seenPresentationIds.Add(
+                        presentation.PresentationId))
+                {
+                    diagnostic =
+                        $"Camera Session Player Presentation bindings contain duplicate CameraPresentationId '{presentation.PresentationId.Value}'.";
                     return false;
                 }
 
