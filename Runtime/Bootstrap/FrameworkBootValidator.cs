@@ -82,6 +82,13 @@ namespace Immersive.Framework.Bootstrap
                     "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.");
             }
 
+            if (!gameApplication.PlayerSessionEnabled &&
+                cameraSession.PlayerPresentationBindings.Count > 0)
+            {
+                return FrameworkBootResult.Failed(
+                    "Game Application Camera Session Player Slot -> Presentation bindings require an enabled Player Session.");
+            }
+
             var startupRoute = gameApplication.StartupRoute;
             if (startupRoute == null)
             {
