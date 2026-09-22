@@ -3414,6 +3414,24 @@ namespace Immersive.Framework.ApplicationLifecycle
             return value.NormalizeTextOrFallback("<none>");
         }
 
+        private void OnApplicationQuit()
+        {
+            _cameraPresentationLifecycleRuntime?.Dispose();
+            _cameraPresentationLifecycleRuntime = null;
+
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "application-quit",
+                    out string sessionPresentationReleaseIssue))
+            {
+                _logger?.Warning(
+                    "Session Camera Presentation release failed during application quit.",
+                    LogFields.Field(
+                        "issue",
+                        sessionPresentationReleaseIssue));
+            }
+        }
+
         private void OnDestroy()
         {
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
