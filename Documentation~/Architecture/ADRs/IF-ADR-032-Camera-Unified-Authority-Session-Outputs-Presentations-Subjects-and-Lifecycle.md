@@ -873,12 +873,58 @@ QAFramework                            NOT RUN
 
 The Persistent Content template asset itself is intentionally left for CAMERA-032-F template/sample cleanup; CAMERA-032-D changes the runtime and validation authority now and does not silently rewrite consumer scenes or prefabs.
 
-### CAMERA-032-E — Player explicit selection migration
+### CAMERA-032-E — Player explicit selection migration — IMPLEMENTED / UNITY VALIDATION PENDING
 
-- bind Player Slot current Subject evidence to live Presentation occurrences;
-- remove direct serialized Player -> CameraSharedComposition references;
-- validate Slot -> Output and Slot -> Presentation -> Output coherence;
-- prove two-player independent ThirdPerson Presentations.
+Implemented:
+
+- Camera Session configuration now exposes optional explicit Player Slot -> Camera Presentation bindings alongside the separate Player Slot -> Output bindings;
+- serialized Player selection authoring references reusable `CameraPresentationDefinition` assets, never scene `CameraSharedComposition` occurrences;
+- one Player Slot may supply explicit selection to multiple Presentation definitions across Session / Route / Activity lifecycles;
+- one Presentation definition may be bound to at most one Player Slot, preventing P1/P2 selection aliasing;
+- bound Presentations must use `ExplicitSelection`;
+- authoring validation requires every Player Presentation binding to have an explicit Player Slot -> Output binding and requires exact Output coherence:
+  - Slot -> Output Definition;
+  - Slot -> Presentation Definition -> Output Definition;
+  - both Output references must be the same authored definition;
+- `PlayerCameraPresentationSelectionRuntime` consumes current Player Actor Camera Subject evidence and attaches a Camera-domain selection context to each matching live `CameraPresentationRuntime` occurrence;
+- Session, Route and Activity Presentation materialization all attach Player selection before enabling the occurrence;
+- Subject change, leave and rejoin update only live Presentation occurrences bound to that exact Player Slot;
+- release forgets the exact occurrence without keeping a stale materialized Presentation reference;
+- Persistent Content `PlayerCameraCompositionPolicyAuthoring` is rejected by the 032-E runtime/validator path and remains only as legacy code pending CAMERA-032-F removal;
+- package-local tests cover Output/Presentation coherence, one-Presentation/one-Player ownership, ExplicitSelection enforcement, P1/P2 isolation and fresh Subject identity after rejoin.
+
+Diagnostics added in this cut for CAMERA-032-D evidence closure:
+
+- FrameworkRuntimeHost emits `Camera Session Outputs materialized.` with explicit Output count and IDs;
+- SessionCameraTransitionOrchestrator emits `Camera transition force-default applied.` and `Camera transition force-default released.`;
+- force-default diagnostics include Output identity, force-default owner state, admitted normal-request count and preserved normal winner;
+- these diagnostics make Default continuity auditable without treating force-default as a normal request.
+
+Consumer / QA proof still required:
+
+~~~text
+Unity import/compile
+migrate one Player sample from PlayerCameraCompositionPolicyAuthoring
+configure Player Slot -> Output on GameApplication Camera Session
+configure Player Slot -> Presentation on GameApplication Camera Session
+prove one Player ThirdPerson ExplicitSelection
+prove two explicit Outputs + P1/P2 independent ThirdPerson Presentations
+prove leave/rejoin fresh Subject occurrence
+capture Camera Session Output materialization diagnostics
+capture force-default apply/release continuity diagnostics
+~~~
+
+Validation state:
+
+~~~text
+Static code review                         PASS
+Package focused implementation tests       ADDED / UNITY RUN PENDING
+FIRSTGAME non-Player 032-D happy path       PASS — consumer log
+explicit 032-D diagnostic rerun             PENDING
+Player consumer migration                   NOT RUN
+two-player independent ThirdPerson proof    NOT RUN
+QAFramework                                 NOT RUN
+~~~
 
 ### CAMERA-032-F — Legacy removal and recertification
 
