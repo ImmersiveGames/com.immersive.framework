@@ -46,7 +46,7 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent CameraSessionLabel =
             new GUIContent(
                 "Session Configuration",
-                "Explicit Session-owned physical Camera capacity: 1..N Output prefabs and optional Player Slot -> Output bindings.");
+                "Explicit Session-owned physical Camera capacity plus Player Slot -> Output and optional Player Slot -> Presentation explicit-selection bindings.");
 
         private static readonly GUIContent SessionCameraPresentationsLabel =
             new GUIContent(
@@ -464,6 +464,9 @@ namespace Immersive.Framework.Editor.Authoring
                 _cameraSession?.FindPropertyRelative("outputPrefabs");
             SerializedProperty playerOutputBindings =
                 _cameraSession?.FindPropertyRelative("playerOutputBindings");
+            SerializedProperty playerPresentationBindings =
+                _cameraSession?.FindPropertyRelative(
+                    "playerPresentationBindings");
 
             int outputCount =
                 outputPrefabs != null &&
@@ -474,6 +477,11 @@ namespace Immersive.Framework.Editor.Authoring
                 playerOutputBindings != null &&
                 playerOutputBindings.isArray
                     ? playerOutputBindings.arraySize
+                    : 0;
+            int playerPresentationBindingCount =
+                playerPresentationBindings != null &&
+                playerPresentationBindings.isArray
+                    ? playerPresentationBindings.arraySize
                     : 0;
 
             if (outputCount == 0)
@@ -494,6 +502,12 @@ namespace Immersive.Framework.Editor.Authoring
                 playerBindingCount == 0
                     ? "Optional — no Player Slot -> Output bindings configured."
                     : $"{playerBindingCount} explicit binding(s).");
+
+            DrawStatusRow(
+                "Player Presentation Bindings",
+                playerPresentationBindingCount == 0
+                    ? "Optional — no Player Slot -> Presentation bindings configured."
+                    : $"{playerPresentationBindingCount} explicit selection binding(s).");
 
             EditorGUILayout.Space(4f);
 
