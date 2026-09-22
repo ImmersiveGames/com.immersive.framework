@@ -145,7 +145,7 @@ namespace Immersive.Framework.Camera
             var context =
                 new CameraCompositionSubjectSelectionContext(
                     new CameraCompositionSubjectSelectionContextId(
-                        $"camera-presentation-player-selection:{binding.PlayerSlotId.StableText}:{handle.RuntimeContentIdentity.StableText}"));
+                        $"camera-presentation-selection:{handle.RuntimeContentIdentity.StableText}"));
 
             var active =
                 new ActiveSelection(
