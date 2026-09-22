@@ -84,8 +84,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             _playerCameraOutputIntegrationRuntime;
         private PlayerActorCameraSubjectIntegrationRuntime
             _playerActorCameraSubjectIntegrationRuntime;
-        private PlayerCameraCompositionIntegrationRuntime
-            _playerCameraCompositionIntegrationRuntime;
+        private PlayerCameraPresentationSelectionRuntime
+            _playerCameraPresentationSelectionRuntime;
         private CameraSubjectAvailabilityInjectionRuntime _cameraSubjectAvailabilityInjectionRuntime;
         private int _objectEntryRuntimeContextRevision;
         private int _objectEntryRuntimeContextInvalidationCount;
@@ -513,28 +513,22 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            if (!_globalUiSceneRuntime.TryResolvePlayerCameraCompositionPolicies(
-                    out IReadOnlyList<PlayerCameraCompositionPolicyAuthoring> playerCameraCompositionPolicies,
-                    out string compositionPolicyDiagnostic))
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(compositionPolicyDiagnostic);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
-
             if (!_gameApplication.PlayerSessionEnabled &&
-                playerCameraCompositionPolicies.Count > 0)
+                cameraSession != null &&
+                cameraSession.PlayerPresentationBindings.Count > 0)
             {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    "Player Camera Composition policy requires an enabled Player Session.");
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        "GameApplication Camera Session Player Slot -> Presentation bindings require an enabled Player Session.");
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
                 return failed;
             }
 
             _cameraPresentationLifecycleRuntime?.Dispose();
             _cameraPresentationLifecycleRuntime = null;
-            _playerCameraCompositionIntegrationRuntime?.Dispose();
-            _playerCameraCompositionIntegrationRuntime = null;
 
             if (!TryReleaseSessionCameraPresentations(
                     "FrameworkRuntimeHost",
@@ -550,6 +544,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
+            _playerCameraPresentationSelectionRuntime?.Dispose();
+            _playerCameraPresentationSelectionRuntime = null;
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();
@@ -582,6 +578,33 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _cameraOutputTopology =
                 _cameraSessionOutputMaterializationRuntime.Topology;
+
+            CameraOutputTopologySnapshot cameraOutputSnapshot =
+                _cameraOutputTopology.CaptureSnapshot();
+            var cameraOutputIds =
+                new string[cameraOutputSnapshot.OutputCount];
+            for (int outputIndex = 0;
+                 outputIndex < cameraOutputSnapshot.OutputCount;
+                 outputIndex++)
+            {
+                cameraOutputIds[outputIndex] =
+                    cameraOutputSnapshot.Outputs[
+                        outputIndex].OutputId.Value;
+            }
+
+            _logger.Debug(
+                "Camera Session Outputs materialized.",
+                LogFields.Field(
+                    "outputCount",
+                    cameraOutputSnapshot.OutputCount),
+                LogFields.Field(
+                    "outputs",
+                    cameraOutputIds.Length > 0
+                        ? string.Join(",", cameraOutputIds)
+                        : "<none>"),
+                LogFields.Field(
+                    "diagnostic",
+                    cameraDiagnostic));
 
             this.TryGetPlayerParticipationSnapshot(
                 out PlayerParticipationSnapshot playerParticipationSnapshot);
@@ -757,33 +780,38 @@ namespace Immersive.Framework.ApplicationLifecycle
                         _cameraSubjectAvailabilityContext);
                 _cameraSubjectAvailabilityInjectionRuntime.AttachRoots(
                     _globalUiSceneRuntime.PersistedRoots);
-                if (!PlayerCameraCompositionPolicyProjection.TryCreate(
-                        playerCameraCompositionPolicies,
-                        out PlayerCameraCompositionTopology playerCameraCompositionTopology,
-                        out string playerCameraCompositionIssue))
+                if (!PlayerCameraPresentationTopology.TryCreate(
+                        cameraSession.PlayerPresentationBindings,
+                        out PlayerCameraPresentationTopology
+                            playerCameraPresentationTopology,
+                        out string playerCameraPresentationIssue))
                 {
-                    var failed = FrameworkGameFlowStartResult.Failed(
-                        "Player Camera Composition policy is invalid. " +
-                        playerCameraCompositionIssue);
-                    _state = FrameworkRuntimeState.FromGameFlowResult(
-                        _gameApplication,
-                        failed);
+                    var failed =
+                        FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Presentation binding topology is invalid. " +
+                            playerCameraPresentationIssue);
+                    _state =
+                        FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
                     return failed;
                 }
 
-                if (playerCameraCompositionTopology.BindingCount > 0 &&
-                    !PlayerCameraCompositionIntegrationRuntime.TryCreate(
+                if (playerCameraPresentationTopology.BindingCount > 0 &&
+                    !PlayerCameraPresentationSelectionRuntime.TryCreate(
                         _playerActorCameraSubjectIntegrationRuntime,
-                        playerCameraCompositionTopology,
-                        out _playerCameraCompositionIntegrationRuntime,
-                        out playerCameraCompositionIssue))
+                        playerCameraPresentationTopology,
+                        out _playerCameraPresentationSelectionRuntime,
+                        out playerCameraPresentationIssue))
                 {
-                    var failed = FrameworkGameFlowStartResult.Failed(
-                        "Player Camera Composition integration failed. " +
-                        playerCameraCompositionIssue);
-                    _state = FrameworkRuntimeState.FromGameFlowResult(
-                        _gameApplication,
-                        failed);
+                    var failed =
+                        FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Presentation selection integration failed. " +
+                            playerCameraPresentationIssue);
+                    _state =
+                        FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
                     return failed;
                 }
             }
@@ -803,6 +831,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _cameraPresentationMaterializationRuntime,
                     _cameraOutputTopology,
                     _cameraSubjectAvailabilityContext,
+                    _playerCameraPresentationSelectionRuntime,
                     transform);
             _gameFlowRuntime.SetCameraPresentationLifecycle(
                 _cameraPresentationLifecycleRuntime);
@@ -2105,6 +2134,21 @@ namespace Immersive.Framework.ApplicationLifecycle
                     materialized.Handle;
                 _sessionCameraPresentationHandles.Add(handle);
 
+                if (_playerCameraPresentationSelectionRuntime != null &&
+                    !_playerCameraPresentationSelectionRuntime.TryAttach(
+                        handle,
+                        out _,
+                        out string playerSelectionIssue))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' Player Subject selection attachment failed. {playerSelectionIssue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-selection-rollback",
+                        out _);
+                    return false;
+                }
+
                 try
                 {
                     if (!_cameraOutputTopology.TryGetOutput(
@@ -2204,6 +2248,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                     continue;
                 }
 
+                _playerCameraPresentationSelectionRuntime
+                    ?.ForgetReleased(handle);
                 _sessionCameraPresentationHandles.RemoveAt(index);
             }
 
@@ -3465,8 +3511,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
             _activityReadinessBinding = null;
-            _playerCameraCompositionIntegrationRuntime?.Dispose();
-            _playerCameraCompositionIntegrationRuntime = null;
             if (!TryReleaseSessionCameraPresentations(
                     "FrameworkRuntimeHost",
                     "framework-runtime-host-destroy",
@@ -3478,6 +3522,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                         "issue",
                         sessionPresentationReleaseIssue));
             }
+            _playerCameraPresentationSelectionRuntime?.Dispose();
+            _playerCameraPresentationSelectionRuntime = null;
             _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
             _cameraSubjectAvailabilityInjectionRuntime = null;
             _playerActorCameraSubjectIntegrationRuntime?.Dispose();
