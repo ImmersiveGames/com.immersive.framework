@@ -452,7 +452,7 @@ namespace Immersive.Framework.Editor.Authoring
             DrawSection("Camera");
 
             EditorGUILayout.HelpBox(
-                "CAMERA-032-D: GameApplication owns explicit Session Camera capacity. Configure 1..N Output prefabs here; each prefab contains exactly one CameraOutputAuthoring with its physical Camera, Brain and Default Rig. Player Slot -> Output bindings also belong here. Persistent Content no longer supplies Camera Outputs.",
+                "CAMERA-032-D/E: GameApplication owns explicit Session Camera capacity and Player integration. Configure 1..N Output prefabs, Player Slot -> Output bindings, and optional Player Slot -> Presentation bindings for ExplicitSelection. Persistent Content no longer supplies Camera Outputs or Player Camera composition policies.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
