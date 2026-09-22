@@ -18,7 +18,7 @@ namespace Immersive.Framework.CameraAuthoring
     [Serializable]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-032-D explicit Session Camera configuration on GameApplication.")]
+        "CAMERA-032-D/E explicit Session Camera capacity and Player integration configuration on GameApplication.")]
     public sealed class CameraSessionConfiguration
     {
         [SerializeField]
