@@ -1,7 +1,7 @@
 # Camera Usage
 
-Status: **IF-ADR-032 target architecture / CAMERA-032-A validated / CAMERA-032-B/C/D implemented / Unity validation pending for later cuts**  
-Last updated: **2026-09-21**
+Status: **IF-ADR-032 target architecture / CAMERA-032-A validated / CAMERA-032-B/C/D/E implemented / Unity validation pending for later cuts**  
+Last updated: **2026-09-22**
 
 Normative Camera authority:
 
@@ -306,6 +306,72 @@ Camera does not write screen partition layout.
 
 A two-player Session therefore explicitly declares two Outputs when the game needs two physical Cameras. Player count alone never creates the second Output.
 
+## CAMERA-032-E Player explicit Presentation selection
+
+Player Camera integration keeps two explicit relations:
+
+~~~text
+Player Slot -> physical Camera Output
+
+Player Slot -> current Camera Subject selection
+               for a Camera Presentation occurrence
+~~~
+
+Author both from the active GameApplication Camera Session:
+
+~~~text
+GameApplication
+  Camera
+    Session Configuration
+      Player Output Bindings
+        P1 -> Output P1
+        P2 -> Output P2
+
+      Player Presentation Bindings
+        P1 -> Presentation P1
+        P2 -> Presentation P2
+~~~
+
+A Player Presentation binding references a reusable `CameraPresentationDefinition`, not a scene object.
+
+Required rules:
+
+- the Presentation must use `ExplicitSelection`;
+- the Player Slot must also have an explicit Output binding;
+- the Presentation's Output Definition must be the exact same Output Definition bound to that Player Slot;
+- one Presentation definition may belong to only one Player Slot;
+- one Player Slot may bind several Presentation definitions when different Session / Route / Activity lifecycles need Player-specific Presentations.
+
+At runtime the Framework waits for a matching Presentation definition to materialize. It then attaches the Player Slot's current Camera Subject evidence to that exact live occurrence. Route/Activity replacement releases the old occurrence; a later occurrence receives a new attachment.
+
+Leave/rejoin or Actor replacement never restores the old Camera Subject occurrence. The Player Actor integration publishes fresh Camera-domain Subject identity and only the matching Slot's live Presentations consume it.
+
+`PlayerCameraCompositionPolicyAuthoring` is no longer valid Persistent Content configuration on the CAMERA-032-E path. The type remains temporarily in source for CAMERA-032-F legacy removal only.
+
+### 032-D/E camera diagnostics
+
+Expected debug evidence now includes:
+
+~~~text
+Camera Session Outputs materialized.
+  outputCount=<N>
+  outputs=<explicit Output IDs>
+
+Camera transition force-default applied.
+  output=<Output ID>
+  forceDefaultActive=True
+  normalRequestCount=<preserved request count>
+  normalWinner=<preserved normal request or none>
+
+Camera transition force-default released.
+  output=<Output ID>
+  forceDefaultActive=False
+  normalRequestCount=<preserved request count>
+  normalWinner=<current normal winner or none>
+~~~
+
+The force-default log deliberately reports normal-request evidence because force-default does not destroy or replace normal CameraRequest arbitration.
+
 ## Game Flow lifecycle
 
 Target lifecycle:
@@ -392,7 +458,7 @@ The first five legacy types remain migration input for later cleanup where still
 
 Do not use their continued presence as authority to extend the former design.
 
-Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). CAMERA-032-B/C/D are implemented and still require their stated Unity/consumer proof. CAMERA-032-D specifically requires migration of the consumer physical Output prefab(s) and Player Slot -> Output bindings into GameApplication Camera Session configuration. Package NUnit tests remain supporting implementation tests only.
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). CAMERA-032-B/C/D/E are implemented and still require their stated Unity/consumer proof. CAMERA-032-D moves physical Output capacity and Player Slot -> Output bindings to GameApplication Camera Session configuration; CAMERA-032-E moves Player explicit Subject selection to Player Slot -> CameraPresentationDefinition bindings that attach to live Presentation occurrences. Package NUnit tests remain supporting implementation tests only.
 
 ## Validation target
 
