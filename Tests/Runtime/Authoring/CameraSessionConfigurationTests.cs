@@ -69,6 +69,63 @@ namespace Immersive.Framework.Authoring.Tests
         }
 
         [Test]
+        public void PlayerPresentationBindingRequiresPlayerOutputBinding()
+        {
+            using var fixture = new Fixture();
+            PlayerSlotProfile profile =
+                fixture.CreatePlayerSlotProfile("player.1");
+            CameraPresentationDefinition presentation =
+                fixture.CreatePresentationDefinition(
+                    fixture.OutputDefinition);
+            var binding =
+                new PlayerCameraPresentationBindingAuthoring();
+            binding.Configure(profile, presentation);
+            fixture.SetPlayerPresentationBindings(binding);
+
+            Assert.That(
+                fixture.Configuration.TryValidate(
+                    out string issue),
+                Is.False);
+            Assert.That(
+                issue,
+                Does.Contain("requires an explicit Player Slot -> Output binding"));
+        }
+
+        [Test]
+        public void PlayerPresentationBindingMustTargetPlayersExactOutput()
+        {
+            using var fixture = new Fixture();
+            PlayerSlotProfile profile =
+                fixture.CreatePlayerSlotProfile("player.1");
+
+            var outputBinding =
+                new PlayerCameraOutputBindingAuthoring();
+            outputBinding.Configure(
+                profile,
+                fixture.OutputDefinition);
+            fixture.SetPlayerOutputBindings(outputBinding);
+
+            CameraOutputDefinition otherOutput =
+                fixture.CreateOutputDefinition();
+            CameraPresentationDefinition presentation =
+                fixture.CreatePresentationDefinition(otherOutput);
+            var presentationBinding =
+                new PlayerCameraPresentationBindingAuthoring();
+            presentationBinding.Configure(
+                profile,
+                presentation);
+            fixture.SetPlayerPresentationBindings(
+                presentationBinding);
+
+            Assert.That(
+                fixture.Configuration.TryValidate(
+                    out string issue),
+                Is.False);
+            Assert.That(issue, Does.Contain("incoherent"));
+            Assert.That(issue, Does.Contain("Player Output"));
+        }
+
+        [Test]
         public void MaterializationCreatesExactSessionTopologyAndTeardown()
         {
             using var fixture = new Fixture();
@@ -248,6 +305,48 @@ namespace Immersive.Framework.Authoring.Tests
                 return definition;
             }
 
+            internal CameraPresentationDefinition
+                CreatePresentationDefinition(
+                    CameraOutputDefinition output)
+            {
+                CameraPresentationDefinition definition =
+                    ScriptableObject.CreateInstance<
+                        CameraPresentationDefinition>();
+                _created.Add(definition);
+                SetField(
+                    definition,
+                    "stableId",
+                    Guid.NewGuid().ToString("N"));
+                SetField(
+                    definition,
+                    "outputDefinition",
+                    output);
+                SetField(
+                    definition,
+                    "subjectPolicy",
+                    CameraSharedCompositionSubjectPolicyKind
+                        .ExplicitSelection);
+
+                GameObject rigRoot =
+                    CreateRoot(
+                        $"Player Presentation Rig {Guid.NewGuid():N}");
+                CameraRigComposer composer =
+                    rigRoot.AddComponent<CameraRigComposer>();
+                SetField(
+                    composer,
+                    "behaviorDefinition",
+                    Behavior);
+                SetField(
+                    composer,
+                    "cinemachineCamera",
+                    rigRoot.AddComponent<CinemachineCamera>());
+                SetField(
+                    definition,
+                    "rigPrefab",
+                    rigRoot);
+                return definition;
+            }
+
             internal PlayerSlotProfile CreatePlayerSlotProfile(
                 string slotId)
             {
@@ -282,6 +381,17 @@ namespace Immersive.Framework.Authoring.Tests
                     new List<PlayerCameraOutputBindingAuthoring>(
                         bindings ??
                         Array.Empty<PlayerCameraOutputBindingAuthoring>()));
+            }
+
+            internal void SetPlayerPresentationBindings(
+                params PlayerCameraPresentationBindingAuthoring[] bindings)
+            {
+                SetField(
+                    Configuration,
+                    "playerPresentationBindings",
+                    new List<PlayerCameraPresentationBindingAuthoring>(
+                        bindings ??
+                        Array.Empty<PlayerCameraPresentationBindingAuthoring>()));
             }
 
             internal GameObject CreateRoot(string name)
