@@ -81,7 +81,13 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
                 applied.Add(session);
+            }
 
+            for (int index = 0;
+                 index < applied.Count;
+                 index++)
+            {
+                CameraOutputSession session = applied[index];
                 CameraOutputContextSnapshot context =
                     session.Context.CaptureSnapshot();
                 _logger.Debug(
@@ -90,7 +96,7 @@ namespace Immersive.Framework.Camera
                         : "Camera transition force-default released.",
                     LogFields.Field(
                         "output",
-                        outputId.Value),
+                        session.OutputId.Value),
                     LogFields.Field(
                         "owner",
                         ForceDefaultOwnerId.Value),
@@ -107,14 +113,9 @@ namespace Immersive.Framework.Camera
                         "normalWinner",
                         context.HasWinner
                             ? context.Winner.RequestId.Value
-                            : "<none>"),
-                    LogFields.Field(
-                        "applyKind",
-                        mutation.Kind),
-                    LogFields.Field(
-                        "diagnostic",
-                        mutation.DiagnosticSummary));
+                            : "<none>"));
             }
+
             diagnostic = string.Empty;
             return true;
         }
