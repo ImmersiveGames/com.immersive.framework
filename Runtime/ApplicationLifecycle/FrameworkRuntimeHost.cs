@@ -533,6 +533,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _cameraPresentationLifecycleRuntime?.Dispose();
             _cameraPresentationLifecycleRuntime = null;
+            _playerCameraCompositionIntegrationRuntime?.Dispose();
+            _playerCameraCompositionIntegrationRuntime = null;
 
             if (!TryReleaseSessionCameraPresentations(
                     "FrameworkRuntimeHost",
@@ -547,6 +549,16 @@ namespace Immersive.Framework.ApplicationLifecycle
                     failed);
                 return failed;
             }
+
+            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
+            _cameraSubjectAvailabilityInjectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
+            _cameraOutputInjectionRuntime?.Dispose();
+            _cameraOutputInjectionRuntime = null;
 
             _cameraSessionOutputMaterializationRuntime?.Dispose();
             _cameraSessionOutputMaterializationRuntime = null;
@@ -586,31 +598,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            _cameraOutputInjectionRuntime?.Dispose();
-            _cameraOutputInjectionRuntime = new CameraOutputInjectionRuntime(
-                _cameraOutputTopology);
+            _cameraOutputInjectionRuntime =
+                new CameraOutputInjectionRuntime(
+                    _cameraOutputTopology);
             _cameraOutputInjectionRuntime.AttachRoots(
                 _globalUiSceneRuntime.PersistedRoots);
-            _playerCameraCompositionIntegrationRuntime?.Dispose();
-            _playerCameraCompositionIntegrationRuntime = null;
-            if (!TryReleaseSessionCameraPresentations(
-                    "FrameworkRuntimeHost",
-                    "framework-runtime-host-destroy",
-                    out string sessionPresentationReleaseIssue))
-            {
-                _logger?.Warning(
-                    "Session Camera Presentation release failed during FrameworkRuntimeHost destruction.",
-                    LogFields.Field(
-                        "issue",
-                        sessionPresentationReleaseIssue));
-            }
-            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
-            _cameraSubjectAvailabilityInjectionRuntime = null;
-            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
-            _playerActorCameraSubjectIntegrationRuntime = null;
-            _playerCameraOutputIntegrationRuntime?.Dispose();
-            _playerCameraOutputIntegrationRuntime = null;
-            _cameraSubjectAvailabilityContext = null;
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
