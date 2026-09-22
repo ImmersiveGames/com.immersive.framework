@@ -34,8 +34,12 @@ namespace Immersive.Framework.CameraAuthoring
         {
             get
             {
-                return outputPrefabs ??
-                    (IReadOnlyList<GameObject>)Array.Empty<GameObject>();
+                if (outputPrefabs != null)
+                {
+                    return outputPrefabs;
+                }
+
+                return Array.Empty<GameObject>();
             }
         }
 
@@ -44,9 +48,12 @@ namespace Immersive.Framework.CameraAuthoring
         {
             get
             {
-                return playerOutputBindings ??
-                    (IReadOnlyList<PlayerCameraOutputBindingAuthoring>)
-                    Array.Empty<PlayerCameraOutputBindingAuthoring>();
+                if (playerOutputBindings != null)
+                {
+                    return playerOutputBindings;
+                }
+
+                return Array.Empty<PlayerCameraOutputBindingAuthoring>();
             }
         }
 
