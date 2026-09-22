@@ -205,7 +205,8 @@ namespace Immersive.Framework.CameraAuthoring
                 outputDefinition,
                 subjectPolicy,
                 compositionRig,
-                requestPrecedence);
+                requestPrecedence,
+                CameraPresentationTransitionMode.Blend);
             return runtime;
         }
     }
