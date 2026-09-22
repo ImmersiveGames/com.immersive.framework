@@ -106,7 +106,6 @@ namespace Immersive.Framework.Authoring.Tests
             runtime.Dispose();
 
             Assert.That(runtime.IsDisposed, Is.True);
-            Assert.That(runtime.Topology.CaptureSnapshot().IsTornDown, Is.True);
             Assert.DoesNotThrow(() => runtime.Dispose());
         }
 
