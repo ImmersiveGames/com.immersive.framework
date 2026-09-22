@@ -1,7 +1,7 @@
 # Persistent Content Scene Template
 
-Status: **IF-ADR-032 target contract / CAMERA-032-D runtime authority implemented / template cleanup pending CAMERA-032-F**  
-Last updated: **2026-09-21**
+Status: **IF-ADR-032 target contract / CAMERA-032-D/E runtime authority implemented / template cleanup pending CAMERA-032-F**  
+Last updated: **2026-09-22**
 
 ## Purpose
 
@@ -160,9 +160,10 @@ Runtime and owning validation now reject these former Persistent Content authori
 ~~~text
 CameraOutputAuthoring
 PlayerCameraOutputPolicyAuthoring
+PlayerCameraCompositionPolicyAuthoring
 ~~~
 
-Consumer scenes must migrate those two authoring surfaces before running the CAMERA-032-D branch.
+Consumer scenes must migrate physical Outputs and Player Output bindings for CAMERA-032-D, and direct Player -> CameraSharedComposition selection policy for CAMERA-032-E.
 
 Other former Camera composition types may still exist temporarily until CAMERA-032-E/F removes or reconciles their retained use cases.
 
