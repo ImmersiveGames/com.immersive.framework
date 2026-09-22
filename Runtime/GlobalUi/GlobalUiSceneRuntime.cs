@@ -291,6 +291,47 @@ namespace Immersive.Framework.GlobalUi
                 idempotentCount);
         }
 
+        internal bool TryResolveCameraSessionEnvironment(
+            out bool automaticSplitScreenEnabled,
+            out string diagnostic)
+        {
+            automaticSplitScreenEnabled = false;
+
+            List<CameraOutputAuthoring> legacyOutputs =
+                FindAll<CameraOutputAuthoring>();
+            if (legacyOutputs.Count > 0)
+            {
+                diagnostic =
+                    $"Persistent Content contains '{legacyOutputs.Count}' CameraOutputAuthoring component(s). CAMERA-032-D requires physical Camera Outputs to be configured as GameApplication Camera Session Output prefabs.";
+                return false;
+            }
+
+            List<PlayerCameraOutputPolicyAuthoring> legacyPolicies =
+                FindAll<PlayerCameraOutputPolicyAuthoring>();
+            if (legacyPolicies.Count > 0)
+            {
+                diagnostic =
+                    $"Persistent Content contains '{legacyPolicies.Count}' PlayerCameraOutputPolicyAuthoring component(s). CAMERA-032-D requires Player Slot -> Output bindings to be configured on GameApplication Camera Session.";
+                return false;
+            }
+
+            List<PlayerInputManager> playerInputManagers =
+                FindAll<PlayerInputManager>();
+            for (int index = 0;
+                 index < playerInputManagers.Count;
+                 index++)
+            {
+                if (playerInputManagers[index].splitScreen)
+                {
+                    automaticSplitScreenEnabled = true;
+                    break;
+                }
+            }
+
+            diagnostic = string.Empty;
+            return true;
+        }
+
         internal bool TryResolveCameraPresentation(
             out IReadOnlyList<CameraOutputAuthoring> outputSessions,
             out IReadOnlyList<PlayerCameraOutputPolicyAuthoring> playerOutputPolicies,

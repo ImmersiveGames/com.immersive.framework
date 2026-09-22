@@ -261,6 +261,10 @@ namespace Immersive.Framework.Editor.Validation
                         validationMode));
             }
 
+            ValidateCameraSessionConfiguration(
+                report,
+                gameApplication);
+
             ValidateSessionCameraPresentations(
                 report,
                 gameApplication);
@@ -289,6 +293,36 @@ namespace Immersive.Framework.Editor.Validation
             }
 
             return report;
+        }
+
+        private static void ValidateCameraSessionConfiguration(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset gameApplication)
+        {
+            CameraSessionConfiguration configuration =
+                gameApplication.CameraSession;
+            if (configuration == null)
+            {
+                report.AddError(
+                    "Game Application Camera Session configuration is missing.",
+                    gameApplication);
+                return;
+            }
+
+            if (!configuration.TryValidate(out string issue))
+            {
+                report.AddError(
+                    $"Game Application Camera Session is invalid. {issue}",
+                    gameApplication);
+            }
+
+            if (!gameApplication.PlayerSessionEnabled &&
+                configuration.PlayerOutputBindings.Count > 0)
+            {
+                report.AddError(
+                    "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.",
+                    gameApplication);
+            }
         }
 
         private static void ValidateSessionCameraPresentations(
@@ -521,147 +555,73 @@ namespace Immersive.Framework.Editor.Validation
             GameObject[] roots =
                 scene.GetRootGameObjects();
 
-            CameraOutputAuthoring[] outputBindings =
+            CameraOutputAuthoring[] legacyOutputs =
                 GetSceneComponents<CameraOutputAuthoring>(
                     scene);
-
-            if (outputBindings.Length == 0)
+            for (int index = 0;
+                 index < legacyOutputs.Length;
+                 index++)
             {
                 report.AddError(
-                    "Persistent Content Scene requires at least one explicit Camera Output Authoring.",
-                    owner);
+                    "Persistent Content must not contain CameraOutputAuthoring under CAMERA-032-D. Move the physical Output hierarchy into a Camera Session Output prefab and configure it on GameApplication.",
+                    legacyOutputs[index]);
             }
 
-            var outputIds = new Dictionary<string, CameraOutputAuthoring>(StringComparer.Ordinal);
-            var physicalOutputBindings = new HashSet<Object>();
-            for (int outputIndex = 0; outputIndex < outputBindings.Length; outputIndex++)
+            PlayerCameraOutputPolicyAuthoring[] legacyOutputPolicies =
+                GetSceneComponents<PlayerCameraOutputPolicyAuthoring>(
+                    scene);
+            for (int index = 0;
+                 index < legacyOutputPolicies.Length;
+                 index++)
             {
-                CameraOutputAuthoring binding = outputBindings[outputIndex];
-
-                if (!new CameraOutputId(binding.OutputIdText).IsValid)
-                {
-                    report.AddError(
-                        "Persistent Content Camera Output requires an explicit Output ID.",
-                        binding);
-                }
-                else if (outputIds.TryGetValue(binding.OutputIdText, out CameraOutputAuthoring duplicate))
-                {
-                    report.AddError(
-                        $"Persistent Content Camera Outputs require unique Output IDs. Duplicate='{binding.OutputIdText}'.",
-                        binding);
-                    report.AddError(
-                        $"Persistent Content Camera Outputs require unique Output IDs. Duplicate='{binding.OutputIdText}'.",
-                        duplicate);
-                }
-                else
-                {
-                    outputIds.Add(binding.OutputIdText, binding);
-                }
-
-                if (binding.UnityCamera == null)
-                {
-                    report.AddError(
-                        "Persistent Content Camera Output requires an explicit Unity Camera reference.",
-                        binding);
-                }
-                else if (!physicalOutputBindings.Add(binding.UnityCamera))
-                {
-                    report.AddError(
-                        "Persistent Content Camera Outputs cannot share the same Unity Camera.",
-                        binding);
-                }
-
-                if (binding.CinemachineBrain == null)
-                {
-                    report.AddError(
-                        "Persistent Content Camera Output requires an explicit Cinemachine Brain reference.",
-                        binding);
-                }
-                else if (!physicalOutputBindings.Add(binding.CinemachineBrain))
-                {
-                    report.AddError(
-                        "Persistent Content Camera Outputs cannot share the same Cinemachine Brain.",
-                        binding);
-                }
-
-                if (binding.UnityCamera != null &&
-                    binding.CinemachineBrain != null &&
-                    binding.UnityCamera.gameObject !=
-                    binding.CinemachineBrain.gameObject)
-                {
-                    report.AddError(
-                        "Persistent Content Unity Camera and Cinemachine Brain must belong to the same physical output GameObject.",
-                        binding);
-                }
-
-                if (binding.DefaultCameraRig == null)
-                {
-                    report.AddError(
-                        "Persistent Content Camera Output requires an explicit Default Camera Rig.",
-                        binding);
-                }
-                else if (!physicalOutputBindings.Add(binding.DefaultCameraRig))
-                {
-                    report.AddError(
-                        "Persistent Content Camera Outputs cannot share the same Default Camera Rig.",
-                        binding);
-                }
+                report.AddError(
+                    "Persistent Content must not contain PlayerCameraOutputPolicyAuthoring under CAMERA-032-D. Move Player Slot -> Output bindings to GameApplication Camera Session configuration.",
+                    legacyOutputPolicies[index]);
             }
 
             PlayerInputManager[] playerInputManagers =
                 GetSceneComponents<PlayerInputManager>(scene);
-            for (int managerIndex = 0; managerIndex < playerInputManagers.Length; managerIndex++)
-            {
-                if (!playerInputManagers[managerIndex].splitScreen) continue;
-                report.AddError(
-                    "PlayerInputManager automatic split-screen remains unsupported in the current implementation and must be disabled.",
-                    playerInputManagers[managerIndex]);
-            }
 
             SessionCameraOverride[] sessionBindings =
                 GetSceneComponents<SessionCameraOverride>(
                     scene);
 
-            for (int sessionIndex = 0; sessionIndex < sessionBindings.Length; sessionIndex++)
+            for (int sessionIndex = 0;
+                 sessionIndex < sessionBindings.Length;
+                 sessionIndex++)
             {
                 ValidateSessionCameraOverride(
                     report,
-                    outputIds,
                     sessionBindings[sessionIndex]);
             }
 
             CameraSharedComposition[] sharedCompositions =
                 GetSceneComponents<CameraSharedComposition>(scene);
-            for (int compositionIndex = 0; compositionIndex < sharedCompositions.Length; compositionIndex++)
+            for (int compositionIndex = 0;
+                 compositionIndex < sharedCompositions.Length;
+                 compositionIndex++)
             {
-                CameraSharedComposition composition = sharedCompositions[compositionIndex];
-                if (!composition.TryValidateDefinitions(out string compositionIssue))
-                {
-                    report.AddError(compositionIssue, composition);
-                }
-                if (!composition.RequestedOutputId.IsValid ||
-                    !outputIds.TryGetValue(composition.OutputIdText, out CameraOutputAuthoring output))
+                CameraSharedComposition composition =
+                    sharedCompositions[compositionIndex];
+                if (!composition.TryValidateDefinitions(
+                        out string compositionIssue))
                 {
                     report.AddError(
-                        $"Shared Camera Composition references unknown Camera Output ID '{composition.OutputIdText}'.",
+                        compositionIssue,
                         composition);
                 }
-                else if (output.DefaultCameraRig == null)
+
+                if (!composition.RequestedOutputId.IsValid)
                 {
                     report.AddError(
-                        "Shared Camera Composition requires a Default Camera Rig on its explicitly identified Output.",
+                        "Shared Camera Composition requires an explicit valid Camera Output definition.",
                         composition);
                 }
-                else if (composition.CompositionRig == null)
+
+                if (composition.CompositionRig == null)
                 {
                     report.AddError(
                         "Shared Camera Composition requires an explicit Composition Camera Rig.",
-                        composition);
-                }
-                else if (ReferenceEquals(composition.CompositionRig, output.DefaultCameraRig))
-                {
-                    report.AddError(
-                        "Shared Camera Composition Rig must be distinct from the Output Default Camera Rig.",
                         composition);
                 }
             }
@@ -940,7 +900,6 @@ namespace Immersive.Framework.Editor.Validation
 
         private static void ValidateSessionCameraOverride(
             FrameworkAuthoringValidationReport report,
-            IReadOnlyDictionary<string, CameraOutputAuthoring> outputsById,
             SessionCameraOverride binding)
         {
             if (binding == null)
@@ -948,16 +907,12 @@ namespace Immersive.Framework.Editor.Validation
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(binding.OutputIdText))
+            if (!binding.RequestedOutputId.IsValid ||
+                binding.OutputDefinition == null ||
+                !binding.OutputDefinition.HasValidId)
             {
                 report.AddError(
-                    "Persistent Content Session Camera Override requires an explicit Camera Output ID.",
-                    binding);
-            }
-            else if (outputsById == null || !outputsById.ContainsKey(binding.OutputIdText))
-            {
-                report.AddError(
-                    $"Persistent Content Session Camera Override references unknown Camera Output ID '{binding.OutputIdText}'.",
+                    "Persistent Content Session Camera Override requires an explicit valid Camera Output definition. Physical Output resolution comes from GameApplication Camera Session.",
                     binding);
             }
 

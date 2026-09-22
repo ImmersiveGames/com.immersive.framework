@@ -1,6 +1,6 @@
 # Camera Usage
 
-Status: **IF-ADR-032 target architecture / CAMERA-032-A validated / CAMERA-032-B implemented / C–F pending**  
+Status: **IF-ADR-032 target architecture / CAMERA-032-A validated / CAMERA-032-B/C/D implemented / Unity validation pending for later cuts**  
 Last updated: **2026-09-21**
 
 Normative Camera authority:
@@ -193,6 +193,53 @@ Activity C
 
 Every materialized occurrence uses its exact RuntimeContent owner. Activity Presentations release before the Activity scope root is removed; Route Presentations release before the Route scope root is removed.
 
+## CAMERA-032-D Camera Session configuration
+
+Physical Camera Outputs are now authored from the active GameApplication rather than discovered in Persistent Content.
+
+Author one self-contained Output prefab per physical Camera:
+
+~~~text
+Camera Output Prefab
+  CameraOutputAuthoring
+    -> exact CameraOutputDefinition
+    -> Unity Camera
+    -> CinemachineBrain
+    -> persistent Default Camera Rig
+~~~
+
+Then configure:
+
+~~~text
+GameApplication
+  Camera
+    Session Configuration
+      Output Prefabs
+        [0] PF_<Game>_CameraOutput_Main
+        [1] PF_<Game>_CameraOutput_P2   (only when explicitly required)
+
+      Player Output Bindings
+        Player Slot 1 -> exact Output Definition 1
+        Player Slot 2 -> exact Output Definition 2
+~~~
+
+The Framework materializes these prefabs under the persistent FrameworkRuntimeHost, validates the exact 1..N topology, and continues to use the existing CameraOutputSession arbitration/Default/force-default contracts.
+
+### Migrating an existing Persistent Content scene
+
+For each old physical Output hierarchy:
+
+1. Preserve it as a prefab containing exactly one `CameraOutputAuthoring` and its physical Camera/Brain/Default Rig.
+2. Add that prefab to `GameApplication > Camera > Session Configuration > Output Prefabs`.
+3. Move every `Player Slot -> Output` binding from `PlayerCameraOutputPolicyAuthoring` into the GameApplication Camera Session configuration.
+4. Remove `CameraOutputAuthoring` and `PlayerCameraOutputPolicyAuthoring` from Persistent Content.
+5. Keep `PlayerInputManager` / Player provisioning where it belongs; automatic split-screen still owns `PlayerInput.camera` association and `Camera.rect` recomposition through the existing integration.
+6. Keep Route/Activity Presentation prefabs and definitions on their lifecycle assets; they are not part of the Output prefab.
+
+Leaving the old Output or Player Output policy in Persistent Content is rejected. This is intentional: CAMERA-032-D does not permit a legacy physical topology and the new Session topology to coexist.
+
+The package Persistent Content template/sample cleanup remains CAMERA-032-F work; the framework does not silently rewrite consumer scenes or prefabs.
+
 ## Rig authoring
 
 CameraRigComposer remains the local Rig authority.
@@ -327,7 +374,7 @@ CameraPresentationRuntime
   rollback
 ~~~
 
-The extracted runtime is not a MonoBehaviour. Outputs and Game Flow authoring are intentionally unchanged until later cuts.
+The extracted runtime is not a MonoBehaviour. CAMERA-032-D now moves physical Output capacity and Player Slot -> Output bindings to GameApplication Camera Session configuration.
 
 Current transitional code still contains former architecture such as:
 
@@ -341,11 +388,11 @@ PlayerCameraCompositionPolicyAuthoring
 Persistent-root Camera Output discovery
 ~~~
 
-Those types are migration input, not target product architecture.
+The first five legacy types remain migration input for later cleanup where still present. Persistent-root physical Output discovery and Persistent-scene Player Output policy are no longer used by the CAMERA-032-D runtime path.
 
 Do not use their continued presence as authority to extend the former design.
 
-Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). CAMERA-032-B is implemented and awaits Unity compile/manual proof using a consumer-authored Rig prefab + CameraPresentationDefinition + GameApplication Session Presentation reference. Package NUnit tests remain supporting implementation tests only.
+Migration is tracked by CAMERA-032-A..F in IF-ADR-032. CAMERA-032-A is technically validated: Structural 10/10, Shared 10/10 and Generic request/output 11/11 (31/31 focused QA PASS). CAMERA-032-B/C/D are implemented and still require their stated Unity/consumer proof. CAMERA-032-D specifically requires migration of the consumer physical Output prefab(s) and Player Slot -> Output bindings into GameApplication Camera Session configuration. Package NUnit tests remain supporting implementation tests only.
 
 ## Validation target
 

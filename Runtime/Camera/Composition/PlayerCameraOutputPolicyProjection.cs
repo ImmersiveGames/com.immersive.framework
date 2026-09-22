@@ -58,72 +58,112 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            var projected = new List<PlayerCameraOutputBinding>(
-                authoredBindings?.Count ?? 0);
-            var outputDefinitions = new List<CameraOutputDefinition>(
-                authoredBindings?.Count ?? 0);
-            if (authoredBindings != null)
+            return TryCreate(
+                authoredBindings,
+                outputs,
+                playerSession,
+                requireCompleteSlotCoverage,
+                out topology,
+                out diagnostic);
+        }
+
+        internal static bool TryCreate(
+            IReadOnlyList<PlayerCameraOutputBindingAuthoring> authoredBindings,
+            CameraOutputSessionTopology outputs,
+            PlayerParticipationSnapshot playerSession,
+            bool requireCompleteSlotCoverage,
+            out PlayerCameraOutputTopology topology,
+            out string diagnostic)
+        {
+            topology = null;
+            if (outputs == null)
             {
-                for (int index = 0; index < authoredBindings.Count; index++)
+                diagnostic =
+                    "Player Camera Output projection requires the current Camera Output Session topology.";
+                return false;
+            }
+
+            authoredBindings ??=
+                Array.Empty<PlayerCameraOutputBindingAuthoring>();
+
+            if (requireCompleteSlotCoverage &&
+                authoredBindings.Count == 0)
+            {
+                diagnostic =
+                    "PlayerInputManager automatic split-screen requires explicit GameApplication Camera Session Player Slot -> Output bindings covering every configured Player Slot.";
+                return false;
+            }
+
+            var projected = new List<PlayerCameraOutputBinding>(
+                authoredBindings.Count);
+            var outputDefinitions = new List<CameraOutputDefinition>(
+                authoredBindings.Count);
+
+            for (int index = 0;
+                 index < authoredBindings.Count;
+                 index++)
+            {
+                PlayerCameraOutputBindingAuthoring authored =
+                    authoredBindings[index];
+                if (authored == null)
                 {
-                    PlayerCameraOutputBindingAuthoring authored =
-                        authoredBindings[index];
-                    if (authored == null)
-                    {
-                        diagnostic =
-                            $"Player Camera Output Policy contains a missing binding at index '{index}'.";
-                        return false;
-                    }
+                    diagnostic =
+                        $"GameApplication Camera Session contains a missing Player Output binding at index '{index}'.";
+                    return false;
+                }
 
-                    PlayerSlotProfile profile = authored.PlayerSlotProfile;
-                    if (profile == null)
-                    {
-                        diagnostic =
-                            $"Player Camera Output binding at index '{index}' requires a valid PlayerSlotProfile.";
-                        return false;
-                    }
+                PlayerSlotProfile profile =
+                    authored.PlayerSlotProfile;
+                if (profile == null)
+                {
+                    diagnostic =
+                        $"Camera Session Player Output binding at index '{index}' requires a valid PlayerSlotProfile.";
+                    return false;
+                }
 
-                    if (!profile.TryGetPlayerSlotId(
-                            out PlayerSlotId playerSlotId,
-                            out string slotIssue))
-                    {
-                        diagnostic =
-                            $"Player Camera Output binding at index '{index}' requires a valid PlayerSlotProfile. {slotIssue}";
-                        return false;
-                    }
+                if (!profile.TryGetPlayerSlotId(
+                        out PlayerSlotId playerSlotId,
+                        out string slotIssue))
+                {
+                    diagnostic =
+                        $"Camera Session Player Output binding at index '{index}' requires a valid PlayerSlotProfile. {slotIssue}";
+                    return false;
+                }
 
-                    CameraOutputDefinition outputDefinition =
-                        authored.OutputDefinition;
-                    if (outputDefinition == null || !outputDefinition.HasValidId)
-                    {
-                        diagnostic =
-                            $"Player Camera Output binding for Slot '{playerSlotId.StableText}' requires a valid CameraOutputDefinition.";
-                        return false;
-                    }
+                CameraOutputDefinition outputDefinition =
+                    authored.OutputDefinition;
+                if (outputDefinition == null ||
+                    !outputDefinition.HasValidId)
+                {
+                    diagnostic =
+                        $"Camera Session Player Output binding for Slot '{playerSlotId.StableText}' requires a valid CameraOutputDefinition.";
+                    return false;
+                }
 
-                    if (!outputs.TryGetOutput(
-                            outputDefinition.OutputId,
-                            out CameraOutputAuthoring physicalOutput,
-                            out string outputIssue) ||
-                        !ReferenceEquals(
-                            physicalOutput.OutputDefinition,
-                            outputDefinition))
-                    {
-                        diagnostic =
-                            $"Player Camera Output binding for Slot '{playerSlotId.StableText}' has no exact physical Output for its CameraOutputDefinition in the current Session topology. {outputIssue}";
-                        return false;
-                    }
+                if (!outputs.TryGetOutput(
+                        outputDefinition.OutputId,
+                        out CameraOutputAuthoring physicalOutput,
+                        out string outputIssue) ||
+                    !ReferenceEquals(
+                        physicalOutput.OutputDefinition,
+                        outputDefinition))
+                {
+                    diagnostic =
+                        $"Camera Session Player Output binding for Slot '{playerSlotId.StableText}' has no exact physical Output for its CameraOutputDefinition in the current Session topology. {outputIssue}";
+                    return false;
+                }
 
-                    outputDefinitions.Add(outputDefinition);
-                    projected.Add(new PlayerCameraOutputBinding(
+                outputDefinitions.Add(outputDefinition);
+                projected.Add(
+                    new PlayerCameraOutputBinding(
                         playerSlotId,
                         outputDefinition.OutputId));
-                }
             }
 
             try
             {
-                CameraDefinitionValidation.ValidateOutputs(outputDefinitions);
+                CameraDefinitionValidation.ValidateOutputs(
+                    outputDefinitions);
             }
             catch (InvalidOperationException exception)
             {
@@ -142,10 +182,12 @@ namespace Immersive.Framework.Camera
 
             if (!requireCompleteSlotCoverage)
             {
+                diagnostic = string.Empty;
                 return true;
             }
 
-            if (playerSession == null || !playerSession.IsInitialized)
+            if (playerSession == null ||
+                !playerSession.IsInitialized)
             {
                 topology = null;
                 diagnostic =
@@ -153,11 +195,16 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            for (int index = 0; index < playerSession.Slots.Count; index++)
+            for (int index = 0;
+                 index < playerSession.Slots.Count;
+                 index++)
             {
-                PlayerSlotRuntimeSnapshot slot = playerSession.Slots[index];
+                PlayerSlotRuntimeSnapshot slot =
+                    playerSession.Slots[index];
                 if (!slot.IsValid ||
-                    !topology.TryGetBinding(slot.PlayerSlotId, out _))
+                    !topology.TryGetBinding(
+                        slot.PlayerSlotId,
+                        out _))
                 {
                     topology = null;
                     diagnostic =

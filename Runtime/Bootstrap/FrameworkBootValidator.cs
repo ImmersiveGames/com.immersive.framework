@@ -60,6 +60,28 @@ namespace Immersive.Framework.Bootstrap
                 }
             }
 
+            var cameraSession =
+                gameApplication.CameraSession;
+            if (cameraSession == null)
+            {
+                return FrameworkBootResult.Failed(
+                    "Game Application Camera Session configuration is missing.");
+            }
+
+            if (!cameraSession.TryValidate(
+                    out string cameraSessionIssue))
+            {
+                return FrameworkBootResult.Failed(
+                    $"Game Application Camera Session is invalid. {cameraSessionIssue}");
+            }
+
+            if (!gameApplication.PlayerSessionEnabled &&
+                cameraSession.PlayerOutputBindings.Count > 0)
+            {
+                return FrameworkBootResult.Failed(
+                    "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.");
+            }
+
             var startupRoute = gameApplication.StartupRoute;
             if (startupRoute == null)
             {

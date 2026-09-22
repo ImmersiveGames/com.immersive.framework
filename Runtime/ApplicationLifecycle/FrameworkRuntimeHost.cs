@@ -69,6 +69,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private LoadingSurfaceRuntime _loadingSurfaceRuntime;
         private GlobalUiSceneRuntime _globalUiSceneRuntime;
         private CameraOutputInjectionRuntime _cameraOutputInjectionRuntime;
+        private CameraSessionOutputMaterializationRuntime
+            _cameraSessionOutputMaterializationRuntime;
         private CameraOutputSessionTopology _cameraOutputTopology;
         private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
         private CameraPresentationMaterializationRuntime
@@ -481,14 +483,33 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            if (!_globalUiSceneRuntime.TryResolveCameraPresentation(
-                    out IReadOnlyList<CameraOutputAuthoring> cameraOutputs,
-                    out IReadOnlyList<PlayerCameraOutputPolicyAuthoring> playerCameraOutputPolicies,
+            if (!_globalUiSceneRuntime.TryResolveCameraSessionEnvironment(
                     out bool automaticPlayerSplitScreenEnabled,
                     out string cameraDiagnostic))
             {
-                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        cameraDiagnostic);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            CameraSessionConfiguration cameraSession =
+                _gameApplication.CameraSession;
+            if (!_gameApplication.PlayerSessionEnabled &&
+                cameraSession != null &&
+                cameraSession.PlayerOutputBindings.Count > 0)
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        "GameApplication Camera Session Player Slot -> Output bindings require an enabled Player Session.");
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
                 return failed;
             }
 
@@ -512,6 +533,8 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _cameraPresentationLifecycleRuntime?.Dispose();
             _cameraPresentationLifecycleRuntime = null;
+            _playerCameraCompositionIntegrationRuntime?.Dispose();
+            _playerCameraCompositionIntegrationRuntime = null;
 
             if (!TryReleaseSessionCameraPresentations(
                     "FrameworkRuntimeHost",
@@ -527,21 +550,43 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            _cameraOutputTopology?.Dispose();
-            if (!CameraOutputSessionTopology.TryCreate(
-                    cameraOutputs,
-                    out _cameraOutputTopology,
+            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
+            _cameraSubjectAvailabilityInjectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
+            _cameraOutputInjectionRuntime?.Dispose();
+            _cameraOutputInjectionRuntime = null;
+
+            _cameraSessionOutputMaterializationRuntime?.Dispose();
+            _cameraSessionOutputMaterializationRuntime = null;
+            _cameraOutputTopology = null;
+
+            if (!CameraSessionOutputMaterializationRuntime.TryCreate(
+                    cameraSession,
+                    transform,
+                    out _cameraSessionOutputMaterializationRuntime,
                     out cameraDiagnostic))
             {
-                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        cameraDiagnostic);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
                 return failed;
             }
+
+            _cameraOutputTopology =
+                _cameraSessionOutputMaterializationRuntime.Topology;
 
             this.TryGetPlayerParticipationSnapshot(
                 out PlayerParticipationSnapshot playerParticipationSnapshot);
             if (!PlayerCameraOutputPolicyProjection.TryCreate(
-                    playerCameraOutputPolicies,
+                    cameraSession.PlayerOutputBindings,
                     _cameraOutputTopology,
                     playerParticipationSnapshot,
                     automaticPlayerSplitScreenEnabled,
@@ -553,31 +598,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
-            _cameraOutputInjectionRuntime?.Dispose();
-            _cameraOutputInjectionRuntime = new CameraOutputInjectionRuntime(
-                _cameraOutputTopology);
+            _cameraOutputInjectionRuntime =
+                new CameraOutputInjectionRuntime(
+                    _cameraOutputTopology);
             _cameraOutputInjectionRuntime.AttachRoots(
                 _globalUiSceneRuntime.PersistedRoots);
-            _playerCameraCompositionIntegrationRuntime?.Dispose();
-            _playerCameraCompositionIntegrationRuntime = null;
-            if (!TryReleaseSessionCameraPresentations(
-                    "FrameworkRuntimeHost",
-                    "framework-runtime-host-destroy",
-                    out string sessionPresentationReleaseIssue))
-            {
-                _logger?.Warning(
-                    "Session Camera Presentation release failed during FrameworkRuntimeHost destruction.",
-                    LogFields.Field(
-                        "issue",
-                        sessionPresentationReleaseIssue));
-            }
-            _cameraSubjectAvailabilityInjectionRuntime?.Dispose();
-            _cameraSubjectAvailabilityInjectionRuntime = null;
-            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
-            _playerActorCameraSubjectIntegrationRuntime = null;
-            _playerCameraOutputIntegrationRuntime?.Dispose();
-            _playerCameraOutputIntegrationRuntime = null;
-            _cameraSubjectAvailabilityContext = null;
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
@@ -3462,7 +3487,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             _cameraSubjectAvailabilityContext = null;
             _cameraOutputInjectionRuntime?.Dispose();
             _cameraOutputInjectionRuntime = null;
-            _cameraOutputTopology?.Dispose();
+            _cameraSessionOutputMaterializationRuntime?.Dispose();
+            _cameraSessionOutputMaterializationRuntime = null;
             _cameraOutputTopology = null;
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 

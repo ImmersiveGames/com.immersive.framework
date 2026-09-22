@@ -11,9 +11,10 @@ namespace Immersive.Framework.Authoring
     /// <summary>
     /// API status: Stable. Public authoring root for one Immersive game/application.
     ///
-    /// The asset owns application-level intent only. It may reference reusable Session Camera
-    /// Presentation definitions, while every mutable Session, Player, Route, Activity, Camera
-    /// occurrence, Progression Save and scene runtime state remains outside this asset.
+    /// The asset owns application-level intent only. It declares explicit Session Camera
+    /// capacity/bindings and may reference reusable Session Camera Presentation definitions,
+    /// while every mutable Session, Player, Route, Activity, Camera occurrence, Progression
+    /// Save and scene runtime state remains outside this asset.
     /// Project-level frame pacing is owned by Project Settings > Immersive Framework.
     /// </summary>
     [CreateAssetMenu(
@@ -54,7 +55,12 @@ namespace Immersive.Framework.Authoring
 
         [Header("Camera")]
         [SerializeField]
-        [Tooltip("Optional Session-owned Camera Presentations. Each definition materializes one Rig prefab occurrence under the Session RuntimeContent scope. Physical Outputs remain supplied by the current Persistent Content topology until CAMERA-032-D.")]
+        [Tooltip("Explicit Session Camera capacity: 1..N physical Output prefabs plus optional Player Slot -> Output bindings. Outputs are materialized once for the Session and are not discovered from Persistent Content.")]
+        private CameraSessionConfiguration cameraSession =
+            new CameraSessionConfiguration();
+
+        [SerializeField]
+        [Tooltip("Optional Session-owned Camera Presentations. Each definition materializes one Rig prefab occurrence under the Session RuntimeContent scope and must reference an Output configured by this Camera Session.")]
         private CameraPresentationDefinition[] sessionCameraPresentations =
             Array.Empty<CameraPresentationDefinition>();
 
@@ -108,6 +114,13 @@ namespace Immersive.Framework.Authoring
         /// </summary>
         public ProgressionSaveProfile DefaultProgressionSaveProfile =>
             defaultProgressionSaveProfile;
+
+        public CameraSessionConfiguration CameraSession =>
+            cameraSession;
+
+        public bool HasCameraSessionConfiguration =>
+            cameraSession != null &&
+            cameraSession.HasOutputs;
 
         public IReadOnlyList<CameraPresentationDefinition>
             SessionCameraPresentations =>

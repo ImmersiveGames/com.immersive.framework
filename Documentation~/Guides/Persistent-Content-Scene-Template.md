@@ -1,6 +1,6 @@
 # Persistent Content Scene Template
 
-Status: **IF-ADR-032 target contract accepted / Camera migration pending**  
+Status: **IF-ADR-032 target contract / CAMERA-032-D runtime authority implemented / template cleanup pending CAMERA-032-F**  
 Last updated: **2026-09-21**
 
 ## Purpose
@@ -153,22 +153,20 @@ Camera Session configuration and Game Flow Camera Presentations are authored thr
 
 ## Transitional implementation note
 
-The current package has not yet completed CAMERA-032-D/F.
+CAMERA-032-D has moved physical Output capacity and Player Slot -> Output configuration to the active GameApplication Camera Session.
 
-Existing validators, templates and consumer Persistent scenes may still require or contain former Camera composition:
+Runtime and owning validation now reject these former Persistent Content authorities:
 
 ~~~text
 CameraOutputAuthoring
-Default Rig
-CameraSharedComposition
-Player Camera policies
+PlayerCameraOutputPolicyAuthoring
 ~~~
 
-That is transitional implementation state, not the accepted target architecture.
+Consumer scenes must migrate those two authoring surfaces before running the CAMERA-032-D branch.
 
-Do not deepen those dependencies while the CAMERA-032 migration is in progress.
+Other former Camera composition types may still exist temporarily until CAMERA-032-E/F removes or reconciles their retained use cases.
 
-The template/validator migration belongs to CAMERA-032-D and CAMERA-032-F.
+The package's physical Persistent Content template/sample asset cleanup remains CAMERA-032-F work. That pending template cleanup does not restore Persistent Content as Camera topology authority and must not be used to extend the former design.
 
 ## Final target rule
 
