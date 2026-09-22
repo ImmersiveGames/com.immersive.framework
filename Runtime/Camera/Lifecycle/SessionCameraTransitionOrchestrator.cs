@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Transition;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.Camera
@@ -18,6 +20,8 @@ namespace Immersive.Framework.Camera
 
         private readonly ITransitionOrchestrator _inner;
         private readonly CameraOutputSessionTopology _topology;
+        private readonly FrameworkLogger _logger =
+            FrameworkLogger.Create<SessionCameraTransitionOrchestrator>();
 
         internal SessionCameraTransitionOrchestrator(
             ITransitionOrchestrator inner,
@@ -77,6 +81,39 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
                 applied.Add(session);
+
+                CameraOutputContextSnapshot context =
+                    session.Context.CaptureSnapshot();
+                _logger.Debug(
+                    forceDefault
+                        ? "Camera transition force-default applied."
+                        : "Camera transition force-default released.",
+                    LogFields.Field(
+                        "output",
+                        outputId.Value),
+                    LogFields.Field(
+                        "owner",
+                        ForceDefaultOwnerId.Value),
+                    LogFields.Field(
+                        "forceDefaultActive",
+                        session.IsDefaultForced),
+                    LogFields.Field(
+                        "forceDefaultOwnerCount",
+                        session.ForceDefaultOwnerCount),
+                    LogFields.Field(
+                        "normalRequestCount",
+                        context.AdmittedRequestCount),
+                    LogFields.Field(
+                        "normalWinner",
+                        context.HasWinner
+                            ? context.Winner.RequestId.Value
+                            : "<none>"),
+                    LogFields.Field(
+                        "applyKind",
+                        mutation.Kind),
+                    LogFields.Field(
+                        "diagnostic",
+                        mutation.DiagnosticSummary));
             }
             diagnostic = string.Empty;
             return true;
