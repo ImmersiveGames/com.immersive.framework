@@ -1,4 +1,5 @@
 using Immersive.Framework.Authoring;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.ProgressionSave;
 using Immersive.Framework.Editor.Settings;
@@ -42,15 +43,20 @@ namespace Immersive.Framework.Editor.Authoring
                 "Default Progression Save Profile (Required)",
                 "Reusable authored backend intent materialized once during application boot.");
 
+        private static readonly GUIContent CameraSessionLabel =
+            new GUIContent(
+                "Session Configuration",
+                "Explicit Session-owned physical Camera capacity: 1..N Output prefabs and optional Player Slot -> Output bindings.");
+
         private static readonly GUIContent SessionCameraPresentationsLabel =
             new GUIContent(
                 "Session Presentations",
-                "Optional reusable Camera Presentations materialized for the Session. Their Output references must resolve against the current Session Camera topology.");
+                "Optional reusable Camera Presentations materialized for the Session. Their Output references must resolve against the exact configured Session Outputs.");
 
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
                 "Content Scene",
-                "Scene kept for the lifetime of this Game Application. It owns application-persistent UI and other shared scene content. Camera topology is migrating out under IF-ADR-032.");
+                "Scene kept for the lifetime of this Game Application. It owns application-persistent UI and other shared scene content. Camera Outputs and Player Slot -> Output bindings are not authored here.");
 
         private static readonly GUIContent ValidationModeLabel =
             new GUIContent(
@@ -69,6 +75,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _playerActorSelectionDuplicatePolicy;
         private SerializedProperty _progressionSaveEnabled;
         private SerializedProperty _defaultProgressionSaveProfile;
+        private SerializedProperty _cameraSession;
         private SerializedProperty _sessionCameraPresentations;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
@@ -101,6 +108,8 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("progressionSaveEnabled");
             _defaultProgressionSaveProfile =
                 serializedObject.FindProperty("defaultProgressionSaveProfile");
+            _cameraSession =
+                serializedObject.FindProperty("cameraSession");
             _sessionCameraPresentations =
                 serializedObject.FindProperty("sessionCameraPresentations");
             _persistentContent =
@@ -443,8 +452,50 @@ namespace Immersive.Framework.Editor.Authoring
             DrawSection("Camera");
 
             EditorGUILayout.HelpBox(
-                "CAMERA-032-B: Session Presentations are reusable CameraPresentationDefinition assets. Create/configure the asset and its Rig prefab manually; the Framework materializes the Rig at Session boot. Physical Outputs still come from the current Persistent Content topology until CAMERA-032-D.",
+                "CAMERA-032-D: GameApplication owns explicit Session Camera capacity. Configure 1..N Output prefabs here; each prefab contains exactly one CameraOutputAuthoring with its physical Camera, Brain and Default Rig. Player Slot -> Output bindings also belong here. Persistent Content no longer supplies Camera Outputs.",
                 MessageType.Info);
+
+            EditorGUILayout.PropertyField(
+                _cameraSession,
+                CameraSessionLabel,
+                true);
+
+            SerializedProperty outputPrefabs =
+                _cameraSession?.FindPropertyRelative("outputPrefabs");
+            SerializedProperty playerOutputBindings =
+                _cameraSession?.FindPropertyRelative("playerOutputBindings");
+
+            int outputCount =
+                outputPrefabs != null &&
+                outputPrefabs.isArray
+                    ? outputPrefabs.arraySize
+                    : 0;
+            int playerBindingCount =
+                playerOutputBindings != null &&
+                playerOutputBindings.isArray
+                    ? playerOutputBindings.arraySize
+                    : 0;
+
+            if (outputCount == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "Camera Session requires at least one explicit Camera Output prefab.",
+                    MessageType.Error);
+            }
+            else
+            {
+                DrawStatusRow(
+                    "Physical Outputs",
+                    $"{outputCount} explicit Output prefab(s).");
+            }
+
+            DrawStatusRow(
+                "Player Output Bindings",
+                playerBindingCount == 0
+                    ? "Optional — no Player Slot -> Output bindings configured."
+                    : $"{playerBindingCount} explicit binding(s).");
+
+            EditorGUILayout.Space(4f);
 
             EditorGUILayout.PropertyField(
                 _sessionCameraPresentations,
@@ -456,8 +507,8 @@ namespace Immersive.Framework.Editor.Authoring
                 _sessionCameraPresentations.arraySize == 0)
             {
                 DrawStatusRow(
-                    "Configuration",
-                    "Optional — no Session Camera Presentation configured.");
+                    "Session Presentations",
+                    "Optional — none configured.");
                 return;
             }
 
@@ -476,7 +527,7 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             DrawStatusRow(
-                "Configuration",
+                "Session Presentations",
                 $"{configured}/{_sessionCameraPresentations.arraySize} Presentation reference(s) assigned.");
         }
 
