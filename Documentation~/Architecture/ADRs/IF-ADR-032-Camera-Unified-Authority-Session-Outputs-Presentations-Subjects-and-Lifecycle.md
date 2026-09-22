@@ -1,6 +1,6 @@
 # IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle
 
-Status: **Accepted target architecture / CAMERA-032-A validated / CAMERA-032-B implemented / migration continues**  
+Status: **Accepted target architecture / CAMERA-032-A validated / CAMERA-032-B consumer-proven / CAMERA-032-C implemented / Unity validation pending**  
 Accepted: **2026-09-21**  
 Type: architecture / Camera / authoring / runtime lifecycle / physical output / multiplayer  
 Normative authority: **This is the single current Camera architecture decision for Immersive Framework.**
@@ -805,10 +805,30 @@ CUT B is implementation-complete but not technically validated until one manuall
 
 ### CAMERA-032-C — Route / Activity lifecycle integration
 
-- add optional Camera Presentation configuration to RouteAsset and ActivityAsset;
-- materialize through exact Route/Activity RuntimeContent scopes;
-- release on exact lifecycle exit;
-- prove Activity -> Route restoration and Route replacement.
+Implementation state: **IMPLEMENTED / UNITY VALIDATION PENDING**
+
+Implemented:
+
+- optional Camera Presentation arrays on RouteAsset and ActivityAsset;
+- Route/Activity Inspectors expose lifecycle-owned Presentations directly;
+- authoring validation rejects missing, invalid or duplicate Presentation definitions per owner;
+- materialization uses the exact existing Route/Activity RuntimeContent scope context;
+- CameraPresentationRuntime derives normal CameraRequest owner/lifetime from that scope:
+  - Session -> Session;
+  - Route -> Route;
+  - Activity -> Activity;
+- RouteCameraRequestPublisher and ActivityCameraRequestPublisher are used for migrated occurrences;
+- lifecycle release runs before the corresponding RuntimeContent scope root is removed;
+- empty Activity Presentation configuration naturally restores the surviving Route/Session request or Default through CameraOutputContext arbitration;
+- no separate Camera winner hierarchy was introduced.
+
+Unity consumer proof still required:
+
+- Startup HUB with no Session/Route Presentation -> Default;
+- Basic Flow Route Presentation participates;
+- Activity A and B Presentations override through authored precedence;
+- Activity C has no Presentation and restores the Route winner;
+- Route exit releases Route Presentations and returns to Session/Default as applicable.
 
 ### CAMERA-032-D — Camera Session configuration
 
@@ -852,9 +872,9 @@ The migrated architecture is not technically closed until all mandatory cases be
 ### Game Flow
 
 ~~~text
-[ ] Session Presentation can participate
-[ ] Route Presentation can participate
-[ ] Activity Presentation can participate
+[x] Session Presentation can participate — CAMERA-032-B FIRSTGAME consumer proof
+[ ] Route Presentation can participate — implementation complete, Unity proof pending
+[ ] Activity Presentation can participate — implementation complete, Unity proof pending
 [ ] Activity exit restores Route/Session/Default correctly
 [ ] Route exit restores Session/Default correctly
 [ ] Route replacement never requires outgoing gameplay Camera survival

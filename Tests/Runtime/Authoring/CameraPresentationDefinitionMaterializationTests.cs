@@ -108,6 +108,9 @@ namespace Immersive.Framework.Authoring.Tests
                 result.Handle.PresentationRuntime.TransitionMode,
                 Is.EqualTo(CameraPresentationTransitionMode.Cut));
             Assert.That(
+                result.Handle.PresentationRuntime.LifecycleScope,
+                Is.EqualTo(RuntimeContentScope.Session));
+            Assert.That(
                 result.Handle.PresentationRuntime,
                 Is.Not.InstanceOf<MonoBehaviour>());
             Assert.That(
@@ -121,6 +124,40 @@ namespace Immersive.Framework.Authoring.Tests
                     nameof(MaterializationUsesRuntimeContentOwnerAndCreatesPresentationRuntime),
                     "cleanup");
 
+            Assert.That(release.Succeeded, Is.True, release.Issue);
+        }
+
+        [TestCase(RuntimeContentScope.Route)]
+        [TestCase(RuntimeContentScope.Activity)]
+        public void MaterializationCarriesExactLifecycleScope(
+            RuntimeContentScope scope)
+        {
+            using var fixture = new Fixture();
+            RuntimeContentRuntime runtimeContent =
+                fixture.CreateRuntimeContent(
+                    out RuntimeScopeContext context,
+                    scope);
+            var materializer =
+                new CameraPresentationMaterializationRuntime(runtimeContent);
+
+            CameraPresentationMaterializationResult result =
+                materializer.Materialize(
+                    context,
+                    fixture.Definition,
+                    null,
+                    nameof(MaterializationCarriesExactLifecycleScope),
+                    "test");
+
+            Assert.That(result.Succeeded, Is.True, result.Issue);
+            Assert.That(
+                result.Handle.PresentationRuntime.LifecycleScope,
+                Is.EqualTo(scope));
+
+            CameraPresentationMaterializationResult release =
+                materializer.Release(
+                    result.Handle,
+                    nameof(MaterializationCarriesExactLifecycleScope),
+                    "cleanup");
             Assert.That(release.Succeeded, Is.True, release.Issue);
         }
 
@@ -280,13 +317,33 @@ namespace Immersive.Framework.Authoring.Tests
             internal CameraPresentationDefinition Definition { get; }
 
             internal RuntimeContentRuntime CreateRuntimeContent(
-                out RuntimeScopeContext context)
+                out RuntimeScopeContext context,
+                RuntimeContentScope scope = RuntimeContentScope.Session)
             {
                 var runtime = new RuntimeContentRuntime();
+                string ownerId = Guid.NewGuid().ToString("N");
                 RuntimeContentOwner owner =
-                    RuntimeContentOwner.Session(
-                        Guid.NewGuid().ToString("N"),
-                        "Camera Presentation Test Session");
+                    scope switch
+                    {
+                        RuntimeContentScope.Session =>
+                            RuntimeContentOwner.Session(
+                                ownerId,
+                                "Camera Presentation Test Session"),
+                        RuntimeContentScope.Route =>
+                            RuntimeContentOwner.Route(
+                                ownerId,
+                                "Camera Presentation Test Route",
+                                RuntimeDefinitionToken.MintAnonymous()),
+                        RuntimeContentScope.Activity =>
+                            RuntimeContentOwner.Activity(
+                                ownerId,
+                                "Camera Presentation Test Activity",
+                                RuntimeDefinitionToken.MintAnonymous()),
+                        _ => throw new ArgumentOutOfRangeException(
+                            nameof(scope),
+                            scope,
+                            "Test lifecycle scope must be Session, Route or Activity.")
+                    };
 
                 RuntimeRootRegistryOperationResult root =
                     runtime.CreateScopeRoot(

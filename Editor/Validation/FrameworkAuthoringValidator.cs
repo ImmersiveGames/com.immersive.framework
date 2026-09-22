@@ -295,8 +295,19 @@ namespace Immersive.Framework.Editor.Validation
             FrameworkAuthoringValidationReport report,
             GameApplicationAsset gameApplication)
         {
-            IReadOnlyList<CameraPresentationDefinition> presentations =
-                gameApplication.SessionCameraPresentations;
+            ValidateOwnedCameraPresentations(
+                report,
+                gameApplication,
+                "Session",
+                gameApplication.SessionCameraPresentations);
+        }
+
+        private static void ValidateOwnedCameraPresentations(
+            FrameworkAuthoringValidationReport report,
+            Object owner,
+            string ownerLabel,
+            IReadOnlyList<CameraPresentationDefinition> presentations)
+        {
             if (presentations == null || presentations.Count == 0)
             {
                 return;
@@ -314,23 +325,23 @@ namespace Immersive.Framework.Editor.Validation
                 if (definition == null)
                 {
                     report.AddError(
-                        $"Session Camera Presentations[{index}] is missing.",
-                        gameApplication);
+                        $"{ownerLabel} Camera Presentations[{index}] is missing.",
+                        owner);
                     continue;
                 }
 
                 if (!definitionOwners.Add(definition))
                 {
                     report.AddError(
-                        $"Session Camera Presentations repeats definition '{definition.name}' at index '{index}'. One definition may materialize only once for one Session owner.",
-                        gameApplication);
+                        $"{ownerLabel} Camera Presentations repeats definition '{definition.name}' at index '{index}'. One definition may materialize only once for one {ownerLabel} owner.",
+                        owner);
                     continue;
                 }
 
                 if (!definition.TryValidate(out string issue))
                 {
                     report.AddError(
-                        $"Session Camera Presentation '{definition.name}' is invalid. {issue}",
+                        $"{ownerLabel} Camera Presentation '{definition.name}' is invalid. {issue}",
                         definition);
                     continue;
                 }
@@ -338,7 +349,7 @@ namespace Immersive.Framework.Editor.Validation
                 if (!identityOwners.Add(definition.PresentationId))
                 {
                     report.AddError(
-                        $"Session Camera Presentations contains duplicate CameraPresentationId '{definition.PresentationId}' at '{definition.name}'.",
+                        $"{ownerLabel} Camera Presentations contains duplicate CameraPresentationId '{definition.PresentationId}' at '{definition.name}'.",
                         definition);
                 }
             }
@@ -1307,6 +1318,12 @@ namespace Immersive.Framework.Editor.Validation
                     route);
             }
 
+            ValidateOwnedCameraPresentations(
+                report,
+                route,
+                "Route",
+                route.CameraPresentations);
+
             if (route.StartupActivity == null)
             {
                 report.AddInfo(
@@ -1400,6 +1417,12 @@ namespace Immersive.Framework.Editor.Validation
             ValidateActivityEntryReadinessPolicy(
                 report,
                 activity);
+
+            ValidateOwnedCameraPresentations(
+                report,
+                activity,
+                "Activity",
+                activity.CameraPresentations);
 
             if (!activity.HasDefinedPlayerRelocationPolicy)
             {

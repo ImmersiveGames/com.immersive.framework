@@ -159,6 +159,24 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
+                if (_cameraPresentationLifecycle != null &&
+                    !_cameraPresentationLifecycle.TryEnterActivity(
+                        nextActivity,
+                        runtimeEnterResult.Context,
+                        resolvedSource,
+                        resolvedReason,
+                        out string activityCameraPresentationIssue))
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        activityCameraPresentationIssue,
+                        activityOperationResult);
+                }
+
                 ActivityOperationResult operationForProgress =
                     ResolveActivityOperationForProgress(
                         activityOperationResult,

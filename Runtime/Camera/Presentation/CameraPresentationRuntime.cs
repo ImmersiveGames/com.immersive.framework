@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.Camera
 {
@@ -29,6 +30,7 @@ namespace Immersive.Framework.Camera
         private int _requestPrecedence;
         private CameraPresentationTransitionMode _transitionMode =
             CameraPresentationTransitionMode.Blend;
+        private RuntimeScopeContext _lifecycleContext;
 
         private bool _enabled;
         private bool _disposed;
@@ -58,6 +60,11 @@ namespace Immersive.Framework.Camera
         internal CameraPresentationTransitionMode TransitionMode =>
             _transitionMode;
 
+        internal RuntimeContentScope LifecycleScope =>
+            _lifecycleContext.IsValid
+                ? _lifecycleContext.Scope
+                : RuntimeContentScope.Unknown;
+
         internal ICameraCompositionSubjectSelectionSource SubjectSelectionSource =>
             _selection;
 
@@ -83,7 +90,8 @@ namespace Immersive.Framework.Camera
             CameraSharedCompositionSubjectPolicyKind subjectPolicy,
             CameraRigComposer compositionRig,
             int requestPrecedence,
-            CameraPresentationTransitionMode transitionMode)
+            CameraPresentationTransitionMode transitionMode,
+            RuntimeScopeContext lifecycleContext = default)
         {
             ThrowIfDisposed();
 
@@ -92,7 +100,8 @@ namespace Immersive.Framework.Camera
                 _subjectPolicy == subjectPolicy &&
                 ReferenceEquals(_compositionRig, compositionRig) &&
                 _requestPrecedence == requestPrecedence &&
-                _transitionMode == transitionMode;
+                _transitionMode == transitionMode &&
+                _lifecycleContext.Equals(lifecycleContext);
             if (unchanged)
             {
                 return;
@@ -114,6 +123,7 @@ namespace Immersive.Framework.Camera
             _compositionRig = compositionRig;
             _requestPrecedence = requestPrecedence;
             _transitionMode = transitionMode;
+            _lifecycleContext = lifecycleContext;
         }
 
         internal void SetEnabled(bool enabled)
@@ -891,20 +901,25 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
+            ResolveRequestLifecycle(
+                out CameraRequestOwnerKind ownerKind,
+                out CameraRequestLifetimeKind lifetimeKind,
+                out string lifecycleScopeId);
+
             var scopeId =
-                new CameraRequestOwnerScopeId(_membershipContextId);
+                new CameraRequestOwnerScopeId(lifecycleScopeId);
             var lifetimeId =
-                new CameraRequestLifetimeScopeId(_membershipContextId);
+                new CameraRequestLifetimeScopeId(lifecycleScopeId);
 
             CameraRequestCreateResult request =
                 CameraRequestCreateResult.Create(
                     RequestId,
                     RequestedOutputId,
                     new CameraRequestOwner(
-                        CameraRequestOwnerKind.Composition,
+                        ownerKind,
                         scopeId),
                     new CameraRequestLifetime(
-                        CameraRequestLifetimeKind.Composition,
+                        lifetimeKind,
                         lifetimeId),
                     CameraRigReference.FromComposer(_compositionRig),
                     CameraTargetSourceDescriptor.Logical(
@@ -926,9 +941,10 @@ namespace Immersive.Framework.Camera
             }
 
             CameraRequestPublisherCreateResult creation =
-                CompositionCameraRequestPublisher.Create(
+                CreateRequestPublisher(
                     session,
-                    request.Request);
+                    request.Request,
+                    ownerKind);
             if (!creation.Succeeded || creation.Publisher == null)
             {
                 diagnostic = creation.DiagnosticSummary;
@@ -955,6 +971,69 @@ namespace Immersive.Framework.Camera
             _requestPublisher = creation.Publisher;
             diagnostic = publication.DiagnosticSummary;
             return true;
+        }
+
+        private void ResolveRequestLifecycle(
+            out CameraRequestOwnerKind ownerKind,
+            out CameraRequestLifetimeKind lifetimeKind,
+            out string scopeId)
+        {
+            if (!_lifecycleContext.IsValid)
+            {
+                ownerKind = CameraRequestOwnerKind.Composition;
+                lifetimeKind = CameraRequestLifetimeKind.Composition;
+                scopeId = _membershipContextId;
+                return;
+            }
+
+            scopeId = _lifecycleContext.Owner.StableText;
+            switch (_lifecycleContext.Scope)
+            {
+                case RuntimeContentScope.Session:
+                    ownerKind = CameraRequestOwnerKind.Session;
+                    lifetimeKind = CameraRequestLifetimeKind.Session;
+                    return;
+                case RuntimeContentScope.Route:
+                    ownerKind = CameraRequestOwnerKind.Route;
+                    lifetimeKind = CameraRequestLifetimeKind.Route;
+                    return;
+                case RuntimeContentScope.Activity:
+                    ownerKind = CameraRequestOwnerKind.Activity;
+                    lifetimeKind = CameraRequestLifetimeKind.Activity;
+                    return;
+                default:
+                    ownerKind = CameraRequestOwnerKind.Composition;
+                    lifetimeKind = CameraRequestLifetimeKind.Composition;
+                    scopeId = _membershipContextId;
+                    return;
+            }
+        }
+
+        private static CameraRequestPublisherCreateResult
+            CreateRequestPublisher(
+                CameraOutputSession session,
+                CameraRequest request,
+                CameraRequestOwnerKind ownerKind)
+        {
+            switch (ownerKind)
+            {
+                case CameraRequestOwnerKind.Session:
+                    return SessionCameraRequestPublisher.Create(
+                        session,
+                        request);
+                case CameraRequestOwnerKind.Route:
+                    return RouteCameraRequestPublisher.Create(
+                        session,
+                        request);
+                case CameraRequestOwnerKind.Activity:
+                    return ActivityCameraRequestPublisher.Create(
+                        session,
+                        request);
+                default:
+                    return CompositionCameraRequestPublisher.Create(
+                        session,
+                        request);
+            }
         }
 
         private bool TryReleaseRequest(

@@ -15,6 +15,7 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.Pause;
+using Immersive.Framework.Camera;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -50,6 +51,8 @@ namespace Immersive.Framework.RouteLifecycle
         private int _routeOccurrenceSequence;
         private IRoutePlayerSpatialEntryLifecycleParticipant
             _playerSpatialEntryParticipant;
+        private CameraPresentationLifecycleRuntime
+            _cameraPresentationLifecycle;
         private ICycleResetParticipantSource _cycleResetParticipantSource = EmptyCycleResetParticipantSource.Instance;
 
         internal RouteLifecycleRuntime(
@@ -155,6 +158,13 @@ namespace Immersive.Framework.RouteLifecycle
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityFlowRuntime.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal void SetCameraPresentationLifecycle(
+            CameraPresentationLifecycleRuntime lifecycle)
+        {
+            _cameraPresentationLifecycle = lifecycle;
+            _activityFlowRuntime.SetCameraPresentationLifecycle(lifecycle);
         }
 
         internal bool SetPlayerSpatialEntryParticipant(
@@ -416,6 +426,34 @@ namespace Immersive.Framework.RouteLifecycle
             }
 
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);
+            if (_cameraPresentationLifecycle != null)
+            {
+                if (!runtimeRouteEnterResult.HasContext)
+                {
+                    _runtimeContentRuntime.RemoveScopeRoot(
+                        runtimeRouteEnterResult.Owner,
+                        source,
+                        "camera-route-presentation-context-missing");
+                    return RouteLifecycleStartResult.Failed(
+                        "Route Camera Presentation lifecycle requires an active Route RuntimeContent context.");
+                }
+
+                if (!_cameraPresentationLifecycle.TryEnterRoute(
+                        route,
+                        runtimeRouteEnterResult.Context,
+                        source,
+                        reason,
+                        out string routeCameraPresentationIssue))
+                {
+                    _runtimeContentRuntime.RemoveScopeRoot(
+                        runtimeRouteEnterResult.Owner,
+                        source,
+                        "camera-route-presentation-enter-rollback");
+                    return RouteLifecycleStartResult.Failed(
+                        routeCameraPresentationIssue);
+                }
+            }
+
             var sceneLifecycleResult = routeSceneCompositionResult.PrimarySceneLoadResult;
             var routeContentSet = RouteContentSet.FromSceneCompositionResult(
                 route,
@@ -433,6 +471,15 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentDiscoveryScope);
             if (!TryEnterPlayerSpatialEntry(playerSpatialEntryContext, out string playerSpatialEntryIssue))
             {
+                _cameraPresentationLifecycle?.TryExitRoute(
+                    route,
+                    source,
+                    "camera-route-presentation-player-spatial-entry-rollback",
+                    out _);
+                _runtimeContentRuntime.RemoveScopeRoot(
+                    runtimeRouteEnterResult.Owner,
+                    source,
+                    "route-player-spatial-entry-rollback");
                 return RouteLifecycleStartResult.Failed(playerSpatialEntryIssue);
             }
 
@@ -465,6 +512,15 @@ namespace Immersive.Framework.RouteLifecycle
             if (!startupActivityFlowResult.Completed)
             {
                 ExitCurrentPlayerSpatialEntry();
+                _cameraPresentationLifecycle?.TryExitRoute(
+                    route,
+                    source,
+                    "camera-route-presentation-startup-activity-rollback",
+                    out _);
+                _runtimeContentRuntime.RemoveScopeRoot(
+                    runtimeRouteEnterResult.Owner,
+                    source,
+                    "route-startup-activity-rollback");
                 return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
             }
             ActivityFlowStartResult routeStartupActivityFlowResult =
@@ -894,6 +950,12 @@ namespace Immersive.Framework.RouteLifecycle
                 throw new InvalidOperationException(
                     "Route scope root removal is only valid when previous and next Routes resolve to different operational owners.");
             }
+
+            _cameraPresentationLifecycle?.TryExitRoute(
+                previousRoute,
+                source,
+                reason,
+                out _);
 
             return _runtimeContentRuntime.RemoveScopeRoot(owner, source, reason);
         }

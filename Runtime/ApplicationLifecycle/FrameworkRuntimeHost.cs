@@ -73,6 +73,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
         private CameraPresentationMaterializationRuntime
             _cameraPresentationMaterializationRuntime;
+        private CameraPresentationLifecycleRuntime
+            _cameraPresentationLifecycleRuntime;
         private readonly List<CameraPresentationMaterializationHandle>
             _sessionCameraPresentationHandles =
                 new List<CameraPresentationMaterializationHandle>();
@@ -508,6 +510,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
 
+            _cameraPresentationLifecycleRuntime?.Dispose();
+            _cameraPresentationLifecycleRuntime = null;
+
             if (!TryReleaseSessionCameraPresentations(
                     "FrameworkRuntimeHost",
                     "camera-session-reinitialize",
@@ -765,6 +770,18 @@ namespace Immersive.Framework.ApplicationLifecycle
                             $"camera-subjects:{_runtimeSessionScopeResult.Owner.OwnerId}"));
             }
 
+            _cameraPresentationMaterializationRuntime ??=
+                new CameraPresentationMaterializationRuntime(
+                    _runtimeContentRuntime);
+            _cameraPresentationLifecycleRuntime =
+                new CameraPresentationLifecycleRuntime(
+                    _cameraPresentationMaterializationRuntime,
+                    _cameraOutputTopology,
+                    _cameraSubjectAvailabilityContext,
+                    transform);
+            _gameFlowRuntime.SetCameraPresentationLifecycle(
+                _cameraPresentationLifecycleRuntime);
+
             if (_gameApplication.PlayerSessionEnabled &&
                 !PlayerSessionScopedAccessRuntimeHostModule.TryAttach(
                     this,
@@ -835,6 +852,9 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (!result.Started)
             {
+                _cameraPresentationLifecycleRuntime?.Dispose();
+                _cameraPresentationLifecycleRuntime = null;
+
                 string failedBootPresentationReleaseIssue = string.Empty;
                 if (!TryReleaseSessionCameraPresentations(
                         "FrameworkRuntimeHost",
@@ -3397,6 +3417,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private void OnDestroy()
         {
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
+            _cameraPresentationLifecycleRuntime?.Dispose();
+            _cameraPresentationLifecycleRuntime = null;
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
             _activityReadinessBinding = null;

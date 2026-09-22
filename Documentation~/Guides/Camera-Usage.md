@@ -111,9 +111,12 @@ Create the first proof manually in Unity:
    Generate Stable Identity
    Output Definition = exact existing CameraOutputDefinition
    Rig Prefab = prefab from steps 1-5
+   Transition Mode = Blend or Cut
    Subject Policy = AllAvailableSubjects for the first proof
    Request Precedence = explicit value appropriate for the proof topology
-- **Transition Mode** — `Blend` preserves the Camera Output Brain's authored blend/custom-blend policy; `Cut` enters this Presentation immediately without visual interpolation.
+
+   Blend preserves the Camera Output Brain's authored blend/custom-blend policy.
+   Cut enters this Presentation immediately without visual interpolation.
 
 8. Open the active GameApplication.
 9. Camera > Session Presentations:
@@ -153,6 +156,42 @@ Camera.rect / split-screen ownership
 ~~~
 
 Those belong to later CAMERA-032 cuts.
+
+## CAMERA-032-C Route and Activity Presentations
+
+RouteAsset and ActivityAsset now expose optional Camera Presentations.
+
+A practical precedence convention for one Output is:
+
+~~~text
+Session Presentation   100
+Route Presentation     200
+Activity Presentation  300
+~~~
+
+These values are authoring conventions, not a hidden hierarchy. CameraOutputContext still selects the winner using ordinary CameraRequest precedence and deterministic tie-break evidence.
+
+Leaving a lifecycle list empty means that lifecycle contributes no CameraRequest:
+
+~~~text
+Startup HUB
+  Route Presentations = []
+  -> surviving Session request or Output Default
+
+Gameplay Route
+  Route Presentations = [Route Presentation]
+  -> Route request participates
+
+Activity A
+  Activity Presentations = [Activity A Presentation]
+  -> Activity request may win by authored precedence
+
+Activity C
+  Activity Presentations = []
+  -> no Activity request; the surviving Route request becomes visible again
+~~~
+
+Every materialized occurrence uses its exact RuntimeContent owner. Activity Presentations release before the Activity scope root is removed; Route Presentations release before the Route scope root is removed.
 
 ## Rig authoring
 

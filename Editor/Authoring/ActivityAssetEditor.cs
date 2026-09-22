@@ -82,6 +82,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _playerRelocationPolicy;
         private SerializedProperty _activityEntryReadinessPolicy;
+        private SerializedProperty _cameraPresentations;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
 
@@ -124,6 +125,8 @@ namespace Immersive.Framework.Editor.Authoring
             _activityEntryReadinessPolicy =
                 serializedObject.FindProperty(
                     "activityEntryReadinessPolicy");
+            _cameraPresentations =
+                serializedObject.FindProperty("cameraPresentations");
             _visualTransitionMode =
                 serializedObject.FindProperty(
                     "visualTransitionMode");
@@ -150,6 +153,7 @@ namespace Immersive.Framework.Editor.Authoring
             DrawOverview();
             DrawPlayers();
             DrawActivityContent();
+            DrawCamera();
             DrawSceneList();
             DrawActivityEntryReadiness();
             DrawTransition();
@@ -263,6 +267,18 @@ namespace Immersive.Framework.Editor.Authoring
                 Selection.activeObject = profile;
                 EditorGUIUtility.PingObject(profile);
             }
+        }
+
+        private void DrawCamera()
+        {
+            DrawSection("Camera");
+
+            EditorGUILayout.PropertyField(
+                _cameraPresentations,
+                new GUIContent(
+                    "Presentations",
+                    "Optional Camera Presentations owned by this Activity occurrence. Leave empty to inherit the current Route/Session request or the Output Default Rig."),
+                true);
         }
 
         private void DrawSceneList()
