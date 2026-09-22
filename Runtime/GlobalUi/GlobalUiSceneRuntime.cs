@@ -315,6 +315,16 @@ namespace Immersive.Framework.GlobalUi
                 return false;
             }
 
+            List<PlayerCameraCompositionPolicyAuthoring>
+                legacyCompositionPolicies =
+                    FindAll<PlayerCameraCompositionPolicyAuthoring>();
+            if (legacyCompositionPolicies.Count > 0)
+            {
+                diagnostic =
+                    $"Persistent Content contains '{legacyCompositionPolicies.Count}' PlayerCameraCompositionPolicyAuthoring component(s). CAMERA-032-E requires Player Slot -> Presentation bindings on GameApplication Camera Session and live Presentation occurrence selection.";
+                return false;
+            }
+
             List<PlayerInputManager> playerInputManagers =
                 FindAll<PlayerInputManager>();
             for (int index = 0;
