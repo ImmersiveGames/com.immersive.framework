@@ -830,13 +830,48 @@ Unity consumer proof still required:
 - Activity C has no Presentation and restores the Route winner;
 - Route exit releases Route Presentations and returns to Session/Default as applicable.
 
-### CAMERA-032-D — Camera Session configuration
+### CAMERA-032-D — Camera Session configuration — IMPLEMENTED / UNITY VALIDATION PENDING
 
-- introduce explicit Session Camera configuration on GameApplication;
-- materialize 1..N Output prefabs at Session boot;
-- move Player Slot -> Output configuration out of Persistent scene authoring;
-- remove target dependency on Persistent Camera roots;
-- prove transition force-default continuity.
+Implemented:
+
+- `GameApplicationAsset` owns an explicit inline `CameraSessionConfiguration`;
+- Camera Session declares 1..N physical Output prefabs and optional Player Slot -> Output bindings;
+- each Output prefab is validated as one self-contained physical hierarchy with exactly one `CameraOutputAuthoring`, exact `CameraOutputDefinition`, Unity Camera, CinemachineBrain and persistent Default Rig;
+- `CameraSessionOutputMaterializationRuntime` instantiates the configured Output prefabs under the persistent FrameworkRuntimeHost and builds the existing `CameraOutputSessionTopology`;
+- Output arbitration, Default semantics, force-default and rollback remain in the existing Output runtime rather than being reimplemented by the materializer;
+- Player Slot -> Output projection now consumes the GameApplication Camera Session bindings directly;
+- Persistent Content is no longer used to discover physical Outputs or `PlayerCameraOutputPolicyAuthoring`;
+- runtime and authoring validation reject transitional `CameraOutputAuthoring` / `PlayerCameraOutputPolicyAuthoring` left in Persistent Content, preventing dual Camera Session topologies;
+- `PlayerInputManager` remains the split-layout authority and may remain in Persistent Content / Player provisioning;
+- Session Output teardown is owned by FrameworkRuntimeHost after Presentation/request integrations release;
+- package-local focused tests cover Camera Session configuration validation, exact Output materialization/teardown and direct Player binding projection.
+
+Consumer migration required for Unity proof:
+
+~~~text
+Existing Persistent Content Output hierarchy
+  -> make/maintain as a prefab containing CameraOutputAuthoring
+  -> assign GameApplication > Camera > Session Configuration > Output Prefabs
+  -> remove the physical Output hierarchy from Persistent Content
+
+Existing PlayerCameraOutputPolicyAuthoring
+  -> move each Player Slot -> Output binding
+     to GameApplication > Camera > Session Configuration
+  -> remove the component from Persistent Content
+~~~
+
+Validation state:
+
+~~~text
+Static code review                     PASS
+Unity import/compile                   NOT RUN
+FIRSTGAME Output prefab migration      NOT RUN
+FIRSTGAME Player Slot -> Output move   NOT RUN
+transition force-default continuity    NOT RUN
+QAFramework                            NOT RUN
+~~~
+
+The Persistent Content template asset itself is intentionally left for CAMERA-032-F template/sample cleanup; CAMERA-032-D changes the runtime and validation authority now and does not silently rewrite consumer scenes or prefabs.
 
 ### CAMERA-032-E — Player explicit selection migration
 
