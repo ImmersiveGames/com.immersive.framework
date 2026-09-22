@@ -209,8 +209,16 @@ namespace Immersive.Framework.CameraAuthoring
                     return false;
                 }
 
-                if (binding.PlayerSlotProfile == null ||
-                    !binding.PlayerSlotProfile.TryGetPlayerSlotId(
+                var playerSlotProfile =
+                    binding.PlayerSlotProfile;
+                if (playerSlotProfile == null)
+                {
+                    issue =
+                        $"Camera Session Player Output binding at index '{index}' requires a valid PlayerSlotProfile.";
+                    return false;
+                }
+
+                if (!playerSlotProfile.TryGetPlayerSlotId(
                         out PlayerSlotId playerSlotId,
                         out string slotIssue))
                 {
