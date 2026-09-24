@@ -21,6 +21,7 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private enum ContextualRetirementCause
         {
+            EnterRollback = 5,
             ActivityExit = 10,
             SessionPlayerLeave = 20,
             SessionTermination = 30
@@ -444,10 +445,9 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Activity owner '{owner.StableText}' does not match retained Scene Local Player owner '{_activeRecord.Owner.StableText}'.");
             }
 
-            if (!TryReleaseEntries(
+            if (!TryRetireEntriesAfterCanonicalExit(
                     _activeRecord.Entries,
                     _activeRecord.Owner,
-                    compensateReleasedEntries: false,
                     resolvedSource,
                     resolvedReason,
                     out string issue))
@@ -510,10 +510,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Scene Local Player enter rollback rejected a foreign Activity owner.");
             }
 
-            if (!TryReleaseEntries(
+            if (!TryRollbackEntries(
                     _activeRecord.Entries,
                     _activeRecord.Owner,
-                    compensateReleasedEntries: false,
                     resolvedSource,
                     resolvedReason,
                     out string issue))
@@ -769,10 +768,9 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             _activeRecord = new ActiveRecord(activity, owner, entries);
-            if (TryReleaseEntries(
+            if (TryRollbackEntries(
                     entries,
                     owner,
-                    compensateReleasedEntries: false,
                     source,
                     $"{reason}:rollback",
                     out string rollbackIssue))
@@ -799,10 +797,9 @@ namespace Immersive.Framework.PlayerParticipation
                 originalStatus);
         }
 
-        private bool TryReleaseEntries(
+        private bool TryRetireEntriesAfterCanonicalExit(
             List<Entry> entries,
             RuntimeContentOwner owner,
-            bool compensateReleasedEntries,
             string source,
             string reason,
             out string issue)
@@ -812,7 +809,25 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 ContextualRetirementCause.ActivityExit,
                 default,
-                compensateReleasedEntries,
+                compensateReleasedEntries: false,
+                source,
+                reason,
+                out issue);
+        }
+
+        private bool TryRollbackEntries(
+            List<Entry> entries,
+            RuntimeContentOwner owner,
+            string source,
+            string reason,
+            out string issue)
+        {
+            return TryReleaseEntriesCore(
+                entries,
+                owner,
+                ContextualRetirementCause.EnterRollback,
+                default,
+                compensateReleasedEntries: false,
                 source,
                 reason,
                 out issue);
@@ -876,12 +891,12 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (cause == ContextualRetirementCause.ActivityExit)
+                if (cause == ContextualRetirementCause.EnterRollback)
                 {
                     if (_preparationModule == null || !_preparationModule.IsReady)
                     {
                         failures.Add(
-                            $"Canonical contextual projection authority is unavailable for Scene Local Player '{entry.Authoring.name}'.");
+                            $"Canonical contextual projection authority is unavailable for Scene Local Player rollback '{entry.Authoring.name}'.");
                         continue;
                     }
 
@@ -889,7 +904,7 @@ namespace Immersive.Framework.PlayerParticipation
                             owner,
                             entry.PlayerSlotId,
                             source,
-                            $"{reason}:release-canonical-context",
+                            $"{reason}:rollback-canonical-context",
                             out string contextualReleaseIssue))
                     {
                         failures.Add(contextualReleaseIssue);
@@ -946,14 +961,17 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
-            if (cause == ContextualRetirementCause.ActivityExit)
+            if (cause is ContextualRetirementCause.ActivityExit or
+                ContextualRetirementCause.EnterRollback)
             {
                 return _module.TryRetireContextualBookkeepingAfterCanonicalRelease(
                     entry.Authoring,
                     entry.AdmissionToken,
                     _activeRecord.Owner,
                     source,
-                    $"{reason}:retire-contextual-bookkeeping");
+                    cause == ContextualRetirementCause.ActivityExit
+                        ? $"{reason}:retire-contextual-bookkeeping"
+                        : $"{reason}:retire-rollback-bookkeeping");
             }
 
             if (entry.AdoptionApplied)
