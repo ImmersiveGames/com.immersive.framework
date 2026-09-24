@@ -36,6 +36,7 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerParticipationRequirementLevel requirementLevel,
                 int projectedSlotCount,
                 int selectedCount,
+                IReadOnlyList<PlayerSlotId> contextualSlots,
                 List<PreparedSlotRecord> preparedSlots,
                 IReadOnlyList<LocalPlayerHostAuthoring> admittedHosts)
             {
@@ -44,6 +45,7 @@ namespace Immersive.Framework.PlayerParticipation
                 RequirementLevel = requirementLevel;
                 ProjectedSlotCount = projectedSlotCount;
                 SelectedCount = selectedCount;
+                ContextualSlots = contextualSlots ?? Array.Empty<PlayerSlotId>();
                 PreparedSlots = preparedSlots ?? new List<PreparedSlotRecord>();
                 AdmittedHosts = admittedHosts ??
                     Array.Empty<LocalPlayerHostAuthoring>();
@@ -54,6 +56,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerParticipationRequirementLevel RequirementLevel { get; }
             internal int ProjectedSlotCount { get; }
             internal int SelectedCount { get; }
+            internal IReadOnlyList<PlayerSlotId> ContextualSlots { get; }
             internal List<PreparedSlotRecord> PreparedSlots { get; }
             internal IReadOnlyList<LocalPlayerHostAuthoring> AdmittedHosts { get; }
         }
@@ -271,6 +274,7 @@ namespace Immersive.Framework.PlayerParticipation
                     requirementLevel,
                     0,
                     0,
+                    Array.Empty<PlayerSlotId>(),
                     new List<PreparedSlotRecord>(),
                     Array.Empty<LocalPlayerHostAuthoring>());
                 _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
@@ -572,6 +576,7 @@ namespace Immersive.Framework.PlayerParticipation
                 requirementLevel,
                 projectedSlots.Count,
                 selectedCount,
+                ResolveCurrentContextualSlots(owner, projectedSlots),
                 prepared,
                 admittedHosts);
             _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
@@ -657,56 +662,28 @@ namespace Immersive.Framework.PlayerParticipation
             var evidence =
                 new List<ActivityPlayerActorSlotLifecycleSnapshot>();
             var failures = new List<string>();
+            var contextReleaseBlocked = new HashSet<PlayerSlotId>();
             int releasedCount = 0;
+
+            // Gameplay depends on the contextual Player occurrence and therefore retires
+            // before the provider-neutral contextual binding itself.
             for (int index = 0;
                  index < _activeRecord.PreparedSlots.Count;
                  index++)
             {
                 PreparedSlotRecord prepared =
                     _activeRecord.PreparedSlots[index];
-                if (!TryReleaseGameplayBeforePreparedActor(
+                if (TryReleaseGameplayBeforePreparedActor(
                         prepared,
                         nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-exit-release-gameplay-before-actor",
+                        "activity-exit-release-gameplay-before-context",
                         out string gameplayReleaseIssue))
                 {
-                    failures.Add(gameplayReleaseIssue);
-                    evidence.Add(
-                        new ActivityPlayerActorSlotLifecycleSnapshot(
-                            prepared.PlayerSlotId,
-                            true,
-                            default,
-                            false,
-                            prepared.Token,
-                            prepared.CreatedByEnter,
-                            false,
-                            PlayerActorPreparationStatus.FailedRelease,
-                            gameplayReleaseIssue));
                     continue;
                 }
 
-                if (!_preparationModule.TryReleaseContextualProjection(
-                        _activeRecord.Owner,
-                        prepared.PlayerSlotId,
-                        nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-exit-release-context",
-                        out string contextualReleaseIssue))
-                {
-                    failures.Add(contextualReleaseIssue);
-                    evidence.Add(
-                        new ActivityPlayerActorSlotLifecycleSnapshot(
-                            prepared.PlayerSlotId,
-                            true,
-                            default,
-                            false,
-                            prepared.Token,
-                            prepared.CreatedByEnter,
-                            false,
-                            PlayerActorPreparationStatus.FailedRelease,
-                            contextualReleaseIssue));
-                    continue;
-                }
-
+                failures.Add(gameplayReleaseIssue);
+                contextReleaseBlocked.Add(prepared.PlayerSlotId);
                 evidence.Add(
                     new ActivityPlayerActorSlotLifecycleSnapshot(
                         prepared.PlayerSlotId,
@@ -716,8 +693,61 @@ namespace Immersive.Framework.PlayerParticipation
                         prepared.Token,
                         prepared.CreatedByEnter,
                         false,
-                        PlayerActorPreparationStatus.SucceededAlreadyPrepared,
-                        "Activity contextual authority released; the Session-owned physical Actor remains unchanged."));
+                        PlayerActorPreparationStatus.FailedRelease,
+                        gameplayReleaseIssue));
+            }
+
+            // Contextual ownership is independent from Actor preparation. A JoinedSlots or
+            // SelectedActors Activity may still own a Scene-provided contextual assignment
+            // even though it has no PreparedSlotRecord.
+            for (int index = 0;
+                 index < _activeRecord.ContextualSlots.Count;
+                 index++)
+            {
+                PlayerSlotId playerSlotId = _activeRecord.ContextualSlots[index];
+                if (contextReleaseBlocked.Contains(playerSlotId))
+                {
+                    continue;
+                }
+
+                bool hasPrepared =
+                    TryFindActivePreparedSlot(playerSlotId, out PreparedSlotRecord prepared);
+                if (!_preparationModule.TryReleaseContextualProjection(
+                        _activeRecord.Owner,
+                        playerSlotId,
+                        nameof(ActivityPlayerActorLifecycleParticipant),
+                        "activity-exit-release-context",
+                        out string contextualReleaseIssue))
+                {
+                    failures.Add(contextualReleaseIssue);
+                    evidence.Add(
+                        new ActivityPlayerActorSlotLifecycleSnapshot(
+                            playerSlotId,
+                            true,
+                            default,
+                            false,
+                            hasPrepared ? prepared.Token : default,
+                            hasPrepared && prepared.CreatedByEnter,
+                            false,
+                            PlayerActorPreparationStatus.FailedRelease,
+                            contextualReleaseIssue));
+                    continue;
+                }
+
+                releasedCount++;
+                evidence.Add(
+                    new ActivityPlayerActorSlotLifecycleSnapshot(
+                        playerSlotId,
+                        true,
+                        default,
+                        false,
+                        hasPrepared ? prepared.Token : default,
+                        hasPrepared && prepared.CreatedByEnter,
+                        false,
+                        hasPrepared
+                            ? PlayerActorPreparationStatus.SucceededAlreadyPrepared
+                            : PlayerActorPreparationStatus.None,
+                        "Activity contextual authority released; the Session-owned physical Player remains unchanged."));
             }
 
             if (failures.Count > 0)
@@ -746,9 +776,10 @@ namespace Immersive.Framework.PlayerParticipation
             int projectedSlotCount = _activeRecord.ProjectedSlotCount;
             int selectedCount = _activeRecord.SelectedCount;
             int preparedCount = _activeRecord.PreparedSlots.Count;
+            bool releasedContext = releasedCount > 0;
             _activeRecord = null;
             _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
-                preparedCount > 0
+                preparedCount > 0 || releasedContext
                     ? ActivityPlayerActorLifecycleStatus.SucceededExited
                     : ActivityPlayerActorLifecycleStatus
                         .SucceededExitedNoActors,
@@ -761,11 +792,11 @@ namespace Immersive.Framework.PlayerParticipation
                 releasedCount,
                 0,
                 evidence.ToArray(),
-                preparedCount > 0
-                    ? "Activity contextual authority released while Session-owned Player Actors remain retained."
-                    : "Activity exit completed with no prepared Player Actors.");
+                preparedCount > 0 || releasedContext
+                    ? "Activity contextual authority released while Session-owned physical Players remain retained."
+                    : "Activity exit completed with no contextual Player binding to release.");
             ReleasePlayerReadinessRecord("ActivityExit");
-            return preparedCount > 0
+            return preparedCount > 0 || releasedContext
                 ? ActivityContentExecutionResult.Success(
                     request,
                     nameof(ActivityPlayerActorLifecycleParticipant),
@@ -776,6 +807,91 @@ namespace Immersive.Framework.PlayerParticipation
                     nameof(ActivityPlayerActorLifecycleParticipant),
                     "activity-player-actor-exit-no-actors",
                     _lastSnapshot.Message);
+        }
+
+        private List<PlayerSlotId> ResolveCurrentContextualSlots(
+            RuntimeContentOwner owner,
+            IReadOnlyList<PlayerSlotRuntimeSnapshot> projectedSlots)
+        {
+            var result = new List<PlayerSlotId>();
+            if (!owner.IsValid || projectedSlots == null)
+            {
+                return result;
+            }
+
+            for (int index = 0; index < projectedSlots.Count; index++)
+            {
+                TryAddCurrentContextualSlot(
+                    result,
+                    owner,
+                    projectedSlots[index].PlayerSlotId);
+            }
+
+            return result;
+        }
+
+        private List<PlayerSlotId> ResolveCurrentContextualSlots(
+            RuntimeContentOwner owner,
+            IReadOnlyList<PlayerReadinessSlotRecord> projectedSlots)
+        {
+            var result = new List<PlayerSlotId>();
+            if (!owner.IsValid || projectedSlots == null)
+            {
+                return result;
+            }
+
+            for (int index = 0; index < projectedSlots.Count; index++)
+            {
+                TryAddCurrentContextualSlot(
+                    result,
+                    owner,
+                    projectedSlots[index].playerSlotId);
+            }
+
+            return result;
+        }
+
+        private void TryAddCurrentContextualSlot(
+            List<PlayerSlotId> result,
+            RuntimeContentOwner owner,
+            PlayerSlotId playerSlotId)
+        {
+            if (!playerSlotId.IsValid ||
+                result.Contains(playerSlotId) ||
+                !_participationContext.TryGetCurrentAssignment(
+                    playerSlotId,
+                    out PlayerSlotAssignmentSnapshot assignment) ||
+                !assignment.IsAssigned ||
+                assignment.AssignmentOwner != owner)
+            {
+                return;
+            }
+
+            result.Add(playerSlotId);
+        }
+
+        private bool TryFindActivePreparedSlot(
+            PlayerSlotId playerSlotId,
+            out PreparedSlotRecord prepared)
+        {
+            if (_activeRecord != null)
+            {
+                for (int index = 0;
+                     index < _activeRecord.PreparedSlots.Count;
+                     index++)
+                {
+                    PreparedSlotRecord candidate =
+                        _activeRecord.PreparedSlots[index];
+                    if (candidate.PlayerSlotId == playerSlotId)
+                    {
+                        prepared = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            prepared = default;
+            return false;
         }
 
         private bool TryResolveProjection(
