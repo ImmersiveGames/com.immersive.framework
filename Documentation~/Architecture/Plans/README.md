@@ -7,6 +7,7 @@ Current work and next actions live on the mutable tracker:
 Active immutable distribution plan:
 
 - [OpenUPM Signed Distribution v2](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v2.md)
+- [OpenUPM Signed Distribution — implementation plan](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION-IMPLEMENTATION-2026-09-24.md)
 
 Superseded distribution plan and execution record:
 
