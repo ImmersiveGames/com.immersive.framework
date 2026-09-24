@@ -489,7 +489,6 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedToken.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
-                    expectedEvidenceHost,
                     source,
                     "restore-contextual-host-evidence-after-retirement-failure")
                 : null;
@@ -759,7 +758,6 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedToken.PlayerSlotId,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
-                    expectedEvidenceHost,
                     source,
                     "restore-scene-host-evidence-after-release-failure");
             return result != null && restoration.Succeeded
