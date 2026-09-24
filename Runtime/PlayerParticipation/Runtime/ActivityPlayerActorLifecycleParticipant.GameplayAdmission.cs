@@ -177,8 +177,14 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             _activeRecord = new ActiveActivityRecord(
-                activity, owner, PlayerParticipationRequirementLevel.GameplayReady,
-                projectedSlots.Count, projectedSlots.Count, prepared, hosts);
+                activity,
+                owner,
+                PlayerParticipationRequirementLevel.GameplayReady,
+                projectedSlots.Count,
+                projectedSlots.Count,
+                ResolveCurrentContextualSlots(owner, projectedSlots),
+                prepared,
+                hosts);
             _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
                 ActivityPlayerActorLifecycleStatus.SucceededEntered,
                 activity.ActivityName,
