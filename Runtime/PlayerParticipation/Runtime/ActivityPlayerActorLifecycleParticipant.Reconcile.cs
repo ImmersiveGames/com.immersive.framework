@@ -222,6 +222,7 @@ namespace Immersive.Framework.PlayerParticipation
                 requirementLevel,
                 projectedSlots.Count,
                 selectedCount,
+                ResolveCurrentContextualSlots(owner, projectedSlots),
                 new List<PreparedSlotRecord>(),
                 admittedHosts);
             _lastSnapshot = new ActivityPlayerActorLifecycleSnapshot(
@@ -1457,6 +1458,9 @@ namespace Immersive.Framework.PlayerParticipation
                 _playerReadinessRecord.requirementLevel,
                 _playerReadinessRecord.projectedSlots.Count,
                 selectedCount,
+                ResolveCurrentContextualSlots(
+                    _playerReadinessRecord.owner,
+                    _playerReadinessRecord.projectedSlots),
                 prepared,
                 hosts);
         }
