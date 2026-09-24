@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — IF-ADR-032 is the current Camera architecture; CAMERA-032-A..E focused evidence retained; CAMERA-032-F legacy removal implemented; aggregate Unity recertification pending**
+Status: **Active — OpenUPM distribution published; Unity consumer import/compile validation pending; IF-ADR-032 aggregate Unity recertification pending**
 
-Last updated: **2026-09-21**
+Last updated: **2026-09-24**
 
 ## Authority and status model
 
@@ -16,6 +16,31 @@ Archive          -> historical/non-authoritative execution history
 ```
 
 A dated certification remains evidence for the boundary it executed. Later cuts add evidence; they do not retroactively relabel historical matrices.
+
+## Public package distribution
+
+The public OpenUPM graph is published:
+
+| Package | Version | GitHub Release | OpenUPM |
+|---|---:|---|---|
+| `com.immersive.foundation` | `0.2.1` | [v0.2.1](https://github.com/ImmersiveGames/com.immersive.foundation/releases/tag/v0.2.1) | [package](https://openupm.com/packages/com.immersive.foundation/) |
+| `com.immersive.logging` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.logging/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.logging/) |
+| `com.immersive.pooling` | `0.2.1` | [v0.2.1](https://github.com/ImmersiveGames/com.immersive.pooling/releases/tag/v0.2.1) | [package](https://openupm.com/packages/com.immersive.pooling/) |
+| `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
+| `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
+
+Registry dependency graph:
+
+```text
+com.immersive.framework 1.0.2
+├── com.immersive.foundation 0.2.1
+└── com.immersive.logging 0.2.2
+
+com.immersive.audio 0.2.2
+└── com.immersive.pooling 0.2.1
+```
+
+Distribution status: **PUBLISHED / PENDING UNITY COMPILE/IMPORT VALIDATION**.
 
 ## Current Player state
 
