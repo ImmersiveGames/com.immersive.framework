@@ -1,8 +1,13 @@
 # Immersive Framework Documentation
 
-Last updated: **2026-09-17**
+Last updated: **2026-09-24**
 
 This directory contains the current product documentation for Immersive Framework.
+
+## Release documentation
+
+- [Package overview, installation and product surfaces](../README.md)
+- [Changelog](../CHANGELOG.md)
 
 ## Authority model
 

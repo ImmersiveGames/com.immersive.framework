@@ -1,55 +1,179 @@
 # Immersive Framework
 
-`com.immersive.framework` is the official Unity package for framework runtime,
-authoring, diagnostics and validation.
+`com.immersive.framework` is the official Unity package for building an
+Immersive Games application around explicit application, Session, Route and
+Activity lifecycles.
 
-Current version: `v1.0.1-preview`.
+Current version: `1.0.1` (stable package release).
 
-## Supported Unity version
+The package provides runtime authorities, designer-facing authoring surfaces,
+Editor workflows, diagnostics and validation. It consumes the technical
+`com.immersive.foundation` and `com.immersive.logging` packages instead of
+reimplementing their primitives.
+
+## Requirements
+
+- Unity `6000.5.0f1` or newer in the supported `6000.5` line;
+- `com.immersive.foundation` `0.2.0`;
+- `com.immersive.logging` `0.2.1`;
+- Cinemachine `3.1.0`;
+- Input System `1.19.0`.
+
+There is no support or validation matrix for earlier Unity versions.
+
+## Installation
+
+Configure the source that resolves the Immersive technical packages, then add
+the framework through Unity Package Manager with the stable Git tag:
 
 ```text
-Unity 6000.5.0f1 is the official minimum version.
-There is no support or test matrix for earlier Unity versions.
+https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.1
 ```
+
+Equivalent `Packages/manifest.json` entry:
+
+```json
+{
+  "dependencies": {
+    "com.immersive.framework": "https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.1"
+  }
+}
+```
+
+Pin the tag in projects and release manifests. Do not depend on `master` for a
+reproducible game setup.
+
+## Getting started
+
+1. Create a `GameApplicationAsset` from the Immersive Framework asset menu.
+2. Configure the application policies and create the required `RouteAsset` and
+   `ActivityAsset` definitions.
+3. Create the application-persistent scene through `File > New Scene > Immersive
+   Persistent Content`.
+4. Save that scene as a game-owned `.unity` asset and assign it to
+   `GameApplicationAsset > Persistent Content > Content Scene`.
+5. Use the Game Application Inspector action to add or enable the scene in the
+   active Build Profile Scene List.
+6. Author each feature through its component, asset, Project Settings, Template
+   or Composer surface, then validate it from the owning Inspector.
+7. Enter Play Mode and inspect runtime evidence separately from authoring
+   validation.
+
+Required configuration fails explicitly. The framework does not silently repair
+missing dependencies, discover a runtime host through global lookup or fabricate
+identity from object names.
+
+See [Framework Usage](Documentation~/Guides/Framework-Usage.md) for the complete
+workflow.
 
 ## Product surfaces
 
+| Area | Primary authoring surface | Runtime responsibility |
+|---|---|---|
+| Application | `GameApplicationAsset`, Project Settings and Persistent Content Scene Template | bootstrap, persistent content, Session creation and scoped framework runtime |
+| Game Flow | `RouteAsset`, `ActivityAsset`, request triggers and content profiles | Route/Activity transitions, content contribution, visibility and lifecycle |
+| Readiness and Loading | readiness participants, loading policies and loading surface adapters | commit/readiness gates, progress, interruption and terminal failure evidence |
+| Player | `PlayerSessionProfile`, Slot/Actor profiles, Local Player and Scene-Provided authoring | Join/Leave, Actor selection, physical preparation, relocation and scoped observation |
+| Camera | Session Outputs, Camera Presentations, `CameraRigComposer` and Camera Subjects | request arbitration, output transactions, presentation lifecycle and subject framing |
+| Input and Pause | input-mode policy, `PlayerPauseInput`, pause triggers and presentation adapters | transactional input state, pause ownership and resident/activity presentation |
+| Transition | transition policies and explicit effect adapters | transition planning, gating, effects and continuity |
+| Reset | reset subjects/participants, Object Reset, Cycle Reset and Activity Restart triggers | scoped reset registration and explicit execution |
+| Progression Save | `ProgressionSaveProfile` and backend adapter contract | save orchestration with built-in JSON or a game/third-party backend |
+| Audio | Route/Activity BGM authoring and `FrameworkBgmDirector` | optional integration with `com.immersive.audio` |
+| Scene integration | Scene Lifecycle Events and explicit Unity adapters | scoped load/unload callbacks without a parallel lifecycle authority |
+| Diagnostics | validation modes, focused diagnostics and runtime evidence | projects existing authority; never creates a hidden command path |
+
+### Application and Game Flow
+
+The canonical ownership chain is:
+
 ```text
-GameApplicationAsset -> bootstrap -> scoped Framework runtime
-PlayerSessionProfile -> Supported Slots / Joining / Host Provisioning / Actor Resolution
-PlayerSessionObserver -> scoped read-only Player Session evidence
-explicit Player Session commands -> Open / Close / Join / Actor Selection / Leave
-LocalPlayerProvisioningAuthoring -> Local Player Provisioning authority
-SceneProvidedLocalPlayerAuthoring -> Scene-Provided Local Player validation / deterministic runtime adoption
-CameraRigBehaviorDefinition -> CameraRigComposer -> Validate / Apply/Rebuild
-FrameworkBgmDirector -> Route/Activity BGM bindings -> Immersive Audio
-PlayerPauseInput -> InputMode transaction -> PlayerInput state writer
-Reset authoring -> explicit runtime ports -> ResetRegistry / ResetExecutor
-SceneLifecycleEvents -> SceneLifecycleRuntime callbacks -> explicit UnityEvents
+GameApplicationAsset
+  -> bootstrap
+  -> Persistent Content
+  -> internal FrameworkRuntimeHost
+  -> Session
+  -> Route lifecycle
+  -> Activity lifecycle
+  -> scoped feature contexts
 ```
 
-The explicit Player Session command family currently contains:
+`FrameworkRuntimeHost` is the internal composition root. It intentionally has no
+static current-host registry or service-locator API. Route and Activity
+definitions own their content, readiness, participation, transition and
+presentation intent.
+
+### Player and local multiplayer
+
+Player participation separates logical intent from physical ownership:
 
 ```text
-PlayerSessionOpenJoiningCommandTrigger
-PlayerSessionCloseJoiningCommandTrigger
-PlayerSessionJoinCommandTrigger
-PlayerSessionSelectActorCommandTrigger
-PlayerSessionDefaultActorSelectionCommandTrigger
-PlayerSessionReplaceActorSelectionCommandTrigger
-PlayerSessionClearActorSelectionCommandTrigger
-PlayerSessionLeaveCommandTrigger
+Join
+!= Actor Selection
+!= Activity Actor Preparation
+!= Physical Materialization
+!= Prepared Actor Replacement
 ```
 
-`FrameworkRuntimeHost` is an internal application/session composition root. It
-does not expose a static current-host registry or service-locator API. Required
-runtime dependencies are supplied through typed bindings and fail explicitly
-when unavailable.
+The product surface includes:
+
+- `PlayerSessionObserver` for scoped read-only Session evidence;
+- explicit Open Joining, Close Joining, Join, Select Actor, Default Actor
+  Selection, Replace Actor Selection, Clear Actor Selection and Leave commands;
+- Manager-Provisioned and Scene-Provided local Player workflows;
+- Route Spatial Entry and explicit Activity relocation;
+- explicit, Experimental device/InputUser/control-scheme ownership evidence for
+  the implemented local multiplayer boundary; exact-Slot Join remains deferred;
+- Manager-Provisioned prepared Actor replacement while preserving the owning
+  Player Slot, Host, PlayerInput, Session and Activity occurrence.
+
+See [Player Usage](Documentation~/Guides/Player-Usage.md) and
+[Activity Readiness](Documentation~/Guides/Activity-Readiness.md).
+
+### Camera
+
+IF-ADR-032 is the current Camera architecture:
+
+```text
+Session
+  -> physical Camera Outputs + Defaults
+
+Session / Route / Activity
+  -> Camera Presentation definitions
+  -> runtime Presentation occurrences
+  -> CameraRequest
+  -> CameraOutputSession
+  -> Camera Output
+```
+
+Camera capacity belongs to the Session. Presentation intent belongs to Session,
+Route or Activity. `CameraRigComposer` materializes reusable rigs explicitly;
+Camera Subjects provide live observable evidence. Player count does not create
+Outputs implicitly, and `PlayerInputManager` remains the physical split-layout
+writer.
+
+The legacy shared-composition surface has been removed. Aggregate Unity
+recertification after that removal is still pending; focused IF-ADR-032 evidence
+is recorded in the tracker.
+
+See [Camera Usage](Documentation~/Guides/Camera-Usage.md).
+
+### Persistence, reset and optional integrations
+
+Progression Save supports a built-in transactional JSON backend and an explicit
+backend adapter contract for game-owned or third-party persistence. There is no
+silent backend fallback.
+
+Reset authoring covers direct Object Reset, grouped reset, Route/Activity cycle
+reset and Activity restart over scoped reset registration/execution.
+
+The Audio module is optional and integrates Route/Activity BGM intent with
+`com.immersive.audio`. Logging guidance uses the separate
+`com.immersive.logging` package.
 
 ## Persistent Content Scene Template
 
-The package includes an official Editor Scene Template for the application-persistent
-content scene:
+Create the official template through:
 
 ```text
 File
@@ -57,81 +181,66 @@ File
   -> Immersive Persistent Content
 ```
 
-Use the template as a starting point, save the result as a concrete `.unity` scene
-owned by the game, and assign that scene to:
+The template is an Editor authoring aid, not runtime authority. The package does
+not silently create, repair, save, assign or add consumer scenes to a build.
+Under IF-ADR-032, Persistent Content does not own gameplay Camera topology.
 
-```text
-GameApplicationAsset
-  -> Persistent Content
-  -> Content Scene
-```
+See [Persistent Content Scene Template](Documentation~/Guides/Persistent-Content-Scene-Template.md).
 
-The `GameApplicationAsset` Inspector also provides explicit authoring actions to
-open the assigned scene and add or enable it in the active Build Profile Scene List.
+## API maturity
 
-The Scene Template is an Editor authoring aid only. The template asset is not a
-runtime authority, and the framework does not silently create, repair, save, assign
-or add consumer scenes to a build.
+The package version is stable, but maturity is declared per surface with
+`FrameworkApiStatusAttribute`:
 
-See [Framework usage](Documentation~/Guides/Framework-Usage.md) for the complete
-Persistent Content workflow.
+- `Stable`: supported consumer contract; breaking changes require an explicit
+  architecture and migration decision;
+- `Experimental`: usable for controlled development, without compatibility
+  guarantees;
+- `Internal`: framework implementation detail;
+- `DevelopmentTooling`: Editor, QA or diagnostic tooling rather than game API;
+- `Deferred` and `Removed`: outside the active consumer baseline.
 
-## Player technical QA status
+Do not treat a stable package version as promotion of every Experimental type.
+See [API Maturity and Validation Governance](Documentation~/Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
 
-The current integrated Player boundary is certified by the QAFramework Full Player orchestrator:
+## Validation status
 
-```text
-PLAYER CURRENT AGGREGATE COMPLETE
-mandatoryContracts = 27
-executedContracts = 27
-passedContracts = 27
+The repository contains package-local Unity Test Framework assemblies and the
+documentation records focused QAFramework and FIRSTGAME evidence. Certification
+is scoped and dated: an older passing matrix is not evidence for later cuts.
 
-serialization                      PASS
-session                            PASS
-routeSpatialEntry                  PASS
-activityRelocation                 PASS
-sceneProvided                      PASS
-sceneProvidedLeave                 PASS
-sceneProvidedNoActivityLeave       PASS
-sceneProvidedNoActivityTermination PASS
-managerProvisioned                 PASS
-managerNoActivity                  PASS
-managerSessionTermination          PASS
-actor                              PASS
-publicSurface                      PASS
-leave                              PASS
-failedFirstSceneAdoption           PASS
-failedContextualReprojection       PASS
-noPhysicalHandoff                  PASS
-```
+At this release boundary:
 
-The 2026-08-26 rerun closes the public arbitrary Actor-selection surface through explicit Select / Default / Replace / Clear commands. Actor selection remains Session-owned logical intent; those commands do not grant physical Actor hot-swap authority.
+- Player, Game Flow, Pause/Input, Activity content/visibility and the focused
+  IF-ADR-032 Camera cuts have recorded technical or consumer evidence;
+- the Camera legacy-removal aggregate Unity recertification remains pending;
+- Experimental Reset surfaces retain their declared Experimental API status;
+- real-consumer proof remains required where listed by the current tracker.
 
-Historical `25/25` Player certification remains dated evidence for its earlier boundary and is not relabeled as coverage of the later Actor-selection command surface.
-
-The package-local Actor-selection Unity Test Framework Editor tests are a separate evidence lane and are not claimed as executed by this integrated QA result unless separately recorded.
-
-Current remaining Player product gaps include exact-Slot public Join, the public Slot/device/InputUser/control-scheme ownership/observation contract required for canonical Local Multiplayer, and the deferred command-availability/readiness product surface.
-
-Scene-Provided is physically authored, authoring-validated, deterministically
-resolved and adopted at runtime. It does not require Player Apply / Rebuild,
-serialized provenance evidence or related Editor-generated state.
+Always validate package import/compile and the relevant Play Mode or smoke lanes
+in the consuming Unity project before promoting a game build.
 
 ## Documentation
 
 - [Documentation index](Documentation~/README.md)
-- [Current tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
-- [Player Actor runtime and presentation authority](Documentation~/Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
-- [Player Actor occurrence identity boundary](Documentation~/Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
-- [Player Actor Selection public surface certification](Documentation~/Architecture/Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
-- [Player current aggregate recertification](Documentation~/Architecture/Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
-- [Framework usage](Documentation~/Guides/Framework-Usage.md)
-- [Player usage](Documentation~/Guides/Player-Usage.md)
-- [Activity readiness](Documentation~/Guides/Activity-Readiness.md)
-- [Pause usage](Documentation~/Guides/Pause-Usage.md)
-- [Camera architecture — IF-ADR-032](Documentation~/Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
-- [Camera usage](Documentation~/Guides/Camera-Usage.md)
-- [Reset usage](Documentation~/Guides/Reset-Usage.md)
-- [Scene lifecycle events](Documentation~/Guides/Scene-Lifecycle-Events.md)
+- [Current Framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
+- [Architecture map](Documentation~/Architecture/README.md)
+- [Framework Usage](Documentation~/Guides/Framework-Usage.md)
+- [Editor Authoring Standard](Documentation~/Guides/Editor-Authoring-Standard.md)
+- [Player Usage](Documentation~/Guides/Player-Usage.md)
+- [Camera Usage](Documentation~/Guides/Camera-Usage.md)
+- [Activity Readiness](Documentation~/Guides/Activity-Readiness.md)
+- [Pause Usage](Documentation~/Guides/Pause-Usage.md)
+- [Reset Usage](Documentation~/Guides/Reset-Usage.md)
+- [Progression Save Authoring](Documentation~/Guides/Progression-Save-Authoring.md)
+- [Progression Save backend contract](Documentation~/Guides/Progression-Save-Backend-Adapter-Contract.md)
+- [Built-in JSON backend](Documentation~/Guides/Progression-Save-Built-In-Json-Backend.md)
+- [Audio Usage](Documentation~/Guides/Audio-Usage.md)
+- [Logging Usage](Documentation~/Guides/Logging-Usage.md)
+- [Application Frame Rate](Documentation~/Guides/Application-Frame-Rate-Usage.md)
+- [Scene Lifecycle Events](Documentation~/Guides/Scene-Lifecycle-Events.md)
+- [Changelog](CHANGELOG.md)
 
-QAFramework owns synthetic technical validation. FIRSTGAME/Samples own real-consumer integration and product usability proof. Consumer assets and the old Base/NewScripts architecture do not belong in this package.
+QAFramework owns synthetic technical validation. FIRSTGAME and consumer samples
+own real-game integration and usability proof. Consumer assets and the legacy
+Base/NewScripts architecture do not belong in this package.
