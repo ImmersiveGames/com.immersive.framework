@@ -7,6 +7,7 @@ Current work and next actions live on the mutable tracker:
 Active immutable distribution plan:
 
 - [OpenUPM Public Package Distribution v1](IF-PLAN-OPENUPM-PUBLIC-DISTRIBUTION.v1.md)
+- [OpenUPM Public Package Distribution — implementation plan](IF-PLAN-OPENUPM-PUBLIC-DISTRIBUTION-IMPLEMENTATION-2026-09-24.md)
 
 This plan defines the approved cross-repository distribution route. Execution
 progress remains owned by the Tracker and does not mutate the plan body.

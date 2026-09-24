@@ -4,7 +4,7 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current version: `1.0.1` (stable package release).
+Current version: `1.0.2` (stable package release).
 
 The package provides runtime authorities, designer-facing authoring surfaces,
 Editor workflows, diagnostics and validation. It consumes the technical
@@ -14,8 +14,8 @@ reimplementing their primitives.
 ## Requirements
 
 - Unity `6000.5.0f1` or newer in the supported `6000.5` line;
-- `com.immersive.foundation` `0.2.0`;
-- `com.immersive.logging` `0.2.1`;
+- `com.immersive.foundation` `0.2.1`;
+- `com.immersive.logging` `0.2.2`;
 - Cinemachine `3.1.0`;
 - Input System `1.19.0`.
 
@@ -23,25 +23,29 @@ There is no support or validation matrix for earlier Unity versions.
 
 ## Installation
 
-Configure the source that resolves the Immersive technical packages, then add
-the framework through Unity Package Manager with the stable Git tag:
-
-```text
-https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.1
-```
-
-Equivalent `Packages/manifest.json` entry:
+Configure OpenUPM once in `Packages/manifest.json`, using the `com.immersive`
+scope, then declare only the Framework package:
 
 ```json
 {
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": ["com.immersive"]
+    }
+  ],
   "dependencies": {
-    "com.immersive.framework": "https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.1"
+    "com.immersive.framework": "1.0.2"
   }
 }
 ```
 
-Pin the tag in projects and release manifests. Do not depend on `master` for a
-reproducible game setup.
+Unity resolves Foundation `0.2.1` and Logging `0.2.2` automatically. As a Git
+fallback, use
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.2`; Git
+consumers must declare the custom Git dependencies themselves because Unity
+cannot resolve their semantic versions from Git alone.
 
 ## Getting started
 
@@ -244,3 +248,7 @@ in the consuming Unity project before promoting a game build.
 QAFramework owns synthetic technical validation. FIRSTGAME and consumer samples
 own real-game integration and usability proof. Consumer assets and the legacy
 Base/NewScripts architecture do not belong in this package.
+
+## License
+
+Licensed under the [MIT License](LICENSE.md).

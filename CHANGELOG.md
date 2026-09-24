@@ -2,6 +2,14 @@
 
 All notable package changes are documented in this file.
 
+## [1.0.2] - 2026-09-24
+
+- Added the public MIT license and OpenUPM distribution metadata.
+- Updated `com.immersive.foundation` to `0.2.1` and
+  `com.immersive.logging` to `0.2.2` for automatic registry resolution.
+- Preserved Cinemachine `3.1.0`, Input System `1.19.0`, runtime behavior and
+  public APIs.
+
 ## [1.0.1] - 2026-09-24
 
 First documented GitHub Release of the stable package line. The pre-existing
