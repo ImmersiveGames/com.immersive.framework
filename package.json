@@ -1,6 +1,6 @@
 {
   "name": "com.immersive.framework",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "displayName": "Immersive Framework",
   "description": "Immersive Framework runtime, authoring, diagnostics and validation surfaces for Unity projects.",
   "unity": "6000.5",
@@ -15,9 +15,9 @@
     "email": "contato@immersivegames.com.br"
   },
   "dependencies": {
-    "com.immersive.foundation": "0.2.1",
-    "com.immersive.logging": "0.2.2",
-    "com.unity.cinemachine": "3.1.0",
+    "com.immersive.foundation": "0.2.2",
+    "com.immersive.logging": "0.2.3",
+    "com.unity.cinemachine": "3.1.7",
     "com.unity.inputsystem": "1.19.0"
   }
 }
