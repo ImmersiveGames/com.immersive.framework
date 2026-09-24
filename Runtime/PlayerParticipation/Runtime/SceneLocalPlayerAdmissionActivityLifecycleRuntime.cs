@@ -447,7 +447,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryReleaseEntries(
                     _activeRecord.Entries,
                     _activeRecord.Owner,
-                    compensateReleasedEntries: true,
+                    compensateReleasedEntries: false,
                     resolvedSource,
                     resolvedReason,
                     out string issue))
@@ -876,6 +876,27 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
+                if (cause == ContextualRetirementCause.ActivityExit)
+                {
+                    if (_preparationModule == null || !_preparationModule.IsReady)
+                    {
+                        failures.Add(
+                            $"Canonical contextual projection authority is unavailable for Scene Local Player '{entry.Authoring.name}'.");
+                        continue;
+                    }
+
+                    if (!_preparationModule.TryReleaseContextualProjection(
+                            owner,
+                            entry.PlayerSlotId,
+                            source,
+                            $"{reason}:release-canonical-context",
+                            out string contextualReleaseIssue))
+                    {
+                        failures.Add(contextualReleaseIssue);
+                        continue;
+                    }
+                }
+
                 SceneLocalPlayerAdmissionRuntimeResult retirement =
                     ResolveEntryRetirement(
                         entry,
@@ -925,6 +946,16 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            if (cause == ContextualRetirementCause.ActivityExit)
+            {
+                return _module.TryRetireContextualBookkeepingAfterCanonicalRelease(
+                    entry.Authoring,
+                    entry.AdmissionToken,
+                    _activeRecord.Owner,
+                    source,
+                    $"{reason}:retire-contextual-bookkeeping");
+            }
+
             if (entry.AdoptionApplied)
             {
                 return cause switch

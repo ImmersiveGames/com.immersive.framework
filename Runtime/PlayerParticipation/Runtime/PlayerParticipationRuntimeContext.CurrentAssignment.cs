@@ -13,7 +13,6 @@ namespace Immersive.Framework.PlayerParticipation
         {
             internal CurrentAssignmentRecord(
                 SlotRecord slot,
-                PlayerSlotAssignmentOrigin origin,
                 RuntimeContentOwner owner,
                 int sequence,
                 int assignmentRevision,
@@ -23,7 +22,6 @@ namespace Immersive.Framework.PlayerParticipation
                 string reason)
             {
                 Slot = slot;
-                Origin = origin;
                 Owner = owner;
                 Sequence = sequence;
                 AssignmentRevision = assignmentRevision;
@@ -34,7 +32,6 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             internal SlotRecord Slot { get; }
-            internal PlayerSlotAssignmentOrigin Origin { get; }
             internal RuntimeContentOwner Owner { get; }
             internal int Sequence { get; }
             internal int AssignmentRevision { get; }
@@ -64,7 +61,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerSlotAssignmentResult BeginAssignment(
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin origin,
             RuntimeContentOwner owner,
             PlayerHostBindingIdentity hostBindingIdentity,
             string source,
@@ -102,35 +98,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotAssignmentSnapshot unassigned = CreateUnassignedAssignmentSnapshot(slot);
-            if (origin == PlayerSlotAssignmentOrigin.SessionPersistent)
-            {
-                return AssignmentResult(
-                    PlayerSlotAssignmentStatus.RejectedUnsupportedOrigin,
-                    operation,
-                    unassigned,
-                    unassigned,
-                    default,
-                    resolvedSource,
-                    resolvedReason,
-                    "SessionPersistent assignment origin is reserved but not implemented in CPSA-1.");
-            }
-
-            if (origin is not
-                PlayerSlotAssignmentOrigin.ManagerProvisioned and not
-                PlayerSlotAssignmentOrigin.SceneProvided)
-            {
-                return AssignmentResult(
-                    PlayerSlotAssignmentStatus.RejectedInvalidOrigin,
-                    operation,
-                    unassigned,
-                    unassigned,
-                    default,
-                    resolvedSource,
-                    resolvedReason,
-                    "Current assignment origin must be ManagerProvisioned or SceneProvided.");
-            }
-
-            if (!IsAssignmentOwnerValidForOrigin(origin, owner))
+            if (!IsContextualAssignmentOwnerValid(owner))
             {
                 return AssignmentResult(
                     PlayerSlotAssignmentStatus.RejectedInvalidOwner,
@@ -140,9 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
                     default,
                     resolvedSource,
                     resolvedReason,
-                    origin == PlayerSlotAssignmentOrigin.ManagerProvisioned
-                        ? "Manager-provisioned assignment owner must be the explicit owner of this Session participation context."
-                        : "Scene-provided assignment owner must be an explicit Activity or Route owner.");
+                    "Current assignment owner must be an explicit Activity or Route owner.");
             }
 
             if (!hostBindingIdentity.IsValid ||
@@ -196,7 +162,6 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerSlotAssignmentSnapshot existingSnapshot =
                     CreateAssignmentSnapshot(existing);
                 bool sameEvidence =
-                    existing.Origin == origin &&
                     existing.Owner == owner &&
                     existing.HostBindingIdentity == hostBindingIdentity;
                 return AssignmentResult(
@@ -243,7 +208,6 @@ namespace Immersive.Framework.PlayerParticipation
                 hostBindingIdentity);
             var record = new CurrentAssignmentRecord(
                 slot,
-                origin,
                 owner,
                 _assignmentSequence,
                 initialAssignmentRevision,
@@ -566,8 +530,7 @@ namespace Immersive.Framework.PlayerParticipation
                 "Current Player Slot assignment released; the previous token is now stale.");
         }
 
-        private bool IsAssignmentOwnerValidForOrigin(
-            PlayerSlotAssignmentOrigin origin,
+        private static bool IsContextualAssignmentOwnerValid(
             RuntimeContentOwner owner)
         {
             if (!owner.IsValid)
@@ -575,16 +538,8 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            return origin switch
-            {
-                PlayerSlotAssignmentOrigin.ManagerProvisioned =>
-                    owner.Scope is RuntimeContentScope.Activity or
-                        RuntimeContentScope.Route,
-                PlayerSlotAssignmentOrigin.SceneProvided =>
-                    owner.Scope is RuntimeContentScope.Activity or
-                        RuntimeContentScope.Route,
-                _ => false
-            };
+            return owner.Scope is RuntimeContentScope.Activity or
+                RuntimeContentScope.Route;
         }
 
         private PlayerSlotAssignmentSnapshot CreateAssignmentSnapshot(
@@ -595,7 +550,6 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Slot.PlayerSlotId,
                 record.Slot.ConfiguredIndex,
                 PlayerSlotAssignmentState.Assigned,
-                record.Origin,
                 record.Owner,
                 record.Sequence,
                 record.AssignmentRevision,
@@ -613,7 +567,6 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.PlayerSlotId,
                 slot.ConfiguredIndex,
                 PlayerSlotAssignmentState.Unassigned,
-                PlayerSlotAssignmentOrigin.None,
                 default,
                 0,
                 0,

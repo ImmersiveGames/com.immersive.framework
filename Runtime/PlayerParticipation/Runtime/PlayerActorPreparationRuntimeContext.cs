@@ -254,9 +254,9 @@ namespace Immersive.Framework.PlayerParticipation
                     "Prepare Selected Actor requires an explicit ActorProfile selection for the Joined Slot.");
             }
 
-            _hostEvidenceProjection.LogContextDiagnostic("before", "TryEnsureManagerContextualProjection",
+            _hostEvidenceProjection.LogContextDiagnostic("before", "TryEnsureContextualProjection",
                 playerSlotId, activityScopeContext.Owner, resolvedSource, resolvedReason);
-            if (!TryEnsureManagerContextualProjection(
+            if (!TryEnsureContextualProjection(
                     activityScopeContext,
                     slot,
                     resolvedSource,
@@ -280,7 +280,7 @@ namespace Immersive.Framework.PlayerParticipation
                     contextualProjectionIssue);
             }
 
-            _hostEvidenceProjection.LogContextDiagnostic("after", "TryEnsureManagerContextualProjection",
+            _hostEvidenceProjection.LogContextDiagnostic("after", "TryEnsureContextualProjection",
                 playerSlotId, activityScopeContext.Owner, resolvedSource, resolvedReason, "succeeded");
             if (_records.TryGetValue(playerSlotId, out PreparationRecord existing))
             {
@@ -308,9 +308,8 @@ namespace Immersive.Framework.PlayerParticipation
                 if (!TryResolveCurrentActorCorrelation(
                         activityScopeContext,
                         playerSlotId,
-                        ToAssignmentOrigin(actorEvidence.ProvisioningOrigin),
                         existing.Host,
-                        out PlayerSlotAssignmentSnapshot existingAssignment,
+                        out _,
                         out PlayerHostEvidenceSnapshot existingHostEvidence,
                         out string existingCorrelationIssue))
                 {
@@ -334,7 +333,6 @@ namespace Immersive.Framework.PlayerParticipation
                 if (IsCurrentIdempotentPreparation(
                         existing,
                         slot,
-                        existingAssignment,
                         existingHostEvidence))
                 {
                     if (existing.Handle.State ==
@@ -398,9 +396,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryResolveCurrentActorCorrelation(
                     activityScopeContext,
                     playerSlotId,
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned,
                     null,
-                    out PlayerSlotAssignmentSnapshot assignment,
+                    out _,
                     out PlayerHostEvidenceSnapshot hostEvidence,
                     out string correlationIssue))
             {
@@ -493,7 +490,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                 slot,
                 handle,
-                assignment,
                 hostEvidence,
                 PlayerActorPhysicalOwnership.FrameworkOwned,
                 PlayerActorPreparationState.Prepared,
@@ -541,7 +537,7 @@ namespace Immersive.Framework.PlayerParticipation
                 reason);
         }
 
-        internal bool TryReleaseManagerContextualProjection(
+        internal bool TryReleaseContextualProjection(
             RuntimeContentOwner activityOwner,
             PlayerSlotId playerSlotId,
             string source,
@@ -549,16 +545,22 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
-            _hostEvidenceProjection.LogContextDiagnostic("before", "TryReleaseManagerContextualProjection",
+            _hostEvidenceProjection.LogContextDiagnostic("before", "TryReleaseContextualProjection",
                 playerSlotId, activityOwner, source, reason);
-            if (!activityOwner.IsValid || !playerSlotId.IsValid ||
-                !_participationContext.TryGetCurrentAssignment(
+            if (!activityOwner.IsValid || !playerSlotId.IsValid)
+            {
+                issue = "Contextual projection release requires a valid Activity owner and Player Slot.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
+                    playerSlotId, activityOwner, source, reason, "failed", issue);
+                return false;
+            }
+
+            if (!_participationContext.TryGetCurrentAssignment(
                     playerSlotId,
                     out PlayerSlotAssignmentSnapshot assignment) ||
-                !assignment.IsAssigned ||
-                assignment.AssignmentOrigin != PlayerSlotAssignmentOrigin.ManagerProvisioned)
+                !assignment.IsAssigned)
             {
-                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
                     playerSlotId, activityOwner, source, reason, "succeeded-or-no-op", issue);
                 return true;
             }
@@ -568,10 +570,11 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     out PlayerHostEvidenceSnapshot hostEvidence) ||
                 !hostEvidence.HasContextualProjection ||
-                hostEvidence.AssignmentToken != assignment.AssignmentToken)
+                hostEvidence.AssignmentToken != assignment.AssignmentToken ||
+                hostEvidence.HostBindingIdentity != assignment.HostBindingIdentity)
             {
-                issue = "Manager contextual projection does not match the exiting Activity occurrence.";
-                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                issue = "Contextual projection does not match the exiting Activity occurrence.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
                     playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
@@ -583,13 +586,13 @@ namespace Immersive.Framework.PlayerParticipation
                     assignment.HostBindingIdentity,
                     hostEvidence.Host,
                     source,
-                    reason + "; release-manager-contextual-host");
+                    reason + "; release-contextual-host");
             if (projectionRelease == null || !projectionRelease.Succeeded)
             {
                 issue = projectionRelease != null
                     ? projectionRelease.ToDiagnosticString()
-                    : "Manager contextual Host projection release returned no result.";
-                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    : "Contextual Host projection release returned no result.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
                     playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
@@ -599,18 +602,18 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     assignment.AssignmentToken,
                     source,
-                    reason + "; release-manager-contextual-assignment");
+                    reason + "; release-contextual-assignment");
             if (assignmentRelease == null || !assignmentRelease.Succeeded)
             {
                 issue = assignmentRelease != null
                     ? assignmentRelease.ToDiagnosticString()
-                    : "Manager contextual assignment release returned no result.";
-                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+                    : "Contextual assignment release returned no result.";
+                _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
                     playerSlotId, activityOwner, source, reason, "failed", issue);
                 return false;
             }
 
-            _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseManagerContextualProjection",
+            _hostEvidenceProjection.LogContextDiagnostic("after", "TryReleaseContextualProjection",
                 playerSlotId, activityOwner, source, reason, "succeeded", issue);
 
             return true;
@@ -1054,9 +1057,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryResolveCurrentActorCorrelation(
                     activityScopeContext,
                     playerSlotId,
-                    ToAssignmentOrigin(currentRecord.Summary.ActorEvidence.ProvisioningOrigin),
                     currentRecord.Host,
-                    out PlayerSlotAssignmentSnapshot assignment,
+                    out _,
                     out PlayerHostEvidenceSnapshot hostEvidence,
                     out string correlationIssue))
             {
@@ -1273,7 +1275,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationSummary replacementSummary = CreatePreparedSummary(
                 committedSlot,
                 replacementHandle,
-                assignment,
                 hostEvidence,
                 PlayerActorPhysicalOwnership.FrameworkOwned,
                 PlayerActorPreparationState.Prepared,
@@ -1497,7 +1498,6 @@ namespace Immersive.Framework.PlayerParticipation
         private bool IsCurrentIdempotentPreparation(
             PreparationRecord record,
             PlayerSlotRuntimeSnapshot slot,
-            PlayerSlotAssignmentSnapshot assignment,
             PlayerHostEvidenceSnapshot hostEvidence)
         {
             return record != null &&
@@ -1508,7 +1508,7 @@ namespace Immersive.Framework.PlayerParticipation
                 record.Handle.Request.ActorProfileId == slot.SelectedActorProfileId &&
                 record.Summary.SelectionRevision == slot.SelectionRevision &&
                 record.Summary.ActorEvidence.ProvisioningOrigin ==
-                    ToProvisioningMode(assignment.AssignmentOrigin) &&
+                    hostEvidence.PhysicalProvisioningMode &&
                 ReferenceEquals(record.Host, hostEvidence.Host) &&
                 ReferenceEquals(record.Handle.LocalPlayerHost, hostEvidence.Host);
         }
@@ -1600,7 +1600,6 @@ namespace Immersive.Framework.PlayerParticipation
         private bool TryResolveCurrentActorCorrelation(
             RuntimeScopeContext scopeContext,
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin expectedOrigin,
             LocalPlayerHostAuthoring expectedHost,
             out PlayerSlotAssignmentSnapshot assignment,
             out PlayerHostEvidenceSnapshot hostEvidence,
@@ -1619,7 +1618,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Logical Player Actor preparation requires an explicit Activity or Route Runtime Content owner.";
                 _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
                     playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
-                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
+                    "validate-contextual-correlation", "failed", issue, expectedHost);
                 return false;
             }
 
@@ -1627,18 +1626,15 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     out assignment) ||
                 !assignment.IsAssigned ||
-                assignment.AssignmentOrigin != expectedOrigin)
+                assignment.AssignmentOwner != scopeContext.Owner)
             {
                 issue =
-                    $"Player Slot '{playerSlotId.StableText}' has no current '{expectedOrigin}' assignment.";
+                    $"Player Slot '{playerSlotId.StableText}' has no current assignment for the expected Activity/Route owner.";
                 _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
                     playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
-                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
+                    "validate-contextual-correlation", "failed", issue, expectedHost);
                 return false;
             }
-
-            // Provisioning origin is physical provenance. The current assignment is
-            // always contextual and therefore belongs to the Activity/Route occurrence.
 
             PlayerHostEvidenceResult confirmation =
                 _hostEvidenceProjection.ConfirmHostEvidence(
@@ -1652,13 +1648,12 @@ namespace Immersive.Framework.PlayerParticipation
                     : "Physical Host evidence confirmation returned no result.";
                 _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
                     playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
-                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
+                    "validate-contextual-correlation", "failed", issue, expectedHost);
                 return false;
             }
 
             hostEvidence = confirmation.CurrentEvidence;
-            if (hostEvidence.AssignmentOrigin != expectedOrigin ||
-                hostEvidence.AssignmentToken != assignment.AssignmentToken ||
+            if (hostEvidence.AssignmentToken != assignment.AssignmentToken ||
                 hostEvidence.HostBindingIdentity != assignment.HostBindingIdentity ||
                 !hostEvidence.HostIsAvailable ||
                 !hostEvidence.Host.IsJoined ||
@@ -1668,21 +1663,21 @@ namespace Immersive.Framework.PlayerParticipation
                  !ReferenceEquals(expectedHost, hostEvidence.Host)))
             {
                 issue =
-                    "Physical Host evidence does not match the current assignment, binding, origin or expected Host.";
+                    "Physical Host evidence does not match the current assignment, binding or expected Host.";
                 _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
                     playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
-                    "expected-origin=" + expectedOrigin, "failed", issue, expectedHost);
+                    "validate-contextual-correlation", "failed", issue, expectedHost);
                 return false;
             }
 
             _hostEvidenceProjection.LogContextDiagnostic("correlation", "TryResolveCurrentActorCorrelation",
                 playerSlotId, scopeContext.Owner, nameof(PlayerActorPreparationRuntimeContext),
-                "expected-origin=" + expectedOrigin, "succeeded", issue, expectedHost);
+                "validate-contextual-correlation", "succeeded", issue, expectedHost);
 
             return true;
         }
 
-        private bool TryEnsureManagerContextualProjection(
+        private bool TryEnsureContextualProjection(
             RuntimeScopeContext activityScopeContext,
             PlayerSlotRuntimeSnapshot slot,
             string source,
@@ -1690,38 +1685,58 @@ namespace Immersive.Framework.PlayerParticipation
             out string issue)
         {
             issue = string.Empty;
+            if (!activityScopeContext.IsValid ||
+                activityScopeContext.Owner.Scope is not RuntimeContentScope.Activity and not RuntimeContentScope.Route)
+            {
+                issue =
+                    "Contextual projection requires an explicit Activity or Route Runtime Content owner.";
+                return false;
+            }
+
             if (_participationContext.TryGetCurrentAssignment(
                     slot.PlayerSlotId,
                     out PlayerSlotAssignmentSnapshot current))
             {
                 if (!current.IsAssigned)
                 {
-                    issue = "The current Player Slot assignment is not readable for Manager contextual projection.";
+                    issue = "The current Player Slot contextual assignment is not readable.";
                     return false;
                 }
 
-                if (current.AssignmentOrigin == PlayerSlotAssignmentOrigin.ManagerProvisioned &&
-                    current.AssignmentOwner != activityScopeContext.Owner)
+                if (current.AssignmentOwner != activityScopeContext.Owner)
                 {
                     issue =
-                        "Manager contextual projection is still owned by another Activity/Route occurrence and must be retired before a new occurrence acquires the Slot.";
+                        "Contextual projection is still owned by another Activity/Route occurrence and must be retired before a new occurrence acquires the Slot.";
                     return false;
                 }
 
-                return true;
+                PlayerHostEvidenceResult confirmation =
+                    _hostEvidenceProjection.ConfirmHostEvidence(
+                        slot.PlayerSlotId,
+                        source,
+                        reason + "; confirm-contextual-host");
+                if (confirmation != null && confirmation.Succeeded &&
+                    confirmation.CurrentEvidence.AssignmentToken == current.AssignmentToken &&
+                    confirmation.CurrentEvidence.HostBindingIdentity == current.HostBindingIdentity)
+                {
+                    return true;
+                }
+
+                issue = confirmation != null
+                    ? confirmation.ToDiagnosticString()
+                    : "Contextual Host projection confirmation returned no result.";
+                return false;
             }
 
             PlayerHostEvidenceResult hostResult = null;
-            if (!activityScopeContext.IsValid ||
-                activityScopeContext.Owner.Scope is not RuntimeContentScope.Activity and not RuntimeContentScope.Route ||
-                !_hostEvidenceProjection.TryGetSessionPhysicalHost(
+            if (!_hostEvidenceProjection.TryGetSessionPhysicalHost(
                     slot.PlayerSlotId,
                     out LocalPlayerHostAuthoring host,
                     out hostResult))
             {
                 issue = hostResult != null
                     ? hostResult.ToDiagnosticString()
-                    : "Manager contextual projection requires an Activity/Route scope and a retained Session physical Host.";
+                    : "Contextual projection requires a retained Session physical Host.";
                 return false;
             }
 
@@ -1729,27 +1744,25 @@ namespace Immersive.Framework.PlayerParticipation
                 _participationContext.CreateHostBindingIdentity();
             PlayerSlotAssignmentResult assignment = _participationContext.BeginAssignment(
                 slot.PlayerSlotId,
-                PlayerSlotAssignmentOrigin.ManagerProvisioned,
                 activityScopeContext.Owner,
                 binding,
                 source,
-                reason + "; acquire-manager-contextual-assignment");
+                reason + "; acquire-contextual-assignment");
             if (assignment == null || !assignment.Succeeded ||
                 !assignment.HasCurrentAssignment)
             {
                 issue = assignment != null
                     ? assignment.ToDiagnosticString()
-                    : "Manager contextual assignment acquisition returned no result.";
+                    : "Contextual assignment acquisition returned no result.";
                 return false;
             }
 
             PlayerHostEvidenceResult projection = _hostEvidenceProjection.ReprojectHostEvidence(
                 slot.PlayerSlotId,
-                PlayerSlotAssignmentOrigin.ManagerProvisioned,
                 assignment.CurrentAssignment.AssignmentToken,
                 binding,
                 source,
-                reason + "; project-manager-contextual-host");
+                reason + "; project-contextual-host");
             if (projection != null && projection.Succeeded)
             {
                 return true;
@@ -1759,10 +1772,10 @@ namespace Immersive.Framework.PlayerParticipation
                 slot.PlayerSlotId,
                 assignment.CurrentAssignment.AssignmentToken,
                 source,
-                reason + "; rollback-manager-contextual-assignment");
+                reason + "; rollback-contextual-assignment");
             issue = projection != null
                 ? projection.ToDiagnosticString()
-                : "Manager contextual Host projection returned no result.";
+                : "Contextual Host projection returned no result.";
             return false;
         }
 
@@ -1788,7 +1801,6 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorPreparationSummary CreatePreparedSummary(
             PlayerSlotRuntimeSnapshot slot,
             PlayerActorMaterializationHandle handle,
-            PlayerSlotAssignmentSnapshot assignment,
             PlayerHostEvidenceSnapshot hostEvidence,
             PlayerActorPhysicalOwnership physicalOwnership,
             PlayerActorPreparationState state,
@@ -1800,7 +1812,7 @@ namespace Immersive.Framework.PlayerParticipation
             var actorEvidence = new PlayerActorCorrelationEvidence(
                 _sessionContextId,
                 slot.PlayerSlotId,
-                ToProvisioningMode(assignment.AssignmentOrigin),
+                hostEvidence.PhysicalProvisioningMode,
                 slot.SelectedActorProfileId,
                 slot.SelectionRevision,
                 handle.Request.ActorId,
@@ -1821,22 +1833,6 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason,
                 message);
-        }
-
-        private static PlayerHostProvisioningMode ToProvisioningMode(
-            PlayerSlotAssignmentOrigin assignmentOrigin)
-        {
-            return assignmentOrigin == PlayerSlotAssignmentOrigin.SceneProvided
-                ? PlayerHostProvisioningMode.SceneProvided
-                : PlayerHostProvisioningMode.ManagerProvisioned;
-        }
-
-        private static PlayerSlotAssignmentOrigin ToAssignmentOrigin(
-            PlayerHostProvisioningMode provisioningOrigin)
-        {
-            return provisioningOrigin == PlayerHostProvisioningMode.SceneProvided
-                ? PlayerSlotAssignmentOrigin.SceneProvided
-                : PlayerSlotAssignmentOrigin.ManagerProvisioned;
         }
 
         private static PlayerActorPreparationSummary CreateFailedReleaseSummary(

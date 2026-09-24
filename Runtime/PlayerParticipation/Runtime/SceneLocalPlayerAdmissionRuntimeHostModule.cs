@@ -199,28 +199,33 @@ namespace Immersive.Framework.PlayerParticipation
                 reason);
             if (result != null && result.Succeeded)
             {
-                bool hasRetainedPhysicalHost =
-                    _hostEvidenceOwner.TryGetRetainedHostEvidence(
+                PlayerHostEvidenceResult physicalRegistration =
+                    _hostEvidenceOwner.RegisterSessionPhysicalHost(
                         result.Token.PlayerSlotId,
-                        out _);
-                PlayerHostEvidenceResult registration = hasRetainedPhysicalHost
-                    ? _hostEvidenceOwner.ReprojectHostEvidence(
-                        result.Token.PlayerSlotId,
-                        PlayerSlotAssignmentOrigin.SceneProvided,
-                        result.Token.AssignmentToken,
-                        result.Token.AssignmentToken.HostBindingIdentity,
-                        source,
-                        reason)
-                    : _hostEvidenceOwner.RegisterHostEvidence(
-                        result.Token.PlayerSlotId,
-                        PlayerSlotAssignmentOrigin.SceneProvided,
-                        result.Token.AssignmentToken,
-                        result.Token.AssignmentToken.HostBindingIdentity,
+                        PlayerHostProvisioningMode.SceneProvided,
                         authoring.LocalPlayerHost,
                         source,
-                        reason);
+                        reason + "; register-scene-session-physical-host");
+                bool registeredPhysicalHost = physicalRegistration.Status ==
+                    PlayerHostEvidenceStatus.SucceededRegistered;
+                PlayerHostEvidenceResult registration = physicalRegistration.Succeeded
+                    ? _hostEvidenceOwner.ReprojectHostEvidence(
+                        result.Token.PlayerSlotId,
+                        result.Token.AssignmentToken,
+                        result.Token.AssignmentToken.HostBindingIdentity,
+                        source,
+                        reason + "; project-scene-contextual-host")
+                    : physicalRegistration;
                 if (!registration.Succeeded)
                 {
+                    PlayerHostEvidenceResult physicalCompensation =
+                        registeredPhysicalHost
+                            ? _hostEvidenceOwner.ReleaseSessionPhysicalHost(
+                                result.Token.PlayerSlotId,
+                                authoring.LocalPlayerHost,
+                                source,
+                                "scene-contextual-projection-failed")
+                            : null;
                     SceneLocalPlayerAdmissionRuntimeResult rollback =
                         _runtime.TryRelease(
                             authoring,
@@ -232,13 +237,14 @@ namespace Immersive.Framework.PlayerParticipation
                         result,
                         rollback,
                         registration,
-                        rollback != null && rollback.Succeeded
+                        rollback != null && rollback.Succeeded &&
+                        (physicalCompensation == null || physicalCompensation.Succeeded)
                             ? SceneLocalPlayerAdmissionRuntimeStatus.FailedHostCommit
                             : SceneLocalPlayerAdmissionRuntimeStatus.FailedCompensation,
                         source,
                         reason);
                 }
-                else if (hasRetainedPhysicalHost &&
+                else if (!registeredPhysicalHost &&
                          _hostEvidenceOwner.TryGetCurrentPreparation(
                              result.Token.PlayerSlotId,
                              out PlayerActorPreparationSummary preparation,
@@ -289,6 +295,37 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason);
             RecordOperation(result, token.IsValid, true);
+            _diagnostic = result.ToDiagnosticString();
+            authoring.SetRuntimeResult(result, _diagnostic);
+            return result;
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualBookkeepingAfterCanonicalRelease(
+                SceneProvidedLocalPlayerAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                RuntimeContentOwner expectedOwner,
+                string source,
+                string reason)
+        {
+            if (!IsReady)
+            {
+                return SceneLocalPlayerAdmissionRuntimeResult.RuntimeUnavailable(
+                    "RetireSceneLocalPlayerContextAfterCanonicalRelease",
+                    authoring,
+                    source,
+                    reason,
+                    _diagnostic);
+            }
+
+            SceneLocalPlayerAdmissionRuntimeResult result =
+                _runtime.TryRetireContextualBookkeepingAfterCanonicalRelease(
+                    authoring,
+                    expectedToken,
+                    expectedOwner,
+                    source,
+                    reason);
+            RecordOperation(result, expectedToken.IsValid, true);
             _diagnostic = result.ToDiagnosticString();
             authoring.SetRuntimeResult(result, _diagnostic);
             return result;
@@ -448,9 +485,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult restoration = expectedToken.IsValid
-                ? _hostEvidenceOwner.RegisterHostEvidence(
+                ? _hostEvidenceOwner.ReprojectHostEvidence(
                     expectedToken.PlayerSlotId,
-                    PlayerSlotAssignmentOrigin.SceneProvided,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
                     expectedEvidenceHost,
@@ -719,9 +755,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceResult restoration =
-                _hostEvidenceOwner.RegisterHostEvidence(
+                _hostEvidenceOwner.ReprojectHostEvidence(
                     expectedToken.PlayerSlotId,
-                    PlayerSlotAssignmentOrigin.SceneProvided,
                     expectedToken.AssignmentToken,
                     expectedToken.AssignmentToken.HostBindingIdentity,
                     expectedEvidenceHost,

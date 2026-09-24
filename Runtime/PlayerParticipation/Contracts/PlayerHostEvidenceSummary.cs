@@ -14,7 +14,7 @@ namespace Immersive.Framework.PlayerParticipation
     {
         internal PlayerHostEvidenceSummary(
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
+            PlayerHostProvisioningMode physicalProvisioningMode,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             bool isConfirmed,
@@ -23,7 +23,7 @@ namespace Immersive.Framework.PlayerParticipation
             string message)
         {
             PlayerSlotId = playerSlotId;
-            AssignmentOrigin = assignmentOrigin;
+            PhysicalProvisioningMode = physicalProvisioningMode;
             AssignmentToken = assignmentToken;
             HostBindingIdentity = hostBindingIdentity;
             IsConfirmed = isConfirmed;
@@ -33,7 +33,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         public PlayerSlotId PlayerSlotId { get; }
-        public PlayerSlotAssignmentOrigin AssignmentOrigin { get; }
+        public PlayerHostProvisioningMode PhysicalProvisioningMode { get; }
         public PlayerSlotAssignmentToken AssignmentToken { get; }
         public PlayerHostBindingIdentity HostBindingIdentity { get; }
         public bool IsConfirmed { get; }
@@ -42,9 +42,11 @@ namespace Immersive.Framework.PlayerParticipation
         public string Message { get; }
         public bool IsRecorded =>
             PlayerSlotId.IsValid &&
-            (AssignmentOrigin is
-                PlayerSlotAssignmentOrigin.ManagerProvisioned or
-                PlayerSlotAssignmentOrigin.SceneProvided) &&
+            PhysicalProvisioningMode is
+                PlayerHostProvisioningMode.ManagerProvisioned or
+                PlayerHostProvisioningMode.SceneProvided;
+
+        public bool HasContextualProjection =>
             AssignmentToken.IsValid &&
             AssignmentToken.PlayerSlotId == PlayerSlotId &&
             HostBindingIdentity.IsValid &&

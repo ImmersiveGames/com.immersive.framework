@@ -15,7 +15,6 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedLeaveCorrelation = 120,
         RejectedHostEvidenceRelease = 130,
         RejectedAssignmentCorrelation = 140,
-        RejectedAssignmentOrigin = 150,
         RejectedHostCorrelation = 160,
         RejectedPlayerNotAdmitted = 170,
         RejectedActivityRepresentationActive = 180,

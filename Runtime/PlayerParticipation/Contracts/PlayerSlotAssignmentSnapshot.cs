@@ -17,7 +17,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             int configuredIndex,
             PlayerSlotAssignmentState state,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             RuntimeContentOwner assignmentOwner,
             int assignmentSequence,
             int assignmentRevision,
@@ -30,7 +29,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId = playerSlotId;
             ConfiguredIndex = configuredIndex;
             State = state;
-            AssignmentOrigin = assignmentOrigin;
             AssignmentOwner = assignmentOwner;
             AssignmentSequence = assignmentSequence;
             AssignmentRevision = assignmentRevision;
@@ -44,7 +42,6 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerSlotId PlayerSlotId { get; }
         public int ConfiguredIndex { get; }
         public PlayerSlotAssignmentState State { get; }
-        public PlayerSlotAssignmentOrigin AssignmentOrigin { get; }
         public RuntimeContentOwner AssignmentOwner { get; }
         public int AssignmentSequence { get; }
         public int AssignmentRevision { get; }
@@ -61,9 +58,6 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsAssigned =>
             IsValid &&
             State == PlayerSlotAssignmentState.Assigned &&
-            (AssignmentOrigin is
-                PlayerSlotAssignmentOrigin.ManagerProvisioned or
-                PlayerSlotAssignmentOrigin.SceneProvided) &&
             AssignmentOwner.IsValid &&
             AssignmentSequence > 0 &&
             AssignmentRevision > 0 &&

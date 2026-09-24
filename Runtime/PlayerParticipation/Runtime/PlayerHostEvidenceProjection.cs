@@ -21,7 +21,6 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedTokenSlotMismatch = 130,
         RejectedForeignAssignmentToken = 140,
         RejectedStaleAssignmentToken = 150,
-        RejectedAssignmentOriginMismatch = 160,
         RejectedHostConflict = 170,
         RejectedBindingConflict = 180,
         RejectedHostMismatch = 190,
@@ -34,7 +33,6 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerHostEvidenceSnapshot(
             PlayerSlotId playerSlotId,
             PlayerHostProvisioningMode physicalProvisioningMode,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             LocalPlayerHostAuthoring host,
@@ -43,7 +41,6 @@ namespace Immersive.Framework.PlayerParticipation
         {
             PlayerSlotId = playerSlotId;
             PhysicalProvisioningMode = physicalProvisioningMode;
-            AssignmentOrigin = assignmentOrigin;
             AssignmentToken = assignmentToken;
             HostBindingIdentity = hostBindingIdentity;
             Host = host;
@@ -53,7 +50,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerSlotId PlayerSlotId { get; }
         internal PlayerHostProvisioningMode PhysicalProvisioningMode { get; }
-        internal PlayerSlotAssignmentOrigin AssignmentOrigin { get; }
         internal PlayerSlotAssignmentToken AssignmentToken { get; }
         internal PlayerHostBindingIdentity HostBindingIdentity { get; }
         internal LocalPlayerHostAuthoring Host { get; }
@@ -62,15 +58,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool HasRetainedHostReference => !ReferenceEquals(Host, null);
         internal bool HostIsAvailable => HasRetainedHostReference && Host != null;
         internal bool HasContextualProjection =>
-            (AssignmentOrigin is
-                PlayerSlotAssignmentOrigin.ManagerProvisioned or
-                PlayerSlotAssignmentOrigin.SceneProvided) &&
             AssignmentToken.IsValid &&
-            HostBindingIdentity.IsValid;
+            AssignmentToken.PlayerSlotId == PlayerSlotId &&
+            HostBindingIdentity.IsValid &&
+            AssignmentToken.HostBindingIdentity == HostBindingIdentity;
         internal bool HasSessionPhysicalHost =>
             PlayerSlotId.IsValid && HasRetainedHostReference;
         internal bool IsRecorded =>
-            HasSessionPhysicalHost && HasContextualProjection;
+            HasSessionPhysicalHost;
     }
 
     internal sealed class PlayerHostEvidenceResult
@@ -121,7 +116,6 @@ namespace Immersive.Framework.PlayerParticipation
                 $"slot='{(evidence.PlayerSlotId.IsValid ? evidence.PlayerSlotId.StableText : "<invalid>")}' " +
                 $"slotValid='{evidence.PlayerSlotId.IsValid}' " +
                 $"physicalProvisioning='{evidence.PhysicalProvisioningMode}' " +
-                $"origin='{evidence.AssignmentOrigin}' " +
                 $"assignment='{(evidence.AssignmentToken.IsValid ? evidence.AssignmentToken.StableText : "<invalid>")}' " +
                 $"assignmentValid='{evidence.AssignmentToken.IsValid}' " +
                 $"binding='{(evidence.HostBindingIdentity.IsValid ? evidence.HostBindingIdentity.StableText : "<invalid>")}' " +
@@ -143,7 +137,6 @@ namespace Immersive.Framework.PlayerParticipation
             internal Record(
                 PlayerSlotId playerSlotId,
                 PlayerHostProvisioningMode physicalProvisioningMode,
-                PlayerSlotAssignmentOrigin assignmentOrigin,
                 PlayerSlotAssignmentToken assignmentToken,
                 PlayerHostBindingIdentity hostBindingIdentity,
                 LocalPlayerHostAuthoring host,
@@ -152,7 +145,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerSlotId = playerSlotId;
                 PhysicalProvisioningMode = physicalProvisioningMode;
-                AssignmentOrigin = assignmentOrigin;
                 AssignmentToken = assignmentToken;
                 HostBindingIdentity = hostBindingIdentity;
                 Host = host;
@@ -162,7 +154,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             internal PlayerSlotId PlayerSlotId { get; }
             internal PlayerHostProvisioningMode PhysicalProvisioningMode { get; }
-            internal PlayerSlotAssignmentOrigin AssignmentOrigin { get; set; }
             internal PlayerSlotAssignmentToken AssignmentToken { get; set; }
             internal PlayerHostBindingIdentity HostBindingIdentity { get; set; }
             internal LocalPlayerHostAuthoring Host { get; }
@@ -213,7 +204,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ? $"{EscapeContextDiagnosticValue(expectedHost.name)}#{expectedHost.GetEntityId()}"
                 : ReferenceEquals(expectedHost, null) ? "not-specified" : "destroyed";
             string previousText = previous.HasValue
-                ? $" previousOrigin='{previous.Value.AssignmentOrigin}' previousToken='{previous.Value.AssignmentToken.StableText}' " +
+                ? $" previousToken='{previous.Value.AssignmentToken.StableText}' " +
                   $"previousBinding='{previous.Value.HostBindingIdentity.StableText}'"
                 : string.Empty;
             Debug.Log(
@@ -221,10 +212,10 @@ namespace Immersive.Framework.PlayerParticipation
                 $"slot='{playerSlotId.StableText}' activity='{EscapeContextDiagnosticValue(activityOwner.StableText)}' occurrence='unavailable' " +
                 $"projectionInstance='{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this)}' " +
                 $"session='{EscapeContextDiagnosticValue(_sessionContextId)}' frame='{Time.frameCount}' " +
-                $"canonicalExists='{assigned}' canonicalOrigin='{assignment.AssignmentOrigin}' " +
+                $"canonicalExists='{assigned}' " +
                 $"canonicalOwner='{EscapeContextDiagnosticValue(assignment.AssignmentOwner.StableText)}' canonicalToken='{assignment.AssignmentToken.StableText}' " +
                 $"canonicalBinding='{assignment.HostBindingIdentity.StableText}' projectedExists='{projected}' " +
-                $"hasContextualProjection='{evidence.HasContextualProjection}' projectedOrigin='{evidence.AssignmentOrigin}' " +
+                $"hasContextualProjection='{evidence.HasContextualProjection}' " +
                 $"projectedToken='{evidence.AssignmentToken.StableText}' projectedBinding='{evidence.HostBindingIdentity.StableText}' " +
                 $"host='{host}' expectedHost='{expected}' bindingMatch='{assigned && evidence.HasContextualProjection && assignment.HostBindingIdentity == evidence.HostBindingIdentity}' " +
                 $"hostMatch='{(ReferenceEquals(expectedHost, null) ? "not-evaluated" : ReferenceEquals(expectedHost, evidence.Host).ToString())}' " +
@@ -233,6 +224,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerHostEvidenceResult RegisterSessionPhysicalHost(
             PlayerSlotId playerSlotId,
+            PlayerHostProvisioningMode physicalProvisioningMode,
             LocalPlayerHostAuthoring host,
             string source,
             string reason)
@@ -242,7 +234,21 @@ namespace Immersive.Framework.PlayerParticipation
                 nameof(PlayerHostEvidenceProjection));
             string resolvedReason = reason.NormalizeTextOrFallback(
                 "register-session-physical-host");
-            if (!playerSlotId.IsValid || ReferenceEquals(host, null) || host == null ||
+            if (!playerSlotId.IsValid ||
+                !physicalProvisioningMode.IsDefinedMode())
+            {
+                return Result(
+                    PlayerHostEvidenceStatus.RejectedInvalidRequest,
+                    operation,
+                    default,
+                    default,
+                    null,
+                    resolvedSource,
+                    resolvedReason,
+                    "Session physical Host registration requires a valid Slot and explicit physical provisioning mode.");
+            }
+
+            if (ReferenceEquals(host, null) || host == null ||
                 !host.IsJoined || !host.HasJoinedSlot ||
                 host.JoinedPlayerSlotId != playerSlotId)
             {
@@ -260,9 +266,10 @@ namespace Immersive.Framework.PlayerParticipation
             if (_records.TryGetValue(playerSlotId, out Record existing))
             {
                 PlayerHostEvidenceSnapshot snapshot = Snapshot(existing);
-                return ReferenceEquals(existing.Host, host)
+                return ReferenceEquals(existing.Host, host) &&
+                    existing.PhysicalProvisioningMode == physicalProvisioningMode
                     ? Result(PlayerHostEvidenceStatus.SucceededAlreadyRegistered, operation, snapshot, snapshot, null, resolvedSource, resolvedReason, "The exact Session physical Host is already registered.")
-                    : Result(PlayerHostEvidenceStatus.RejectedHostConflict, operation, snapshot, snapshot, null, resolvedSource, resolvedReason, "Another Session physical Host is already registered for this Slot.");
+                    : Result(PlayerHostEvidenceStatus.RejectedHostConflict, operation, snapshot, snapshot, null, resolvedSource, resolvedReason, "Another Session physical Host or provisioning mode is already registered for this Slot.");
             }
 
             foreach (KeyValuePair<PlayerSlotId, Record> pair in _records)
@@ -276,8 +283,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             var record = new Record(
                 playerSlotId,
-                PlayerHostProvisioningMode.ManagerProvisioned,
-                default,
+                physicalProvisioningMode,
                 default,
                 default,
                 host,
@@ -313,171 +319,6 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal PlayerHostEvidenceResult RegisterHostEvidence(
-            PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
-            PlayerSlotAssignmentToken assignmentToken,
-            PlayerHostBindingIdentity hostBindingIdentity,
-            LocalPlayerHostAuthoring host,
-            string source,
-            string reason)
-        {
-            const string operation = "RegisterHostEvidence";
-            string resolvedSource = source.NormalizeTextOrFallback(
-                nameof(PlayerHostEvidenceProjection));
-            string resolvedReason = reason.NormalizeTextOrFallback(
-                "register-host-evidence");
-
-            PlayerHostEvidenceResult validation = ValidateRequest(
-                operation,
-                playerSlotId,
-                assignmentOrigin,
-                assignmentToken,
-                hostBindingIdentity,
-                host,
-                resolvedSource,
-                resolvedReason,
-                requireJoinedHost: true);
-            if (validation != null)
-            {
-                return validation;
-            }
-
-            PlayerSlotAssignmentResult assignment =
-                _participationContext.TryConfirmCurrentAssignment(
-                    playerSlotId,
-                    assignmentToken,
-                    resolvedSource,
-                    resolvedReason);
-            PlayerHostEvidenceResult assignmentFailure = ValidateAssignment(
-                operation,
-                playerSlotId,
-                assignmentOrigin,
-                assignmentToken,
-                hostBindingIdentity,
-                assignment,
-                resolvedSource,
-                resolvedReason);
-            if (assignmentFailure != null)
-            {
-                return assignmentFailure;
-            }
-
-            foreach (KeyValuePair<PlayerSlotId, Record> pair in _records)
-            {
-                if (pair.Key == playerSlotId)
-                {
-                    continue;
-                }
-
-                PlayerHostEvidenceSnapshot conflicting = Snapshot(pair.Value);
-                if (ReferenceEquals(pair.Value.Host, host))
-                {
-                    return Result(
-                        PlayerHostEvidenceStatus.RejectedHostConflict,
-                        operation,
-                        conflicting,
-                        conflicting,
-                        assignment,
-                        resolvedSource,
-                        resolvedReason,
-                        $"Local Player Host is already retained for Player Slot '{pair.Key.StableText}'.");
-                }
-
-                if (pair.Value.HostBindingIdentity == hostBindingIdentity)
-                {
-                    return Result(
-                        PlayerHostEvidenceStatus.RejectedBindingConflict,
-                        operation,
-                        conflicting,
-                        conflicting,
-                        assignment,
-                        resolvedSource,
-                        resolvedReason,
-                        $"Host binding is already retained for Player Slot '{pair.Key.StableText}'.");
-                }
-            }
-
-            if (_records.TryGetValue(playerSlotId, out Record existing))
-            {
-                PlayerHostEvidenceSnapshot existingSnapshot = Snapshot(existing);
-                if (!existingSnapshot.HasContextualProjection &&
-                    ReferenceEquals(existing.Host, host))
-                {
-                    existing.AssignmentOrigin = assignmentOrigin;
-                    existing.AssignmentToken = assignmentToken;
-                    existing.HostBindingIdentity = hostBindingIdentity;
-                    existing.Source = resolvedSource;
-                    existing.Reason = resolvedReason;
-                    PlayerHostEvidenceSnapshot reprojected = Snapshot(existing);
-                    return Result(
-                        PlayerHostEvidenceStatus.SucceededReprojected,
-                        operation,
-                        existingSnapshot,
-                        reprojected,
-                        assignment,
-                        resolvedSource,
-                        resolvedReason,
-                        "Retained Session physical Host projected into the current contextual assignment.");
-                }
-
-                if (existing.AssignmentOrigin == assignmentOrigin &&
-                    existing.AssignmentToken == assignmentToken &&
-                    existing.HostBindingIdentity == hostBindingIdentity &&
-                    ReferenceEquals(existing.Host, host))
-                {
-                    return Result(
-                        PlayerHostEvidenceStatus.SucceededAlreadyRegistered,
-                        operation,
-                        existingSnapshot,
-                        existingSnapshot,
-                        assignment,
-                        resolvedSource,
-                        resolvedReason,
-                        "The exact physical Host evidence is already registered.");
-                }
-
-                PlayerHostEvidenceStatus conflict =
-                    !ReferenceEquals(existing.Host, host)
-                        ? PlayerHostEvidenceStatus.RejectedHostConflict
-                        : existing.HostBindingIdentity != hostBindingIdentity
-                            ? PlayerHostEvidenceStatus.RejectedBindingConflict
-                            : existing.AssignmentOrigin != assignmentOrigin
-                                ? PlayerHostEvidenceStatus.RejectedAssignmentOriginMismatch
-                                : PlayerHostEvidenceStatus.RejectedStaleAssignmentToken;
-                return Result(
-                    conflict,
-                    operation,
-                    existingSnapshot,
-                    existingSnapshot,
-                    assignment,
-                    resolvedSource,
-                    resolvedReason,
-                    "Another retained physical Host evidence record already occupies this Player Slot.");
-            }
-
-            var record = new Record(
-                playerSlotId,
-                ToProvisioningMode(assignmentOrigin),
-                assignmentOrigin,
-                assignmentToken,
-                hostBindingIdentity,
-                host,
-                resolvedSource,
-                resolvedReason);
-            _records.Add(playerSlotId, record);
-            PlayerHostEvidenceSnapshot current = Snapshot(record);
-            return Result(
-                PlayerHostEvidenceStatus.SucceededRegistered,
-                operation,
-                default,
-                current,
-                assignment,
-                resolvedSource,
-                resolvedReason,
-                "Physical Host evidence registered as a projection of the canonical assignment.");
-        }
-
         internal bool TryGetHostEvidence(
             PlayerSlotId playerSlotId,
             out LocalPlayerHostAuthoring host,
@@ -500,7 +341,6 @@ namespace Immersive.Framework.PlayerParticipation
         /// </summary>
         internal PlayerHostEvidenceResult ReprojectHostEvidence(
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             string source,
@@ -529,7 +369,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerHostEvidenceResult validation = ValidateRequest(
                 operation,
                 playerSlotId,
-                assignmentOrigin,
                 assignmentToken,
                 hostBindingIdentity,
                 existing.Host,
@@ -558,7 +397,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerHostEvidenceResult assignmentFailure = ValidateAssignment(
                 operation,
                 playerSlotId,
-                assignmentOrigin,
                 assignmentToken,
                 hostBindingIdentity,
                 assignment,
@@ -570,21 +408,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return assignmentFailure;
             }
 
-            if (previous.HasContextualProjection &&
-                existing.AssignmentOrigin != assignmentOrigin)
-            {
-                return Result(
-                    PlayerHostEvidenceStatus.RejectedAssignmentOriginMismatch,
-                    operation,
-                    previous,
-                    previous,
-                    assignment,
-                    resolvedSource,
-                    resolvedReason,
-                    "Retained physical Host evidence belongs to a different provisioning origin and cannot be reprojected.");
-            }
-
-            existing.AssignmentOrigin = assignmentOrigin;
             existing.AssignmentToken = assignmentToken;
             existing.HostBindingIdentity = hostBindingIdentity;
             existing.Source = resolvedSource;
@@ -600,7 +423,7 @@ namespace Immersive.Framework.PlayerParticipation
                 assignment,
                 resolvedSource,
                 resolvedReason,
-                "Retained Session physical Host evidence re-correlated with the fresh Scene-provided contextual assignment.");
+                "Retained Session physical Host evidence re-correlated with the fresh contextual assignment.");
         }
 
         internal bool TryGetRetainedEvidence(
@@ -718,7 +541,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerHostEvidenceResult assignmentFailure = ValidateAssignment(
                 operation,
                 playerSlotId,
-                record.AssignmentOrigin,
                 record.AssignmentToken,
                 record.HostBindingIdentity,
                 assignment,
@@ -773,7 +595,6 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerHostEvidenceSnapshot previous = Snapshot(record);
-            record.AssignmentOrigin = default;
             record.AssignmentToken = default;
             record.HostBindingIdentity = default;
             record.Source = resolvedSource;
@@ -883,7 +704,6 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerHostEvidenceResult ValidateRequest(
             string operation,
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             LocalPlayerHostAuthoring host,
@@ -891,10 +711,7 @@ namespace Immersive.Framework.PlayerParticipation
             string reason,
             bool requireJoinedHost)
         {
-            if (!playerSlotId.IsValid ||
-                assignmentOrigin is not
-                    PlayerSlotAssignmentOrigin.ManagerProvisioned and not
-                    PlayerSlotAssignmentOrigin.SceneProvided)
+            if (!playerSlotId.IsValid)
             {
                 return Result(
                     PlayerHostEvidenceStatus.RejectedInvalidRequest,
@@ -904,7 +721,7 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     source,
                     reason,
-                    "Host evidence registration requires a valid Slot and supported assignment origin.");
+                    "Host contextual projection requires a valid Player Slot.");
             }
 
             if (!assignmentToken.IsValid)
@@ -998,7 +815,6 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerHostEvidenceResult ValidateAssignment(
             string operation,
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             PlayerSlotAssignmentResult assignment,
@@ -1027,19 +843,6 @@ namespace Immersive.Framework.PlayerParticipation
                         ? "Canonical assignment confirmation failed. " +
                           assignment.Message
                         : "Canonical assignment confirmation returned no result.");
-            }
-
-            if (assignment.CurrentAssignment.AssignmentOrigin != assignmentOrigin)
-            {
-                return Result(
-                    PlayerHostEvidenceStatus.RejectedAssignmentOriginMismatch,
-                    operation,
-                    retained,
-                    retained,
-                    assignment,
-                    source,
-                    reason,
-                    "Physical Host origin does not match the canonical assignment origin.");
             }
 
             if (assignment.CurrentAssignment.AssignmentToken != assignmentToken)
@@ -1200,20 +1003,11 @@ namespace Immersive.Framework.PlayerParticipation
                 : new PlayerHostEvidenceSnapshot(
                     record.PlayerSlotId,
                     record.PhysicalProvisioningMode,
-                    record.AssignmentOrigin,
                     record.AssignmentToken,
                     record.HostBindingIdentity,
                     record.Host,
                     record.Source,
                     record.Reason);
-        }
-
-        private static PlayerHostProvisioningMode ToProvisioningMode(
-            PlayerSlotAssignmentOrigin assignmentOrigin)
-        {
-            return assignmentOrigin == PlayerSlotAssignmentOrigin.SceneProvided
-                ? PlayerHostProvisioningMode.SceneProvided
-                : PlayerHostProvisioningMode.ManagerProvisioned;
         }
 
         private static PlayerHostEvidenceResult Result(

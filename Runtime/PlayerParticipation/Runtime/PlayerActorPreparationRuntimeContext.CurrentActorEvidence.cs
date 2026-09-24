@@ -170,9 +170,7 @@ namespace Immersive.Framework.PlayerParticipation
                     "Prepared Session physical evidence has no current Activity contextual assignment.");
             }
 
-            if (!assignment.IsAssigned ||
-                assignment.AssignmentOrigin !=
-                    ToAssignmentOrigin(retained.ProvisioningOrigin))
+            if (!assignment.IsAssigned)
             {
                 return ActorEvidenceResult(
                     PlayerCurrentActorEvidenceStatus.RejectedAssignmentDivergence,
@@ -181,7 +179,7 @@ namespace Immersive.Framework.PlayerParticipation
                     summary,
                     resolvedSource,
                     resolvedReason,
-                    "Current Activity contextual assignment does not match the physical provisioning origin.");
+                    "Current Activity contextual assignment is not valid.");
             }
 
             PlayerHostEvidenceResult hostConfirmation =
@@ -191,6 +189,8 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedReason);
             if (hostConfirmation == null ||
                 !hostConfirmation.Succeeded ||
+                hostConfirmation.CurrentEvidence.PhysicalProvisioningMode !=
+                    retained.ProvisioningOrigin ||
                 hostConfirmation.CurrentEvidence.AssignmentToken !=
                     assignment.AssignmentToken ||
                 hostConfirmation.CurrentEvidence.HostBindingIdentity !=
@@ -321,7 +321,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : default;
             var hostSummary = new PlayerHostEvidenceSummary(
                 retainedHost.PlayerSlotId,
-                retainedHost.AssignmentOrigin,
+                retainedHost.PhysicalProvisioningMode,
                 retainedHost.AssignmentToken,
                 retainedHost.HostBindingIdentity,
                 hostResult != null && hostResult.Succeeded,

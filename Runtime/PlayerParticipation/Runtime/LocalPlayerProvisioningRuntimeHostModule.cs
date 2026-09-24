@@ -496,6 +496,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerHostEvidenceResult compensation = hostEvidenceRelease != null
                 ? preparation.RegisterSessionPhysicalHost(
                     joinResult.Slot.PlayerSlotId,
+                    PlayerHostProvisioningMode.ManagerProvisioned,
                     joinResult.LocalPlayerHost,
                     source,
                     "rollback-bridge-failed-compensation")

@@ -304,7 +304,7 @@ namespace Immersive.Framework.PlayerParticipation
                 LogFields.Field("retainedHostAvailable",
                     retainedHost.HostIsAvailable),
                 LogFields.Field("assignmentOrigin",
-                    retainedHost.AssignmentOrigin),
+                    retainedHost.PhysicalProvisioningMode),
                 LogFields.Field("assignmentToken",
                     retainedHost.AssignmentToken.IsValid
                         ? retainedHost.AssignmentToken.StableText
@@ -908,7 +908,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (hasHostEvidence)
             {
                 hostEvidence = new PlayerHostEvidenceSummary(retainedHost.PlayerSlotId,
-                    retainedHost.AssignmentOrigin, retainedHost.AssignmentToken,
+                    retainedHost.PhysicalProvisioningMode, retainedHost.AssignmentToken,
                     retainedHost.HostBindingIdentity, retainedHost.HostIsAvailable,
                     retainedHost.Source, retainedHost.Reason, retainedHost.HostIsAvailable
                         ? "Retained Local Player Host evidence is available."

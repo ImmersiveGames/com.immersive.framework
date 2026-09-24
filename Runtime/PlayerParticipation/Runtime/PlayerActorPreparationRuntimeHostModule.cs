@@ -315,6 +315,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerHostEvidenceResult registration = RegisterSessionPhysicalHost(
                 slot.PlayerSlotId,
+                PlayerHostProvisioningMode.ManagerProvisioned,
                 host,
                 nameof(PlayerActorPreparationRuntimeHostModule),
                 "register-manager-provisioned-host");
@@ -353,32 +354,9 @@ namespace Immersive.Framework.PlayerParticipation
             return found;
         }
 
-        internal PlayerHostEvidenceResult RegisterHostEvidence(
-            PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
-            PlayerSlotAssignmentToken assignmentToken,
-            PlayerHostBindingIdentity hostBindingIdentity,
-            LocalPlayerHostAuthoring host,
-            string source,
-            string reason)
-        {
-            return _hostEvidenceProjection != null
-                ? _hostEvidenceProjection.RegisterHostEvidence(
-                    playerSlotId,
-                    assignmentOrigin,
-                    assignmentToken,
-                    hostBindingIdentity,
-                    host,
-                    source,
-                    reason)
-                : UnavailableHostEvidenceResult(
-                    "RegisterHostEvidence",
-                    source,
-                    reason);
-        }
-
         internal PlayerHostEvidenceResult RegisterSessionPhysicalHost(
             PlayerSlotId playerSlotId,
+            PlayerHostProvisioningMode physicalProvisioningMode,
             LocalPlayerHostAuthoring host,
             string source,
             string reason)
@@ -386,6 +364,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerHostEvidenceResult result = _hostEvidenceProjection != null
                 ? _hostEvidenceProjection.RegisterSessionPhysicalHost(
                     playerSlotId,
+                    physicalProvisioningMode,
                     host,
                     source,
                     reason)
@@ -403,7 +382,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal PlayerHostEvidenceResult ReprojectHostEvidence(
             PlayerSlotId playerSlotId,
-            PlayerSlotAssignmentOrigin assignmentOrigin,
             PlayerSlotAssignmentToken assignmentToken,
             PlayerHostBindingIdentity hostBindingIdentity,
             string source,
@@ -412,7 +390,6 @@ namespace Immersive.Framework.PlayerParticipation
             return _hostEvidenceProjection != null
                 ? _hostEvidenceProjection.ReprojectHostEvidence(
                     playerSlotId,
-                    assignmentOrigin,
                     assignmentToken,
                     hostBindingIdentity,
                     source,
@@ -670,7 +647,7 @@ namespace Immersive.Framework.PlayerParticipation
             return result;
         }
 
-        internal bool TryReleaseManagerContextualProjection(
+        internal bool TryReleaseContextualProjection(
             RuntimeContentOwner activityOwner,
             PlayerSlotId playerSlotId,
             string source,
@@ -683,7 +660,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            return _preparationContext.TryReleaseManagerContextualProjection(
+            return _preparationContext.TryReleaseContextualProjection(
                 activityOwner,
                 playerSlotId,
                 source,

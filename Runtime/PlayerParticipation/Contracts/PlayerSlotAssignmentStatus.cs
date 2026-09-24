@@ -15,8 +15,6 @@ namespace Immersive.Framework.PlayerParticipation
         RejectedInvalidSlot = 100,
         RejectedSlotNotConfigured = 110,
         RejectedSlotNotJoined = 120,
-        RejectedInvalidOrigin = 130,
-        RejectedUnsupportedOrigin = 140,
         RejectedInvalidOwner = 150,
         RejectedInvalidHostBinding = 160,
         RejectedAssignmentConflict = 170,

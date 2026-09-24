@@ -198,11 +198,11 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Activity gameplay release returned no result.");
             }
 
-            if (!_preparationModule.TryReleaseManagerContextualProjection(
+            if (!_preparationModule.TryReleaseContextualProjection(
                     progress.activityOwner,
                     leaveToken.PlayerSlotId,
                     resolvedSource,
-                    resolvedReason + "; release-manager-contextual-projection",
+                    resolvedReason + "; release-contextual-projection",
                     out string contextualReleaseIssue))
             {
                 return Result(

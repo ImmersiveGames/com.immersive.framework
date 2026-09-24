@@ -173,10 +173,12 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Scene-Provided resource release received no Leave confirmation result.");
             }
 
-            if (!_participationContext.TryGetEffectiveHostProvisioningMode(
+            if (!_hostEvidenceOwner.TryGetRetainedHostEvidence(
                     leaveToken.PlayerSlotId,
-                    out PlayerHostProvisioningMode provisioningMode) ||
-                provisioningMode != PlayerHostProvisioningMode.SceneProvided)
+                    out PlayerHostEvidenceSnapshot physicalEvidence) ||
+                physicalEvidence.PhysicalProvisioningMode !=
+                    PlayerHostProvisioningMode.SceneProvided ||
+                !ReferenceEquals(physicalEvidence.Host, sessionPhysicalHost))
             {
                 return Result(
                     SceneProvidedSessionPlayerLeaveReleaseStatus.RejectedProvisioningMode,
@@ -194,7 +196,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     resolvedSource,
                     resolvedReason,
-                    $"Leaving Slot provisioning mode is '{provisioningMode}', not SceneProvided. No ownership fallback was applied.");
+                    "Leaving Slot does not carry exact SceneProvided Session physical Host evidence. No ownership fallback was applied.");
             }
 
             if (_sceneProvidedSessionPlayerLeaveProgress.TryGetValue(
@@ -319,7 +321,6 @@ namespace Immersive.Framework.PlayerParticipation
                 if (progress == null && (authoring == null ||
                     host == null ||
                     sceneAdmissionToken.AssignmentToken != assignment.AssignmentToken ||
-                    assignment.AssignmentOrigin != PlayerSlotAssignmentOrigin.SceneProvided ||
                     assignment.HostBindingIdentity != sceneAdmissionToken.AssignmentToken.HostBindingIdentity))
                 {
                     return Result(
@@ -484,8 +485,6 @@ namespace Immersive.Framework.PlayerParticipation
                 if (assignmentConfirmation == null ||
                     !assignmentConfirmation.Succeeded ||
                     !assignmentConfirmation.HasCurrentAssignment ||
-                    assignmentConfirmation.CurrentAssignment.AssignmentOrigin !=
-                        PlayerSlotAssignmentOrigin.SceneProvided ||
                     assignmentConfirmation.CurrentAssignment.HostBindingIdentity !=
                         progress.Assignment.HostBindingIdentity)
                 {

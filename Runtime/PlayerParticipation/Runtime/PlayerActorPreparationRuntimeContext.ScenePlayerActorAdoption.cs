@@ -181,9 +181,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (!TryResolveCurrentActorCorrelation(
                     activityScopeContext,
                     playerSlotId,
-                    PlayerSlotAssignmentOrigin.SceneProvided,
                     host,
-                    out PlayerSlotAssignmentSnapshot assignment,
+                    out _,
                     out PlayerHostEvidenceSnapshot hostEvidence,
                     out issue))
             {
@@ -197,6 +196,21 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     issue);
+            }
+
+            if (hostEvidence.PhysicalProvisioningMode !=
+                PlayerHostProvisioningMode.SceneProvided)
+            {
+                return SceneAdoptionResult(
+                    ScenePlayerActorAdoptionStatus.RejectedHostMismatch,
+                    operation,
+                    playerSlotId,
+                    authoring,
+                    default,
+                    false,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene Player Actor adoption requires canonical SceneProvided physical Host evidence.");
             }
 
             if (sceneRuntimeHost == null ||
@@ -508,7 +522,6 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                     slot,
                     handle,
-                    assignment,
                     hostEvidence,
                     PlayerActorPhysicalOwnership.FrameworkOwned,
                     PlayerActorPreparationState.Prepared,

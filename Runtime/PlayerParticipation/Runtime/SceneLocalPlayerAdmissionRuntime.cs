@@ -150,8 +150,6 @@ namespace Immersive.Framework.PlayerParticipation
                     currentSlotMatches &&
                     assignmentConfirmation != null &&
                     assignmentConfirmation.Succeeded &&
-                    assignmentConfirmation.CurrentAssignment.AssignmentOrigin ==
-                        PlayerSlotAssignmentOrigin.SceneProvided &&
                     assignmentConfirmation.CurrentAssignment.AssignmentOwner ==
                         assignmentOwner)
                 {
@@ -321,7 +319,6 @@ namespace Immersive.Framework.PlayerParticipation
                 PlayerSlotAssignmentResult assignment =
                     _participationContext.BeginAssignment(
                         playerSlotId,
-                        PlayerSlotAssignmentOrigin.SceneProvided,
                         assignmentOwner,
                         hostBindingIdentity,
                         resolvedSource,
@@ -527,7 +524,6 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotAssignmentResult initialAssignment =
                 _participationContext.BeginAssignment(
                     commit.Slot.PlayerSlotId,
-                    PlayerSlotAssignmentOrigin.SceneProvided,
                     assignmentOwner,
                     initialHostBindingIdentity,
                     resolvedSource,
@@ -788,8 +784,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "confirm-scene-assignment-release");
             if (assignmentConfirmation == null ||
                 !assignmentConfirmation.Succeeded ||
-                assignmentConfirmation.CurrentAssignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.SceneProvided ||
                 assignmentConfirmation.CurrentAssignment.HostBindingIdentity !=
                     record.Assignment.HostBindingIdentity)
             {
@@ -1020,6 +1014,108 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal SceneLocalPlayerAdmissionRuntimeResult
+            TryRetireContextualBookkeepingAfterCanonicalRelease(
+                SceneProvidedLocalPlayerAuthoring authoring,
+                SceneLocalPlayerAdmissionToken expectedToken,
+                RuntimeContentOwner expectedOwner,
+                string source,
+                string reason)
+        {
+            const string operation =
+                "RetireSceneLocalPlayerContextAfterCanonicalRelease";
+            string resolvedSource = source.NormalizeTextOrFallback(
+                nameof(SceneLocalPlayerAdmissionRuntime));
+            string resolvedReason = reason.NormalizeTextOrFallback(
+                "retire-scene-local-player-context-after-canonical-release");
+            AdmissionRecord record = authoring != null
+                ? FindRecordByAuthoring(authoring)
+                : null;
+            if (record == null ||
+                !expectedToken.IsValid ||
+                record.Token != expectedToken ||
+                !expectedOwner.IsValid ||
+                record.Assignment.AssignmentOwner != expectedOwner ||
+                record.Assignment.AssignmentToken != expectedToken.AssignmentToken ||
+                record.Assignment.HostBindingIdentity !=
+                    expectedToken.AssignmentToken.HostBindingIdentity)
+            {
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.RejectedForeignOrStaleToken,
+                    operation,
+                    authoring,
+                    expectedToken,
+                    null,
+                    null,
+                    null,
+                    record != null ? record.JoinedSlot : default,
+                    record != null ? record.JoinedSlot : default,
+                    resolvedSource,
+                    resolvedReason,
+                    "Scene contextual bookkeeping retirement requires the exact admission token and Activity/Route owner.");
+            }
+
+            if (_participationContext.TryGetCurrentAssignment(
+                    record.Token.PlayerSlotId,
+                    out _))
+            {
+                return Result(
+                    SceneLocalPlayerAdmissionRuntimeStatus.FailedReleaseCommit,
+                    operation,
+                    authoring,
+                    expectedToken,
+                    null,
+                    null,
+                    null,
+                    record.JoinedSlot,
+                    record.JoinedSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    "Canonical Activity contextual assignment is still current; Scene bookkeeping cannot retire it independently.");
+            }
+
+            if (!TryResolveContextualReleaseSlot(
+                    record,
+                    ContextualReleaseAuthorization.ActivityExit,
+                    default,
+                    resolvedSource,
+                    resolvedReason,
+                    out PlayerSlotRuntimeSnapshot currentSessionSlot,
+                    out SceneLocalPlayerAdmissionRuntimeStatus slotStatus,
+                    out string slotIssue))
+            {
+                return Result(
+                    slotStatus,
+                    operation,
+                    authoring,
+                    expectedToken,
+                    null,
+                    null,
+                    null,
+                    record.JoinedSlot,
+                    currentSessionSlot,
+                    resolvedSource,
+                    resolvedReason,
+                    slotIssue);
+            }
+
+            _records.Remove(record);
+            _recordsBySlot.Remove(record.Token.PlayerSlotId);
+            return Result(
+                SceneLocalPlayerAdmissionRuntimeStatus.SucceededReleased,
+                operation,
+                authoring,
+                expectedToken,
+                null,
+                null,
+                null,
+                record.JoinedSlot,
+                currentSessionSlot,
+                resolvedSource,
+                resolvedReason,
+                "Scene admission bookkeeping retired after canonical Activity contextual release; Session physical evidence remains retained.");
+        }
+
+        internal SceneLocalPlayerAdmissionRuntimeResult
             TryRetireContextualRepresentationForSessionPlayerLeave(
                 SceneProvidedLocalPlayerAuthoring authoring,
                 SceneLocalPlayerAdmissionToken expectedToken,
@@ -1090,8 +1186,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "confirm-contextual-retirement");
             if (!expectedToken.IsValid || record.Token != expectedToken ||
                 assignmentConfirmation == null || !assignmentConfirmation.Succeeded ||
-                assignmentConfirmation.CurrentAssignment.AssignmentOrigin !=
-                    PlayerSlotAssignmentOrigin.SceneProvided ||
                 assignmentConfirmation.CurrentAssignment.HostBindingIdentity !=
                     record.Assignment.HostBindingIdentity ||
                 assignmentConfirmation.CurrentAssignment.AssignmentOwner.Scope is not

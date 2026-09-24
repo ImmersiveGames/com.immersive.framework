@@ -685,11 +685,11 @@ namespace Immersive.Framework.PlayerParticipation
                     continue;
                 }
 
-                if (!_preparationModule.TryReleaseManagerContextualProjection(
+                if (!_preparationModule.TryReleaseContextualProjection(
                         _activeRecord.Owner,
                         prepared.PlayerSlotId,
                         nameof(ActivityPlayerActorLifecycleParticipant),
-                        "activity-exit-release-manager-context",
+                        "activity-exit-release-context",
                         out string contextualReleaseIssue))
                 {
                     failures.Add(contextualReleaseIssue);

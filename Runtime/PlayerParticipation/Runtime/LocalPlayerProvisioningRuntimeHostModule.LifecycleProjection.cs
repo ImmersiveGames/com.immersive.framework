@@ -879,7 +879,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 hostEvidence = new PlayerHostEvidenceSummary(
                     retainedHost.PlayerSlotId,
-                    retainedHost.AssignmentOrigin,
+                    retainedHost.PhysicalProvisioningMode,
                     retainedHost.AssignmentToken,
                     retainedHost.HostBindingIdentity,
                     retainedHost.HostIsAvailable,
