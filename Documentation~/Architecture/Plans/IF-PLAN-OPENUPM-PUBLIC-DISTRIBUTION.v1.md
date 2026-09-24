@@ -4,7 +4,7 @@ Status: **Accepted / Immutable**
 Version: **v1**
 Last updated: **2026-09-24**
 Supersedes: **none**
-Superseded by: **none**
+Superseded by: **[IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v2.md](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v2.md)**
 
 ## Purpose
 
