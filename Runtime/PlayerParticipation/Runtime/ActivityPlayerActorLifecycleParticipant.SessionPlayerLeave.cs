@@ -259,10 +259,13 @@ namespace Immersive.Framework.PlayerParticipation
             bool hasPreparedActor = preparationToken.IsValid;
             bool snapshotContainsSlot = _activeRecord != null &&
                 LastSnapshotContainsSlot(playerSlotId);
+            bool activeContextRecorded =
+                ActiveRecordContainsContextualSlot(playerSlotId);
             bool activeHostRecorded = ActiveRecordContainsHostForSlot(playerSlotId);
             bool hasActivityRepresentation = _activeRecord != null &&
                 (readinessSlot != null ||
                  hasPreparedActor ||
+                 activeContextRecorded ||
                  activeHostRecorded ||
                  snapshotContainsSlot);
 
@@ -518,6 +521,16 @@ namespace Immersive.Framework.PlayerParticipation
             }
             else if (_activeRecord != null)
             {
+                var contextualSlots = new List<PlayerSlotId>();
+                for (int index = 0; index < _activeRecord.ContextualSlots.Count; index++)
+                {
+                    PlayerSlotId item = _activeRecord.ContextualSlots[index];
+                    if (item != playerSlotId)
+                    {
+                        contextualSlots.Add(item);
+                    }
+                }
+
                 var prepared = new List<PreparedSlotRecord>();
                 for (int index = 0; index < _activeRecord.PreparedSlots.Count; index++)
                 {
@@ -543,6 +556,7 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 bool hadSlot = LastSnapshotContainsSlot(playerSlotId) ||
+                    _activeRecord.ContextualSlots.Count != contextualSlots.Count ||
                     _activeRecord.PreparedSlots.Count != prepared.Count ||
                     _activeRecord.AdmittedHosts.Count != hosts.Count;
                 int projectedCount = hadSlot
@@ -564,6 +578,7 @@ namespace Immersive.Framework.PlayerParticipation
                     _activeRecord.RequirementLevel,
                     projectedCount,
                     selectedCount,
+                    contextualSlots,
                     prepared,
                     hosts);
                 _lastSnapshot = FilterLifecycleSnapshotForLeave(
@@ -588,10 +603,32 @@ namespace Immersive.Framework.PlayerParticipation
                   readinessSlot.gameplayReady ||
                   readinessSlot.preparationToken.IsValid ||
                   readinessSlot.gameplayAdmissionToken.IsValid)) ||
+                ActiveRecordContainsContextualSlot(playerSlotId) ||
                 FindPreparedToken(playerSlotId).IsValid ||
                 ActiveRecordContainsHostForSlot(playerSlotId))
             {
                 return true;
+            }
+
+            return false;
+        }
+
+        private bool ActiveRecordContainsContextualSlot(
+            PlayerSlotId playerSlotId)
+        {
+            if (_activeRecord == null)
+            {
+                return false;
+            }
+
+            for (int index = 0;
+                 index < _activeRecord.ContextualSlots.Count;
+                 index++)
+            {
+                if (_activeRecord.ContextualSlots[index] == playerSlotId)
+                {
+                    return true;
+                }
             }
 
             return false;
