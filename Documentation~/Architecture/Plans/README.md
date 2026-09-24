@@ -4,8 +4,12 @@ Current work and next actions live on the mutable tracker:
 
 - [IF-TRACK-Framework](../Tracking/IF-TRACK-Framework.md)
 
-There is no active standalone execution plan that overrides the Tracker or the
-accepted ADRs.
+Active immutable distribution plan:
+
+- [OpenUPM Public Package Distribution v1](IF-PLAN-OPENUPM-PUBLIC-DISTRIBUTION.v1.md)
+
+This plan defines the approved cross-repository distribution route. Execution
+progress remains owned by the Tracker and does not mutate the plan body.
 
 Files in this directory that explicitly identify themselves as
 `Historical / Superseded` are retained only as execution history and must not
