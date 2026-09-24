@@ -153,16 +153,21 @@ No normal post-admission Activity / Route path may:
 
 `SceneProvided` / `ManagerProvisioned` remains valid physical provenance.
 
-It is retained only in Session physical evidence such as the canonical prepared Actor / Host evidence.
+The canonical runtime representation of that fact is `PlayerHostProvisioningMode`, retained in Session physical evidence.
 
 It may be used for:
 
 - diagnostics;
 - validation of physical evidence;
+- Actor correlation evidence;
 - terminal physical release where the release mechanism genuinely differs;
 - explicitly scoped physical operations such as prepared Actor replacement where the contract requires provenance-aware behavior.
 
 It is not contextual Activity / Route state.
+
+Actor preparation must derive physical provenance from Session Host / preparation evidence, not from a contextual assignment.
+
+In particular, `PlayerActorCorrelationEvidence.ProvisioningOrigin` must be derived from canonical physical evidence such as `PlayerHostEvidenceSnapshot.PhysicalProvisioningMode`, not from `CurrentAssignment`.
 
 ### 4.3 Contextual binding becomes provider-neutral
 
@@ -185,11 +190,20 @@ Player contextual binding
 └── HostBindingIdentity
 ```
 
-It does not contain writable physical provisioning provenance.
+It does not contain physical provisioning provenance.
 
-Therefore the current `AssignmentOrigin` field is removed from the contextual assignment model.
+Therefore:
 
-Any diagnostic that needs provisioning provenance reads it from Session physical evidence instead of duplicating it into the contextual binding.
+- `CurrentAssignmentRecord.Origin` is removed;
+- `PlayerSlotAssignmentSnapshot.AssignmentOrigin` is removed;
+- `BeginAssignment` no longer accepts a provisioning origin;
+- origin-based contextual owner validation is removed;
+- contextual Host projection no longer stores or validates `AssignmentOrigin`;
+- contextual diagnostics report physical provenance from Session physical evidence when needed.
+
+After the migration there is no remaining runtime responsibility that requires `PlayerSlotAssignmentOrigin` as a separate type. Unless implementation discovers a concrete counterexample, the enum is removed completely.
+
+Any consumer that needs physical provenance uses `PlayerHostProvisioningMode` from Session physical evidence.
 
 ### 4.4 CurrentAssignment remains contextual authority, not physical authority
 
@@ -200,6 +214,7 @@ The existing Session authorities remain responsible for their current domains:
 ```text
 PlayerParticipationRuntimeContext
     Session membership / Slot / Actor selection
+    provider-neutral current contextual binding
 
 PlayerActorPreparationRuntimeContext
     prepared physical Actor evidence
@@ -207,12 +222,30 @@ PlayerActorPreparationRuntimeContext
 
 PlayerHostEvidenceProjection
     Session physical Host evidence
-    current contextual Host correlation
+    optional current contextual Host correlation
 ```
 
-The contextual-assignment storage may remain within `PlayerParticipationRuntimeContext` during this refactor provided its API becomes provider-neutral and cannot encode physical provenance.
+`PlayerHostEvidenceProjection` may continue to use one per-Slot record. A split into separate physical/contextual dictionaries is not required.
 
-Extraction into a separate runtime is not required unless implementation proves a real ownership conflict after the provider-specific state is removed.
+Its record should conceptually contain:
+
+```text
+Session-scoped
+    PlayerSlotId
+    PhysicalProvisioningMode
+    Host
+
+Contextual
+    AssignmentToken
+    HostBindingIdentity
+    contextual source / reason
+```
+
+Activity Exit clears only the contextual token / binding. It never clears `PhysicalProvisioningMode` or the retained physical Host.
+
+The contextual-assignment storage may remain within `PlayerParticipationRuntimeContext` provided its API is provider-neutral and cannot encode physical provenance.
+
+This removes the dependency-circle risk of making `BeginAssignment` query `PlayerActorPreparationRuntimeContext` or `PlayerHostEvidenceProjection`: the contextual writer no longer needs physical provenance at all.
 
 ### 4.5 SceneProvidedLocalPlayerAuthoring is candidate-only after this decision
 
@@ -397,77 +430,195 @@ Actor replacement may modify the prepared physical Actor within the same Session
 
 The implementation plan is intentionally breaking. Compatibility with the current post-admission assignment-origin model is not required.
 
-### PLAYER-033-A — contextual assignment model becomes provider-neutral
+The initial inspection found that the former PLAYER-033-A/B/C slices are mechanically coupled: removing `AssignmentOrigin` from one layer while leaving callers or Host correlation dependent on it would create a temporary dual model or a non-compiling intermediate state.
 
-Refactor:
+Therefore the first implementation cut is intentionally atomic.
+
+### PLAYER-033-A — provider-neutral contextual binding
+
+This cut establishes one valid contextual model across the full runtime.
+
+Refactor together:
 
 - `PlayerParticipationRuntimeContext.CurrentAssignment`;
 - `CurrentAssignmentRecord`;
 - `PlayerSlotAssignmentSnapshot`;
 - `BeginAssignment`;
-- assignment result / diagnostic structures as required.
-
-Remove contextual `AssignmentOrigin`.
-
-`BeginAssignment` no longer accepts SceneProvided / ManagerProvisioned as caller-selected contextual state.
-
-The single writer can therefore no longer materialize an origin that disagrees with Session physical evidence.
-
-### PLAYER-033-B — Host contextual projection stops duplicating provenance
-
-Refactor `PlayerHostEvidenceProjection`.
-
-Keep Session physical provenance in the immutable physical portion of the retained Host evidence.
-
-Contextual projection retains only contextual token / binding information needed to correlate the current Activity / Route occurrence.
-
-Remove contextual `AssignmentOrigin` correlation.
-
-### PLAYER-033-C — Actor correlation becomes provider-neutral
-
-Refactor:
-
+- assignment result / diagnostic structures;
+- `PlayerHostEvidenceProjection`;
+- `PlayerHostEvidenceSnapshot`;
+- `PlayerHostEvidenceSummary`;
 - `PlayerActorPreparationRuntimeContext.TryEnsureManagerContextualProjection`;
+- `PlayerActorPreparationRuntimeContext.TryReleaseManagerContextualProjection`;
 - `PlayerActorPreparationRuntimeContext.TryResolveCurrentActorCorrelation`;
-- related call sites and diagnostics.
+- `PlayerActorPreparationRuntimeContext.CreatePreparedSummary`;
+- Scene-Provided first-admission call sites;
+- Scene-Provided contextual release / Leave correlation call sites;
+- Manager-Provisioned contextual call sites;
+- public/scoped observation projections that currently expose contextual `AssignmentOrigin`;
+- QA code that currently interprets `AssignmentOrigin` as physical provenance.
 
-Rename the contextual ensure operation to a provider-neutral name, for example:
+Required end state:
 
 ```text
-TryEnsureContextualProjection
+CurrentAssignment
+├── Slot
+├── Owner
+├── Sequence / Revision
+├── Token
+├── HostBindingIdentity
+├── Source
+└── Reason
 ```
 
-The operation:
+No `AssignmentOrigin`.
 
-1. resolves the existing Session physical Player evidence;
-2. ensures one contextual binding for the current Activity / Route owner;
-3. validates Host / token / binding correlation;
-4. never chooses provisioning origin.
+`BeginAssignment` becomes provider-neutral:
 
-### PLAYER-033-D — SceneProvided admission becomes initial-candidate authority
+```text
+BeginAssignment(
+    PlayerSlotId,
+    RuntimeContentOwner,
+    PlayerHostBindingIdentity,
+    source,
+    reason)
+```
+
+Owner validation is provider-neutral because both existing provisioning paths already require Activity / Route ownership for contextual assignments.
+
+`PlayerHostEvidenceProjection` retains `PhysicalProvisioningMode` as Session physical provenance and removes contextual `AssignmentOrigin`.
+
+`PlayerActorPreparationRuntimeContext.CreatePreparedSummary` derives `PlayerActorCorrelationEvidence.ProvisioningOrigin` from `PlayerHostEvidenceSnapshot.PhysicalProvisioningMode`, never from the contextual assignment.
+
+Rename:
+
+```text
+TryEnsureManagerContextualProjection
+    -> TryEnsureContextualProjection
+
+TryReleaseManagerContextualProjection
+    -> TryReleaseContextualProjection
+```
+
+`TryResolveCurrentActorCorrelation` validates:
+
+- exact current contextual assignment;
+- exact Activity / Route owner where required;
+- assignment token;
+- HostBindingIdentity;
+- retained physical Host;
+- Slot / Host identity;
+- expected Host reference when supplied.
+
+It does not validate or choose provisioning origin.
+
+The canonical Activity Player participant becomes the single normal owner of contextual release for both Manager-Provisioned and Scene-Provided admitted Players.
+
+The Scene-Provided lifecycle must not perform a second release of the same contextual binding after canonical Activity exit.
+
+After PLAYER-033-A there must be one model only. `PlayerSlotAssignmentOrigin` should have no remaining runtime use and is removed unless a concrete, provenance-independent responsibility is discovered during implementation.
+
+### PLAYER-033-B — SceneProvided candidate-only lifecycle cleanup
 
 Refactor:
 
 - `SceneLocalPlayerAdmissionRuntime.TryAdmit`;
 - `SceneLocalPlayerAdmissionActivityLifecycleRuntime.TryEnter`;
+- `SceneLocalPlayerAdmissionActivityLifecycleRuntime.TryExit`;
 - `SceneLocalPlayerAdmissionCompositeLifecycleParticipant`;
 - related host-module discovery / conflict handling.
 
-Remove SceneProvided admission as the mechanism used to recreate contextual representation for an already-admitted Player.
+First Scene-Provided admission remains valid:
 
-The existing "Joined Slot -> SceneProvided reprojection" branch is removed or reduced to explicit redundant/conflicting-candidate validation as appropriate.
+```text
+discover candidate
+validate
+Join / admission
+adopt exact physical Host / Actor
+commit Session physical evidence
+```
 
-Candidate discovery remains available to detect newly authored conflicting Scene-Provided candidates.
+For an already-admitted Slot, Scene candidate discovery is no longer a contextual reprojection mechanism.
 
-### PLAYER-033-E — contextual representation uses Activity participation projection
+The existing:
 
-Confirm and integrate the canonical path through:
+```text
+Joined Slot
+    -> SceneProvided reprojection
+    -> BeginAssignment(SceneProvided)
+```
 
-- `ActivityAsset`;
-- `ActivityPlayerParticipationProjectionResolver`;
-- `ActivityPlayerActorLifecycleParticipant`.
+path is removed.
 
-Every projected admitted Player follows the same contextual-binding path independently of physical provisioning provenance.
+A newly discovered Scene-Provided candidate for an already-admitted Slot is evaluated only as redundant / conflicting candidate evidence under IF-ADR-019 §9.
+
+It may produce an explicit diagnostic or rejection, but it never creates the Activity contextual binding, re-Joins the Player, replaces the physical Host or performs a second Actor adoption.
+
+### PLAYER-033-C — observation and QA contract reconciliation
+
+Reconcile provider-neutral observation surfaces.
+
+`PlayerHostEvidenceSummary` must stop exposing contextual `AssignmentOrigin` as if it were physical provenance.
+
+The target observation separates:
+
+```text
+physical evidence
+    PhysicalProvisioningMode
+    Host availability / identity evidence
+
+contextual evidence
+    AssignmentToken
+    HostBindingIdentity
+    current Activity / Route occurrence evidence
+```
+
+A retained Session physical Host may be valid even while no Activity contextual binding exists.
+
+Accordingly, physical evidence validity / recording must not require a current contextual assignment.
+
+Update QAFramework assertions that currently use:
+
+```text
+HostEvidence.AssignmentOrigin == ManagerProvisioned
+```
+
+to prove separately:
+
+```text
+HostEvidence.PhysicalProvisioningMode == ManagerProvisioned
+and
+current contextual binding/token belongs to the expected occurrence
+```
+
+Add the equivalent SceneProvided assertions.
+
+### PLAYER-033-D — full lifecycle certification matrix
+
+Certify the provider-neutral model through:
+
+- Activity Exit -> Enter;
+- Activity Restart;
+- Activity A -> B -> A;
+- Route transition / return;
+- Reset;
+- Cycle Reset;
+- Leave / Session termination;
+- Actor replacement regressions;
+- conflicting later Scene-Provided candidate;
+- SceneProvided authoring-independence proof.
+
+PLAYER-033-D is executed in QAFramework, not by treating package-local static checks as certification.
+
+### PLAYER-033-E — documentation reconciliation and closure
+
+Reconcile:
+
+- IF-ADR-019 implementation notes / historical certification interpretation;
+- Player runtime diagnostics and comments that still describe SceneProvided contextual reprojection;
+- current Player QA certification documentation.
+
+Historical physical-identity evidence remains valid evidence for what it actually proved, but does not certify the stronger PLAYER-033 provider-neutral contextual contract unless the relevant contextual invariants were explicitly asserted.
 
 ### PLAYER-033-F — Restart / transition failure propagation hardening
 
@@ -492,10 +643,24 @@ Session Player state / physical evidence
         ↑ read
 Activity participation projection
         ↓
-contextual binding authority
+provider-neutral contextual binding authority
         ↓
 Activity gameplay / readiness / camera / relocation
 ```
+
+The contextual writer does not query physical preparation merely to learn provisioning provenance.
+
+Instead:
+
+```text
+physical provenance
+    -> remains in Session physical evidence
+
+contextual binding
+    -> never stores provenance
+```
+
+This prevents both duplicated truth and a reverse dependency from `PlayerParticipationRuntimeContext` into `PlayerActorPreparationRuntimeContext` / `PlayerHostEvidenceProjection`.
 
 Activity / Route contextual code does not receive authority to:
 
@@ -507,9 +672,7 @@ Activity / Route contextual code does not receive authority to:
 - adopt a Scene Actor;
 - choose physical provisioning provenance.
 
-No service locator, global Player singleton or mutable global registry is introduced.
-
-No provenance callback / compatibility bridge is required because contextual state no longer duplicates provenance.
+No service locator, global Player singleton, provenance callback bridge or mutable global registry is introduced.
 
 ## 8. Invariants
 
@@ -519,6 +682,8 @@ After admission commit:
 
 - Activity / Route cannot choose `SceneProvided` or `ManagerProvisioned`.
 - Contextual binding cannot encode a provisioning origin.
+- `PlayerSlotAssignmentOrigin` is not required by the post-admission contextual model.
+- Normal Activity exit has one canonical contextual-release path for both provisioning origins.
 - Activity transition cannot create a second Session Player occurrence.
 - Activity Restart cannot Join or Leave the Player.
 - Reset cannot mutate Session Player lifecycle unless an explicit Session command is invoked separately.
@@ -535,6 +700,7 @@ Runtime validation still proves:
 - Host belongs to the expected Slot;
 - PlayerInput evidence remains available where applicable;
 - prepared Actor evidence is current;
+- prepared Actor physical provenance matches `PlayerHostProvisioningMode` from Session physical evidence;
 - current contextual token belongs to the expected Activity / Route owner;
 - Host binding identity matches the current contextual binding;
 - stale contextual tokens are rejected;
@@ -667,6 +833,20 @@ contextual provenance = ManagerProvisioned
 
 because contextual provenance no longer exists.
 
+Certification also proves:
+
+```text
+PlayerSlotAssignmentOrigin has no remaining runtime role
+CurrentAssignment has no provisioning-origin field
+BeginAssignment has no provisioning-origin parameter
+Host contextual projection has no copied AssignmentOrigin
+Actor correlation derives physical provenance from physical evidence
+```
+
+QA observations must assert physical provenance and contextual binding as separate contracts.
+
+### 10.5 Leave / termination
+
 ### 10.5 Leave / termination
 
 Re-run IF-ADR-020 coverage to prove the refactor does not weaken:
@@ -712,22 +892,30 @@ Physical-identity-only proof is insufficient for PLAYER-033 certification.
 
 ## 12. Completion criteria
 
-IF-ADR-033 may move to **Implemented** only when PLAYER-033-A through PLAYER-033-E are integrated.
+IF-ADR-033 may move to **Implemented** only when PLAYER-033-A through PLAYER-033-C are integrated and the runtime contains one provider-neutral contextual model.
+
+PLAYER-033-D provides the mandatory technical certification matrix.
+
+PLAYER-033-E reconciles documentation / certification records and closes the architecture cut.
 
 It may move to **QA Certified** only when:
 
 ```text
+provider-neutral assignment model             PASS
+PlayerSlotAssignmentOrigin runtime removal    PASS
 ManagerProvisioned matrix                     PASS
 SceneProvided matrix                          PASS
 Activity Restart                              PASS
 Activity A -> B -> A                          PASS
 Route transition / return                     PASS
 Reset / Cycle Reset invariants                PASS
-SceneProvided authoring independence           PASS
-conflicting later candidate                    PASS
-IF-ADR-020 Leave / termination regression      PASS
-IF-ADR-024 Actor replacement regression        PASS
-canonical QA cleanup                           PASS
+SceneProvided authoring independence          PASS
+conflicting later candidate                   PASS
+single canonical contextual release           PASS
+physical/contextual observation separation    PASS
+IF-ADR-020 Leave / termination regression     PASS
+IF-ADR-024 Actor replacement regression       PASS
+canonical QA cleanup                          PASS
 ```
 
 PLAYER-033-F is required if investigation confirms restart / re-entry result propagation can still report nominal success while mandatory contextual representation failed.
