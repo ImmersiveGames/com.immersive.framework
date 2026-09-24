@@ -1,0 +1,305 @@
+using System;
+using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.Common;
+using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.Transition;
+using UnityEngine;
+
+namespace Immersive.Framework.Authoring
+{
+    /// <summary>
+    /// API status: Stable. Public authoring asset for a gameplay Activity.
+    /// Activity participation intent is explicit through Activity-owned Projection and Requirement configuration.
+    /// </summary>
+    [CreateAssetMenu(
+        fileName = "Activity",
+        menuName = "Immersive Framework/Activity",
+        order = 20)]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
+    public sealed class ActivityAsset : ScriptableObject
+    {
+        [SerializeField]
+        [Tooltip("Stable functional identity. It must not be changed because the Activity asset, file or display name was renamed.")]
+        private string activityId = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Human-readable name shown in the Inspector and diagnostics. It is not runtime identity.")]
+        private string activityName = "Activity";
+
+        [SerializeField]
+        [TextArea(2, 4)]
+        [Tooltip("Optional authoring note for the activity. This has no runtime behavior yet.")]
+        private string description = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Selects which Session Player Slots this Activity projects.")]
+        private ActivityParticipationProjectionMode playerParticipationProjectionMode =
+            ActivityParticipationProjectionMode.NoSlots;
+
+        [SerializeField]
+        [Tooltip("Declares whether this Activity may continue when its projection resolves to zero admitted Logical Players.")]
+        private ActivityParticipationZeroParticipantPolicy playerParticipationZeroParticipantPolicy =
+            ActivityParticipationZeroParticipantPolicy.Allowed;
+
+        [SerializeField]
+        [Tooltip("Ordered Slot Profile references used only by Explicit Slots. Identity remains owned by each PlayerSlotProfile.")]
+        private PlayerSlotProfile[] playerParticipationExplicitSlotProfiles =
+            Array.Empty<PlayerSlotProfile>();
+
+        [SerializeField]
+        [Tooltip("Progressive readiness required from every projected Player. For a Scene-Provided Player, Logical Actors Prepared is the recommended baseline when the scene already provides the Actor Runtime.")]
+        private PlayerParticipationRequirementLevel playerParticipationRequirementLevel =
+            PlayerParticipationRequirementLevel.None;
+
+        [SerializeField]
+        [Tooltip("Optional Activity Content Profile. Declares Activity-owned scenes for composition and release by Activity operations.")]
+        private ActivityContentProfileAsset activityContentProfile;
+
+        [SerializeField]
+        [Tooltip("Optional contextual relocation for an already admitted Session Player. Route Spatial Entry remains independent and always occurs first for its Route occurrence.")]
+        private ActivityPlayerRelocationPolicy playerRelocationPolicy =
+            ActivityPlayerRelocationPolicy.NoRelocation;
+
+        [SerializeField]
+        [Tooltip("Declares whether initial Activity readiness is observed after release, awaited while covered, or awaited while visible. ObserveOnly preserves existing behavior.")]
+        private ActivityEntryReadinessPolicy activityEntryReadinessPolicy =
+            ActivityEntryReadinessPolicy.ObserveOnly;
+
+        [SerializeField]
+        [Tooltip("Defines whether Activity operations use the session TransitionSurface and, for scene side-effects, the canonical LoadingSurface. Seamless/Fade/FadeWithLoading are all valid with Activity-owned scene load/release; they select presentation.")]
+        private ActivityVisualTransitionMode visualTransitionMode = ActivityVisualTransitionMode.Seamless;
+
+        [SerializeField]
+        [Tooltip("Optional Camera Presentations owned by this Activity occurrence. They override lower-precedence requests through normal Camera arbitration and release with the Activity scope.")]
+        private CameraPresentationDefinition[] cameraPresentations =
+            Array.Empty<CameraPresentationDefinition>();
+
+        [SerializeField]
+        [Tooltip("Controls which requests/capabilities are blocked while this Activity transition is running. For Fade/FadeWithLoading, InputInteractionAndGameplay is recommended.")]
+        private TransitionGateMode transitionGateMode = TransitionGateMode.LifecycleRequestsOnly;
+
+        public ActivityId ActivityId
+        {
+            get
+            {
+                if (!HasValidActivityId)
+                {
+                    throw new InvalidOperationException("Activity ID is missing or invalid.");
+                }
+
+                return new ActivityId(activityId);
+            }
+        }
+
+        public bool HasValidActivityId =>
+            global::Immersive.Framework.Authoring.ActivityId.IsValidText(activityId);
+
+        /// <summary>
+        /// Stable-boundary identity equality (<see cref="ActivityId"/> only).
+        /// Does not mean the same authored definition: two distinct assets may share one ID (collision).
+        /// For authored-definition equality use <c>ReferenceEquals</c> on the asset references.
+        /// </summary>
+        public bool HasSameStableId(ActivityAsset other) =>
+            other != null &&
+            HasValidActivityId &&
+            other.HasValidActivityId &&
+            ActivityId == other.ActivityId;
+
+        /// <summary>
+        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
+        /// </summary>
+        [Obsolete(
+            "HasSameIdentity compares only ActivityId (stable boundary identity). " +
+            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
+            false)]
+        public bool HasSameIdentity(ActivityAsset other) => HasSameStableId(other);
+
+        public string ActivityName => activityName.NormalizeText();
+
+        public string Description => description ?? string.Empty;
+
+        public ActivityParticipationProjectionMode PlayerParticipationProjectionMode =>
+            playerParticipationProjectionMode;
+
+        public ActivityParticipationZeroParticipantPolicy PlayerParticipationZeroParticipantPolicy =>
+            playerParticipationZeroParticipantPolicy;
+
+        public IReadOnlyList<PlayerSlotProfile> PlayerParticipationExplicitSlotProfiles =>
+            playerParticipationExplicitSlotProfiles ?? Array.Empty<PlayerSlotProfile>();
+
+        public PlayerParticipationRequirementLevel PlayerParticipationRequirementLevel =>
+            playerParticipationRequirementLevel;
+
+        public bool HasDefinedPlayerParticipationRequirementLevel =>
+            Enum.IsDefined(
+                typeof(PlayerParticipationRequirementLevel),
+                playerParticipationRequirementLevel);
+
+        public bool HasPlayerParticipationConfiguration =>
+            Enum.IsDefined(
+                typeof(ActivityParticipationProjectionMode),
+                playerParticipationProjectionMode) &&
+            Enum.IsDefined(
+                typeof(ActivityParticipationZeroParticipantPolicy),
+                playerParticipationZeroParticipantPolicy) &&
+            HasDefinedPlayerParticipationRequirementLevel;
+
+        public bool TryGetPlayerParticipationProjectionDescriptor(
+            out ActivityParticipationProjectionDescriptor descriptor,
+            out string issue)
+        {
+            descriptor = default;
+
+            if (!Enum.IsDefined(
+                    typeof(ActivityParticipationProjectionMode),
+                    playerParticipationProjectionMode))
+            {
+                issue = $"Activity '{ActivityName}' has an invalid Player participation Projection Mode.";
+                return false;
+            }
+
+            if (!Enum.IsDefined(
+                    typeof(ActivityParticipationZeroParticipantPolicy),
+                    playerParticipationZeroParticipantPolicy))
+            {
+                issue = $"Activity '{ActivityName}' has an invalid Zero Participant Policy.";
+                return false;
+            }
+
+            PlayerSlotProfile[] slots =
+                playerParticipationExplicitSlotProfiles ?? Array.Empty<PlayerSlotProfile>();
+
+            switch (playerParticipationProjectionMode)
+            {
+                case ActivityParticipationProjectionMode.NoSlots:
+                    if (slots.Length != 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses NoSlots but contains {slots.Length} Explicit Slot reference(s).";
+                        return false;
+                    }
+
+                    if (playerParticipationZeroParticipantPolicy !=
+                        ActivityParticipationZeroParticipantPolicy.Allowed)
+                    {
+                        issue = $"Activity '{ActivityName}' uses NoSlots and therefore requires Zero Participants = Allowed.";
+                        return false;
+                    }
+                    break;
+
+                case ActivityParticipationProjectionMode.AllJoinedSlots:
+                    if (slots.Length != 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses AllJoinedSlots but contains {slots.Length} Explicit Slot reference(s).";
+                        return false;
+                    }
+                    break;
+
+                case ActivityParticipationProjectionMode.ExplicitSlots:
+                    if (slots.Length == 0)
+                    {
+                        issue = $"Activity '{ActivityName}' uses ExplicitSlots but has no PlayerSlotProfile references.";
+                        return false;
+                    }
+                    break;
+            }
+
+            var profileOwners = new HashSet<PlayerSlotProfile>();
+            var identityOwners = new HashSet<PlayerSlotId>();
+            for (int index = 0; index < slots.Length; index++)
+            {
+                PlayerSlotProfile slotProfile = slots[index];
+                if (slotProfile == null)
+                {
+                    issue = $"Activity '{ActivityName}' Explicit Slots[{index}] is missing.";
+                    return false;
+                }
+
+                if (!profileOwners.Add(slotProfile))
+                {
+                    issue = $"Activity '{ActivityName}' repeats PlayerSlotProfile '{slotProfile.name}' at Explicit Slots[{index}].";
+                    return false;
+                }
+
+                if (!slotProfile.TryGetPlayerSlotId(
+                        out PlayerSlotId playerSlotId,
+                        out string identityIssue))
+                {
+                    issue = identityIssue;
+                    return false;
+                }
+
+                if (!identityOwners.Add(playerSlotId))
+                {
+                    issue = $"Activity '{ActivityName}' contains duplicate PlayerSlotId '{playerSlotId}' at Explicit Slots[{index}].";
+                    return false;
+                }
+            }
+
+            descriptor = new ActivityParticipationProjectionDescriptor(
+                playerParticipationProjectionMode,
+                playerParticipationZeroParticipantPolicy,
+                slots);
+            issue = string.Empty;
+            return true;
+        }
+
+        public ActivityContentProfileAsset ActivityContentProfile => activityContentProfile;
+
+        public bool HasActivityContentProfile => activityContentProfile != null;
+
+        public bool HasActivityContentScenes =>
+            activityContentProfile != null && activityContentProfile.HasScenes;
+
+        public ActivityPlayerRelocationPolicy PlayerRelocationPolicy =>
+            playerRelocationPolicy;
+
+        public bool HasDefinedPlayerRelocationPolicy =>
+            Enum.IsDefined(
+                typeof(ActivityPlayerRelocationPolicy),
+                playerRelocationPolicy);
+
+        public ActivityEntryReadinessPolicy EntryReadinessPolicy =>
+            activityEntryReadinessPolicy;
+
+        public bool HasDefinedEntryReadinessPolicy =>
+            Enum.IsDefined(
+                typeof(ActivityEntryReadinessPolicy),
+                activityEntryReadinessPolicy);
+
+        public bool WaitsForEntryReadiness =>
+            activityEntryReadinessPolicy ==
+                ActivityEntryReadinessPolicy.WaitCovered ||
+            activityEntryReadinessPolicy ==
+                ActivityEntryReadinessPolicy.WaitVisible;
+
+        public IReadOnlyList<CameraPresentationDefinition> CameraPresentations =>
+            cameraPresentations ?? Array.Empty<CameraPresentationDefinition>();
+
+        public bool HasCameraPresentations =>
+            cameraPresentations != null && cameraPresentations.Length > 0;
+
+        public ActivityVisualTransitionMode VisualTransitionMode
+        {
+            get
+            {
+                return Enum.IsDefined(typeof(ActivityVisualTransitionMode), visualTransitionMode)
+                    ? visualTransitionMode
+                    : ActivityVisualTransitionMode.Seamless;
+            }
+        }
+
+        public TransitionGateMode TransitionGateMode
+        {
+            get
+            {
+                return Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
+                    ? transitionGateMode
+                    : TransitionGateMode.LifecycleRequestsOnly;
+            }
+        }
+    }
+}

@@ -1,0 +1,3638 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Immersive.Foundation.Events;
+using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ActivityRestart;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
+using Immersive.Framework.GameFlow;
+using Immersive.Framework.RouteLifecycle;
+using Immersive.Framework.SceneLifecycle;
+using Immersive.Framework.SessionLifecycle;
+using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.CycleReset;
+using Immersive.Framework.Loading;
+using Immersive.Framework.Identity;
+using Immersive.Framework.ObjectEntry;
+using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Reset.Composition;
+using Immersive.Framework.Reset;
+using UnityEngine;
+using Immersive.Framework.ApiStatus;
+using Immersive.Logging.Records;
+using Immersive.Framework.Gate;
+using Immersive.Framework.GlobalUi;
+using Immersive.Framework.Pause;
+using Immersive.Framework.Transition;
+using Immersive.Framework.TransitionEffects;
+using Immersive.Framework.Common;
+using Immersive.Framework.Camera;
+using UnityEngine.InputSystem;
+using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.Common.LifecycleOperations;
+using Immersive.Framework.PlayerParticipation;
+
+namespace Immersive.Framework.ApplicationLifecycle
+{
+    /// <summary>
+    /// Minimal persistent application-scope runtime owner for the framework.
+    /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
+    /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
+    {
+        private const string RuntimeHostName = "Immersive Framework Runtime";
+        private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
+        private const string PauseTransitionInProgressStatus = "RejectedTransitionInProgress";
+
+
+        private GameApplicationAsset _gameApplication;
+        private GameFlowRuntime _gameFlowRuntime;
+        private readonly ActivityParticipantSourceBindings
+            _activityParticipantSourceBindings =
+                new ActivityParticipantSourceBindings();
+        private IEventBinding _activityReadinessBinding;
+        private PauseRuntime _pauseRuntime;
+        private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
+        private PauseSurfaceRuntime _pauseSurfaceRuntime;
+        private SceneLifecycleRuntime _sceneLifecycleRuntime;
+        private ResetProductBindingSceneLifecycleParticipant _resetProductBindingSceneLifecycleParticipant;
+        private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
+        private PauseActivityBindingRuntimeContext _pauseActivityBindingRuntime;
+        private PauseActivityBindingRuntimeHostModule _pauseActivityBindingModule;
+        private int _pauseRequestSequence;
+        private RuntimeContentRuntime _runtimeContentRuntime;
+        private RuntimeScopeLifecycleResult _runtimeSessionScopeResult;
+        private ObjectEntryRuntimeContextSnapshot _objectEntryRuntimeContextSnapshot;
+        private ResetRegistry _resetRegistry;
+        private LoadingSurfaceRuntime _loadingSurfaceRuntime;
+        private GlobalUiSceneRuntime _globalUiSceneRuntime;
+        private CameraSessionOutputMaterializationRuntime
+            _cameraSessionOutputMaterializationRuntime;
+        private CameraOutputSessionTopology _cameraOutputTopology;
+        private CameraSubjectAvailabilityContext _cameraSubjectAvailabilityContext;
+        private CameraPresentationMaterializationRuntime
+            _cameraPresentationMaterializationRuntime;
+        private CameraPresentationLifecycleRuntime
+            _cameraPresentationLifecycleRuntime;
+        private readonly List<CameraPresentationMaterializationHandle>
+            _sessionCameraPresentationHandles =
+                new List<CameraPresentationMaterializationHandle>();
+        private PlayerCameraOutputIntegrationRuntime
+            _playerCameraOutputIntegrationRuntime;
+        private PlayerActorCameraSubjectIntegrationRuntime
+            _playerActorCameraSubjectIntegrationRuntime;
+        private PlayerCameraPresentationSelectionRuntime
+            _playerCameraPresentationSelectionRuntime;
+        private int _objectEntryRuntimeContextRevision;
+        private int _objectEntryRuntimeContextInvalidationCount;
+        private string _lastObjectEntryRuntimeContextInvalidationReason = string.Empty;
+        private FrameworkRuntimeState _state;
+        private FrameworkLogger _logger;
+        private ActivityReadinessOccurrence _lastPublishedActivityReadinessOccurrence;
+        private ActivityReadinessState _lastPublishedActivityReadiness;
+        private bool _hasPublishedActivityReadiness;
+        private int _activityReadinessPresentationRevision;
+
+        public FrameworkRuntimeState State => _state;
+
+        public SessionRuntimeState SessionState => _state.SessionState;
+
+        internal GameFlowRuntime CurrentGameFlowRuntime => _gameFlowRuntime;
+
+        internal PauseState PauseState => _pauseRuntime?.State ?? PauseState.Unknown;
+
+        internal bool TryResolveLocalPlayerProvisioningAuthoring(
+            out LocalPlayerProvisioningAuthoring authoring,
+            out bool isConfigured,
+            out string diagnostic)
+        {
+            authoring = null;
+            isConfigured = false;
+            if (_globalUiSceneRuntime == null)
+            {
+                diagnostic =
+                    "FrameworkRuntimeHost has no initialized UIGlobal composition root for Local Player provisioning resolution.";
+                return false;
+            }
+
+            return _globalUiSceneRuntime.TryResolveLocalPlayerProvisioning(
+                out authoring,
+                out isConfigured,
+                out diagnostic);
+        }
+
+        internal GateSnapshot PauseGateSnapshot => _pauseRuntime?.GateSnapshot ?? GateSnapshot.Empty();
+
+        /// <summary>
+        /// Canonical Transition Gate residual only (no readiness/reveal recovery blockers).
+        /// </summary>
+        internal GateSnapshot TransitionGateSnapshot => _gameFlowRuntime?.CurrentTransitionGateSnapshot ?? GateSnapshot.Empty();
+
+        /// <summary>
+        /// Residual Transition Gate mode after Apply/Release (None when released).
+        /// </summary>
+        internal TransitionGateMode CurrentTransitionGateMode =>
+            _gameFlowRuntime?.CurrentTransitionGateMode ?? TransitionGateMode.None;
+
+        /// <summary>
+        /// Composite readiness admission surface: Transition Gate + readiness/reveal recovery.
+        /// </summary>
+        internal GateSnapshot ActivityEntryReadinessGateSnapshot =>
+            _gameFlowRuntime?.CurrentActivityEntryReadinessGateSnapshot ?? GateSnapshot.Empty();
+
+        /// <summary>
+        /// Combined Pause + readiness composite (preserves recovery capability blockers for input).
+        /// </summary>
+        internal GateSnapshot CurrentGateSnapshot =>
+            CreateCombinedGateSnapshot(PauseGateSnapshot, ActivityEntryReadinessGateSnapshot);
+
+        internal bool TryGetPauseSnapshot(out PauseSnapshot snapshot)
+        {
+            if (_pauseRuntime == null)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = _pauseRuntime.Snapshot;
+            return true;
+        }
+
+        bool IPauseRuntimePort.TryGetPauseSnapshot(out PauseSnapshot snapshot) =>
+            TryGetPauseSnapshot(out snapshot);
+
+        internal RuntimeContentRuntime RuntimeContentRuntime => _runtimeContentRuntime;
+
+        /// <summary>
+        /// Creates the explicit Session scope used by Session-owned Player physical
+        /// representations. The caller still owns Activity contextual authority; this
+        /// method exposes no global lookup or mutable Player registry.
+        /// </summary>
+        internal bool TryCreateSessionRuntimeScopeContext(
+            string source,
+            string reason,
+            out RuntimeScopeContext context,
+            out string issue)
+        {
+            context = default;
+            issue = string.Empty;
+            if (_runtimeContentRuntime == null ||
+                !_runtimeSessionScopeResult.HasOwner)
+            {
+                issue = "FrameworkRuntimeHost has no initialized Session Runtime Content scope.";
+                return false;
+            }
+
+            if (!_runtimeContentRuntime.TryCreateScopeContext(
+                    _runtimeSessionScopeResult.Owner,
+                    source,
+                    reason,
+                    out context))
+            {
+                issue = "FrameworkRuntimeHost could not create the current Session Runtime Content context.";
+                return false;
+            }
+
+            return true;
+        }
+
+        internal ResetRegistry ResetRegistry => _resetRegistry ??= new ResetRegistry();
+
+        internal int ResetRegistrySubjectCount => _resetRegistry?.SubjectCount ?? 0;
+
+        internal int ResetRegistryParticipantCount => _resetRegistry?.ParticipantCount ?? 0;
+
+        private static GateSnapshot CreateCombinedGateSnapshot(GateSnapshot first, GateSnapshot second)
+        {
+            if (!first.HasBlockers && !second.HasBlockers)
+            {
+                return GateSnapshot.Empty();
+            }
+
+            var blockers = new List<GateBlocker>(first.BlockerCount + second.BlockerCount);
+            AddBlockers(blockers, first);
+            AddBlockers(blockers, second);
+            return new GateSnapshot(blockers);
+        }
+
+        private static void AddBlockers(List<GateBlocker> target, GateSnapshot snapshot)
+        {
+            if (target == null || !snapshot.HasBlockers)
+            {
+                return;
+            }
+
+            var blockers = snapshot.Blockers;
+            for (int i = 0; i < blockers.Count; i++)
+            {
+                target.Add(blockers[i]);
+            }
+        }
+
+        internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
+        {
+            _activityParticipantSourceBindings.SetContentSource(
+                participantSource);
+            _gameFlowRuntime?.SetActivityContentExecutionParticipantSource(participantSource);
+        }
+
+        internal void SetCycleResetParticipantSource(ICycleResetParticipantSource participantSource)
+        {
+            _gameFlowRuntime?.SetCycleResetParticipantSource(participantSource);
+        }
+
+        internal ResetRegistryOperationResult RegisterResetSubject(
+            ResetSubject subject,
+            UnityEngine.Object owner,
+            string source,
+            string reason)
+        {
+            return ResetRegistry.RegisterSubject(subject, owner, source, reason);
+        }
+
+        internal ResetRegistryOperationResult RegisterRuntimeResetSubject(
+            string authoredPrefix,
+            ResetSubjectScope scope,
+            RuntimeContentOwner owner,
+            UnityEngine.Object ownerObject,
+            string displayName,
+            string diagnosticTag,
+            string source,
+            string reason)
+        {
+            return ResetRegistry.RegisterRuntimeSubject(
+                authoredPrefix,
+                scope,
+                owner,
+                ownerObject,
+                displayName,
+                diagnosticTag,
+                source,
+                reason);
+        }
+
+        internal ResetRegistryOperationResult RegisterResetParticipant(
+            ResetRegistrationHandle subjectHandle,
+            IResetParticipant participant,
+            UnityEngine.Object owner,
+            string source,
+            string reason)
+        {
+            return ResetRegistry.RegisterParticipant(subjectHandle, participant, owner, source, reason);
+        }
+
+        internal ResetRegistryOperationResult UnregisterResetRegistration(
+            ResetRegistrationHandle handle,
+            UnityEngine.Object owner,
+            string source,
+            string reason)
+        {
+            return _resetRegistry == null
+                ? ResetRegistryOperationResult.AlreadyUnregistered(
+                    handle,
+                    ResetIssue.Warning(ResetIssueKind.InvalidHandle, "Reset registry is unavailable."),
+                    "Reset unregister ignored because the ResetRegistry has not been created.")
+                : _resetRegistry.Unregister(handle, owner, source, reason);
+        }
+
+        internal bool TryResolveCurrentResetOwner(
+            ResetSubjectScope scope,
+            out RuntimeContentOwner owner,
+            out string issue)
+        {
+            owner = default;
+            issue = string.Empty;
+
+            if (!Enum.IsDefined(typeof(ResetSubjectScope), scope) || scope == ResetSubjectScope.Unknown)
+            {
+                issue = "Reset subject scope must be explicit.";
+                return false;
+            }
+
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            switch (scope)
+            {
+                case ResetSubjectScope.Route:
+                    return TryResolveResetOwnerFromContext(
+                        context,
+                        ObjectEntryScope.Route,
+                        RuntimeContentScope.Route,
+                        _state.CurrentRouteName,
+                        out owner,
+                        out issue);
+                case ResetSubjectScope.Activity:
+                    return TryResolveResetOwnerFromContext(
+                        context,
+                        ObjectEntryScope.Activity,
+                        RuntimeContentScope.Activity,
+                        _state.CurrentActivityName,
+                        out owner,
+                        out issue);
+                case ResetSubjectScope.Runtime:
+                    if (TryResolveResetOwnerFromContext(
+                            context,
+                            ObjectEntryScope.Activity,
+                            RuntimeContentScope.Activity,
+                            _state.CurrentActivityName,
+                            out owner,
+                            out _))
+                    {
+                        return true;
+                    }
+
+                    if (TryResolveResetOwnerFromContext(
+                            context,
+                            ObjectEntryScope.Route,
+                            RuntimeContentScope.Route,
+                            _state.CurrentRouteName,
+                            out owner,
+                            out _))
+                    {
+                        return true;
+                    }
+
+                    if (_runtimeSessionScopeResult.HasOwner)
+                    {
+                        owner = _runtimeSessionScopeResult.Owner;
+                        return true;
+                    }
+
+                    issue = "No active runtime owner identity is available for Runtime reset scope.";
+                    return false;
+                default:
+                    issue = $"Unsupported reset subject scope '{scope}'.";
+                    return false;
+            }
+        }
+
+        internal int ObjectEntryRuntimeContextRevision => _objectEntryRuntimeContextRevision;
+
+        internal int ObjectEntryRuntimeContextInvalidationCount => _objectEntryRuntimeContextInvalidationCount;
+
+        internal string LastObjectEntryRuntimeContextInvalidationReason => _lastObjectEntryRuntimeContextInvalidationReason;
+
+        internal bool TryGetObjectEntryRuntimeContextSnapshot(out ObjectEntryRuntimeContextSnapshot snapshot)
+        {
+            snapshot = _objectEntryRuntimeContextSnapshot;
+            return snapshot != null;
+        }
+
+        internal ObjectEntryRuntimeContextSnapshot RefreshObjectEntryRuntimeContextSnapshot(string source)
+        {
+            var declarationSource = new ObjectEntryDeclarationSource();
+            var context = CreateCurrentObjectEntryScopedCollectionContext();
+            var sceneResult = declarationSource.CollectScoped(context);
+            _objectEntryRuntimeContextSnapshot = sceneResult.ToRuntimeContextSnapshot(source);
+            _objectEntryRuntimeContextRevision++;
+            _resetProductBindingSceneLifecycleParticipant?.RefreshSubjectRegistrationsForCurrentOwners(source);
+            return _objectEntryRuntimeContextSnapshot;
+        }
+        /// <summary>
+        /// Creates the application runtime host and, when enabled, resolves
+        /// and composes Player Session configuration exactly once. An explicit
+        /// Player Session Profile replaces the Game Application default; it is
+        /// never merged with it.
+        /// </summary>
+        internal static bool TryCreate(
+            GameApplicationAsset gameApplication,
+            PlayerSessionProfile explicitPlayerSessionProfile,
+            out FrameworkRuntimeHost runtimeHost,
+            out PlayerSessionInitializationResult playerSessionResolution,
+            out PlayerParticipationOperationResult playerParticipationInitialization)
+        {
+            if (gameApplication == null)
+            {
+                throw new ArgumentNullException(nameof(gameApplication));
+            }
+
+            runtimeHost = null;
+            playerParticipationInitialization = null;
+            bool playerSessionEnabled =
+                PlayerSessionCreationConfigurationResolver.TryResolve(
+                    gameApplication,
+                    explicitPlayerSessionProfile,
+                    out playerSessionResolution);
+            if (playerSessionEnabled && !playerSessionResolution.Succeeded)
+            {
+                return false;
+            }
+
+            var runtimeObject = new GameObject(RuntimeHostName);
+            DontDestroyOnLoad(runtimeObject);
+
+            var host = runtimeObject.AddComponent<FrameworkRuntimeHost>();
+            host.Initialize(gameApplication);
+            if (!playerSessionEnabled)
+            {
+                runtimeHost = host;
+                return true;
+            }
+
+            PlayerParticipationRuntimeHostModule.Attach(
+                host,
+                playerSessionResolution.Configuration,
+                gameApplication.PlayerActorSelectionDuplicatePolicy,
+                "ImmersiveFrameworkBootstrap",
+                "session-start",
+                out playerParticipationInitialization);
+            if (!playerParticipationInitialization.Succeeded)
+            {
+                UnityEngine.Object.Destroy(runtimeObject);
+                return false;
+            }
+
+            runtimeHost = host;
+            return true;
+        }
+
+
+        internal async Task<FrameworkGameFlowStartResult> StartAsync()
+        {
+            if (!TryApplyApplicationFrameRatePolicy(
+                    out string frameRateFailureMessage))
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        frameRateFailureMessage);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            InvalidateObjectEntryRuntimeContextSnapshot("framework-start");
+
+            var startupPrimaryScenePreparation = await PrepareStartupPrimarySceneBeforeGlobalUiAsync();
+            if (!startupPrimaryScenePreparation.Loaded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(startupPrimaryScenePreparation.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            _globalUiSceneRuntime = await GlobalUiSceneRuntime.LoadAndPersistAsync(_gameApplication, transform, _logger);
+            if (_globalUiSceneRuntime.HasBlockingConfigurationIssue)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(_globalUiSceneRuntime.BlockingConfigurationMessage);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            if (!_globalUiSceneRuntime.TryResolveCameraSessionEnvironment(
+                    out bool automaticPlayerSplitScreenEnabled,
+                    out string cameraDiagnostic))
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        cameraDiagnostic);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            CameraSessionConfiguration cameraSession =
+                _gameApplication.CameraSession;
+            if (!_gameApplication.PlayerSessionEnabled &&
+                cameraSession != null &&
+                cameraSession.PlayerOutputBindings.Count > 0)
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        "GameApplication Camera Session Player Slot -> Output bindings require an enabled Player Session.");
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            if (!_gameApplication.PlayerSessionEnabled &&
+                cameraSession != null &&
+                cameraSession.PlayerPresentationBindings.Count > 0)
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        "GameApplication Camera Session Player Slot -> Presentation bindings require an enabled Player Session.");
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            _cameraPresentationLifecycleRuntime?.Dispose();
+            _cameraPresentationLifecycleRuntime = null;
+
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "camera-session-reinitialize",
+                    out string previousSessionPresentationReleaseIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Previous Session Camera Presentation release failed. " +
+                    previousSessionPresentationReleaseIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+
+            _playerCameraPresentationSelectionRuntime?.Dispose();
+            _playerCameraPresentationSelectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
+
+            _cameraSessionOutputMaterializationRuntime?.Dispose();
+            _cameraSessionOutputMaterializationRuntime = null;
+            _cameraOutputTopology = null;
+
+            if (!CameraSessionOutputMaterializationRuntime.TryCreate(
+                    cameraSession,
+                    transform,
+                    out _cameraSessionOutputMaterializationRuntime,
+                    out cameraDiagnostic))
+            {
+                var failed =
+                    FrameworkGameFlowStartResult.Failed(
+                        cameraDiagnostic);
+                _state =
+                    FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                return failed;
+            }
+
+            _cameraOutputTopology =
+                _cameraSessionOutputMaterializationRuntime.Topology;
+
+            CameraOutputTopologySnapshot cameraOutputSnapshot =
+                _cameraOutputTopology.CaptureSnapshot();
+            var cameraOutputIds =
+                new string[cameraOutputSnapshot.OutputCount];
+            for (int outputIndex = 0;
+                 outputIndex < cameraOutputSnapshot.OutputCount;
+                 outputIndex++)
+            {
+                cameraOutputIds[outputIndex] =
+                    cameraOutputSnapshot.Outputs[
+                        outputIndex].OutputId.Value;
+            }
+
+            _logger.Debug(
+                "Camera Session Outputs materialized.",
+                LogFields.Field(
+                    "outputCount",
+                    cameraOutputSnapshot.OutputCount),
+                LogFields.Field(
+                    "outputs",
+                    cameraOutputIds.Length > 0
+                        ? string.Join(",", cameraOutputIds)
+                        : "<none>"),
+                LogFields.Field(
+                    "diagnostic",
+                    cameraDiagnostic));
+
+            this.TryGetPlayerParticipationSnapshot(
+                out PlayerParticipationSnapshot playerParticipationSnapshot);
+            if (!PlayerCameraOutputBindingProjection.TryCreate(
+                    cameraSession.PlayerOutputBindings,
+                    _cameraOutputTopology,
+                    playerParticipationSnapshot,
+                    _gameApplication.PlayerSessionEnabled &&
+                    automaticPlayerSplitScreenEnabled,
+                    out PlayerCameraOutputTopology playerCameraOutputTopology,
+                    out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
+            _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
+            GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
+                _globalUiSceneRuntime.TryBindPauseRequestTriggers(
+                    _pauseProductBindingRuntime);
+            if (!pauseRequestTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    pauseRequestTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IRouteRuntimePort routeRuntimePort = this;
+            RouteRequestTriggerBinderResult globalRouteTriggerBinder =
+                _globalUiSceneRuntime.TryBindRouteRequestTriggers(
+                    routeRuntimePort);
+            if (!globalRouteTriggerBinder.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalRouteTriggerBinder.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IActivityRuntimePort activityRuntimePort = this;
+            ActivityRequestTriggerBinderResult globalActivityTriggerBinder =
+                _globalUiSceneRuntime.TryBindActivityRequestTriggers(
+                    activityRuntimePort);
+            if (!globalActivityTriggerBinder.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityTriggerBinder.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
+            var transitionOrchestrator = CreateTransitionOrchestrator(
+                _globalUiSceneRuntime,
+                _cameraOutputTopology);
+            _gameFlowRuntime = new GameFlowRuntime(
+                _runtimeContentRuntime,
+                transitionOrchestrator,
+                routeRuntimePort,
+                activityRuntimePort,
+                this,
+                this,
+                this,
+                _sceneLifecycleRuntime);
+            int activityEntryCompletionReceiverCount =
+                _globalUiSceneRuntime
+                    .AttachActivityEntryCompletionReceivers(
+                        _gameFlowRuntime);
+            _logger.Debug(
+                "Persistent Content Activity entry completion receivers attached.",
+                LogFields.Field(
+                    "receiverCount",
+                    activityEntryCompletionReceiverCount));
+            PlayerActorPreparationRuntimeHostModule playerActorPreparation = null;
+            if (_gameApplication.PlayerSessionEnabled &&
+                !PlayerActorPreparationRuntimeHostModule.TryAttach(
+                    this,
+                    out playerActorPreparation,
+                    out string playerActorPreparationIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Player Actor preparation lifecycle attachment failed. " +
+                    playerActorPreparationIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+            if (_gameApplication.PlayerSessionEnabled &&
+                playerCameraOutputTopology.BindingCount > 0)
+            {
+                if (!this.TryGetPlayerParticipationRuntime(
+                        out PlayerParticipationRuntimeContext playerSession))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Player Camera Output integration failed because the canonical Player Session runtime is unavailable.");
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+
+                PlayerInputManager splitScreenManager = null;
+                if (automaticPlayerSplitScreenEnabled)
+                {
+                    if (!TryResolveLocalPlayerProvisioningAuthoring(
+                            out LocalPlayerProvisioningAuthoring provisioning,
+                            out bool provisioningConfigured,
+                            out string provisioningIssue) ||
+                        !provisioningConfigured ||
+                        provisioning == null ||
+                        provisioning.PlayerInputManager == null ||
+                        !provisioning.PlayerInputManager.splitScreen)
+                    {
+                        var failed = FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Output integration requires the exact configured split-screen PlayerInputManager. " +
+                            provisioningIssue);
+                        _state = FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
+                        return failed;
+                    }
+
+                    splitScreenManager = provisioning.PlayerInputManager;
+                }
+
+                if (!PlayerCameraOutputIntegrationRuntime.TryCreate(
+                        playerSession,
+                        playerActorPreparation,
+                        splitScreenManager,
+                        _cameraOutputTopology,
+                        playerCameraOutputTopology,
+                        out _playerCameraOutputIntegrationRuntime,
+                        out string playerCameraOutputIssue))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Player Camera Output integration failed. " +
+                        playerCameraOutputIssue);
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+            }
+            if (_gameApplication.PlayerSessionEnabled)
+            {
+                if (!this.TryGetPlayerPreparedActorOccurrenceSource(
+                        out IPlayerPreparedActorOccurrenceSource playerActors))
+                {
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Canonical Player Actor occurrence evidence could not be exposed to Camera integration.");
+                    _state = FrameworkRuntimeState.FromGameFlowResult(
+                        _gameApplication,
+                        failed);
+                    return failed;
+                }
+
+                _cameraSubjectAvailabilityContext =
+                    new CameraSubjectAvailabilityContext(
+                        new SubjectAvailabilityContextId(
+                            $"camera-subjects:{playerActors.SessionContextId}"));
+                _playerActorCameraSubjectIntegrationRuntime =
+                    new PlayerActorCameraSubjectIntegrationRuntime(
+                        playerActors,
+                        _cameraSubjectAvailabilityContext);
+                if (!PlayerCameraPresentationTopology.TryCreate(
+                        cameraSession.PlayerPresentationBindings,
+                        out PlayerCameraPresentationTopology
+                            playerCameraPresentationTopology,
+                        out string playerCameraPresentationIssue))
+                {
+                    var failed =
+                        FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Presentation binding topology is invalid. " +
+                            playerCameraPresentationIssue);
+                    _state =
+                        FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
+                    return failed;
+                }
+
+                if (playerCameraPresentationTopology.BindingCount > 0 &&
+                    !PlayerCameraPresentationSelectionRuntime.TryCreate(
+                        _playerActorCameraSubjectIntegrationRuntime,
+                        playerCameraPresentationTopology,
+                        out _playerCameraPresentationSelectionRuntime,
+                        out playerCameraPresentationIssue))
+                {
+                    var failed =
+                        FrameworkGameFlowStartResult.Failed(
+                            "Player Camera Presentation selection integration failed. " +
+                            playerCameraPresentationIssue);
+                    _state =
+                        FrameworkRuntimeState.FromGameFlowResult(
+                            _gameApplication,
+                            failed);
+                    return failed;
+                }
+            }
+            if (_cameraSubjectAvailabilityContext == null)
+            {
+                _cameraSubjectAvailabilityContext =
+                    new CameraSubjectAvailabilityContext(
+                        new SubjectAvailabilityContextId(
+                            $"camera-subjects:{_runtimeSessionScopeResult.Owner.OwnerId}"));
+            }
+
+            _cameraPresentationMaterializationRuntime ??=
+                new CameraPresentationMaterializationRuntime(
+                    _runtimeContentRuntime);
+            _cameraPresentationLifecycleRuntime =
+                new CameraPresentationLifecycleRuntime(
+                    _cameraPresentationMaterializationRuntime,
+                    _cameraOutputTopology,
+                    _cameraSubjectAvailabilityContext,
+                    _playerCameraPresentationSelectionRuntime,
+                    transform);
+            _gameFlowRuntime.SetCameraPresentationLifecycle(
+                _cameraPresentationLifecycleRuntime);
+
+            if (_gameApplication.PlayerSessionEnabled &&
+                !PlayerSessionScopedAccessRuntimeHostModule.TryAttach(
+                    this,
+                    out _,
+                    out string playerSessionScopedAccessIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Player Session scoped access lifecycle attachment failed. " +
+                    playerSessionScopedAccessIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+            ApplyRetainedActivityParticipantSources();
+            _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
+            ApplyPauseActivityBindingLifecycle();
+            IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
+            RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
+                _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
+                    routeCycleResetRuntimePort);
+            if (!globalRouteCycleResetTriggerBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalRouteCycleResetTriggerBinding.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IActivityCycleResetRuntimePort activityCycleResetRuntimePort = this;
+            ActivityCycleResetTriggerBinderResult globalActivityCycleResetTriggerBinder =
+                _globalUiSceneRuntime.TryBindActivityCycleResetTriggers(
+                    activityCycleResetRuntimePort);
+            if (!globalActivityCycleResetTriggerBinder.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityCycleResetTriggerBinder.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            IActivityRestartRuntimePort activityRestartRuntimePort = this;
+            ActivityRestartTriggerBinderResult globalActivityRestartTriggerBinder =
+                _globalUiSceneRuntime.TryBindActivityRestartTriggers(
+                    activityRestartRuntimePort);
+            if (!globalActivityRestartTriggerBinder.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    globalActivityRestartTriggerBinder.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            ApplyPlayerActivityLifecycleAdmissionRuntime();
+            ApplySceneLocalPlayerAdmissionRuntime();
+
+            if (!TryInitializeSessionCameraPresentations(
+                    out string sessionCameraPresentationIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Session Camera Presentation initialization failed. " +
+                    sessionCameraPresentationIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+
+            FrameworkGameFlowStartResult result =
+                await StartGameFlowWithActivityEntryLoadingProgressAsync();
+
+            if (!result.Started)
+            {
+                _cameraPresentationLifecycleRuntime?.Dispose();
+                _cameraPresentationLifecycleRuntime = null;
+
+                string failedBootPresentationReleaseIssue = string.Empty;
+                if (!TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-boot-failure",
+                        out failedBootPresentationReleaseIssue))
+                {
+                    _logger.Warning(
+                        "Session Camera Presentation rollback failed after Game Flow start failure.",
+                        LogFields.Field(
+                            "issue",
+                            failedBootPresentationReleaseIssue));
+                }
+            }
+
+            _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, result);
+            PublishCurrentActivityReadinessPresentation();
+            if (result.DestinationAuthoritative)
+            {
+                RefreshObjectEntryRuntimeContextSnapshot("FrameworkRuntimeHost:framework-start");
+            }
+
+            return result;
+        }
+
+        private async Task<SceneLifecycleLoadResult> PrepareStartupPrimarySceneBeforeGlobalUiAsync()
+        {
+            var result = await _sceneLifecycleRuntime.LoadPrimarySceneAsync(_gameApplication.StartupRoute);
+            if (!result.Loaded)
+            {
+                _logger.Error(
+                    "Startup Route Primary Scene preparation failed before UIGlobal load.",
+                    BuildStartupPrimaryScenePreparationSummaryFields(result));
+                _logger.Debug(
+                    "Startup Route Primary Scene preparation diagnostics.",
+                    BuildStartupPrimaryScenePreparationDiagnosticFields(result));
+                return result;
+            }
+
+            _logger.Debug(
+                "Startup Route Primary Scene prepared before UIGlobal load.",
+                BuildStartupPrimaryScenePreparationSummaryFields(result));
+            _logger.Debug(
+                "Startup Route Primary Scene preparation diagnostics.",
+                BuildStartupPrimaryScenePreparationDiagnosticFields(result));
+
+            return result;
+        }
+
+        private static LogField[] BuildStartupPrimaryScenePreparationSummaryFields(SceneLifecycleLoadResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scene", result.SceneName),
+                LogFields.Field("loaded", result.Loaded));
+        }
+
+        private static LogField[] BuildStartupPrimaryScenePreparationDiagnosticFields(SceneLifecycleLoadResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scene", result.SceneName),
+                LogFields.Field("scenePath", result.ScenePath),
+                LogFields.Field("alreadyLoaded", result.AlreadyLoaded),
+                LogFields.Field("loadMode", result.LoadMode),
+                LogFields.Field("loaded", result.Loaded),
+                LogFields.Field("message", result.Message));
+        }
+
+        internal async Task<FrameworkRouteRequestResult> RequestRouteAsync(
+            RouteAsset targetRoute,
+            string source,
+            string reason)
+        {
+            if (_gameFlowRuntime == null)
+            {
+                var result = FrameworkRouteRequestResult.RejectedRuntimeNotReady(
+                    "Route request rejected because Game Flow runtime is not initialized yet.",
+                    targetRoute,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                _lastRouteActivityEntryLoadingDiagnostics =
+                    FrameworkLoadingDiagnostics.NotExecutedRequestRejected();
+                LogRouteRequestRuntimeNotReady(result);
+                return result;
+            }
+
+            InvalidateObjectEntryRuntimeContextSnapshot($"route-request:{NormalizeLifecycleSource(source)}");
+            if (targetRoute != null && _state.CurrentRoute != null && ReferenceEquals(_state.CurrentRoute, targetRoute))
+            {
+                var result = await _gameFlowRuntime.RequestRouteAsync(targetRoute, source, reason);
+                if (result.Succeeded)
+                {
+                    _state = FrameworkRuntimeState.FromRouteRequestResult(_state, result, true);
+                    PublishCurrentActivityReadinessPresentation();
+                    RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request:{NormalizeLifecycleSource(source)}");
+                }
+                else if (result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
+                {
+                    RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request-kept:{NormalizeLifecycleSource(source)}");
+                }
+
+                _lastRouteActivityEntryLoadingDiagnostics =
+                    FrameworkLoadingDiagnostics.SkippedAlreadyLoaded();
+                LogRouteRequestResult(
+                    result,
+                    _lastRouteActivityEntryLoadingDiagnostics);
+                return result;
+            }
+
+            _lastRouteActivityEntryLoadingDiagnostics = default;
+            bool showLoadingSurface = ShouldShowLoadingSurface(targetRoute);
+            bool loadingProgressSupported = showLoadingSurface && _loadingSurfaceRuntime.ProgressSupported;
+            var loadingShowRequest = CreateLoadingSurfaceRequest(
+                targetRoute,
+                source,
+                reason,
+                true,
+                LoadingProgress.Zero,
+                loadingProgressSupported);
+            var loadingProgressReporter = CreateLoadingProgressReporter(loadingShowRequest, showLoadingSurface);
+            ActivityEntryLoadingProgressDiagnostics activityEntryProgressDiagnostics = default;
+            LoadingSurfaceResult loadingBeforeResult = default;
+            LoadingSurfaceResult loadingAfterResult = default;
+
+            async Awaitable ShowLoadingAfterTransitionGate()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                loadingBeforeResult = await _loadingSurfaceRuntime.ShowAsync(loadingShowRequest);
+            }
+
+            async Awaitable HideLoadingBeforeTransitionRelease()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                var loadingHideRequest = CreateLoadingSurfaceRequest(
+                    targetRoute,
+                    source,
+                    reason,
+                    false,
+                    ToSurfaceProgress(loadingProgressReporter.LastProgress),
+                    loadingProgressReporter.HasReportedProgress && loadingProgressReporter.LastProgress is { Supported: true, IsDeterminate: true });
+                loadingAfterResult = await _loadingSurfaceRuntime.HideAsync(loadingHideRequest);
+            }
+
+            var routeResult = await _gameFlowRuntime
+                .RequestRouteWithActivityEntryLoadingProgressAsync(
+                    targetRoute,
+                    source,
+                    reason,
+                    ShowLoadingAfterTransitionGate,
+                    HideLoadingBeforeTransitionRelease,
+                    loadingProgressReporter,
+                    diagnostics =>
+                        activityEntryProgressDiagnostics = diagnostics);
+            if (routeResult.Succeeded || routeResult.DestinationAuthoritative)
+            {
+                _state = FrameworkRuntimeState.FromRouteRequestResult(_state, routeResult, true);
+                PublishCurrentActivityReadinessPresentation();
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request:{NormalizeLifecycleSource(source)}");
+            }
+            else if (routeResult.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
+            {
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request-kept:{NormalizeLifecycleSource(source)}");
+            }
+
+            var loadingDiagnostics = showLoadingSurface &&
+                loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                loadingAfterResult.Status != LoadingSurfaceResultStatus.Unknown
+                ? FrameworkLoadingDiagnostics.FromUnitySurface(
+                    loadingBeforeResult,
+                    loadingAfterResult,
+                    _loadingSurfaceRuntime.AdapterCount,
+                    _loadingSurfaceRuntime.ProgressSupported,
+                    loadingProgressReporter.LastProgress,
+                    activityEntryProgressDiagnostics)
+                : showLoadingSurface &&
+                  loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                  activityEntryProgressDiagnostics.IsValid
+                    ? FrameworkLoadingDiagnostics.
+                        FromRetainedActivityEntrySurface(
+                            loadingBeforeResult,
+                            _loadingSurfaceRuntime.AdapterCount,
+                            _loadingSurfaceRuntime.ProgressSupported,
+                            loadingProgressReporter.LastProgress,
+                            activityEntryProgressDiagnostics)
+                    : !routeResult.Succeeded && !routeResult.DestinationAuthoritative
+                    ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
+                    : FrameworkLoadingDiagnostics.SucceededWithNoOp();
+
+            if (!showLoadingSurface && routeResult.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
+            {
+                loadingDiagnostics = FrameworkLoadingDiagnostics.SkippedAlreadyLoaded();
+            }
+
+            _lastRouteActivityEntryLoadingDiagnostics =
+                loadingDiagnostics;
+            LogRouteRequestResult(routeResult, loadingDiagnostics);
+            return routeResult;
+        }
+
+        Task<FrameworkRouteRequestResult> IRouteRuntimePort.RequestRouteAsync(
+            RouteAsset targetRoute,
+            string source,
+            string reason) => RequestRouteAsync(targetRoute, source, reason);
+
+        internal async Task<FrameworkActivityRequestResult> RequestActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            if (_gameFlowRuntime == null)
+            {
+                var runtimeUnavailableResult = FrameworkActivityRequestResult.FailedRuntimeUnavailable(
+                    "Activity request rejected because Game Flow runtime is not initialized yet.",
+                    targetActivity,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                _lastActivityEntryLoadingDiagnostics =
+                    FrameworkLoadingDiagnostics.NotExecutedRequestRejected();
+                LogActivityRequestResult(
+                    runtimeUnavailableResult,
+                    _lastActivityEntryLoadingDiagnostics);
+                return runtimeUnavailableResult;
+            }
+
+            InvalidateObjectEntryRuntimeContextSnapshot($"activity-request:{NormalizeLifecycleSource(source)}");
+            _lastActivityEntryLoadingDiagnostics = default;
+            var previousActivity = _state.CurrentActivity;
+            bool showLoadingSurface = ShouldShowActivityLoadingSurface(targetActivity, previousActivity, source, reason);
+            bool loadingProgressSupported = showLoadingSurface && _loadingSurfaceRuntime.ProgressSupported;
+            var loadingShowRequest = CreateActivityLoadingSurfaceRequest(
+                targetActivity,
+                source,
+                reason,
+                true,
+                LoadingProgress.Zero,
+                loadingProgressSupported);
+            var loadingProgressReporter = CreateLoadingProgressReporter(loadingShowRequest, showLoadingSurface);
+            ActivityEntryLoadingProgressDiagnostics activityEntryProgressDiagnostics = default;
+            LoadingSurfaceResult loadingBeforeResult = default;
+            LoadingSurfaceResult loadingAfterResult = default;
+
+            async Awaitable ShowLoadingAfterTransitionGate()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                loadingBeforeResult = await _loadingSurfaceRuntime.ShowAsync(loadingShowRequest);
+            }
+
+            async Awaitable HideLoadingBeforeTransitionRelease()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                var loadingHideRequest = CreateActivityLoadingSurfaceRequest(
+                    targetActivity,
+                    source,
+                    reason,
+                    false,
+                    ToSurfaceProgress(loadingProgressReporter.LastProgress),
+                    loadingProgressReporter.HasReportedProgress && loadingProgressReporter.LastProgress is { Supported: true, IsDeterminate: true });
+                loadingAfterResult = await _loadingSurfaceRuntime.HideAsync(loadingHideRequest);
+            }
+
+            var result = await _gameFlowRuntime
+                .RequestActivityWithActivityEntryLoadingProgressAsync(
+                    targetActivity,
+                    source,
+                    reason,
+                    ShowLoadingAfterTransitionGate,
+                    HideLoadingBeforeTransitionRelease,
+                    loadingProgressReporter,
+                    diagnostics =>
+                        activityEntryProgressDiagnostics = diagnostics);
+            if (result.Succeeded || result.DestinationAuthoritative)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(
+                    _state,
+                    result);
+                PublishCurrentActivityReadinessPresentation();
+                RefreshObjectEntryRuntimeContextSnapshot(
+                    $"FrameworkRuntimeHost:activity-request:{NormalizeLifecycleSource(source)}");
+            }
+            else if (result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive)
+            {
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-request-kept:{NormalizeLifecycleSource(source)}");
+            }
+
+            var loadingDiagnostics = showLoadingSurface &&
+                loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                loadingAfterResult.Status != LoadingSurfaceResultStatus.Unknown
+                ? FrameworkLoadingDiagnostics.FromUnitySurface(
+                    loadingBeforeResult,
+                    loadingAfterResult,
+                    _loadingSurfaceRuntime.AdapterCount,
+                    _loadingSurfaceRuntime.ProgressSupported,
+                    loadingProgressReporter.LastProgress,
+                    activityEntryProgressDiagnostics)
+                : showLoadingSurface &&
+                  loadingBeforeResult.Status != LoadingSurfaceResultStatus.Unknown &&
+                  activityEntryProgressDiagnostics.IsValid
+                    ? FrameworkLoadingDiagnostics.
+                        FromRetainedActivityEntrySurface(
+                            loadingBeforeResult,
+                            _loadingSurfaceRuntime.AdapterCount,
+                            _loadingSurfaceRuntime.ProgressSupported,
+                            loadingProgressReporter.LastProgress,
+                            activityEntryProgressDiagnostics)
+                    : !result.Succeeded && !result.DestinationAuthoritative
+                    ? FrameworkLoadingDiagnostics.NotExecutedRequestRejected()
+                    : CreateSkippedActivityLoadingDiagnostics(result);
+
+            _lastActivityEntryLoadingDiagnostics =
+                loadingDiagnostics;
+            LogActivityRequestResult(result, loadingDiagnostics);
+            return result;
+        }
+
+        internal async Task<FrameworkActivityRequestResult> ClearActivityAsync(string source, string reason)
+        {
+            InvalidateObjectEntryRuntimeContextSnapshot($"activity-clear:{NormalizeLifecycleSource(source)}");
+            var previousActivity = _state.CurrentActivity;
+            bool showLoadingSurface = ShouldShowActivityClearLoadingSurface(previousActivity, source, reason);
+            bool loadingProgressSupported = showLoadingSurface && _loadingSurfaceRuntime.ProgressSupported;
+            var loadingShowRequest = CreateActivityLoadingSurfaceRequest(
+                previousActivity,
+                source,
+                reason,
+                true,
+                LoadingProgress.Zero,
+                loadingProgressSupported);
+            var loadingProgressReporter = CreateLoadingProgressReporter(loadingShowRequest, showLoadingSurface);
+            LoadingSurfaceResult loadingBeforeResult = default;
+            LoadingSurfaceResult loadingAfterResult = default;
+
+            async Awaitable ShowLoadingAfterTransitionGate()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                loadingBeforeResult = await _loadingSurfaceRuntime.ShowAsync(loadingShowRequest);
+            }
+
+            async Awaitable HideLoadingBeforeTransitionRelease()
+            {
+                if (!showLoadingSurface)
+                {
+                    return;
+                }
+
+                var loadingHideRequest = CreateActivityLoadingSurfaceRequest(
+                    previousActivity,
+                    source,
+                    reason,
+                    false,
+                    ToSurfaceProgress(loadingProgressReporter.LastProgress),
+                    loadingProgressReporter.HasReportedProgress && loadingProgressReporter.LastProgress is { Supported: true, IsDeterminate: true });
+                loadingAfterResult = await _loadingSurfaceRuntime.HideAsync(loadingHideRequest);
+            }
+
+            var result = await _gameFlowRuntime.ClearActivityAsync(
+                source,
+                reason,
+                ShowLoadingAfterTransitionGate,
+                HideLoadingBeforeTransitionRelease,
+                loadingProgressReporter);
+            if (result.Succeeded)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result);
+                PublishCurrentActivityReadinessPresentation();
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-clear:{NormalizeLifecycleSource(source)}");
+            }
+            else if (result.Kind == FrameworkActivityRequestKind.IgnoredNoActiveActivity)
+            {
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-clear-kept:{NormalizeLifecycleSource(source)}");
+            }
+
+            var loadingDiagnostics = showLoadingSurface
+                ? FrameworkLoadingDiagnostics.FromUnitySurface(
+                    loadingBeforeResult,
+                    loadingAfterResult,
+                    _loadingSurfaceRuntime.AdapterCount,
+                    _loadingSurfaceRuntime.ProgressSupported,
+                    loadingProgressReporter.LastProgress)
+                : CreateSkippedActivityLoadingDiagnostics(result);
+
+            LogActivityRequestResult(result, loadingDiagnostics);
+            return result;
+        }
+
+        Task<FrameworkActivityRequestResult>
+            IActivityRuntimePort.RequestActivityAsync(
+                ActivityAsset targetActivity,
+                string source,
+                string reason) => RequestActivityAsync(targetActivity, source, reason);
+
+        Task<FrameworkActivityRequestResult>
+            IActivityRuntimePort.ClearActivityAsync(
+                string source,
+                string reason) => ClearActivityAsync(source, reason);
+
+
+        internal Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            return RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle: null);
+        }
+
+        internal async Awaitable<FrameworkActivityRestartFlowResult> RestartActivityAsync(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            Func<Awaitable<bool>> beforeRestartLifecycle)
+        {
+            InvalidateObjectEntryRuntimeContextSnapshot($"activity-restart:{NormalizeLifecycleSource(source)}");
+            var result = await _gameFlowRuntime.RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle);
+
+            if (result.ClearSucceeded)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ClearResult);
+                PublishCurrentActivityReadinessPresentation();
+            }
+
+            if (result.ReenterSucceeded)
+            {
+                _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ReenterResult);
+                PublishCurrentActivityReadinessPresentation();
+            }
+
+            RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:activity-restart:{NormalizeLifecycleSource(source)}");
+            return result;
+        }
+
+
+        private static FrameworkLoadingDiagnostics CreateSkippedActivityLoadingDiagnostics(FrameworkActivityRequestResult result)
+        {
+            var activityFlowResult = result.ActivityFlowResult;
+            bool hasActivitySceneSideEffects = activityFlowResult.ActivitySceneCompositionResult.SideEffectsExecuted
+                || activityFlowResult.ActivitySceneReleaseResult.SideEffectsExecuted;
+
+            return hasActivitySceneSideEffects
+                ? FrameworkLoadingDiagnostics.SkippedByActivityPolicy()
+                : FrameworkLoadingDiagnostics.SkippedNoSceneLoad();
+        }
+
+        internal async Task<CycleResetResult> RequestRouteCycleResetAsync(string source, string reason)
+        {
+            var result = await _gameFlowRuntime.RequestRouteCycleResetAsync(source, reason);
+            LogCycleResetResult(result);
+            return result;
+        }
+
+        async Task<ActivityRestartRuntimeResult> IActivityRestartRuntimePort.RequestActivityRestartAsync(
+            ActivityAsset targetActivity,
+            bool useCurrentActivityWhenTargetMissing,
+            bool requireTargetActivityIsCurrent,
+            ResetSelectionConfig resetSelection,
+            string source,
+            string reason)
+        {
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(ActivityRestartTrigger));
+            string resolvedReason = reason.NormalizeTextOrFallback("Activity Restart");
+            if (_gameFlowRuntime == null)
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedRuntimeUnavailable,
+                    targetActivity,
+                    ResolveActivityRestartName(targetActivity),
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity Restart failed. Application runtime is unavailable."));
+            }
+
+            ActivityAsset currentActivity = State.CurrentActivity;
+            ActivityAsset resolvedActivity = targetActivity != null
+                ? targetActivity
+                : useCurrentActivityWhenTargetMissing ? currentActivity : null;
+            string resolvedActivityName = ResolveActivityRestartName(resolvedActivity);
+            if (resolvedActivity == null)
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedNoActiveActivity,
+                    null,
+                    string.Empty,
+                    resolvedSource,
+                    resolvedReason,
+                    "Activity Restart failed. No target Activity is configured and no active Activity is available."));
+            }
+
+            if (requireTargetActivityIsCurrent && !ReferenceEquals(currentActivity, resolvedActivity))
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedTargetMismatch,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    $"Activity Restart failed. Target Activity must be the current active Activity. current='{ResolveActivityRestartName(currentActivity)}' target='{resolvedActivityName}'."));
+            }
+
+            if (resetSelection == null)
+            {
+                ResetExecutionResult invalidSelection = ResetExecutionResult.RejectedInvalidRequest(
+                    ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection is required."),
+                    resolvedSource,
+                    BuildActivityRestartStageReason(resolvedReason, "reset"));
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    invalidSelection,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "Activity Restart failed. Reset selection is unavailable."));
+            }
+
+            ResetSelectionResolution selectionResolution = resetSelection.Resolve(
+                this,
+                resolvedSource,
+                BuildActivityRestartStageReason(resolvedReason, "reset"));
+            if (selectionResolution.Failed)
+            {
+                ResetIssue issue = selectionResolution.Issues.Count > 0
+                    ? selectionResolution.Issues[0]
+                    : ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection failed.");
+                ResetExecutionResult selectionFailure = ResetExecutionResult.RejectedInvalidRequest(
+                    issue,
+                    resolvedSource,
+                    BuildActivityRestartStageReason(resolvedReason, "reset"));
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    selectionFailure,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "Activity Restart failed. Reset selection failed."), selectionResolution);
+            }
+
+            ResetExecutionRequest resetRequest = resetSelection.CreateExecutionRequest(selectionResolution);
+            ResetExecutionResult resetExecutionResult = default;
+            FrameworkActivityRestartFlowResult restartFlowResult = await RestartActivityAsync(
+                resolvedActivity,
+                resolvedSource,
+                BuildActivityRestartStageReason(resolvedReason, "flow"),
+                async () =>
+                {
+                    try
+                    {
+                        var executor = new ResetExecutor(ResetRegistry);
+                        resetExecutionResult = await executor.ExecuteAsync(resetRequest);
+                        return !resetExecutionResult.Failed;
+                    }
+                    catch (Exception exception)
+                    {
+                        resetExecutionResult = ResetExecutionResult.RejectedInvalidRequest(
+                            ResetIssue.Error(ResetIssueKind.Exception, $"Activity Restart reset execution threw an exception. {exception.Message}"),
+                            resolvedSource,
+                            BuildActivityRestartStageReason(resolvedReason, "reset"));
+                        return false;
+                    }
+                });
+
+            if (resetExecutionResult.Failed)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ResetExecutionFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    string.Empty,
+                    restartFlowResult.ClearResult.Message,
+                    string.Empty,
+                    restartFlowResult.ReenterResult.Message,
+                    "Activity Restart failed. Reset execution failed."), selectionResolution);
+            }
+
+            FrameworkActivityRequestResult clearResult = restartFlowResult.ClearResult;
+            FrameworkActivityRequestResult reenterResult = restartFlowResult.ReenterResult;
+            if (!clearResult.Succeeded)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ActivityClearFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    clearResult.Kind.ToString(),
+                    clearResult.Message,
+                    reenterResult.Kind.ToString(),
+                    reenterResult.Message,
+                    "Activity Restart failed. Activity Clear failed."), selectionResolution);
+            }
+
+            if (!reenterResult.Succeeded)
+            {
+                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                    ActivityRestartResultStatus.ActivityReenterFailed,
+                    resolvedActivity,
+                    resolvedActivityName,
+                    resolvedSource,
+                    resolvedReason,
+                    resetExecutionResult,
+                    clearResult.Kind.ToString(),
+                    clearResult.Message,
+                    reenterResult.Kind.ToString(),
+                    reenterResult.Message,
+                    "Activity Restart failed. Activity re-enter failed."), selectionResolution);
+            }
+
+            ActivityRestartResultStatus status = resetExecutionResult.NonBlockingIssueCount > 0
+                ? ActivityRestartResultStatus.CompletedWithWarnings
+                : ActivityRestartResultStatus.Succeeded;
+            return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
+                status,
+                resolvedActivity,
+                resolvedActivityName,
+                resolvedSource,
+                resolvedReason,
+                resetExecutionResult,
+                clearResult.Kind.ToString(),
+                clearResult.Message,
+                reenterResult.Kind.ToString(),
+                reenterResult.Message,
+                status == ActivityRestartResultStatus.CompletedWithWarnings
+                    ? "Activity Restart completed with reset warnings."
+                    : "Activity Restart completed successfully."), selectionResolution);
+        }
+
+        private static string ResolveActivityRestartName(ActivityAsset activity)
+        {
+            return activity != null
+                ? activity.ActivityName.NormalizeTextOrFallback(activity.name)
+                : string.Empty;
+        }
+
+        private static string BuildActivityRestartStageReason(string reason, string stage)
+        {
+            return $"{reason.NormalizeTextOrFallback("Activity Restart")}:{stage}";
+        }
+
+        Task<CycleResetResult> IRouteCycleResetRuntimePort.RequestRouteCycleResetAsync(
+            string source,
+            string reason) => RequestRouteCycleResetAsync(source, reason);
+
+        internal async Task<CycleResetResult> RequestActivityCycleResetAsync(string source, string reason)
+        {
+            var result = await _gameFlowRuntime.RequestActivityCycleResetAsync(source, reason);
+            LogCycleResetResult(result);
+            return result;
+        }
+
+        Task<CycleResetResult> IActivityCycleResetRuntimePort.RequestActivityCycleResetAsync(
+            string source,
+            string reason) => RequestActivityCycleResetAsync(source, reason);
+
+        internal PauseResult RequestPause(PauseRequestKind kind, string source, string reason)
+        {
+            return RequestPause(CreatePauseRequest(kind, source, reason));
+        }
+
+        internal PauseResult RequestPause(PauseRequest request)
+        {
+            if (_pauseRuntime == null)
+            {
+                throw new InvalidOperationException("Pause runtime is not initialized.");
+            }
+
+            var result = TryCreateTransitionBlockedPauseResult(request, out var transitionBlockedResult)
+                ? transitionBlockedResult
+                : _pauseRuntime.Request(request);
+            var timeScaleResult = _pauseTimeScaleRuntime != null
+                ? _pauseTimeScaleRuntime.Apply(result)
+                : default;
+            var pauseSurfaceResult = ApplyPauseSurfaceSnapshot(request.Source, request.Reason);
+            LogPauseRequestResult(result, pauseSurfaceResult, timeScaleResult);
+            return result;
+        }
+
+        PauseResult IPauseRuntimePort.RequestPause(PauseRequest request) =>
+            RequestPause(request);
+
+        private bool TryCreateTransitionBlockedPauseResult(PauseRequest request, out PauseResult result)
+        {
+            if (_gameFlowRuntime == null || _pauseRuntime == null)
+            {
+                result = default;
+                return false;
+            }
+
+            GateSnapshot transitionGateSnapshot = TransitionGateSnapshot;
+            if (!transitionGateSnapshot.HasBlockers)
+            {
+                result = default;
+                return false;
+            }
+
+            string source = request.Source.NormalizeTextOrFallback(nameof(FrameworkRuntimeHost));
+            string reason = request.Reason.NormalizeTextOrFallback("pause.request");
+            var issues = new[]
+            {
+                PauseIssue.Blocking(
+                    PauseTransitionInProgressIssueCode,
+                    source,
+                    reason,
+                    "Pause request was rejected because a framework transition or loading operation is in progress.")
+            };
+
+            result = PauseResult.RejectedResult(
+                request,
+                _pauseRuntime.State,
+                "Pause request rejected by transition policy because a framework transition or loading operation is in progress.",
+                issues);
+            return true;
+        }
+
+        internal GateEvaluationResult EvaluatePauseGateAdmission(
+            GateScope scope,
+            GateDomain domain,
+            string subject,
+            string source,
+            string reason)
+        {
+            if (_pauseRuntime == null)
+            {
+                throw new InvalidOperationException("Pause runtime is not initialized.");
+            }
+
+            return _pauseRuntime.EvaluateGate(scope, domain, subject, source, reason);
+        }
+
+        internal GateEvaluationResult EvaluateTransitionGateAdmission(
+            GateScope scope,
+            GateDomain domain,
+            string subject,
+            string source,
+            string reason)
+        {
+            if (_gameFlowRuntime == null)
+            {
+                throw new InvalidOperationException("Game Flow runtime is not initialized.");
+            }
+
+            return _gameFlowRuntime.EvaluateTransitionGateAdmission(scope, domain, subject, source, reason);
+        }
+
+        private static bool TryResolveResetOwnerFromContext(
+            ObjectEntryScopedCollectionContext context,
+            ObjectEntryScope objectEntryScope,
+            RuntimeContentScope runtimeContentScope,
+            string ownerName,
+            out RuntimeContentOwner owner,
+            out string issue)
+        {
+            owner = default;
+
+            if (!context.TryValidate(out issue))
+            {
+                return false;
+            }
+
+            if (!context.TryResolveOwnerIdentity(objectEntryScope, out FrameworkIdentityKey ownerIdentity))
+            {
+                issue = $"No active runtime owner identity is available for scope '{objectEntryScope}'.";
+                return false;
+            }
+
+            try
+            {
+                owner = new RuntimeContentOwner(runtimeContentScope, ownerIdentity, ownerName);
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            {
+                issue = exception.Message;
+                owner = default;
+                return false;
+            }
+        }
+
+        private ObjectEntryScopedCollectionContext CreateCurrentObjectEntryScopedCollectionContext()
+        {
+            ActivityAsset activity = _state.CurrentActivity;
+            ActivityContentDiscoveryScope activityScope = default;
+            RouteLifecycleRuntime routeLifecycleRuntime =
+                _gameFlowRuntime?.CurrentRouteLifecycleRuntime;
+            ActivityFlowRuntime activityFlowRuntime =
+                routeLifecycleRuntime?.CurrentActivityFlowRuntime;
+            bool hasActivityScope = activity != null &&
+                activityFlowRuntime != null &&
+                activityFlowRuntime.TryCreateCurrentActivityContentDiscoveryScope(
+                    activity,
+                    out activityScope);
+
+            return new ObjectEntryScopedCollectionContext(
+                _runtimeSessionScopeResult.HasOwner
+                    ? _runtimeSessionScopeResult.Owner.OwnerIdentity
+                    : default,
+                _state.CurrentRoute,
+                _state.RouteState.RouteIdentity,
+                _state.RouteSceneCompositionResult,
+                activity,
+                _state.ActivityState.ActivityIdentity,
+                activityScope,
+                hasActivityScope);
+        }
+
+        private void Initialize(GameApplicationAsset application)
+        {
+            _gameApplication = application;
+            _runtimeContentRuntime = new RuntimeContentRuntime();
+            _pauseRuntime = new PauseRuntime();
+            _pauseTimeScaleRuntime = new PauseTimeScaleRuntime();
+            _logger = FrameworkLogger.Create<FrameworkRuntimeHost>();
+            _pauseProductBindingRuntime = new PauseProductBindingRuntimeContext(this);
+            _pauseActivityBindingRuntime = new PauseActivityBindingRuntimeContext();
+            _pauseActivityBindingModule = new PauseActivityBindingRuntimeHostModule(
+                _pauseActivityBindingRuntime,
+                _pauseProductBindingRuntime);
+            _resetProductBindingSceneLifecycleParticipant =
+                new ResetProductBindingSceneLifecycleParticipant(
+                    (IResetRegistrationRuntimePort)this,
+                    (IResetExecutionRuntimePort)this,
+                    (IResetSelectionExecutionRuntimePort)this);
+            _sceneLifecycleRuntime = new SceneLifecycleRuntime(
+                new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
+                _resetProductBindingSceneLifecycleParticipant,
+                new SceneLifecycleEventsParticipant());
+            _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
+            _state = FrameworkRuntimeState.Empty(application);
+        }
+
+        internal void SetPauseActivityBindingPlayerEvidence(
+            IPauseActivityBindingPlayerEvidence evidence)
+        {
+            _pauseActivityBindingModule?.SetPlayerEvidence(evidence);
+        }
+
+        private void ApplyPauseActivityBindingLifecycle()
+        {
+            _gameFlowRuntime?.SetPauseActivityBindingLifecycle(
+                _pauseActivityBindingModule);
+        }
+
+        private void ApplyRetainedActivityParticipantSources()
+        {
+            if (_gameFlowRuntime == null)
+            {
+                return;
+            }
+
+            _activityParticipantSourceBindings.ApplyTo(
+                _gameFlowRuntime.SetActivityContentExecutionParticipantSource,
+                _gameFlowRuntime.SetActivityReadinessParticipantSource);
+        }
+
+        private void InvalidateObjectEntryRuntimeContextSnapshot(string reason)
+        {
+            _objectEntryRuntimeContextSnapshot = null;
+            _objectEntryRuntimeContextInvalidationCount++;
+            _lastObjectEntryRuntimeContextInvalidationReason = reason.NormalizeTextOrFallback("lifecycle-boundary");
+        }
+
+        private PauseRequest CreatePauseRequest(PauseRequestKind kind, string source, string reason)
+        {
+            if (!Enum.IsDefined(typeof(PauseRequestKind), kind) || kind == PauseRequestKind.Unknown)
+            {
+                throw new ArgumentOutOfRangeException(nameof(kind), kind, "Pause request kind must be explicit.");
+            }
+
+            _pauseRequestSequence++;
+            string requestId = $"framework.pause.{_pauseRequestSequence}.{kind.ToString().ToLowerInvariant()}";
+            return new PauseRequest(
+                PauseRequestId.From(requestId),
+                kind,
+                NormalizeLifecycleSource(source),
+                string.IsNullOrWhiteSpace(reason) ? "pause.request" : reason.Trim());
+        }
+
+        private static string NormalizeLifecycleSource(string source)
+        {
+            return source.NormalizeTextOrFallback("Unknown");
+        }
+
+        private bool ShouldShowLoadingSurface(RouteAsset targetRoute)
+        {
+            return _loadingSurfaceRuntime is { HasVisibleSurface: true }
+                && targetRoute != null;
+        }
+
+        private static LoadingSurfaceRequest CreateLoadingSurfaceRequest(
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            bool show,
+            LoadingProgress progress,
+            bool progressSupported)
+        {
+            string routeLabel = targetRoute != null && !string.IsNullOrWhiteSpace(targetRoute.RouteName)
+                ? targetRoute.RouteName
+                : "Loading";
+            string sceneLabel = targetRoute != null && !string.IsNullOrWhiteSpace(targetRoute.PrimarySceneName)
+                ? targetRoute.PrimarySceneName
+                : targetRoute != null && !string.IsNullOrWhiteSpace(targetRoute.PrimaryScenePath)
+                    ? targetRoute.PrimaryScenePath
+                    : string.Empty;
+
+            string detail = string.IsNullOrWhiteSpace(sceneLabel)
+                ? routeLabel
+                : $"{routeLabel} / {sceneLabel}";
+
+            return show
+                ? LoadingSurfaceRequest.Show(routeLabel, detail, source, reason, progress, progressSupported)
+                : LoadingSurfaceRequest.Hide(routeLabel, detail, source, reason, progress, progressSupported);
+        }
+
+        private bool ShouldShowActivityLoadingSurface(
+            ActivityAsset targetActivity,
+            ActivityAsset previousActivity,
+            string source,
+            string reason)
+        {
+            if (_loadingSurfaceRuntime == null || !_loadingSurfaceRuntime.HasVisibleSurface)
+            {
+                return false;
+            }
+
+            if (_gameFlowRuntime == null ||
+                targetActivity == null ||
+                !targetActivity.HasValidActivityId)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(targetActivity, previousActivity))
+            {
+                return false;
+            }
+
+            var operationPreview = _gameFlowRuntime.PreviewActivityOperation(
+                previousActivity == null ? ActivityOperationKind.Start : ActivityOperationKind.Switch,
+                previousActivity,
+                targetActivity,
+                targetActivity.VisualTransitionMode,
+                source,
+                reason);
+
+            return operationPreview is { IsValid: true, RequiresLoadingSurface: true };
+        }
+
+        private bool ShouldShowActivityClearLoadingSurface(ActivityAsset previousActivity, string source, string reason)
+        {
+            if (_loadingSurfaceRuntime == null || !_loadingSurfaceRuntime.HasVisibleSurface)
+            {
+                return false;
+            }
+
+            if (_gameFlowRuntime == null || previousActivity == null)
+            {
+                return false;
+            }
+
+            var operationPreview = _gameFlowRuntime.PreviewActivityOperation(
+                ActivityOperationKind.Clear,
+                previousActivity,
+                null,
+                previousActivity.VisualTransitionMode,
+                source,
+                reason);
+
+            return operationPreview is { IsValid: true, RequiresLoadingSurface: true };
+        }
+
+        private static LoadingSurfaceRequest CreateActivityLoadingSurfaceRequest(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            bool show,
+            LoadingProgress progress,
+            bool progressSupported)
+        {
+            string activityLabel = targetActivity != null && !string.IsNullOrWhiteSpace(targetActivity.ActivityName)
+                ? targetActivity.ActivityName
+                : "Activity";
+            var profile = targetActivity != null ? targetActivity.ActivityContentProfile : null;
+            string detail = profile != null && !string.IsNullOrWhiteSpace(profile.ProfileId)
+                ? $"{activityLabel} / {profile.ProfileId}"
+                : activityLabel;
+
+            return show
+                ? LoadingSurfaceRequest.Show(activityLabel, detail, source, reason, progress, progressSupported)
+                : LoadingSurfaceRequest.Hide(activityLabel, detail, source, reason, progress, progressSupported);
+        }
+
+
+        private IFrameworkLoadingProgressReporter CreateLoadingProgressReporter(
+            LoadingSurfaceRequest baseRequest,
+            bool showLoadingSurface)
+        {
+            if (!showLoadingSurface || _loadingSurfaceRuntime == null || !_loadingSurfaceRuntime.ProgressSupported)
+            {
+                return NoOpFrameworkLoadingProgressReporter.Instance;
+            }
+
+            return new LoadingSurfaceProgressReporter(_loadingSurfaceRuntime, baseRequest);
+        }
+
+        private static LoadingProgress ToSurfaceProgress(FrameworkLoadingProgress progress)
+        {
+            return progress is { Supported: true, IsDeterminate: true }
+                ? LoadingProgress.FromNormalized(progress.Value01)
+                : LoadingProgress.Zero;
+        }
+
+        private LoadingSurfaceRuntime CreateLoadingSurfaceRuntime(GlobalUiSceneRuntime globalUiSceneRuntime)
+        {
+            return LoadingSurfaceRuntime.Create(
+                _logger,
+                globalUiSceneRuntime != null ? globalUiSceneRuntime.LoadingAdapters : Array.Empty<ILoadingSurfaceAdapter>(),
+                globalUiSceneRuntime != null ? globalUiSceneRuntime.Label : string.Empty);
+        }
+
+        private PauseSurfaceRuntime CreatePauseSurfaceRuntime(GlobalUiSceneRuntime globalUiSceneRuntime)
+        {
+            return PauseSurfaceRuntime.Create(
+                _logger,
+                globalUiSceneRuntime != null ? globalUiSceneRuntime.PauseAdapters : Array.Empty<IPauseSurfaceAdapter>(),
+                globalUiSceneRuntime != null ? globalUiSceneRuntime.Label : string.Empty);
+        }
+
+        private PauseSurfaceApplicationResult ApplyPauseSurfaceSnapshot(string source, string reason)
+        {
+            if (_pauseRuntime == null)
+            {
+                throw new InvalidOperationException("Pause runtime is not initialized.");
+            }
+
+            if (_pauseSurfaceRuntime == null)
+            {
+                return PauseSurfaceApplicationResult.NoSurface(
+                    _pauseRuntime.Snapshot,
+                    "Pause Surface",
+                    source,
+                    reason);
+            }
+
+            return _pauseSurfaceRuntime.ApplySnapshot(
+                _pauseRuntime.Snapshot,
+                NormalizeLifecycleSource(source),
+                string.IsNullOrWhiteSpace(reason) ? "pause.surface.apply" : reason.Trim());
+        }
+
+        private ITransitionOrchestrator CreateTransitionOrchestrator(
+            GlobalUiSceneRuntime globalUiSceneRuntime,
+            CameraOutputSessionTopology cameraOutputTopology)
+        {
+            if (globalUiSceneRuntime == null)
+            {
+                _logger.Warning("Transition surface is not configured because the UIGlobal scene runtime is missing.");
+                return NoOpTransitionOrchestrator.Instance;
+            }
+
+            IReadOnlyList<ITransitionEffectAdapter> sceneAdapters = globalUiSceneRuntime != null
+                ? globalUiSceneRuntime.TransitionAdapters
+                : Array.Empty<ITransitionEffectAdapter>();
+            bool hasSceneAdapters = sceneAdapters is { Count: > 0 };
+            string sceneLabel = globalUiSceneRuntime != null && !string.IsNullOrWhiteSpace(globalUiSceneRuntime.Label)
+                ? globalUiSceneRuntime.Label
+                : "UIGlobal Transition Surface";
+
+            if (!hasSceneAdapters)
+            {
+                _logger.Debug("Transition surface is not configured. Transition will remain explicit NoOp.");
+                return NoOpTransitionOrchestrator.Instance;
+            }
+
+            _logger.Debug("Transition surface resolved.", LogFields.Field("scene", sceneLabel));
+            _logger.Debug(
+                "Transition surface diagnostics.",
+                LogFields.Of(
+                    LogFields.Field("scene", sceneLabel),
+                    LogFields.Field("adapterCount", sceneAdapters.Count)));
+            var transitionOrchestrator =
+                new TransitionEffectOrchestrator(
+                    sceneAdapters,
+                    sceneLabel);
+
+            return new SessionCameraTransitionOrchestrator(
+                transitionOrchestrator,
+                cameraOutputTopology);
+        }
+
+
+        private bool TryInitializeSessionCameraPresentations(
+            out string issue)
+        {
+            issue = string.Empty;
+            IReadOnlyList<CameraPresentationDefinition> definitions =
+                _gameApplication.SessionCameraPresentations;
+            if (definitions == null || definitions.Count == 0)
+            {
+                return true;
+            }
+
+            if (_cameraOutputTopology == null)
+            {
+                issue =
+                    "Session Camera Presentations require an initialized Camera Output topology.";
+                return false;
+            }
+
+            if (_cameraSubjectAvailabilityContext == null)
+            {
+                issue =
+                    "Session Camera Presentations require a Camera Subject availability context.";
+                return false;
+            }
+
+            if (!TryCreateSessionRuntimeScopeContext(
+                    "FrameworkRuntimeHost",
+                    "camera-session-presentation",
+                    out RuntimeScopeContext sessionContext,
+                    out issue))
+            {
+                return false;
+            }
+
+            _cameraPresentationMaterializationRuntime ??=
+                new CameraPresentationMaterializationRuntime(
+                    _runtimeContentRuntime);
+
+            var seenDefinitions =
+                new HashSet<CameraPresentationDefinition>();
+            var seenIds =
+                new HashSet<CameraPresentationId>();
+
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                CameraPresentationDefinition definition =
+                    definitions[index];
+                if (definition == null)
+                {
+                    issue =
+                        $"Session Camera Presentations[{index}] is missing.";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                if (!seenDefinitions.Add(definition) ||
+                    !definition.HasValidId ||
+                    !seenIds.Add(definition.PresentationId))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' is duplicated or has invalid identity.";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                if (!definition.TryValidate(
+                        out string definitionIssue))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' is invalid. {definitionIssue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                CameraPresentationMaterializationResult materialized =
+                    _cameraPresentationMaterializationRuntime.Materialize(
+                        sessionContext,
+                        definition,
+                        transform,
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation");
+                if (!materialized.Succeeded ||
+                    materialized.Handle == null)
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' materialization failed. {materialized.Issue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                CameraPresentationMaterializationHandle handle =
+                    materialized.Handle;
+                _sessionCameraPresentationHandles.Add(handle);
+
+                if (_playerCameraPresentationSelectionRuntime != null &&
+                    !_playerCameraPresentationSelectionRuntime.TryAttach(
+                        handle,
+                        out _,
+                        out string playerSelectionIssue))
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' Player Subject selection attachment failed. {playerSelectionIssue}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-selection-rollback",
+                        out _);
+                    return false;
+                }
+
+                try
+                {
+                    if (!_cameraOutputTopology.TryGetOutput(
+                            definition.OutputDefinition.OutputId,
+                            out CameraOutputAuthoring output,
+                            out string outputIssue))
+                    {
+                        issue =
+                            $"Session Camera Presentation '{definition.name}' targets an unavailable Session Output. {outputIssue}";
+                        TryReleaseSessionCameraPresentations(
+                            "FrameworkRuntimeHost",
+                            "camera-session-presentation-init-rollback",
+                            out _);
+                        return false;
+                    }
+
+                    handle.PresentationRuntime.AttachOutputSession(
+                        output);
+                    handle.PresentationRuntime
+                        .AttachCameraSubjectAvailability(
+                            _cameraSubjectAvailabilityContext);
+                    handle.PresentationRuntime.SetEnabled(true);
+                }
+                catch (Exception exception)
+                {
+                    issue =
+                        $"Session Camera Presentation '{definition.name}' activation failed. {exception.Message}";
+                    TryReleaseSessionCameraPresentations(
+                        "FrameworkRuntimeHost",
+                        "camera-session-presentation-init-rollback",
+                        out _);
+                    return false;
+                }
+
+                _logger.Debug(
+                    "Session Camera Presentation materialized.",
+                    LogFields.Field(
+                        "presentation",
+                        definition.name),
+                    LogFields.Field(
+                        "presentationId",
+                        definition.PresentationId.Value),
+                    LogFields.Field(
+                        "output",
+                        definition.OutputDefinition.OutputId.Value),
+                    LogFields.Field(
+                        "subjectPolicy",
+                        definition.SubjectPolicy),
+                    LogFields.Field(
+                        "transitionMode",
+                        definition.TransitionMode),
+                    LogFields.Field(
+                        "requestPrecedence",
+                        definition.RequestPrecedence));
+            }
+
+            return true;
+        }
+
+        private bool TryReleaseSessionCameraPresentations(
+            string source,
+            string reason,
+            out string issue,
+            bool terminalShutdown = false)
+        {
+            issue = string.Empty;
+            if (_sessionCameraPresentationHandles.Count == 0)
+            {
+                return true;
+            }
+
+            if (_cameraPresentationMaterializationRuntime == null)
+            {
+                issue =
+                    "Session Camera Presentation handles exist without a materialization runtime.";
+                return false;
+            }
+
+            bool succeeded = true;
+            var issues = new List<string>();
+            for (int index =
+                    _sessionCameraPresentationHandles.Count - 1;
+                index >= 0;
+                index--)
+            {
+                CameraPresentationMaterializationHandle handle =
+                    _sessionCameraPresentationHandles[index];
+                CameraPresentationMaterializationResult release =
+                    terminalShutdown
+                        ? _cameraPresentationMaterializationRuntime
+                            .ReleaseTerminal(
+                                handle,
+                                source,
+                                reason)
+                        : _cameraPresentationMaterializationRuntime.Release(
+                            handle,
+                            source,
+                            reason);
+                if (!release.Succeeded)
+                {
+                    succeeded = false;
+                    issues.Add(
+                        $"presentation='{handle.Definition.name}' issue='{release.Issue}'");
+                    continue;
+                }
+
+                _playerCameraPresentationSelectionRuntime
+                    ?.ForgetReleased(handle);
+                _sessionCameraPresentationHandles.RemoveAt(index);
+            }
+
+            if (succeeded)
+            {
+                _cameraPresentationMaterializationRuntime = null;
+                return true;
+            }
+
+            issue = string.Join("; ", issues);
+            return false;
+        }
+
+        private RuntimeScopeLifecycleResult CreateSessionScopeRoot(GameApplicationAsset application, string source, string reason)
+        {
+            var owner = RuntimeContentOwner.Session(application.ApplicationName, application.ApplicationName);
+            var enterResult = _runtimeContentRuntime.CreateScopeRoot(owner, source, reason);
+            _runtimeContentRuntime.TryCreateScopeContext(owner, source, reason, out var context);
+
+            return new RuntimeScopeLifecycleResult(
+                RuntimeContentScope.Session,
+                owner,
+                enterResult,
+                null,
+                context,
+                _runtimeContentRuntime.RootCount,
+                source,
+                reason);
+        }
+
+        private void LogRouteRequestResult(FrameworkRouteRequestResult result, FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            if (result.Succeeded)
+            {
+                _logger.Info("Route Request completed.", BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
+                LogActivityContentObservability(result.RouteLifecycleResult.ActivityFlowResult.ActivityContentResult);
+                return;
+            }
+
+            if (result.Kind is FrameworkRouteRequestKind.IgnoredAlreadyActive
+                or FrameworkRouteRequestKind.IgnoredAlreadyInFlight
+                or FrameworkRouteRequestKind.SupersededCommittedTargetByRouteReplacement)
+            {
+                _logger.Info(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
+                return;
+            }
+
+            _logger.Error(result.Message, BuildRouteRequestSummaryFields(result, loadingDiagnostics));
+            _logger.Debug("Route Request diagnostics. " + result.Message, BuildRouteRequestDiagnosticFields(result, loadingDiagnostics));
+        }
+
+        private void LogRouteRequestRuntimeNotReady(FrameworkRouteRequestResult result)
+        {
+            _logger.Warning(
+                result.Message,
+                LogFields.Of(
+                    LogFields.Field("kind", result.Kind),
+                    LogFields.Field("source", result.Source),
+                    LogFields.Field("reason", result.Reason),
+                    LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                    LogFields.Field("gameFlowRuntimeInitialized", false)));
+        }
+
+        private void LogActivityRequestResult(FrameworkActivityRequestResult result, FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            if (result.Succeeded)
+            {
+                _logger.Info("Activity Request completed.", BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
+                LogActivityContentObservability(result.ActivityFlowResult.ActivityContentResult);
+                return;
+            }
+
+            if (result.Kind is FrameworkActivityRequestKind.IgnoredAlreadyActive
+                or FrameworkActivityRequestKind.IgnoredAlreadyInFlight
+                or FrameworkActivityRequestKind.IgnoredNoActiveActivity
+                or FrameworkActivityRequestKind.SupersededCommittedTargetByRouteReplacement)
+            {
+                _logger.Info(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+                _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
+                return;
+            }
+
+            _logger.Error(result.Message, BuildActivityRequestSummaryFields(result, loadingDiagnostics));
+            _logger.Debug("Activity Request diagnostics. " + result.Message, BuildActivityRequestDiagnosticFields(result, loadingDiagnostics));
+        }
+
+        private void LogPauseRequestResult(
+            PauseResult result,
+            PauseSurfaceApplicationResult pauseSurfaceResult,
+            PauseTimeScaleApplicationResult timeScaleResult)
+        {
+            if (result.Applied || result.IgnoredNoChange)
+            {
+                _logger.Info("Pause Request completed.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
+                return;
+            }
+
+            if (result.Rejected)
+            {
+                if (IsPauseRejectedByTransitionPolicy(result))
+                {
+                    _logger.Info("Pause Request rejected by transition policy.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                    _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
+                    _logger.Debug("Pause transition gate diagnostics.", BuildPauseTransitionGateDiagnosticFields());
+                    return;
+                }
+
+                _logger.Warning("Pause Request rejected.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+                _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
+                return;
+            }
+
+            _logger.Error("Pause Request failed.", BuildPauseRequestSummaryFields(result, pauseSurfaceResult));
+            _logger.Debug("Pause Request diagnostics. " + result.ToDiagnosticString(), BuildPauseRequestDiagnosticFields(result, pauseSurfaceResult, timeScaleResult));
+        }
+
+        private void LogCycleResetResult(CycleResetResult result)
+        {
+            if (result.Succeeded || result.CompletedWithWarnings)
+            {
+                _logger.Info("Cycle Reset Request completed.", BuildCycleResetSummaryFields(result));
+                _logger.Debug("Cycle Reset Request diagnostics. " + result.ToDiagnosticString(), BuildCycleResetDiagnosticFields(result));
+                return;
+            }
+
+            if (result.Status == CycleResetStatus.SucceededNoParticipants)
+            {
+                _logger.Info("Cycle Reset Request completed with no participants.", BuildCycleResetSummaryFields(result));
+                _logger.Debug("Cycle Reset Request diagnostics. " + result.ToDiagnosticString(), BuildCycleResetDiagnosticFields(result));
+                return;
+            }
+
+            _logger.Error("Cycle Reset Request failed. " + result.ToDiagnosticString());
+        }
+
+        private LogField[] BuildPauseRequestSummaryFields(
+            PauseResult result,
+            PauseSurfaceApplicationResult pauseSurfaceResult)
+        {
+            return LogFields.Of(
+                LogFields.Field("request", result.RequestId.StableText),
+                LogFields.Field("kind", result.Kind.ToString()),
+                LogFields.Field("source", result.Request.Source),
+                LogFields.Field("reason", result.Request.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("policyStatus", IsPauseRejectedByTransitionPolicy(result) ? PauseTransitionInProgressStatus : string.Empty),
+                LogFields.Field("previousState", result.PreviousState.ToString()),
+                LogFields.Field("currentState", result.CurrentState.ToString()),
+                LogFields.Field("applied", result.Applied),
+                LogFields.Field("stateChanged", result.StateChanged),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount),
+                LogFields.Field("pauseSurface", pauseSurfaceResult.StatusText));
+        }
+
+        private LogField[] BuildPauseRequestDiagnosticFields(
+            PauseResult result,
+            PauseSurfaceApplicationResult pauseSurfaceResult,
+            PauseTimeScaleApplicationResult timeScaleResult)
+        {
+            var gateSnapshot = PauseGateSnapshot;
+            return LogFields.Of(
+                LogFields.Field("request", result.RequestId.StableText),
+                LogFields.Field("kind", result.Kind.ToString()),
+                LogFields.Field("source", result.Request.Source),
+                LogFields.Field("reason", result.Request.Reason),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("policyStatus", IsPauseRejectedByTransitionPolicy(result) ? PauseTransitionInProgressStatus : string.Empty),
+                LogFields.Field("message", result.Message),
+                LogFields.Field("previousState", result.PreviousState.ToString()),
+                LogFields.Field("currentState", result.CurrentState.ToString()),
+                LogFields.Field("completed", result.Completed),
+                LogFields.Field("applied", result.Applied),
+                LogFields.Field("ignoredNoChange", result.IgnoredNoChange),
+                LogFields.Field("rejected", result.Rejected),
+                LogFields.Field("failed", result.Failed),
+                LogFields.Field("stateChanged", result.StateChanged),
+                LogFields.Field("gateBlockers", gateSnapshot.BlockerCount),
+                LogFields.Field("blocksInputAcceptance", gateSnapshot.IsBlockedForAnyOwner(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("blocksInteractionAcceptance", gateSnapshot.IsBlockedForAnyOwner(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("blocksPauseRequest", gateSnapshot.IsBlockedForAnyOwner(GateScope.Pause, GateDomain.PauseRequest)),
+                LogFields.Field("issues", result.IssueCount),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount),
+                LogFields.Field("timeScale", timeScaleResult.IsValid ? timeScaleResult.StatusText : "Unknown"),
+                LogFields.Field("timeScaleApplied", timeScaleResult.IsValid && timeScaleResult.Applied),
+                LogFields.Field("timeScaleRestored", timeScaleResult.IsValid && timeScaleResult.Restored),
+                LogFields.Field("timeScaleChanged", timeScaleResult.IsValid && timeScaleResult.Changed),
+                LogFields.Field("previousTimeScale", timeScaleResult.IsValid ? timeScaleResult.PreviousTimeScale.ToString("0.###") : "<unknown>"),
+                LogFields.Field("targetTimeScale", timeScaleResult.IsValid ? timeScaleResult.TargetTimeScale.ToString("0.###") : "<unknown>"),
+                LogFields.Field("currentTimeScale", timeScaleResult.IsValid ? timeScaleResult.CurrentTimeScale.ToString("0.###") : "<unknown>"),
+                LogFields.Field("capturedRunningTimeScale", timeScaleResult.IsValid ? timeScaleResult.CapturedRunningTimeScale.ToString("0.###") : "<unknown>"),
+                LogFields.Field("pauseSurface", pauseSurfaceResult.StatusText),
+                LogFields.Field("pauseSurfaceVisual", pauseSurfaceResult.VisualText),
+                LogFields.Field("pauseSurfaceAdapterCount", pauseSurfaceResult.AdapterCount),
+                LogFields.Field("pauseSurfaceSupportedAdapters", pauseSurfaceResult.SupportedAdapterCount),
+                LogFields.Field("pauseSurfaceAppliedAdapters", pauseSurfaceResult.AppliedAdapterCount),
+                LogFields.Field("pauseSurfaceFailedAdapters", pauseSurfaceResult.FailedAdapterCount),
+                LogFields.Field("pauseSurfaceIssues", pauseSurfaceResult.IssueCount),
+                LogFields.Field("pauseSurfaceState", pauseSurfaceResult.Snapshot.State.ToString()),
+                LogFields.Field("pauseSurfacePaused", pauseSurfaceResult.Snapshot.IsPaused));
+        }
+
+        private static bool IsPauseRejectedByTransitionPolicy(PauseResult result)
+        {
+            if (!result.Rejected || !result.HasBlockingIssues)
+            {
+                return false;
+            }
+
+            IReadOnlyList<PauseIssue> issues = result.Issues;
+            for (int i = 0; i < issues.Count; i++)
+            {
+                if (string.Equals(issues[i].Code, PauseTransitionInProgressIssueCode, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private LogField[] BuildPauseTransitionGateDiagnosticFields()
+        {
+            GateSnapshot transitionGateSnapshot = TransitionGateSnapshot;
+            return LogFields.Of(
+                LogFields.Field("transitionGateBlockers", transitionGateSnapshot.BlockerCount),
+                LogFields.Field("transitionBlocksLifecycleRequest", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.GameFlow, GateDomain.LifecycleRequest)),
+                LogFields.Field("transitionBlocksInputAcceptance", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Input, GateDomain.InputAcceptance)),
+                LogFields.Field("transitionBlocksInteractionAcceptance", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Interaction, GateDomain.InteractionAcceptance)),
+                LogFields.Field("transitionBlocksGameplayAction", transitionGateSnapshot.IsBlockedForAnyOwner(GateScope.Gameplay, GateDomain.GameplayAction)));
+        }
+
+        private LogField[] BuildCycleResetSummaryFields(CycleResetResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scope", result.Request.Scope.ToString()),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("route", GetRouteName(result.Request.ActiveRoute)),
+                LogFields.Field("activity", GetActivityName(result.Request.ActiveActivity)),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount));
+        }
+
+        private LogField[] BuildCycleResetDiagnosticFields(CycleResetResult result)
+        {
+            return LogFields.Of(
+                LogFields.Field("scope", result.Request.Scope.ToString()),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("route", GetRouteName(result.Request.ActiveRoute)),
+                LogFields.Field("activity", GetActivityName(result.Request.ActiveActivity)),
+                LogFields.Field("status", result.Status.ToString()),
+                LogFields.Field("participants", result.ParticipantCount),
+                LogFields.Field("participantSucceeded", result.SucceededCount),
+                LogFields.Field("participantSkipped", result.SkippedCount),
+                LogFields.Field("participantFailed", result.FailedCount),
+                LogFields.Field("blockingIssues", result.BlockingIssueCount),
+                LogFields.Field("nonBlockingIssues", result.NonBlockingIssueCount));
+        }
+
+        private LogField[] BuildRouteRequestSummaryFields(
+            FrameworkRouteRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
+            RouteAsset currentRoute = alreadyActive
+                ? _state.CurrentRoute
+                : result.TargetRoute;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            return LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousRouteId", GetRouteId(routeLifecycle.PreviousRoute)),
+                LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("targetRouteId", GetRouteId(result.TargetRoute)),
+                LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                LogFields.Field("currentRouteId", GetRouteId(currentRoute)),
+                LogFields.Field("currentRoute", GetRouteName(currentRoute)),
+                LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + (alreadyActive ? _state.ActivityReadinessState.BlockingIssueCount : activityFlow.ActivityReadinessState.BlockingIssueCount)));
+        }
+
+        private LogField[] BuildRouteRequestDiagnosticFields(
+            FrameworkRouteRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
+            RouteAsset currentRoute = alreadyActive
+                ? _state.CurrentRoute
+                : result.TargetRoute;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
+            FrameworkLifecycleOperationEvidence lifecycleOperation = BuildRouteLifecycleOperationEvidence(result, loadingDiagnostics);
+            FrameworkLifecycleContentEvidence lifecycleContent = BuildRouteLifecycleContentEvidence(routeLifecycle, result.Source, result.Reason);
+            FrameworkLifecycleReadinessEvidence lifecycleReadiness = BuildActivityLifecycleReadinessEvidence(activityFlow, result.Source, result.Reason);
+            GameFlowRequestEnvelope envelope = GameFlowRequestEnvelopeBuilder.BuildRoute(
+                result,
+                GetRouteName(routeLifecycle.PreviousRoute),
+                GetRouteName(result.TargetRoute),
+                result.TransitionDiagnostics.TransitionText,
+                loadingDiagnostics.LoadingText,
+                lifecycleOperation,
+                lifecycleContent,
+                lifecycleReadiness,
+                loadingDiagnostics.AdapterEvidenceCount,
+                loadingDiagnostics.AppliedAdapterEvidenceCount,
+                loadingDiagnostics.SkippedAdapterEvidenceCount,
+                loadingDiagnostics.FailedAdapterEvidenceCount,
+                loadingDiagnostics.AdapterEvidenceBlockingIssueCount);
+
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("gameFlowEnvelopeKind", envelope.OperationKindText),
+                LogFields.Field("gameFlowEnvelopeAdmission", envelope.AdmissionText),
+                LogFields.Field("gameFlowEnvelopeSource", envelope.Source),
+                LogFields.Field("gameFlowEnvelopeReason", envelope.Reason),
+                LogFields.Field("gameFlowEnvelopeTargetRoute", envelope.TargetRoute),
+                LogFields.Field("gameFlowEnvelopePreviousRoute", envelope.PreviousRoute),
+                LogFields.Field("gameFlowEnvelopeTargetActivity", envelope.TargetActivity),
+                LogFields.Field("gameFlowEnvelopePreviousActivity", envelope.PreviousActivity),
+                LogFields.Field("gameFlowEnvelopeTransitionStatus", envelope.TransitionStatus),
+                LogFields.Field("gameFlowEnvelopeLoadingStatus", envelope.LoadingStatus),
+                LogFields.Field("gameFlowEnvelopeValidationMode", envelope.ValidationMode),
+                LogFields.Field("gameFlowEnvelopeDomainStatus", envelope.DomainStatus),
+                LogFields.Field("gameFlowEnvelopeLifecycleOperationKind", envelope.LifecycleOperationKind),
+                LogFields.Field("gameFlowEnvelopeLifecycleStages", envelope.LifecycleStageCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleBlockingIssues", envelope.LifecycleBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleFailedStages", envelope.LifecycleFailedStageCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleSkippedStages", envelope.LifecycleSkippedStageCount),
+                LogFields.Field("gameFlowEnvelopeContentStatus", envelope.LifecycleContentStatus),
+                LogFields.Field("gameFlowEnvelopeContentBlockingIssues", envelope.LifecycleContentBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeContentHandles", envelope.LifecycleContentHandleCount),
+                LogFields.Field("gameFlowEnvelopeReadiness", envelope.LifecycleReadiness),
+                LogFields.Field("gameFlowEnvelopeReadinessReason", envelope.LifecycleReadinessReason),
+                LogFields.Field("gameFlowEnvelopeReadinessIssues", envelope.LifecycleReadinessIssueCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceCount", envelope.LoadingAdapterEvidenceCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceApplied", envelope.LoadingAdapterEvidenceAppliedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceSkipped", envelope.LoadingAdapterEvidenceSkippedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceFailed", envelope.LoadingAdapterEvidenceFailedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterBlockingIssues", envelope.LoadingAdapterBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeDiagnostics", envelope.DiagnosticText),
+                LogFields.Field("lifecycleOperationKind", lifecycleOperation.OperationKindText),
+                LogFields.Field("lifecycleOperationStages", lifecycleOperation.StageCount),
+                LogFields.Field("lifecycleOperationBlockingIssues", lifecycleOperation.BlockingIssueCount),
+                LogFields.Field("lifecycleOperationIssues", lifecycleOperation.IssueCount),
+                LogFields.Field("lifecycleOperationSideEffects", lifecycleOperation.SideEffectCount),
+                LogFields.Field("lifecycleOperationFailedStages", lifecycleOperation.FailedStageCount),
+                LogFields.Field("lifecycleOperationSkippedStages", lifecycleOperation.SkippedStageCount),
+                LogFields.Field("lifecycleOperationStageNames", lifecycleOperation.StageNamesText),
+                LogFields.Field("lifecycleOperationStageStatuses", lifecycleOperation.StageStatusesText),
+                LogFields.Field("lifecycleOperationDiagnostics", lifecycleOperation.DiagnosticText),
+                LogFields.Field("lifecycleContentStatus", lifecycleContent.Status),
+                LogFields.Field("lifecycleContentEnter", lifecycleContent.EnterStatus),
+                LogFields.Field("lifecycleContentExit", lifecycleContent.ExitStatus),
+                LogFields.Field("lifecycleContentEnterRequests", lifecycleContent.EnterRequestCount),
+                LogFields.Field("lifecycleContentExitRequests", lifecycleContent.ExitRequestCount),
+                LogFields.Field("lifecycleContentParticipants", lifecycleContent.ParticipantCount),
+                LogFields.Field("lifecycleContentParticipantSource", lifecycleContent.ParticipantSourceStatus),
+                LogFields.Field("lifecycleContentBlockingIssues", lifecycleContent.BlockingIssueCount),
+                LogFields.Field("lifecycleContentBlocksReadiness", lifecycleContent.BlocksReadiness),
+                LogFields.Field("lifecycleContentHandles", lifecycleContent.ContentHandleCount),
+                LogFields.Field("lifecycleContentDiagnostics", lifecycleContent.DiagnosticText),
+                LogFields.Field("lifecycleReadiness", lifecycleReadiness.Status),
+                LogFields.Field("lifecycleReadinessReason", lifecycleReadiness.Reason),
+                LogFields.Field("lifecycleReadinessIssues", lifecycleReadiness.IssueCount),
+                LogFields.Field("lifecycleReadinessBlockedByContent", lifecycleReadiness.BlockedByContent),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("transitionScope", result.TransitionDiagnostics.ScopeText),
+                LogFields.Field("transitionBefore", result.TransitionDiagnostics.BeforeText),
+                LogFields.Field("transitionAfter", result.TransitionDiagnostics.AfterText),
+                LogFields.Field("transitionBlockingIssues", result.TransitionDiagnostics.BlockingIssueCount),
+                LogFields.Field("transitionVisual", result.TransitionDiagnostics.VisualText),
+                LogFields.Field("transitionEffect", result.TransitionDiagnostics.EffectText),
+                LogFields.Field("transitionEffectBefore", result.TransitionDiagnostics.EffectBeforeText),
+                LogFields.Field("transitionEffectAfter", result.TransitionDiagnostics.EffectAfterText),
+                LogFields.Field("transitionEffectBlockingIssues", result.TransitionDiagnostics.EffectBlockingIssueCount),
+                LogFields.Field("transitionEffectAdapterCount", result.TransitionDiagnostics.EffectAdapterCount),
+                LogFields.Field("transitionEffectAdapterEvidenceCount", result.TransitionDiagnostics.EffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceApplied", result.TransitionDiagnostics.AppliedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceSkipped", result.TransitionDiagnostics.SkippedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceFailed", result.TransitionDiagnostics.FailedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceBlockingIssues", result.TransitionDiagnostics.EffectAdapterEvidenceBlockingIssueCount),
+                LogFields.Field("transitionEffectAdapterEvidenceNames", result.TransitionDiagnostics.EffectAdapterEvidenceNamesText),
+                LogFields.Field("transitionEffectAdapterEvidenceStatuses", result.TransitionDiagnostics.EffectAdapterEvidenceStatusesText),
+                LogFields.Field("transitionGate", result.TransitionGateDiagnostics.GateText),
+                LogFields.Field("transitionGateMode", result.TransitionGateDiagnostics.ModeText),
+                LogFields.Field("transitionGateApplied", result.TransitionGateDiagnostics.Applied),
+                LogFields.Field("transitionGateReleased", result.TransitionGateDiagnostics.Released),
+                LogFields.Field("transitionGateBlockers", result.TransitionGateDiagnostics.BlockersText),
+                LogFields.Field("blocksInputAcceptance", result.TransitionGateDiagnostics.BlocksInputAcceptance),
+                LogFields.Field("blocksInteractionAcceptance", result.TransitionGateDiagnostics.BlocksInteractionAcceptance),
+                LogFields.Field("blocksGameplayAction", result.TransitionGateDiagnostics.BlocksGameplayAction),
+                LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
+                LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
+                LogFields.Field("currentRoute", GetRouteName(currentRoute)),
+                LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
+                LogFields.Field("alreadyLoaded", routeLifecycle.SceneLifecycleResult.AlreadyLoaded),
+                LogFields.Field("loadMode", routeLifecycle.SceneLifecycleResult.LoadMode),
+                LogFields.Field("routeSceneComposition", routeLifecycle.RouteSceneCompositionResult.Status),
+                LogFields.Field("routeSceneLoaded", routeLifecycle.RouteSceneCompositionResult.LoadedCount),
+                LogFields.Field("routeSceneFailed", routeLifecycle.RouteSceneCompositionResult.FailedCount),
+                LogFields.Field("routeSceneBlockingIssues", routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount),
+                LogFields.Field("routeRelease", routeLifecycle.ContentReleaseResult.Status),
+                LogFields.Field("routeReleaseReleased", routeLifecycle.ContentReleaseResult.ReleasedCount),
+                LogFields.Field("routeReleaseSkipped", routeLifecycle.ContentReleaseResult.SkippedCount),
+                LogFields.Field("routeReleaseFailed", routeLifecycle.ContentReleaseResult.FailedCount),
+                LogFields.Field("routeReleaseBlockingIssues", routeLifecycle.ContentReleaseResult.BlockingIssueCount),
+                LogFields.Field("routeActivitySceneRelease", routeLifecycle.ActivitySceneRouteReleaseResult.DiagnosticStatus),
+                LogFields.Field("routeActivitySceneReleaseScenes", routeLifecycle.ActivitySceneRouteReleaseResult.SceneCount),
+                LogFields.Field("routeActivitySceneReleaseReleased", routeLifecycle.ActivitySceneRouteReleaseResult.ReleasedSceneCount),
+                LogFields.Field("routeActivitySceneReleaseSkipped", routeLifecycle.ActivitySceneRouteReleaseResult.SkippedSceneCount),
+                LogFields.Field("routeActivitySceneReleaseFailed", routeLifecycle.ActivitySceneRouteReleaseResult.FailedSceneCount),
+                LogFields.Field("routeActivitySceneReleaseSideEffects", routeLifecycle.ActivitySceneRouteReleaseResult.SideEffectsExecuted),
+                LogFields.Field("routeActivitySceneReleaseBlockingIssues", routeLifecycle.ActivitySceneRouteReleaseResult.BlockingIssueCount),
+                LogFields.Field("routeExit", routeLifecycle.RouteExitResult.DiagnosticStatus),
+                LogFields.Field("runtimeRouteScope", routeLifecycle.RuntimeRouteScopeResult.DiagnosticStatus),
+                LogFields.Field("runtimeRouteRootEnter", routeLifecycle.RuntimeRouteScopeResult.EnterStatus),
+                LogFields.Field("runtimeRouteRootExit", routeLifecycle.RuntimeRouteScopeResult.ExitStatus),
+                LogFields.Field("runtimeRouteContext", routeLifecycle.RuntimeRouteScopeResult.ContextStatus),
+                LogFields.Field("runtimeRootCount", routeLifecycle.RuntimeRouteScopeResult.RootCount),
+                LogFields.Field("routeContentHandles", routeLifecycle.RouteContentSet.Count),
+                LogFields.Field("routeContentEnterReceivers", routeLifecycle.RouteContentEnterResult.ReceiverCount),
+                LogFields.Field("routeContentExitReceivers", routeLifecycle.RouteContentExitResult.ReceiverCount),
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
+                LogFields.Field("runtimeActivityScope", activityFlow.RuntimeActivityScopeResult.DiagnosticStatus),
+                LogFields.Field("runtimeActivityRootEnter", activityFlow.RuntimeActivityScopeResult.EnterStatus),
+                LogFields.Field("runtimeActivityRootExit", activityFlow.RuntimeActivityScopeResult.ExitStatus),
+                LogFields.Field("runtimeActivityContext", activityFlow.RuntimeActivityScopeResult.ContextStatus),
+                LogFields.Field("activityContentHandles", activityContent.ActivityContentCount),
+                LogFields.Field("routeStartupActivityOperation", activityFlow.ActivityOperationResult.DiagnosticStatus),
+                LogFields.Field("routeStartupActivityOperationKind", activityFlow.ActivityOperationResult.OperationKind),
+                LogFields.Field("routeStartupActivityOperationVisualMode", activityFlow.ActivityOperationResult.VisualMode),
+                LogFields.Field("routeStartupActivityOperationScenes", activityFlow.ActivityOperationResult.SceneCount),
+                LogFields.Field("routeStartupActivityOperationLoad", activityFlow.ActivityOperationResult.ScenesToLoadCount),
+                LogFields.Field("routeStartupActivityOperationRelease", activityFlow.ActivityOperationResult.ScenesToReleaseCount),
+                LogFields.Field("routeStartupActivityOperationSideEffects", activityFlow.ActivityOperationResult.SceneSideEffectCount),
+                LogFields.Field("routeStartupActivityOperationRequiresLoadingSurface", activityFlow.ActivityOperationResult.RequiresLoadingSurface),
+                LogFields.Field("routeStartupActivityOperationBlockingIssues", activityFlow.ActivityOperationResult.BlockingIssueCount),
+                LogFields.Field("activitySceneComposition", activityFlow.ActivitySceneCompositionResult.DiagnosticStatus),
+                LogFields.Field("activitySceneCompositionProfile", activityFlow.ActivitySceneCompositionResult.ProfileId),
+                LogFields.Field("activitySceneCompositionScenes", activityFlow.ActivitySceneCompositionResult.SceneCount),
+                LogFields.Field("activitySceneCompositionRequired", activityFlow.ActivitySceneCompositionResult.RequiredSceneCount),
+                LogFields.Field("activitySceneCompositionOptional", activityFlow.ActivitySceneCompositionResult.OptionalSceneCount),
+                LogFields.Field("activitySceneCompositionExecutionReady", activityFlow.ActivitySceneCompositionResult.ExecutionReadySceneCount),
+                LogFields.Field("activitySceneCompositionLoaded", activityFlow.ActivitySceneCompositionResult.LoadedSceneCount),
+                LogFields.Field("activitySceneCompositionAlreadyLoaded", activityFlow.ActivitySceneCompositionResult.AlreadyLoadedSceneCount),
+                LogFields.Field("activitySceneCompositionFailed", activityFlow.ActivitySceneCompositionResult.FailedSceneCount),
+                LogFields.Field("activitySceneCompositionSkipped", activityFlow.ActivitySceneCompositionResult.SkippedSceneCount),
+                LogFields.Field("activitySceneCompositionSideEffects", activityFlow.ActivitySceneCompositionResult.SideEffectsExecuted),
+                LogFields.Field("activitySceneCompositionBlockingIssues", activityFlow.ActivitySceneCompositionResult.BlockingIssueCount),
+                LogFields.Field("activitySceneRelease", activityFlow.ActivitySceneReleaseResult.DiagnosticStatus),
+                LogFields.Field("activitySceneReleaseScenes", activityFlow.ActivitySceneReleaseResult.SceneCount),
+                LogFields.Field("activitySceneReleaseReleased", activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount),
+                LogFields.Field("activitySceneReleaseFailed", activityFlow.ActivitySceneReleaseResult.FailedSceneCount),
+                LogFields.Field("activitySceneReleaseSkipped", activityFlow.ActivitySceneReleaseResult.SkippedSceneCount),
+                LogFields.Field("activitySceneReleaseSideEffects", activityFlow.ActivitySceneReleaseResult.SideEffectsExecuted),
+                LogFields.Field("activitySceneReleaseBlockingIssues", activityFlow.ActivitySceneReleaseResult.BlockingIssueCount),
+                LogFields.Field("activitySceneLedger", activityFlow.ActivitySceneLedgerSnapshot.DiagnosticStatus),
+                LogFields.Field("activitySceneLedgerEntries", activityFlow.ActivitySceneLedgerSnapshot.EntryCount),
+                LogFields.Field("activitySceneLedgerLoaded", activityFlow.ActivitySceneLedgerSnapshot.LoadedCount),
+                LogFields.Field("activitySceneLedgerReleased", activityFlow.ActivitySceneLedgerSnapshot.ReleasedCount),
+                LogFields.Field("activitySceneLedgerStale", activityFlow.ActivitySceneLedgerSnapshot.StaleCount),
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("loadingVisual", loadingDiagnostics.VisualText),
+                LogFields.Field("loadingBefore", loadingDiagnostics.BeforeText),
+                LogFields.Field("loadingAfter", loadingDiagnostics.AfterText),
+                LogFields.Field("loadingBlockingIssues", loadingDiagnostics.BlockingIssueCount),
+                LogFields.Field("loadingAdapterCount", loadingDiagnostics.AdapterCount),
+                LogFields.Field("loadingAdapterEvidenceCount", loadingDiagnostics.AdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceApplied", loadingDiagnostics.AppliedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceSkipped", loadingDiagnostics.SkippedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceFailed", loadingDiagnostics.FailedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceIssues", loadingDiagnostics.AdapterEvidenceIssueCount),
+                LogFields.Field("loadingAdapterEvidenceBlockingIssues", loadingDiagnostics.AdapterEvidenceBlockingIssueCount),
+                LogFields.Field("loadingAdapterEvidenceNames", loadingDiagnostics.AdapterEvidenceNamesText),
+                LogFields.Field("loadingAdapterEvidenceStatuses", loadingDiagnostics.AdapterEvidenceStatusesText),
+                LogFields.Field("loadingProgressSupported", loadingDiagnostics.ProgressSupported),
+                LogFields.Field("loadingProgressMode", loadingDiagnostics.ProgressModeText),
+                LogFields.Field("loadingProgressValue", loadingDiagnostics.ProgressValueText),
+                LogFields.Field("loadingProgressPercent", loadingDiagnostics.ProgressPercentText),
+                LogFields.Field("loadingProgressPhase", loadingDiagnostics.ProgressPhaseText),
+                LogFields.Field("loadingProgressMessage", loadingDiagnostics.ProgressMessageText),
+                LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlow.ActivityContentExecutionResult);
+        }
+
+        private LogField[] BuildActivityRequestSummaryFields(
+            FrameworkActivityRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            ActivityFlowStartResult activityFlow = result.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            return LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("previousActivityId", GetActivityId(activityFlow.PreviousActivity)),
+                LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
+                LogFields.Field("targetActivityId", GetActivityId(result.TargetActivity)),
+                LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("loadingPresentation", loadingDiagnostics.LoadingText),
+                LogFields.Field("activitySceneComposition", activityFlow.ActivitySceneCompositionResult.DiagnosticStatus),
+                LogFields.Field("activityScenesLoaded", activityFlow.ActivitySceneCompositionResult.LoadedSceneCount),
+                LogFields.Field("activitySceneRelease", activityFlow.ActivitySceneReleaseResult.DiagnosticStatus),
+                LogFields.Field("activityScenesReleased", activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount),
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + (alreadyActive ? _state.ActivityReadinessState.BlockingIssueCount : activityFlow.ActivityReadinessState.BlockingIssueCount)));
+        }
+
+        private LogField[] BuildActivityRequestDiagnosticFields(
+            FrameworkActivityRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            ActivityFlowStartResult activityFlow = result.ActivityFlowResult;
+            bool alreadyActive =
+                result.Kind == FrameworkActivityRequestKind.IgnoredAlreadyActive;
+            ActivityAsset currentActivity = alreadyActive
+                ? _state.CurrentActivity
+                : activityFlow.ActivityState.Activity;
+            string currentActivityState = alreadyActive
+                ? _state.ActivityState.DiagnosticStatus
+                : activityFlow.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = alreadyActive
+                ? _state.ActivityReadinessState.DiagnosticStatus
+                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
+            ActivityContentLifecycleResult lifecycle = activityContent.LifecycleResult;
+            FrameworkLifecycleOperationEvidence lifecycleOperation = BuildActivityLifecycleOperationEvidence(result, loadingDiagnostics);
+            FrameworkLifecycleContentEvidence lifecycleContent = BuildActivityLifecycleContentEvidence(activityFlow, result.Source, result.Reason);
+            FrameworkLifecycleReadinessEvidence lifecycleReadiness = BuildActivityLifecycleReadinessEvidence(activityFlow, result.Source, result.Reason);
+            GameFlowRequestEnvelope envelope = GameFlowRequestEnvelopeBuilder.BuildActivity(
+                result,
+                GetActivityName(activityFlow.PreviousActivity),
+                GetActivityName(result.TargetActivity),
+                result.ActivityTransitionMode.ToString(),
+                result.ActivityLoadingMode,
+                lifecycleOperation,
+                lifecycleContent,
+                lifecycleReadiness,
+                loadingDiagnostics.AdapterEvidenceCount,
+                loadingDiagnostics.AppliedAdapterEvidenceCount,
+                loadingDiagnostics.SkippedAdapterEvidenceCount,
+                loadingDiagnostics.FailedAdapterEvidenceCount,
+                loadingDiagnostics.AdapterEvidenceBlockingIssueCount);
+
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("kind", result.Kind),
+                LogFields.Field("source", result.Source),
+                LogFields.Field("reason", result.Reason),
+                LogFields.Field("gameFlowEnvelopeKind", envelope.OperationKindText),
+                LogFields.Field("gameFlowEnvelopeAdmission", envelope.AdmissionText),
+                LogFields.Field("gameFlowEnvelopeSource", envelope.Source),
+                LogFields.Field("gameFlowEnvelopeReason", envelope.Reason),
+                LogFields.Field("gameFlowEnvelopeTargetRoute", envelope.TargetRoute),
+                LogFields.Field("gameFlowEnvelopePreviousRoute", envelope.PreviousRoute),
+                LogFields.Field("gameFlowEnvelopeTargetActivity", envelope.TargetActivity),
+                LogFields.Field("gameFlowEnvelopePreviousActivity", envelope.PreviousActivity),
+                LogFields.Field("gameFlowEnvelopeTransitionStatus", envelope.TransitionStatus),
+                LogFields.Field("gameFlowEnvelopeLoadingStatus", envelope.LoadingStatus),
+                LogFields.Field("gameFlowEnvelopeValidationMode", envelope.ValidationMode),
+                LogFields.Field("gameFlowEnvelopeDomainStatus", envelope.DomainStatus),
+                LogFields.Field("gameFlowEnvelopeLifecycleOperationKind", envelope.LifecycleOperationKind),
+                LogFields.Field("gameFlowEnvelopeLifecycleStages", envelope.LifecycleStageCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleBlockingIssues", envelope.LifecycleBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleFailedStages", envelope.LifecycleFailedStageCount),
+                LogFields.Field("gameFlowEnvelopeLifecycleSkippedStages", envelope.LifecycleSkippedStageCount),
+                LogFields.Field("gameFlowEnvelopeContentStatus", envelope.LifecycleContentStatus),
+                LogFields.Field("gameFlowEnvelopeContentBlockingIssues", envelope.LifecycleContentBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeContentHandles", envelope.LifecycleContentHandleCount),
+                LogFields.Field("gameFlowEnvelopeReadiness", envelope.LifecycleReadiness),
+                LogFields.Field("gameFlowEnvelopeReadinessReason", envelope.LifecycleReadinessReason),
+                LogFields.Field("gameFlowEnvelopeReadinessIssues", envelope.LifecycleReadinessIssueCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceCount", envelope.LoadingAdapterEvidenceCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceApplied", envelope.LoadingAdapterEvidenceAppliedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceSkipped", envelope.LoadingAdapterEvidenceSkippedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterEvidenceFailed", envelope.LoadingAdapterEvidenceFailedCount),
+                LogFields.Field("gameFlowEnvelopeLoadingAdapterBlockingIssues", envelope.LoadingAdapterBlockingIssueCount),
+                LogFields.Field("gameFlowEnvelopeDiagnostics", envelope.DiagnosticText),
+                LogFields.Field("lifecycleOperationKind", lifecycleOperation.OperationKindText),
+                LogFields.Field("lifecycleOperationStages", lifecycleOperation.StageCount),
+                LogFields.Field("lifecycleOperationBlockingIssues", lifecycleOperation.BlockingIssueCount),
+                LogFields.Field("lifecycleOperationIssues", lifecycleOperation.IssueCount),
+                LogFields.Field("lifecycleOperationSideEffects", lifecycleOperation.SideEffectCount),
+                LogFields.Field("lifecycleOperationFailedStages", lifecycleOperation.FailedStageCount),
+                LogFields.Field("lifecycleOperationSkippedStages", lifecycleOperation.SkippedStageCount),
+                LogFields.Field("lifecycleOperationStageNames", lifecycleOperation.StageNamesText),
+                LogFields.Field("lifecycleOperationStageStatuses", lifecycleOperation.StageStatusesText),
+                LogFields.Field("lifecycleOperationDiagnostics", lifecycleOperation.DiagnosticText),
+                LogFields.Field("lifecycleContentStatus", lifecycleContent.Status),
+                LogFields.Field("lifecycleContentEnter", lifecycleContent.EnterStatus),
+                LogFields.Field("lifecycleContentExit", lifecycleContent.ExitStatus),
+                LogFields.Field("lifecycleContentEnterRequests", lifecycleContent.EnterRequestCount),
+                LogFields.Field("lifecycleContentExitRequests", lifecycleContent.ExitRequestCount),
+                LogFields.Field("lifecycleContentParticipants", lifecycleContent.ParticipantCount),
+                LogFields.Field("lifecycleContentParticipantSource", lifecycleContent.ParticipantSourceStatus),
+                LogFields.Field("lifecycleContentBlockingIssues", lifecycleContent.BlockingIssueCount),
+                LogFields.Field("lifecycleContentBlocksReadiness", lifecycleContent.BlocksReadiness),
+                LogFields.Field("lifecycleContentHandles", lifecycleContent.ContentHandleCount),
+                LogFields.Field("lifecycleContentDiagnostics", lifecycleContent.DiagnosticText),
+                LogFields.Field("lifecycleReadiness", lifecycleReadiness.Status),
+                LogFields.Field("lifecycleReadinessReason", lifecycleReadiness.Reason),
+                LogFields.Field("lifecycleReadinessIssues", lifecycleReadiness.IssueCount),
+                LogFields.Field("lifecycleReadinessBlockedByContent", lifecycleReadiness.BlockedByContent),
+                LogFields.Field("transition", result.TransitionDiagnostics.TransitionText),
+                LogFields.Field("transitionScope", result.TransitionDiagnostics.ScopeText),
+                LogFields.Field("transitionBefore", result.TransitionDiagnostics.BeforeText),
+                LogFields.Field("transitionAfter", result.TransitionDiagnostics.AfterText),
+                LogFields.Field("transitionBlockingIssues", result.TransitionDiagnostics.BlockingIssueCount),
+                LogFields.Field("transitionVisual", result.TransitionDiagnostics.VisualText),
+                LogFields.Field("transitionEffect", result.TransitionDiagnostics.EffectText),
+                LogFields.Field("transitionEffectBefore", result.TransitionDiagnostics.EffectBeforeText),
+                LogFields.Field("transitionEffectAfter", result.TransitionDiagnostics.EffectAfterText),
+                LogFields.Field("transitionEffectBlockingIssues", result.TransitionDiagnostics.EffectBlockingIssueCount),
+                LogFields.Field("transitionEffectAdapterCount", result.TransitionDiagnostics.EffectAdapterCount),
+                LogFields.Field("transitionEffectAdapterEvidenceCount", result.TransitionDiagnostics.EffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceApplied", result.TransitionDiagnostics.AppliedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceSkipped", result.TransitionDiagnostics.SkippedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceFailed", result.TransitionDiagnostics.FailedEffectAdapterEvidenceCount),
+                LogFields.Field("transitionEffectAdapterEvidenceBlockingIssues", result.TransitionDiagnostics.EffectAdapterEvidenceBlockingIssueCount),
+                LogFields.Field("transitionEffectAdapterEvidenceNames", result.TransitionDiagnostics.EffectAdapterEvidenceNamesText),
+                LogFields.Field("transitionEffectAdapterEvidenceStatuses", result.TransitionDiagnostics.EffectAdapterEvidenceStatusesText),
+                LogFields.Field("transitionGate", result.TransitionGateDiagnostics.GateText),
+                LogFields.Field("transitionGateMode", result.TransitionGateDiagnostics.ModeText),
+                LogFields.Field("transitionGateApplied", result.TransitionGateDiagnostics.Applied),
+                LogFields.Field("transitionGateReleased", result.TransitionGateDiagnostics.Released),
+                LogFields.Field("transitionGateBlockers", result.TransitionGateDiagnostics.BlockersText),
+                LogFields.Field("blocksInputAcceptance", result.TransitionGateDiagnostics.BlocksInputAcceptance),
+                LogFields.Field("blocksInteractionAcceptance", result.TransitionGateDiagnostics.BlocksInteractionAcceptance),
+                LogFields.Field("blocksGameplayAction", result.TransitionGateDiagnostics.BlocksGameplayAction),
+                LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
+                LogFields.Field("activityTransitionMode", result.ActivityTransitionMode.ToString()),
+                LogFields.Field("activityLoadingMode", result.ActivityLoadingMode),
+                LogFields.Field("targetActivityId", GetActivityId(result.TargetActivity)),
+                LogFields.Field("targetActivity", GetActivityName(result.TargetActivity)),
+                LogFields.Field("previousActivityId", GetActivityId(activityFlow.PreviousActivity)),
+                LogFields.Field("previousActivity", GetActivityName(activityFlow.PreviousActivity)),
+                LogFields.Field("activity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
+                LogFields.Field("activityState", currentActivityState),
+                LogFields.Field("activityReadiness", currentActivityReadiness),
+                LogFields.Field("activityReadinessReason", activityFlow.ActivityReadinessState.DiagnosticReason),
+                LogFields.Field("runtimeActivityScope", activityFlow.RuntimeActivityScopeResult.DiagnosticStatus),
+                LogFields.Field("runtimeActivityRootEnter", activityFlow.RuntimeActivityScopeResult.EnterStatus),
+                LogFields.Field("runtimeActivityRootExit", activityFlow.RuntimeActivityScopeResult.ExitStatus),
+                LogFields.Field("runtimeActivityContext", activityFlow.RuntimeActivityScopeResult.ContextStatus),
+                LogFields.Field("runtimeRootCount", activityFlow.RuntimeActivityScopeResult.RootCount),
+                LogFields.Field("activityReadinessIssues", activityFlow.ActivityReadinessState.BlockingIssueCount),
+                LogFields.Field("activityContentBindings", activityContent.BindingCount),
+                LogFields.Field("activityContentHandles", activityContent.ActivityContentCount),
+                LogFields.Field("activitySceneComposition", activityFlow.ActivitySceneCompositionResult.DiagnosticStatus),
+                LogFields.Field("activitySceneCompositionProfile", activityFlow.ActivitySceneCompositionResult.ProfileId),
+                LogFields.Field("activitySceneCompositionScenes", activityFlow.ActivitySceneCompositionResult.SceneCount),
+                LogFields.Field("activitySceneCompositionRequired", activityFlow.ActivitySceneCompositionResult.RequiredSceneCount),
+                LogFields.Field("activitySceneCompositionOptional", activityFlow.ActivitySceneCompositionResult.OptionalSceneCount),
+                LogFields.Field("activitySceneCompositionExecutionReady", activityFlow.ActivitySceneCompositionResult.ExecutionReadySceneCount),
+                LogFields.Field("activitySceneCompositionLoaded", activityFlow.ActivitySceneCompositionResult.LoadedSceneCount),
+                LogFields.Field("activitySceneCompositionAlreadyLoaded", activityFlow.ActivitySceneCompositionResult.AlreadyLoadedSceneCount),
+                LogFields.Field("activitySceneCompositionFailed", activityFlow.ActivitySceneCompositionResult.FailedSceneCount),
+                LogFields.Field("activitySceneCompositionSkipped", activityFlow.ActivitySceneCompositionResult.SkippedSceneCount),
+                LogFields.Field("activitySceneCompositionSideEffects", activityFlow.ActivitySceneCompositionResult.SideEffectsExecuted),
+                LogFields.Field("activitySceneCompositionBlockingIssues", activityFlow.ActivitySceneCompositionResult.BlockingIssueCount),
+                LogFields.Field("activitySceneRelease", activityFlow.ActivitySceneReleaseResult.DiagnosticStatus),
+                LogFields.Field("activitySceneReleaseScenes", activityFlow.ActivitySceneReleaseResult.SceneCount),
+                LogFields.Field("activitySceneReleaseReleased", activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount),
+                LogFields.Field("activitySceneReleaseFailed", activityFlow.ActivitySceneReleaseResult.FailedSceneCount),
+                LogFields.Field("activitySceneReleaseSkipped", activityFlow.ActivitySceneReleaseResult.SkippedSceneCount),
+                LogFields.Field("activitySceneReleaseSideEffects", activityFlow.ActivitySceneReleaseResult.SideEffectsExecuted),
+                LogFields.Field("activitySceneReleaseBlockingIssues", activityFlow.ActivitySceneReleaseResult.BlockingIssueCount),
+                LogFields.Field("activitySceneLedger", activityFlow.ActivitySceneLedgerSnapshot.DiagnosticStatus),
+                LogFields.Field("activitySceneLedgerEntries", activityFlow.ActivitySceneLedgerSnapshot.EntryCount),
+                LogFields.Field("activitySceneLedgerLoaded", activityFlow.ActivitySceneLedgerSnapshot.LoadedCount),
+                LogFields.Field("activitySceneLedgerReleased", activityFlow.ActivitySceneLedgerSnapshot.ReleasedCount),
+                LogFields.Field("activitySceneLedgerStale", activityFlow.ActivitySceneLedgerSnapshot.StaleCount),
+                LogFields.Field("activityContentLifecycle", lifecycle.DiagnosticStatus),
+                LogFields.Field("activityContentEnterFailed", lifecycle.EnterFailedReceiverCount),
+                LogFields.Field("activityContentExitFailed", lifecycle.ExitFailedReceiverCount),
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("loadingVisual", loadingDiagnostics.VisualText),
+                LogFields.Field("loadingBefore", loadingDiagnostics.BeforeText),
+                LogFields.Field("loadingAfter", loadingDiagnostics.AfterText),
+                LogFields.Field("loadingBlockingIssues", loadingDiagnostics.BlockingIssueCount),
+                LogFields.Field("loadingAdapterCount", loadingDiagnostics.AdapterCount),
+                LogFields.Field("loadingAdapterEvidenceCount", loadingDiagnostics.AdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceApplied", loadingDiagnostics.AppliedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceSkipped", loadingDiagnostics.SkippedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceFailed", loadingDiagnostics.FailedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceIssues", loadingDiagnostics.AdapterEvidenceIssueCount),
+                LogFields.Field("loadingAdapterEvidenceBlockingIssues", loadingDiagnostics.AdapterEvidenceBlockingIssueCount),
+                LogFields.Field("loadingAdapterEvidenceNames", loadingDiagnostics.AdapterEvidenceNamesText),
+                LogFields.Field("loadingAdapterEvidenceStatuses", loadingDiagnostics.AdapterEvidenceStatusesText),
+                LogFields.Field("loadingProgressSupported", loadingDiagnostics.ProgressSupported),
+                LogFields.Field("loadingProgressMode", loadingDiagnostics.ProgressModeText),
+                LogFields.Field("loadingProgressValue", loadingDiagnostics.ProgressValueText),
+                LogFields.Field("loadingProgressPercent", loadingDiagnostics.ProgressPercentText),
+                LogFields.Field("loadingProgressPhase", loadingDiagnostics.ProgressPhaseText),
+                LogFields.Field("loadingProgressMessage", loadingDiagnostics.ProgressMessageText),
+                LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlow.ActivityContentExecutionResult);
+        }
+
+        private static FrameworkLifecycleOperationEvidence BuildRouteLifecycleOperationEvidence(
+            FrameworkRouteRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
+            var builder = new FrameworkLifecycleOperationEvidenceBuilder(
+                FrameworkLifecycleOperationKind.Route,
+                result.Source,
+                result.Reason);
+
+            AddTransitionStages(builder, result.TransitionDiagnostics, result.Source, result.Reason);
+            AddLoadingStages(builder, loadingDiagnostics, result.Source, result.Reason);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RouteExit,
+                routeLifecycle.RouteExitResult.DiagnosticStatus,
+                routeLifecycle.RouteExitResult.Source,
+                routeLifecycle.RouteExitResult.Reason,
+                0,
+                0,
+                routeLifecycle.RouteExitResult.Completed,
+                false,
+                !routeLifecycle.RouteExitResult.Completed,
+                routeLifecycle.RouteExitResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RuntimeScopeExit,
+                routeLifecycle.RuntimeRouteScopeResult.ExitStatus,
+                routeLifecycle.RuntimeRouteScopeResult.Source,
+                routeLifecycle.RuntimeRouteScopeResult.Reason,
+                0,
+                0,
+                routeLifecycle.RuntimeRouteScopeResult.HasExitRootResult,
+                routeLifecycle.RuntimeRouteScopeResult.Rejected && routeLifecycle.RuntimeRouteScopeResult.HasExitRootResult,
+                !routeLifecycle.RuntimeRouteScopeResult.HasExitRootResult,
+                routeLifecycle.RuntimeRouteScopeResult.ToDiagnosticString());
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RouteRelease,
+                routeLifecycle.ContentReleaseResult.Status.ToString(),
+                result.Source,
+                result.Reason,
+                routeLifecycle.ContentReleaseResult.IssueCount,
+                routeLifecycle.ContentReleaseResult.BlockingIssueCount,
+                routeLifecycle.ContentReleaseResult.ReleasedCount > 0,
+                routeLifecycle.ContentReleaseResult.Failed,
+                routeLifecycle.ContentReleaseResult.NotExecuted || routeLifecycle.ContentReleaseResult.SkippedCount > 0 && routeLifecycle.ContentReleaseResult.ReleasedCount == 0,
+                routeLifecycle.ContentReleaseResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ActivitySceneRelease,
+                routeLifecycle.ActivitySceneRouteReleaseResult.DiagnosticStatus,
+                result.Source,
+                result.Reason,
+                routeLifecycle.ActivitySceneRouteReleaseResult.BlockingIssueCount,
+                routeLifecycle.ActivitySceneRouteReleaseResult.BlockingIssueCount,
+                routeLifecycle.ActivitySceneRouteReleaseResult.SideEffectsExecuted,
+                routeLifecycle.ActivitySceneRouteReleaseResult.FailedSceneCount > 0,
+                !routeLifecycle.ActivitySceneRouteReleaseResult.Executed || routeLifecycle.ActivitySceneRouteReleaseResult.SkippedSceneCount > 0 && routeLifecycle.ActivitySceneRouteReleaseResult.ReleasedSceneCount == 0,
+                routeLifecycle.ActivitySceneRouteReleaseResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ContentExit,
+                FrameworkLifecycleContentEvidenceProjection.BuildStageStatus(
+                    routeLifecycle.RouteContentExitResult.DiagnosticStatus,
+                    routeLifecycle.RouteContentExitResult.BindingCount,
+                    routeLifecycle.RouteContentExitResult.FailedReceiverCount),
+                result.Source,
+                result.Reason,
+                routeLifecycle.RouteContentExitResult.FailedReceiverCount,
+                routeLifecycle.RouteContentExitResult.FailedReceiverCount,
+                routeLifecycle.RouteContentExitResult.Executed,
+                routeLifecycle.RouteContentExitResult.HasFailures,
+                !routeLifecycle.RouteContentExitResult.Executed,
+                "Route content exit lifecycle callbacks.");
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.SceneComposition,
+                routeLifecycle.RouteSceneCompositionResult.Status.ToString(),
+                result.Source,
+                result.Reason,
+                routeLifecycle.RouteSceneCompositionResult.IssueCount,
+                routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount,
+                routeLifecycle.RouteSceneCompositionResult.LoadedCount > 0,
+                routeLifecycle.RouteSceneCompositionResult.Failed,
+                routeLifecycle.RouteSceneCompositionResult.NotExecuted || routeLifecycle.RouteSceneCompositionResult.SkippedCount > 0 && routeLifecycle.RouteSceneCompositionResult.LoadedCount == 0,
+                routeLifecycle.RouteSceneCompositionResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RuntimeScopeEnter,
+                routeLifecycle.RuntimeRouteScopeResult.EnterStatus,
+                routeLifecycle.RuntimeRouteScopeResult.Source,
+                routeLifecycle.RuntimeRouteScopeResult.Reason,
+                0,
+                0,
+                routeLifecycle.RuntimeRouteScopeResult.HasEnterRootResult || routeLifecycle.RuntimeRouteScopeResult.HasContext,
+                routeLifecycle.RuntimeRouteScopeResult.Rejected && routeLifecycle.RuntimeRouteScopeResult.HasEnterRootResult,
+                !routeLifecycle.RuntimeRouteScopeResult.HasEnterRootResult && !routeLifecycle.RuntimeRouteScopeResult.HasContext,
+                routeLifecycle.RuntimeRouteScopeResult.ToDiagnosticString());
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ContentEnter,
+                FrameworkLifecycleContentEvidenceProjection.BuildStageStatus(
+                    routeLifecycle.RouteContentEnterResult.DiagnosticStatus,
+                    routeLifecycle.RouteContentEnterResult.BindingCount,
+                    routeLifecycle.RouteContentEnterResult.FailedReceiverCount),
+                result.Source,
+                result.Reason,
+                routeLifecycle.RouteContentEnterResult.FailedReceiverCount,
+                routeLifecycle.RouteContentEnterResult.FailedReceiverCount,
+                routeLifecycle.RouteContentEnterResult.Executed,
+                routeLifecycle.RouteContentEnterResult.HasFailures,
+                !routeLifecycle.RouteContentEnterResult.Executed,
+                "Route content enter lifecycle callbacks.");
+
+            AddActivityFlowStages(builder, activityFlow, result.Source, result.Reason);
+            return builder.Build();
+        }
+
+        private static FrameworkLifecycleContentEvidence BuildRouteLifecycleContentEvidence(
+            RouteLifecycleStartResult routeLifecycle,
+            string source,
+            string reason)
+        {
+            int blockingIssues = routeLifecycle.RouteContentEnterResult.FailedReceiverCount
+                + routeLifecycle.RouteContentExitResult.FailedReceiverCount;
+            string status = blockingIssues > 0
+                ? "Failed"
+                : routeLifecycle.RouteContentEnterResult.Executed || routeLifecycle.RouteContentExitResult.Executed
+                    ? "Executed"
+                    : "Skipped";
+
+            return new FrameworkLifecycleContentEvidence(
+                status,
+                routeLifecycle.RouteContentEnterResult.DiagnosticStatus,
+                routeLifecycle.RouteContentExitResult.DiagnosticStatus,
+                routeLifecycle.RouteContentEnterResult.BindingCount,
+                routeLifecycle.RouteContentExitResult.BindingCount,
+                0,
+                "None",
+                blockingIssues,
+                blockingIssues,
+                false,
+                routeLifecycle.RouteContentSet.Count,
+                source,
+                reason);
+        }
+
+        private static FrameworkLifecycleContentEvidence BuildActivityLifecycleContentEvidence(
+            ActivityFlowStartResult activityFlow,
+            string source,
+            string reason)
+        {
+            ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
+            ActivityContentExecutionLifecycleResult execution = activityFlow.ActivityContentExecutionResult;
+            int issueCount = execution.BlockingIssueCount + execution.ParticipantSourceIssueCount;
+
+            return new FrameworkLifecycleContentEvidence(
+                execution.DiagnosticStatus,
+                execution.EnterResult.Status.ToString(),
+                execution.ExitResult.Status.ToString(),
+                execution.EnterRequestCount,
+                execution.ExitRequestCount,
+                execution.ParticipantCount,
+                execution.ParticipantSourceStatus,
+                issueCount,
+                execution.BlockingIssueCount,
+                execution.BlocksReadiness,
+                activityContent.ActivityContentCount,
+                source,
+                reason);
+        }
+
+        private static FrameworkLifecycleReadinessEvidence BuildActivityLifecycleReadinessEvidence(
+            ActivityFlowStartResult activityFlow,
+            string source,
+            string reason)
+        {
+            bool blockedByContent = activityFlow.ActivityContentExecutionResult.BlocksReadiness
+                || activityFlow.ActivityContentResult.HasLifecycleFailures;
+            return new FrameworkLifecycleReadinessEvidence(
+                activityFlow.ActivityReadinessState.DiagnosticStatus,
+                activityFlow.ActivityReadinessState.DiagnosticReason,
+                activityFlow.ActivityReadinessState.BlockingIssueCount,
+                blockedByContent,
+                source,
+                reason);
+        }
+
+        private static FrameworkLifecycleOperationEvidence BuildActivityLifecycleOperationEvidence(
+            FrameworkActivityRequestResult result,
+            FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            var builder = new FrameworkLifecycleOperationEvidenceBuilder(
+                result.TargetActivity == null ? FrameworkLifecycleOperationKind.ActivityClear : FrameworkLifecycleOperationKind.Activity,
+                result.Source,
+                result.Reason);
+
+            AddTransitionStages(builder, result.TransitionDiagnostics, result.Source, result.Reason);
+            AddLoadingStages(builder, loadingDiagnostics, result.Source, result.Reason);
+            AddActivityFlowStages(builder, result.ActivityFlowResult, result.Source, result.Reason);
+            return builder.Build();
+        }
+
+        private static void AddTransitionStages(
+            FrameworkLifecycleOperationEvidenceBuilder builder,
+            FrameworkTransitionDiagnostics transitionDiagnostics,
+            string source,
+            string reason)
+        {
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.TransitionBefore,
+                transitionDiagnostics.BeforeText,
+                source,
+                reason,
+                0,
+                0,
+                false,
+                false,
+                StatusIndicatesSkipped(transitionDiagnostics.BeforeText),
+                "Transition before request projection.");
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.TransitionAfter,
+                transitionDiagnostics.AfterText,
+                source,
+                reason,
+                transitionDiagnostics.BlockingIssueCount,
+                transitionDiagnostics.BlockingIssueCount,
+                transitionDiagnostics.EffectAdapterCount > 0,
+                transitionDiagnostics.BlockingIssueCount > 0,
+                StatusIndicatesSkipped(transitionDiagnostics.AfterText),
+                "Transition after request projection.");
+        }
+
+        private static void AddLoadingStages(
+            FrameworkLifecycleOperationEvidenceBuilder builder,
+            FrameworkLoadingDiagnostics loadingDiagnostics,
+            string source,
+            string reason)
+        {
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.LoadingBefore,
+                loadingDiagnostics.BeforeText,
+                source,
+                reason,
+                0,
+                0,
+                false,
+                false,
+                StatusIndicatesSkipped(loadingDiagnostics.BeforeText),
+                loadingDiagnostics.ProgressMessageText);
+
+            int issueCount = Math.Max(loadingDiagnostics.AdapterEvidenceIssueCount, loadingDiagnostics.BlockingIssueCount);
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.LoadingAfter,
+                loadingDiagnostics.AfterText,
+                source,
+                reason,
+                issueCount,
+                loadingDiagnostics.BlockingIssueCount,
+                loadingDiagnostics.AppliedAdapterEvidenceCount > 0,
+                loadingDiagnostics.BlockingIssueCount > 0,
+                StatusIndicatesSkipped(loadingDiagnostics.AfterText),
+                loadingDiagnostics.ProgressMessageText,
+                $"adapterEvidence='{loadingDiagnostics.AdapterEvidenceCount}' adapterStatuses='{loadingDiagnostics.AdapterEvidenceStatusesText}'");
+        }
+
+        private static void AddActivityFlowStages(
+            FrameworkLifecycleOperationEvidenceBuilder builder,
+            ActivityFlowStartResult activityFlow,
+            string source,
+            string reason)
+        {
+            ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
+            ActivityContentLifecycleResult lifecycle = activityContent.LifecycleResult;
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RuntimeScopeExit,
+                activityFlow.RuntimeActivityScopeResult.ExitStatus,
+                activityFlow.RuntimeActivityScopeResult.Source,
+                activityFlow.RuntimeActivityScopeResult.Reason,
+                0,
+                0,
+                activityFlow.RuntimeActivityScopeResult.HasExitRootResult,
+                activityFlow.RuntimeActivityScopeResult.Rejected && activityFlow.RuntimeActivityScopeResult.HasExitRootResult,
+                !activityFlow.RuntimeActivityScopeResult.HasExitRootResult,
+                activityFlow.RuntimeActivityScopeResult.ToDiagnosticString());
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ActivitySceneRelease,
+                activityFlow.ActivitySceneReleaseResult.DiagnosticStatus,
+                source,
+                reason,
+                activityFlow.ActivitySceneReleaseResult.BlockingIssueCount,
+                activityFlow.ActivitySceneReleaseResult.BlockingIssueCount,
+                activityFlow.ActivitySceneReleaseResult.SideEffectsExecuted,
+                activityFlow.ActivitySceneReleaseResult.FailedSceneCount > 0,
+                !activityFlow.ActivitySceneReleaseResult.Executed || activityFlow.ActivitySceneReleaseResult.SkippedSceneCount > 0 && activityFlow.ActivitySceneReleaseResult.ReleasedSceneCount == 0,
+                activityFlow.ActivitySceneReleaseResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ActivityContentExecution,
+                FrameworkLifecycleContentEvidenceProjection.BuildStageStatus(
+                    activityFlow.ActivityContentExecutionResult.DiagnosticStatus,
+                    activityFlow.ActivityContentExecutionResult.EnterRequestCount + activityFlow.ActivityContentExecutionResult.ExitRequestCount,
+                    activityFlow.ActivityContentExecutionResult.BlockingIssueCount),
+                source,
+                reason,
+                activityFlow.ActivityContentExecutionResult.BlockingIssueCount + activityFlow.ActivityContentExecutionResult.ParticipantSourceIssueCount,
+                activityFlow.ActivityContentExecutionResult.BlockingIssueCount,
+                activityFlow.ActivityContentExecutionResult.EnterResultCount > 0 || activityFlow.ActivityContentExecutionResult.ExitResultCount > 0,
+                activityFlow.ActivityContentExecutionResult.BlocksReadiness,
+                !activityFlow.ActivityContentExecutionResult.Executed,
+                activityFlow.ActivityContentExecutionResult.ToDiagnosticString());
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ContentExit,
+                FrameworkLifecycleContentEvidenceProjection.BuildStageStatus(
+                    lifecycle.DiagnosticStatus,
+                    lifecycle.ExitBindingCount,
+                    lifecycle.ExitFailedReceiverCount),
+                source,
+                reason,
+                lifecycle.ExitFailedReceiverCount,
+                lifecycle.ExitFailedReceiverCount,
+                lifecycle.Executed && lifecycle.ExitBindingCount > 0,
+                lifecycle.ExitFailedReceiverCount > 0,
+                !lifecycle.Executed,
+                "Activity content exit lifecycle callbacks.");
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ActivitySceneComposition,
+                activityFlow.ActivitySceneCompositionResult.DiagnosticStatus,
+                source,
+                reason,
+                activityFlow.ActivitySceneCompositionResult.BlockingIssueCount,
+                activityFlow.ActivitySceneCompositionResult.BlockingIssueCount,
+                activityFlow.ActivitySceneCompositionResult.SideEffectsExecuted,
+                activityFlow.ActivitySceneCompositionResult.FailedSceneCount > 0,
+                !activityFlow.ActivitySceneCompositionResult.Executed || activityFlow.ActivitySceneCompositionResult.SkippedSceneCount > 0 && activityFlow.ActivitySceneCompositionResult.LoadedSceneCount == 0,
+                activityFlow.ActivitySceneCompositionResult.Message);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.RuntimeScopeEnter,
+                activityFlow.RuntimeActivityScopeResult.EnterStatus,
+                activityFlow.RuntimeActivityScopeResult.Source,
+                activityFlow.RuntimeActivityScopeResult.Reason,
+                0,
+                0,
+                activityFlow.RuntimeActivityScopeResult.HasEnterRootResult || activityFlow.RuntimeActivityScopeResult.HasContext,
+                activityFlow.RuntimeActivityScopeResult.Rejected && activityFlow.RuntimeActivityScopeResult.HasEnterRootResult,
+                !activityFlow.RuntimeActivityScopeResult.HasEnterRootResult && !activityFlow.RuntimeActivityScopeResult.HasContext,
+                activityFlow.RuntimeActivityScopeResult.ToDiagnosticString());
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ContentEnter,
+                FrameworkLifecycleContentEvidenceProjection.BuildStageStatus(
+                    lifecycle.DiagnosticStatus,
+                    lifecycle.EnterBindingCount,
+                    lifecycle.EnterFailedReceiverCount),
+                source,
+                reason,
+                lifecycle.EnterFailedReceiverCount,
+                lifecycle.EnterFailedReceiverCount,
+                lifecycle.Executed && lifecycle.EnterBindingCount > 0,
+                lifecycle.EnterFailedReceiverCount > 0,
+                !lifecycle.Executed,
+                "Activity content enter lifecycle callbacks.");
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.Readiness,
+                FrameworkLifecycleReadinessEvidenceProjection.BuildStageStatus(
+                    BuildActivityLifecycleReadinessEvidence(activityFlow, source, reason)),
+                source,
+                reason,
+                activityFlow.ActivityReadinessState.BlockingIssueCount,
+                activityFlow.ActivityReadinessState.BlockingIssueCount,
+                false,
+                activityFlow.ActivityReadinessState.HasBlockingIssues,
+                activityFlow.ActivityReadinessState.IsNone,
+                activityFlow.ActivityReadinessState.DiagnosticReason);
+
+            builder.AddStage(
+                FrameworkLifecycleOperationStage.ActivitySceneLedger,
+                activityFlow.ActivitySceneLedgerSnapshot.DiagnosticStatus,
+                source,
+                reason,
+                activityFlow.ActivitySceneLedgerSnapshot.StaleCount,
+                0,
+                false,
+                false,
+                activityFlow.ActivitySceneLedgerSnapshot.EntryCount == 0,
+                $"entries='{activityFlow.ActivitySceneLedgerSnapshot.EntryCount}' loaded='{activityFlow.ActivitySceneLedgerSnapshot.LoadedCount}' released='{activityFlow.ActivitySceneLedgerSnapshot.ReleasedCount}' stale='{activityFlow.ActivitySceneLedgerSnapshot.StaleCount}'.");
+        }
+
+        private static bool StatusIndicatesSkipped(string statusText)
+        {
+            if (string.IsNullOrWhiteSpace(statusText))
+            {
+                return true;
+            }
+
+            return statusText.IndexOf("Skipped", StringComparison.OrdinalIgnoreCase) >= 0
+                || statusText.IndexOf("NoOp", StringComparison.OrdinalIgnoreCase) >= 0
+                || statusText.IndexOf("NotRequested", StringComparison.OrdinalIgnoreCase) >= 0
+                || statusText.IndexOf("NotExecuted", StringComparison.OrdinalIgnoreCase) >= 0
+                || string.Equals(statusText, "None", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private LogField[] BuildLoadingFields(FrameworkLoadingDiagnostics loadingDiagnostics)
+        {
+            return LogFields.Of(
+                LogFields.Field("loading", loadingDiagnostics.LoadingText),
+                LogFields.Field("loadingVisual", loadingDiagnostics.VisualText),
+                LogFields.Field("loadingBefore", loadingDiagnostics.BeforeText),
+                LogFields.Field("loadingAfter", loadingDiagnostics.AfterText),
+                LogFields.Field("loadingBlockingIssues", loadingDiagnostics.BlockingIssueCount),
+                LogFields.Field("loadingAdapterCount", loadingDiagnostics.AdapterCount),
+                LogFields.Field("loadingAdapterEvidenceCount", loadingDiagnostics.AdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceApplied", loadingDiagnostics.AppliedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceSkipped", loadingDiagnostics.SkippedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceFailed", loadingDiagnostics.FailedAdapterEvidenceCount),
+                LogFields.Field("loadingAdapterEvidenceIssues", loadingDiagnostics.AdapterEvidenceIssueCount),
+                LogFields.Field("loadingAdapterEvidenceBlockingIssues", loadingDiagnostics.AdapterEvidenceBlockingIssueCount),
+                LogFields.Field("loadingAdapterEvidenceNames", loadingDiagnostics.AdapterEvidenceNamesText),
+                LogFields.Field("loadingAdapterEvidenceStatuses", loadingDiagnostics.AdapterEvidenceStatusesText),
+                LogFields.Field("loadingProgressSupported", loadingDiagnostics.ProgressSupported),
+                LogFields.Field("loadingProgressMode", loadingDiagnostics.ProgressModeText),
+                LogFields.Field("loadingProgressValue", loadingDiagnostics.ProgressValueText),
+                LogFields.Field("loadingProgressPercent", loadingDiagnostics.ProgressPercentText),
+                LogFields.Field("loadingProgressPhase", loadingDiagnostics.ProgressPhaseText),
+                LogFields.Field("loadingProgressMessage", loadingDiagnostics.ProgressMessageText),
+                LogFields.Field("loadingProgress", loadingDiagnostics.ProgressText));
+        }
+
+        private void LogActivityContentObservability(ActivityContentApplyResult activityContentResult)
+        {
+            if (activityContentResult.HasDetailMessage)
+            {
+                _logger.Debug(activityContentResult.DetailMessage);
+            }
+
+            if (activityContentResult.HasWarningMessage)
+            {
+                _logger.Warning(activityContentResult.WarningMessage);
+            }
+        }
+
+        private static string GetRouteName(RouteAsset route)
+        {
+            return route != null ? FormatDiagnosticValue(route.RouteName) : "<none>";
+        }
+
+        private static string GetRouteId(RouteAsset route)
+        {
+            return route != null && route.HasValidRouteId
+                ? route.RouteId.StableText
+                : "<none>";
+        }
+
+        private static string GetActivityName(ActivityAsset activity)
+        {
+            return activity != null ? FormatDiagnosticValue(activity.ActivityName) : "<none>";
+        }
+
+        private static string GetActivityId(ActivityAsset activity)
+        {
+            return activity != null && activity.HasValidActivityId
+                ? activity.ActivityId.StableText
+                : "<none>";
+        }
+
+        private static string FormatDiagnosticValue(string value)
+        {
+            return value.NormalizeTextOrFallback("<none>");
+        }
+
+        private void OnApplicationQuit()
+        {
+            _cameraPresentationLifecycleRuntime
+                ?.DisposeForApplicationQuit();
+            _cameraPresentationLifecycleRuntime = null;
+
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "application-quit",
+                    out string sessionPresentationReleaseIssue,
+                    true))
+            {
+                _logger?.Warning(
+                    "Session Camera Presentation release failed during application quit.",
+                    LogFields.Field(
+                        "issue",
+                        sessionPresentationReleaseIssue));
+            }
+        }
+
+        private void OnDestroy()
+        {
+            _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
+            _cameraPresentationLifecycleRuntime?.Dispose();
+            _cameraPresentationLifecycleRuntime = null;
+            _gameFlowRuntime = null;
+            _activityReadinessBinding?.Dispose();
+            _activityReadinessBinding = null;
+            if (!TryReleaseSessionCameraPresentations(
+                    "FrameworkRuntimeHost",
+                    "framework-runtime-host-destroy",
+                    out string sessionPresentationReleaseIssue))
+            {
+                _logger?.Warning(
+                    "Session Camera Presentation release failed during FrameworkRuntimeHost destruction.",
+                    LogFields.Field(
+                        "issue",
+                        sessionPresentationReleaseIssue));
+            }
+            _playerCameraPresentationSelectionRuntime?.Dispose();
+            _playerCameraPresentationSelectionRuntime = null;
+            _playerActorCameraSubjectIntegrationRuntime?.Dispose();
+            _playerActorCameraSubjectIntegrationRuntime = null;
+            _playerCameraOutputIntegrationRuntime?.Dispose();
+            _playerCameraOutputIntegrationRuntime = null;
+            _cameraSubjectAvailabilityContext = null;
+            _cameraSessionOutputMaterializationRuntime?.Dispose();
+            _cameraSessionOutputMaterializationRuntime = null;
+            _cameraOutputTopology = null;
+            _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
+
+
+        }
+
+        private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)
+        {
+            if (_gameFlowRuntime == null || !update.IsValid ||
+                !ReferenceEquals(_state.CurrentRoute, _gameFlowRuntime.CurrentRoute) ||
+                !ReferenceEquals(_state.CurrentActivity, update.Activity) ||
+                !_gameFlowRuntime.CurrentOccurrence.Matches(update.Activity, update.Occurrence.TransitionSequence) ||
+                !_gameFlowRuntime.TryGetCurrentRouteLifecycleResult(out RouteLifecycleStartResult routeResult) ||
+                _state.ActivityReadinessState.Equals(update.ReadinessState))
+            {
+                return;
+            }
+
+            _state = _state.WithActivityReadiness(routeResult, update.ReadinessState);
+            PublishCurrentActivityReadinessPresentation();
+        }
+
+        private void PublishCurrentActivityReadinessPresentation()
+        {
+            RouteLifecycleRuntime routeLifecycleRuntime =
+                _gameFlowRuntime?.CurrentRouteLifecycleRuntime;
+            ActivityFlowRuntime activityFlowRuntime =
+                routeLifecycleRuntime?.CurrentActivityFlowRuntime;
+            if (activityFlowRuntime == null ||
+                !activityFlowRuntime.TryGetCurrentAuthorableReadinessState(
+                    out ActivityReadinessOccurrenceState authorableState) ||
+                !authorableState.IsCurrent)
+            {
+                return;
+            }
+
+            ActivityReadinessOccurrence occurrence = authorableState.Occurrence;
+            ActivityReadinessState aggregate = _state.ActivityReadinessState;
+            ActivityAsset activity = authorableState.Activity;
+            if (!occurrence.IsValid ||
+                activity == null ||
+                !aggregate.HasActivity ||
+                !ReferenceEquals(activity, _state.CurrentActivity) ||
+                !ReferenceEquals(activity, aggregate.Activity) ||
+                !ReferenceEquals(activity, activityFlowRuntime.CurrentActivity) ||
+                !_gameFlowRuntime.CurrentOccurrence.Matches(
+                    activity,
+                    occurrence.TransitionSequence) ||
+                !routeLifecycleRuntime.CurrentOccurrence.Matches(
+                    activity,
+                    occurrence.TransitionSequence) ||
+                (_hasPublishedActivityReadiness &&
+                 _lastPublishedActivityReadinessOccurrence.Matches(
+                     activity,
+                     occurrence.TransitionSequence) &&
+                 _lastPublishedActivityReadiness.Equals(aggregate)) ||
+                !activityFlowRuntime.TryCreateCurrentActivityContentDiscoveryScope(
+                    activity,
+                    out ActivityContentDiscoveryScope discoveryScope))
+            {
+                return;
+            }
+
+            IReadOnlyList<ActivityReadinessEvents> observers =
+                SceneCompositionComponentQuery
+                    .GetComponents<ActivityReadinessEvents>(
+                        discoveryScope,
+                        activity);
+            if (observers.Count == 0)
+            {
+                return;
+            }
+
+            ActivityReadinessAuthorableContribution contribution =
+                authorableState.AuthorableContribution;
+            string reason = contribution.Reason.NormalizeTextOrFallback(
+                aggregate.DiagnosticReason.NormalizeTextOrFallback("None"));
+            var snapshot = new ActivityReadinessSnapshot(
+                activity,
+                aggregate.IsReady,
+                reason,
+                contribution.ParticipantCount,
+                contribution.RequiredCount,
+                contribution.OptionalCount,
+                contribution.PendingCount,
+                contribution.CompletedCount,
+                contribution.FailedCount,
+                ++_activityReadinessPresentationRevision);
+            bool published = false;
+            for (int i = 0; i < observers.Count; i++)
+            {
+                ActivityReadinessEvents observer = observers[i];
+                if (observer == null)
+                {
+                    continue;
+                }
+
+                observer.Apply(snapshot);
+                published = true;
+            }
+
+            if (!published)
+            {
+                return;
+            }
+
+            _lastPublishedActivityReadinessOccurrence = occurrence;
+            _lastPublishedActivityReadiness = aggregate;
+            _hasPublishedActivityReadiness = true;
+        }
+    }
+}

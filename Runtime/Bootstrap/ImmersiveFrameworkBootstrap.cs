@@ -1,0 +1,376 @@
+using System;
+using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ApplicationLifecycle;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
+using Immersive.Framework.GameFlow;
+using Immersive.Framework.RouteLifecycle;
+using Immersive.Framework.PlayerParticipation;
+using UnityEngine;
+using Immersive.Framework.ApiStatus;
+using Immersive.Logging.Records;
+using Immersive.Framework.Common;
+
+namespace Immersive.Framework.Bootstrap
+{
+    /// <summary>
+    /// Internal runtime bootstrap for the Immersive Framework.
+    /// It resolves and validates the active Game Application and project configuration,
+    /// then hands off to the first lifecycle owner.
+    /// Activity, Actor, Input, Camera, Save and Pooling lifecycles are not owned here.
+    /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
+    internal static class ImmersiveFrameworkBootstrap
+    {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static async void BootAfterSceneLoad()
+        {
+            var logger = FrameworkLogger.Create(typeof(ImmersiveFrameworkBootstrap));
+
+            try
+            {
+                var settings = LoadSettings();
+
+#if UNITY_EDITOR
+                if (ShouldSkipFrameworkStartupInEditor(settings))
+                {
+                    logger.Info("Boot skipped.", LogFields.Field("editorPlayModeStartup", "CurrentSceneOnly"));
+                    return;
+                }
+#endif
+
+                var result = FrameworkBootValidator.Validate(settings);
+
+                if (!result.Succeeded)
+                {
+                    logger.Error("Boot failed.", LogFields.Field("reason", result.Message));
+                    return;
+                }
+
+                if (!FrameworkRuntimeHost.TryCreateWithProjectFrameRate(
+                        result.GameApplication,
+                        settings.FrameRatePolicy,
+                        explicitPlayerSessionProfile: null,
+                        out FrameworkRuntimeHost runtimeHost,
+                        out PlayerSessionInitializationResult playerSessionResolution,
+                        out PlayerParticipationOperationResult playerParticipationInitialization))
+                {
+                    if (playerSessionResolution != null &&
+                        playerSessionResolution.Failed)
+                    {
+                        logger.Error(
+                            "Player Session configuration resolution failed.",
+                            BuildPlayerSessionResolutionFields(
+                                result.GameApplication,
+                                null,
+                                playerSessionResolution));
+                    }
+                    else
+                    {
+                        logger.Error(
+                            "Player participation Session runtime initialization failed.",
+                            BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                    }
+
+                    return;
+                }
+
+                if (ShouldComposePlayerParticipationRuntime(result.GameApplication))
+                {
+                    logger.Debug(
+                        "Player Session configuration resolved.",
+                        BuildPlayerSessionResolutionFields(
+                            result.GameApplication,
+                            null,
+                            playerSessionResolution));
+
+                    logger.Debug(
+                        "Player participation Session runtime initialized.",
+                        BuildPlayerParticipationRuntimeFields(
+                            playerParticipationInitialization));
+                }
+                else
+                {
+                    logger.Debug(
+                        "Player participation is not configured.",
+                        LogFields.Of(
+                            LogFields.Field("status", "NotConfigured"),
+                            LogFields.Field("configuredSlots", 0),
+                            LogFields.Field(
+                                "message",
+                                "Player Session is disabled by the active Game Application. Player participation runtime composition was skipped.")));
+                }
+
+                var gameFlowResult = await runtimeHost.StartAsync();
+                if (!gameFlowResult.Started)
+                {
+                    logger.Error("Game Flow failed.", LogFields.Field("reason", gameFlowResult.Message));
+                    return;
+                }
+
+                if (ShouldComposePlayerParticipationRuntime(result.GameApplication) &&
+                    !TryInitializeLocalPlayerProvisioning(runtimeHost, logger))
+                {
+                    UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    return;
+                }
+
+                logger.Info(
+                    "Boot succeeded. Application Runtime started.",
+                    BuildBootSummaryFields(result, gameFlowResult));
+                logger.Debug("Boot diagnostics. " + gameFlowResult.Message, BuildBootDiagnosticFields(result, gameFlowResult, runtimeHost));
+                LogActivityContentObservability(logger, gameFlowResult.RouteLifecycleResult.ActivityFlowResult.ActivityContentResult);
+            }
+            catch (Exception exception)
+            {
+                logger.Error("Boot failed.", exception);
+            }
+        }
+
+        internal static FrameworkBootResult Boot()
+        {
+            return FrameworkBootValidator.Validate(LoadSettings());
+        }
+
+        internal static bool ShouldComposePlayerParticipationRuntime(
+            GameApplicationAsset gameApplication)
+        {
+            return gameApplication != null &&
+                   gameApplication.PlayerSessionEnabled;
+        }
+
+        private static LogField[] BuildBootSummaryFields(
+            FrameworkBootResult result,
+            FrameworkGameFlowStartResult gameFlowResult)
+        {
+            RouteLifecycleStartResult routeLifecycleResult = gameFlowResult.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlowResult = routeLifecycleResult.ActivityFlowResult;
+            return LogFields.Of(
+                LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
+                LogFields.Field("startupRoute", result.StartupRoute != null ? result.StartupRoute.RouteName : null),
+                LogFields.Field("primaryScene", result.StartupRoute != null ? result.StartupRoute.PrimarySceneName : null),
+                LogFields.Field("validationMode", result.ValidationMode),
+                LogFields.Field("routeSceneComposition", routeLifecycleResult.RouteSceneCompositionResult.Status),
+                LogFields.Field("activity", FormatDiagnosticValue(activityFlowResult.ActivityState.ActivityName)),
+                LogFields.Field("activityReadiness", activityFlowResult.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("blockingIssues", routeLifecycleResult.RouteSceneCompositionResult.BlockingIssueCount + activityFlowResult.ActivityReadinessState.BlockingIssueCount));
+        }
+
+        private static LogField[] BuildBootDiagnosticFields(
+            FrameworkBootResult result,
+            FrameworkGameFlowStartResult gameFlowResult,
+            FrameworkRuntimeHost runtimeHost)
+        {
+            RouteLifecycleStartResult routeLifecycleResult = gameFlowResult.RouteLifecycleResult;
+            ActivityFlowStartResult activityFlowResult = routeLifecycleResult.ActivityFlowResult;
+            ActivityContentApplyResult activityContentResult = activityFlowResult.ActivityContentResult;
+            PlayerParticipationSnapshot playerParticipation = null;
+            bool hasPlayerParticipation = runtimeHost != null &&
+                runtimeHost.TryGetPlayerParticipationSnapshot(out playerParticipation);
+            LocalPlayerProvisioningRuntimeHostModule localPlayerProvisioning = null;
+            bool hasLocalPlayerProvisioning = runtimeHost != null &&
+                runtimeHost.TryGetLocalPlayerProvisioningRuntime(
+                    out localPlayerProvisioning);
+
+            LogField[] fields = LogFields.Of(
+                LogFields.Field("gameApplication", result.GameApplication != null ? result.GameApplication.ApplicationName : null),
+                LogFields.Field("startupRoute", result.StartupRoute != null ? result.StartupRoute.RouteName : null),
+                LogFields.Field("primaryScene", result.StartupRoute != null ? result.StartupRoute.PrimarySceneName : null),
+                LogFields.Field("validationMode", result.ValidationMode),
+                LogFields.Field("alreadyLoaded", routeLifecycleResult.SceneLifecycleResult.AlreadyLoaded),
+                LogFields.Field("loadMode", routeLifecycleResult.SceneLifecycleResult.LoadMode),
+                LogFields.Field("routeSceneComposition", routeLifecycleResult.RouteSceneCompositionResult.Status),
+                LogFields.Field("routeSceneLoaded", routeLifecycleResult.RouteSceneCompositionResult.LoadedCount),
+                LogFields.Field("routeSceneFailed", routeLifecycleResult.RouteSceneCompositionResult.FailedCount),
+                LogFields.Field("routeSceneBlockingIssues", routeLifecycleResult.RouteSceneCompositionResult.BlockingIssueCount),
+                LogFields.Field("routeRelease", routeLifecycleResult.ContentReleaseResult.Status),
+                LogFields.Field("routeReleaseReleased", routeLifecycleResult.ContentReleaseResult.ReleasedCount),
+                LogFields.Field("routeReleaseSkipped", routeLifecycleResult.ContentReleaseResult.SkippedCount),
+                LogFields.Field("routeReleaseFailed", routeLifecycleResult.ContentReleaseResult.FailedCount),
+                LogFields.Field("routeReleaseBlockingIssues", routeLifecycleResult.ContentReleaseResult.BlockingIssueCount),
+                LogFields.Field("runtimeRouteScope", routeLifecycleResult.RuntimeRouteScopeResult.DiagnosticStatus),
+                LogFields.Field("runtimeRouteRootEnter", routeLifecycleResult.RuntimeRouteScopeResult.EnterStatus),
+                LogFields.Field("runtimeRouteRootExit", routeLifecycleResult.RuntimeRouteScopeResult.ExitStatus),
+                LogFields.Field("runtimeRouteContext", routeLifecycleResult.RuntimeRouteScopeResult.ContextStatus),
+                LogFields.Field("runtimeRootCount", routeLifecycleResult.RuntimeRouteScopeResult.RootCount),
+                LogFields.Field("routeContentHandles", routeLifecycleResult.RouteContentSet.Count),
+                LogFields.Field("playerParticipationInitialized", hasPlayerParticipation),
+                LogFields.Field("playerParticipationContext", hasPlayerParticipation ? playerParticipation.ContextId : string.Empty),
+                LogFields.Field("playerParticipationRevision", hasPlayerParticipation ? playerParticipation.Revision : 0),
+                LogFields.Field("playerParticipationSlots", hasPlayerParticipation ? playerParticipation.ConfiguredSlotCount : 0),
+                LogFields.Field("playerParticipationJoiningOpen", hasPlayerParticipation && playerParticipation.JoiningOpen),
+                LogFields.Field("localPlayerProvisioningReady", hasLocalPlayerProvisioning),
+                LogFields.Field("localPlayerProvisioningAuthoring", hasLocalPlayerProvisioning ? localPlayerProvisioning.Authoring.name : string.Empty),
+                LogFields.Field("localPlayerProvisioningManager", hasLocalPlayerProvisioning && localPlayerProvisioning.Authoring.PlayerInputManager != null ? localPlayerProvisioning.Authoring.PlayerInputManager.name : string.Empty),
+                LogFields.Field("localPlayerProvisioningRequests", hasLocalPlayerProvisioning ? localPlayerProvisioning.RequestCount : 0),
+                LogFields.Field("localPlayerProvisioningDiagnostic", hasLocalPlayerProvisioning ? localPlayerProvisioning.Diagnostic : "NotConfigured"),
+                LogFields.Field("routeContentEnterReceivers", routeLifecycleResult.RouteContentEnterResult.ReceiverCount),
+                LogFields.Field("activity", FormatDiagnosticValue(activityFlowResult.ActivityState.ActivityName)),
+                LogFields.Field("activityState", activityFlowResult.ActivityState.DiagnosticStatus),
+                LogFields.Field("activityReadiness", activityFlowResult.ActivityReadinessState.DiagnosticStatus),
+                LogFields.Field("runtimeActivityScope", activityFlowResult.RuntimeActivityScopeResult.DiagnosticStatus),
+                LogFields.Field("runtimeActivityRootEnter", activityFlowResult.RuntimeActivityScopeResult.EnterStatus),
+                LogFields.Field("runtimeActivityRootExit", activityFlowResult.RuntimeActivityScopeResult.ExitStatus),
+                LogFields.Field("runtimeActivityContext", activityFlowResult.RuntimeActivityScopeResult.ContextStatus),
+                LogFields.Field("activityContentHandles", activityContentResult.ActivityContentCount),
+                LogFields.Field("activitySceneLedger", activityFlowResult.ActivitySceneLedgerSnapshot.DiagnosticStatus),
+                LogFields.Field("activitySceneLedgerEntries", activityFlowResult.ActivitySceneLedgerSnapshot.EntryCount),
+                LogFields.Field("activitySceneLedgerLoaded", activityFlowResult.ActivitySceneLedgerSnapshot.LoadedCount),
+                LogFields.Field("activitySceneLedgerReleased", activityFlowResult.ActivitySceneLedgerSnapshot.ReleasedCount),
+                LogFields.Field("activitySceneLedgerStale", activityFlowResult.ActivitySceneLedgerSnapshot.StaleCount));
+            return ActivityContentExecutionDiagnosticProjection.AppendTo(
+                fields,
+                activityFlowResult.ActivityContentExecutionResult);
+        }
+
+        private static bool TryInitializeLocalPlayerProvisioning(
+            FrameworkRuntimeHost runtimeHost,
+            FrameworkLogger logger)
+        {
+            if (!runtimeHost.TryResolveLocalPlayerProvisioningAuthoring(
+                    out LocalPlayerProvisioningAuthoring authoring,
+                    out bool isConfigured,
+                    out string registrationDiagnostic))
+            {
+                logger.Error(
+                    "Local Player provisioning Session runtime initialization failed.",
+                    LogFields.Of(
+                        LogFields.Field("status", "RejectedHostRegistration"),
+                        LogFields.Field("message", registrationDiagnostic)));
+                return false;
+            }
+
+            if (!isConfigured)
+            {
+                logger.Debug(
+                    "Local Player provisioning is not configured.",
+                    LogFields.Of(
+                        LogFields.Field("status", "NotConfigured"),
+                        LogFields.Field("message", registrationDiagnostic)));
+                return true;
+            }
+
+            if (!LocalPlayerProvisioningRuntimeHostModule.TryAttach(
+                    runtimeHost,
+                    authoring,
+                    out LocalPlayerProvisioningRuntimeHostModule module,
+                    out string issue))
+            {
+                logger.Error(
+                    "Local Player provisioning Session runtime initialization failed.",
+                    LogFields.Of(
+                        LogFields.Field("status", "RejectedInvalidConfiguration"),
+                        LogFields.Field("authoring", authoring.name),
+                        LogFields.Field("manager", authoring.PlayerInputManager != null ? authoring.PlayerInputManager.name : string.Empty),
+                        LogFields.Field("message", issue)));
+                return false;
+            }
+
+            PlayerParticipationSnapshot snapshot = null;
+            module.TryGetSnapshot(out snapshot);
+            logger.Debug(
+                "Local Player provisioning Session runtime initialized.",
+                LogFields.Of(
+                    LogFields.Field("status", "Ready"),
+                    LogFields.Field("authoring", authoring.name),
+                    LogFields.Field("manager", authoring.PlayerInputManager.name),
+                    LogFields.Field("context", snapshot != null ? snapshot.ContextId : string.Empty),
+                    LogFields.Field("slots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
+                    LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
+                    LogFields.Field("message", module.Diagnostic)));
+            return true;
+        }
+
+        private static LogField[] BuildPlayerParticipationRuntimeFields(
+            PlayerParticipationOperationResult initializationResult)
+        {
+            PlayerParticipationSnapshot snapshot = initializationResult?.Snapshot;
+            return LogFields.Of(
+                LogFields.Field("operation", initializationResult != null ? initializationResult.Operation : string.Empty),
+                LogFields.Field("status", initializationResult != null ? initializationResult.Status.ToString() : "Missing"),
+                LogFields.Field("configuredSlots", snapshot != null ? snapshot.ConfiguredSlotCount : 0),
+                LogFields.Field("joiningOpen", snapshot != null && snapshot.JoiningOpen),
+                LogFields.Field("revision", snapshot != null ? snapshot.Revision : 0),
+                LogFields.Field("message", initializationResult != null ? initializationResult.Message : "Initialization result is missing."));
+        }
+
+        private static LogField[] BuildPlayerSessionResolutionFields(
+            GameApplicationAsset gameApplication,
+            PlayerSessionProfile explicitPlayerSessionProfile,
+            PlayerSessionInitializationResult resolution)
+        {
+            EffectivePlayerSessionConfiguration configuration = resolution?.Configuration;
+            PlayerSessionProfile selectedProfile =
+                explicitPlayerSessionProfile != null
+                    ? explicitPlayerSessionProfile
+                    : gameApplication != null
+                        ? gameApplication.DefaultPlayerSessionProfile
+                        : null;
+            return LogFields.Of(
+                LogFields.Field("playerSessionEnabled", gameApplication != null && gameApplication.PlayerSessionEnabled),
+                LogFields.Field(
+                    "profile",
+                    selectedProfile != null
+                        ? selectedProfile.name
+                        : string.Empty),
+                LogFields.Field(
+                    "profileSource",
+                    explicitPlayerSessionProfile != null
+                        ? "ExplicitOverride"
+                        : "GameApplicationDefault"),
+                LogFields.Field(
+                    "failure",
+                    resolution != null ? resolution.Failure.ToString() : "Missing"),
+                LogFields.Field(
+                    "supportedSlots",
+                    configuration != null ? configuration.SupportedSlotCount : 0),
+                LogFields.Field(
+                    "initialJoiningOpen",
+                    configuration != null && configuration.InitialJoiningOpen),
+                LogFields.Field(
+                    "hostProvisioning",
+                    configuration != null
+                        ? configuration.HostProvisioning.ToString()
+                        : string.Empty),
+                LogFields.Field(
+                    "actorResolutionPolicy",
+                    configuration != null
+                        ? configuration.ActorResolutionPolicy.ToString()
+                        : string.Empty),
+                LogFields.Field(
+                    "message",
+                    resolution != null ? resolution.Message : "Player Session resolution result is missing."));
+        }
+
+        private static string FormatDiagnosticValue(string value)
+        {
+            return value.NormalizeTextOrFallback("<none>");
+        }
+
+        private static void LogActivityContentObservability(FrameworkLogger logger, ActivityContentApplyResult activityContentResult)
+        {
+            if (activityContentResult.HasDetailMessage)
+            {
+                logger.Debug(activityContentResult.DetailMessage);
+            }
+
+            if (activityContentResult.HasWarningMessage)
+            {
+                logger.Warning(activityContentResult.WarningMessage);
+            }
+        }
+
+        private static ImmersiveFrameworkSettingsAsset LoadSettings()
+        {
+            return Resources.Load<ImmersiveFrameworkSettingsAsset>(ImmersiveFrameworkSettingsAsset.ResourcesPath);
+        }
+
+#if UNITY_EDITOR
+        private static bool ShouldSkipFrameworkStartupInEditor(ImmersiveFrameworkSettingsAsset settings)
+        {
+            return settings != null &&
+                   settings.EditorPlayModeStartup == FrameworkEditorPlayModeStartup.CurrentSceneOnly;
+        }
+#endif
+    }
+}

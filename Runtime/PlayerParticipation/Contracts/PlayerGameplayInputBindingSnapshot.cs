@@ -1,0 +1,103 @@
+using System;
+using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerSlots;
+
+namespace Immersive.Framework.PlayerParticipation
+{
+    /// <summary>
+    /// Immutable ordered Session snapshot for current gameplay input bindings.
+    /// </summary>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "P3K.3 Session gameplay input binding snapshot.")]
+    public sealed class PlayerGameplayInputBindingSnapshot
+    {
+        private readonly PlayerGameplayInputBindingSummary[] _slots;
+
+        internal PlayerGameplayInputBindingSnapshot(
+            string sessionContextId,
+            int revision,
+            PlayerGameplayInputBindingSummary[] slots,
+            PlayerGameplayInputBindingStatus lastOperationStatus,
+            string lastOperationMessage)
+        {
+            SessionContextId = sessionContextId ?? string.Empty;
+            Revision = revision;
+            this._slots = slots != null
+                ? (PlayerGameplayInputBindingSummary[])slots.Clone()
+                : Array.Empty<PlayerGameplayInputBindingSummary>();
+            LastOperationStatus = lastOperationStatus;
+            LastOperationMessage = lastOperationMessage ?? string.Empty;
+
+            for (int index = 0; index < this._slots.Length; index++)
+            {
+                PlayerGameplayInputBindingSummary summary = this._slots[index];
+                if (summary.IsBound || summary.IsReleaseFailed)
+                {
+                    BoundCount++;
+                    if (summary.IsAllowed) AllowedCount++;
+                    if (summary.IsBlockedByGate) BlockedCount++;
+                    if (summary.IsReleaseFailed) ReleaseFailedCount++;
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.PlayerInputDisabled)
+                    {
+                        PlayerInputDisabledCount++;
+                    }
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.ActionsUnavailable)
+                    {
+                        ActionsUnavailableCount++;
+                    }
+                    if (summary.Availability ==
+                        PlayerGameplayInputAvailability.GateUnavailable)
+                    {
+                        GateUnavailableCount++;
+                    }
+                }
+                else if (summary.IsDivergent)
+                {
+                    DivergentCount++;
+                }
+                else if (summary.IsUnbound)
+                {
+                    UnboundCount++;
+                }
+            }
+        }
+
+        public string SessionContextId { get; }
+        public int Revision { get; }
+        public IReadOnlyList<PlayerGameplayInputBindingSummary> Slots => _slots;
+        public int ConfiguredSlotCount => _slots.Length;
+        public int BoundCount { get; }
+        public int UnboundCount { get; }
+        public int AllowedCount { get; }
+        public int BlockedCount { get; }
+        public int ReleaseFailedCount { get; }
+        public int DivergentCount { get; }
+        public int PlayerInputDisabledCount { get; }
+        public int ActionsUnavailableCount { get; }
+        public int GateUnavailableCount { get; }
+        public PlayerGameplayInputBindingStatus LastOperationStatus { get; }
+        public string LastOperationMessage { get; }
+        public bool IsInitialized => !string.IsNullOrEmpty(SessionContextId) && Revision > 0;
+
+        public bool TryGetSummary(
+            PlayerSlotId playerSlotId,
+            out PlayerGameplayInputBindingSummary summary)
+        {
+            for (int index = 0; index < _slots.Length; index++)
+            {
+                if (_slots[index].PlayerSlotId == playerSlotId)
+                {
+                    summary = _slots[index];
+                    return true;
+                }
+            }
+
+            summary = default;
+            return false;
+        }
+    }
+}

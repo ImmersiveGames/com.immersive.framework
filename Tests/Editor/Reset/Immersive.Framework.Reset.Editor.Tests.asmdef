@@ -1,0 +1,15 @@
+{
+  "name": "Immersive.Framework.Reset.Editor.Tests",
+  "rootNamespace": "Immersive.Framework.Reset.Editor.Tests",
+  "references": ["Immersive.Framework.Runtime", "Immersive.Framework.Editor"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}

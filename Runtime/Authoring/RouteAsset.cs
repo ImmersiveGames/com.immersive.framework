@@ -1,0 +1,183 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.Transition;
+using Immersive.Framework.PlayerParticipation;
+
+namespace Immersive.Framework.Authoring
+{
+    /// <summary>
+    /// API status: Stable. Public authoring asset retained for the baseline before F1/F3 identity and route-state hardening.
+    /// Public authoring asset that identifies an entry in the game flow.
+    /// This asset declares the route primary scene, optional route content profile, and optional startup activity.
+    /// </summary>
+    [CreateAssetMenu(
+        fileName = "Route",
+        menuName = "Immersive Framework/Route",
+        order = 20)]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable product authoring surface for application/route/activity configuration. Breaking changes require ADR/migration.")]
+    public sealed class RouteAsset : ScriptableObject
+    {
+        [SerializeField]
+        [Tooltip("Stable functional identity. It must not change when the Route name or Primary Scene changes.")]
+        private string routeId = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Human-readable route name shown in framework diagnostics. If empty, the asset name is used.")]
+        private string routeName = "Startup Route";
+
+        [SerializeField]
+        [Tooltip("Project-relative path of the primary Unity scene declared by this route. Managed by the Route Inspector.")]
+        private string primaryScenePath = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Cached human-readable scene name shown in framework diagnostics.")]
+        private string primarySceneName = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Optional Route Content Profile. Route scene composition loads execution-ready additional scenes additively.")]
+        private RouteContentProfileAsset routeContentProfile;
+
+        [SerializeField]
+        [Tooltip("Optional first Activity started after this route primary scene is resolved.")]
+        private ActivityAsset startupActivity;
+
+        [SerializeField]
+        [Tooltip("Baseline spatial entry applied to every Session Player for each Route occurrence. Apply Explicit Placement requires one exact Route-owned Slot binding.")]
+        private RoutePlayerSpatialEntryPolicy playerSpatialEntryPolicy =
+            RoutePlayerSpatialEntryPolicy.PreserveCurrentPose;
+
+        [SerializeField]
+        [Tooltip("Optional Camera Presentations owned by this Route occurrence. They materialize with the Route RuntimeContent scope and release before that scope is removed.")]
+        private CameraPresentationDefinition[] cameraPresentations =
+            Array.Empty<CameraPresentationDefinition>();
+
+        [SerializeField]
+        [Tooltip("Controls which requests/capabilities are blocked while this Route transition is running. Route transitions should normally block input, interaction and gameplay.")]
+        private TransitionGateMode transitionGateMode = TransitionGateMode.InputInteractionAndGameplay;
+
+        [SerializeField]
+        [TextArea(2, 4)]
+        [Tooltip("Optional authoring note for the route. This has no runtime behavior yet.")]
+        private string description = string.Empty;
+
+        public RouteId RouteId
+        {
+            get
+            {
+                if (!HasValidRouteId)
+                {
+                    throw new System.InvalidOperationException("Route ID is missing or invalid.");
+                }
+
+                return new RouteId(routeId);
+            }
+        }
+
+        public bool HasValidRouteId => global::Immersive.Framework.Authoring.RouteId.IsValidText(routeId);
+
+        /// <summary>
+        /// Stable-boundary identity equality (<see cref="RouteId"/> only).
+        /// Does not mean the same authored definition: two distinct assets may share one ID (collision).
+        /// For authored-definition equality use <c>ReferenceEquals</c> on the asset references.
+        /// </summary>
+        public bool HasSameStableId(RouteAsset other) =>
+            other != null &&
+            HasValidRouteId &&
+            other.HasValidRouteId &&
+            RouteId == other.RouteId;
+
+        /// <summary>
+        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
+        /// </summary>
+        [System.Obsolete(
+            "HasSameIdentity compares only RouteId (stable boundary identity). " +
+            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
+            false)]
+        public bool HasSameIdentity(RouteAsset other) => HasSameStableId(other);
+
+        public string RouteName
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(routeName))
+                {
+                    return routeName.Trim();
+                }
+
+                return !string.IsNullOrWhiteSpace(name) ? name : "Route";
+            }
+        }
+
+        public string PrimaryScenePath => primaryScenePath ?? string.Empty;
+
+        public string PrimarySceneName
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(primarySceneName))
+                {
+                    return primarySceneName.Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(primaryScenePath))
+                {
+                    string fileName = System.IO.Path.GetFileNameWithoutExtension(primaryScenePath);
+                    if (!string.IsNullOrWhiteSpace(fileName))
+                    {
+                        return fileName;
+                    }
+                }
+
+                return string.Empty;
+            }
+        }
+
+        public bool HasPrimaryScene => !string.IsNullOrWhiteSpace(primaryScenePath);
+
+        public RouteContentProfileAsset RouteContentProfile => routeContentProfile;
+
+        public bool HasRouteContentProfile => routeContentProfile != null;
+
+        public ActivityAsset StartupActivity => startupActivity;
+
+        public bool HasStartupActivity => startupActivity != null;
+
+        public IReadOnlyList<CameraPresentationDefinition> CameraPresentations =>
+            cameraPresentations ?? Array.Empty<CameraPresentationDefinition>();
+
+        public bool HasCameraPresentations =>
+            cameraPresentations != null && cameraPresentations.Length > 0;
+
+        public RoutePlayerSpatialEntryPolicy PlayerSpatialEntryPolicy
+        {
+            get
+            {
+                return System.Enum.IsDefined(
+                    typeof(RoutePlayerSpatialEntryPolicy),
+                    playerSpatialEntryPolicy)
+                    ? playerSpatialEntryPolicy
+                    : RoutePlayerSpatialEntryPolicy.PreserveCurrentPose;
+            }
+        }
+
+        public bool HasDefinedPlayerSpatialEntryPolicy =>
+            System.Enum.IsDefined(
+                typeof(RoutePlayerSpatialEntryPolicy),
+                playerSpatialEntryPolicy);
+
+        public TransitionGateMode TransitionGateMode
+        {
+            get
+            {
+                return System.Enum.IsDefined(typeof(TransitionGateMode), transitionGateMode)
+                    ? transitionGateMode
+                    : TransitionGateMode.InputInteractionAndGameplay;
+            }
+        }
+
+        public string Description => description ?? string.Empty;
+    }
+}

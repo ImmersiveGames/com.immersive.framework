@@ -1,0 +1,24 @@
+--- a/Editor/Validation/FrameworkAuthoringValidator.cs
++++ b/Editor/Validation/FrameworkAuthoringValidator.cs
+@@
+             ValidateExactSceneComponentCount<CameraOutputSessionBinding>(
+                 report,
+                 owner,
+                 scene,
+                 nameof(CameraOutputSessionBinding));
++            ValidateExactSceneComponentCount<EventSystem>(
++                report,
++                owner,
++                scene,
++                nameof(EventSystem));
++            ValidateExactSceneComponentCount<InputSystemUIInputModule>(
++                report,
++                owner,
++                scene,
++                nameof(InputSystemUIInputModule));
+             ValidateMaximumSceneComponentCount<SessionCameraOverrideBinding>(
+                 report,
+                 owner,
+                 scene,
+                 nameof(SessionCameraOverrideBinding),
+                 1);

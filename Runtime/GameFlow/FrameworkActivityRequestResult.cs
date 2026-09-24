@@ -1,0 +1,439 @@
+using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Gate;
+using Immersive.Framework.Common;
+
+namespace Immersive.Framework.GameFlow
+{
+    /// <summary>
+    /// Immutable result for a completed runtime activity request.
+    /// This is diagnostics data and does not expose a service locator.
+    /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Baseline surface kept for development use until the owning roadmap phase stabilizes it.")]
+    internal readonly struct FrameworkActivityRequestResult
+    {
+        public FrameworkActivityRequestResult(
+            FrameworkActivityRequestKind kind,
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
+        {
+            Kind = kind;
+            Message = message.NormalizeText();
+            TargetActivity = targetActivity;
+            Source = source.NormalizeTextOrFallback("Unknown");
+            Reason = reason.NormalizeTextOrFallback("None");
+            ActivityFlowResult = activityFlowResult;
+            TransitionDiagnostics = transitionDiagnostics;
+            TransitionGateDiagnostics = transitionGateDiagnostics;
+            ActivityTransitionMode = NormalizeActivityTransitionMode(activityTransitionMode);
+            ActivityLoadingMode = DetermineActivityLoadingMode(ActivityFlowResult, ActivityTransitionMode);
+            OperationKind = NormalizeOperationKind(operationKind);
+        }
+
+        public FrameworkActivityRequestKind Kind { get; }
+
+        public string Message { get; }
+
+        public ActivityAsset TargetActivity { get; }
+
+        public string Source { get; }
+
+        public string Reason { get; }
+
+        internal ActivityFlowStartResult ActivityFlowResult { get; }
+
+        internal FrameworkTransitionDiagnostics TransitionDiagnostics { get; }
+
+        internal TransitionGateDiagnostics TransitionGateDiagnostics { get; }
+
+        internal ActivityVisualTransitionMode ActivityTransitionMode { get; }
+
+        internal string ActivityLoadingMode { get; }
+
+        internal GameFlowRequestOperationKind OperationKind { get; }
+
+        public bool Succeeded =>
+            Kind == FrameworkActivityRequestKind.Succeeded;
+
+        public bool Superseded =>
+            Kind ==
+            FrameworkActivityRequestKind
+                .SupersededCommittedTargetByRouteReplacement;
+
+        public bool CommitBoundaryReached =>
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetNotReady ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReadinessInvalidated ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReadinessCancelled ||
+            Kind ==
+            FrameworkActivityRequestKind
+                .FailedCommittedTargetReveal;
+
+        public bool DestinationAuthoritative =>
+            Succeeded || CommitBoundaryReached;
+
+        public static FrameworkActivityRequestResult FailedInvalidConfig(
+            string message,
+            ActivityAsset targetActivity = null,
+            string source = null,
+            string reason = null,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedInvalidConfig,
+                message,
+                targetActivity,
+                source,
+                reason,
+                default,
+                default,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
+        internal static FrameworkActivityRequestResult FailedInvalidConfig(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind =
+                GameFlowRequestOperationKind.Activity)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedInvalidConfig,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
+        public static FrameworkActivityRequestResult FailedRuntimeUnavailable(
+            string message,
+            ActivityAsset targetActivity = null,
+            string source = null,
+            string reason = null)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedRuntimeUnavailable,
+                message,
+                targetActivity,
+                source,
+                reason,
+                default);
+        }
+
+        internal static FrameworkActivityRequestResult
+            FailedCommittedTargetNotReady(
+                string message,
+                ActivityAsset targetActivity,
+                string source,
+                string reason,
+                ActivityFlowStartResult activityFlowResult,
+                FrameworkTransitionDiagnostics transitionDiagnostics = default,
+                TransitionGateDiagnostics transitionGateDiagnostics = default,
+                ActivityVisualTransitionMode activityTransitionMode =
+                    ActivityVisualTransitionMode.Seamless)
+        {
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetNotReady,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReadinessInvalidated(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless)
+        {
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetReadinessInvalidated,
+                message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReadinessCancelled(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless)
+        {
+            return FailedCommittedTargetReadiness(
+                FrameworkActivityRequestKind.FailedCommittedTargetReadinessCancelled,
+                message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode);
+        }
+
+        internal static FrameworkActivityRequestResult
+            SupersededCommittedTargetByRouteReplacement(
+                string message,
+                ActivityAsset targetActivity,
+                string source,
+                string reason,
+                ActivityFlowStartResult activityFlowResult,
+                FrameworkTransitionDiagnostics transitionDiagnostics = default,
+                TransitionGateDiagnostics transitionGateDiagnostics = default,
+                ActivityVisualTransitionMode activityTransitionMode =
+                    ActivityVisualTransitionMode.Seamless)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind
+                    .SupersededCommittedTargetByRouteReplacement,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+        }
+
+        internal static FrameworkActivityRequestResult FailedPreCommitTransition(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedPreCommitTransition,
+                message,
+                targetActivity,
+                source,
+                reason,
+                default,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedTargetReveal(
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode =
+                ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedCommittedTargetReveal,
+                message,
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
+        private static FrameworkActivityRequestResult FailedCommittedTargetReadiness(
+            FrameworkActivityRequestKind kind,
+            string message,
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics,
+            TransitionGateDiagnostics transitionGateDiagnostics,
+            ActivityVisualTransitionMode activityTransitionMode)
+        {
+            return new FrameworkActivityRequestResult(
+                kind, message, targetActivity, source, reason, activityFlowResult,
+                transitionDiagnostics, transitionGateDiagnostics, activityTransitionMode,
+                GameFlowRequestOperationKind.Activity);
+        }
+
+        public static FrameworkActivityRequestResult IgnoredAlreadyActive(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.IgnoredAlreadyActive,
+                $"Activity Request ignored. {FormatRequestContext(source, reason)} Activity '{targetActivity.ActivityName}' is already active.",
+                targetActivity,
+                source,
+                reason,
+                default);
+        }
+
+        public static FrameworkActivityRequestResult IgnoredAlreadyInFlight(
+            ActivityAsset targetActivity,
+            string source,
+            string reason)
+        {
+            string activityName = targetActivity.ToDiagnosticText(x => x.ActivityName);
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.IgnoredAlreadyInFlight,
+                $"Activity Request ignored. {FormatRequestContext(source, reason)} Another activity or route request is already in flight. targetActivity='{activityName}'.",
+                targetActivity,
+                source,
+                reason,
+                default);
+        }
+
+        internal static FrameworkActivityRequestResult IgnoredBlockedByGate(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            GateEvaluationResult gateEvaluation,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.Activity)
+        {
+            string activityName = targetActivity.ToDiagnosticText(x => x.ActivityName);
+            bool blockedByTransitionGate = transitionGateDiagnostics.HasBlockingEvaluation;
+            return new FrameworkActivityRequestResult(
+                blockedByTransitionGate
+                    ? FrameworkActivityRequestKind.RejectedByTransitionGate
+                    : FrameworkActivityRequestKind.IgnoredAlreadyInFlight,
+                $"Activity Request ignored. {FormatRequestContext(source, reason)} targetActivity='{activityName}'. {GateRequestAdmission.FormatBlockedMessage("Activity Request", gateEvaluation)}",
+                targetActivity,
+                source,
+                reason,
+                default,
+                default,
+                transitionGateDiagnostics,
+                ActivityVisualTransitionMode.Seamless,
+                operationKind);
+        }
+
+        public static FrameworkActivityRequestResult IgnoredNoActiveActivity(
+            string source,
+            string reason)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.IgnoredNoActiveActivity,
+                $"Activity Request ignored. {FormatRequestContext(source, reason)} No Activity is active.",
+                null,
+                source.NormalizeTextOrFallback("Unknown"),
+                reason.NormalizeTextOrFallback("None"),
+                default,
+                default,
+                default,
+                ActivityVisualTransitionMode.Seamless,
+                GameFlowRequestOperationKind.ActivityClear);
+        }
+
+        internal static FrameworkActivityRequestResult SucceededWith(
+            ActivityAsset targetActivity,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.Succeeded,
+                $"Activity Request completed. {FormatRequestContext(source, reason)} {activityFlowResult.Message}",
+                targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                targetActivity == null ? GameFlowRequestOperationKind.ActivityClear : GameFlowRequestOperationKind.Activity);
+        }
+
+        private static GameFlowRequestOperationKind NormalizeOperationKind(GameFlowRequestOperationKind operationKind)
+        {
+            if (operationKind == GameFlowRequestOperationKind.ActivityClear)
+            {
+                return GameFlowRequestOperationKind.ActivityClear;
+            }
+
+            return GameFlowRequestOperationKind.Activity;
+        }
+
+        private static ActivityVisualTransitionMode NormalizeActivityTransitionMode(ActivityVisualTransitionMode mode)
+        {
+            return System.Enum.IsDefined(typeof(ActivityVisualTransitionMode), mode)
+                ? mode
+                : ActivityVisualTransitionMode.Seamless;
+        }
+
+        private static string DetermineActivityLoadingMode(
+            ActivityFlowStartResult activityFlowResult,
+            ActivityVisualTransitionMode mode)
+        {
+            bool hasSceneLoad = activityFlowResult.ActivitySceneCompositionResult.HasSceneLoadExecution;
+            bool hasSceneRelease = activityFlowResult.ActivitySceneReleaseResult.HasSceneReleaseExecution;
+
+            if (hasSceneLoad && hasSceneRelease)
+            {
+                return "ActivitySceneCompositionAndRelease";
+            }
+
+            if (hasSceneLoad)
+            {
+                return "ActivitySceneComposition";
+            }
+
+            if (hasSceneRelease)
+            {
+                return "ActivitySceneRelease";
+            }
+
+            return "SkippedNoSceneLoad";
+        }
+
+        private static string FormatRequestContext(string source, string reason)
+        {
+            return $"source='{source.NormalizeTextOrFallback("Unknown")}' reason='{reason.NormalizeTextOrFallback("None")}'.";
+        }
+    }
+}
