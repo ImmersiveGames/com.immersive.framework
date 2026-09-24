@@ -2,6 +2,13 @@
 
 All notable package changes are documented in this file.
 
+## [1.0.3] - 2026-09-24
+
+- Added signed Unity UPM release distribution through GitHub Releases and OpenUPM.
+- Updated Foundation to `0.2.2` and Logging to `0.2.3` for the signed registry graph.
+- Updated Cinemachine to `3.1.7` for Unity `6000.5` compatibility.
+- Preserved Framework runtime behavior and public APIs.
+
 ## [1.0.2] - 2026-09-24
 
 - Added the public MIT license and OpenUPM distribution metadata.

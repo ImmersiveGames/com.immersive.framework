@@ -4,7 +4,7 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current version: `1.0.2` (stable package release).
+Current version: `1.0.3` (stable package release).
 
 The package provides runtime authorities, designer-facing authoring surfaces,
 Editor workflows, diagnostics and validation. It consumes the technical
@@ -14,9 +14,9 @@ reimplementing their primitives.
 ## Requirements
 
 - Unity `6000.5.0f1` or newer in the supported `6000.5` line;
-- `com.immersive.foundation` `0.2.1`;
-- `com.immersive.logging` `0.2.2`;
-- Cinemachine `3.1.0`;
+- `com.immersive.foundation` `0.2.2`;
+- `com.immersive.logging` `0.2.3`;
+- Cinemachine `3.1.7`;
 - Input System `1.19.0`.
 
 There is no support or validation matrix for earlier Unity versions.
@@ -36,14 +36,14 @@ scope, then declare only the Framework package:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.0.2"
+    "com.immersive.framework": "1.0.3"
   }
 }
 ```
 
-Unity resolves Foundation `0.2.1` and Logging `0.2.2` automatically. As a Git
+Unity resolves Foundation `0.2.2` and Logging `0.2.3` automatically. As a Git
 fallback, use
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.2`; Git
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.3`; Git
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
 
