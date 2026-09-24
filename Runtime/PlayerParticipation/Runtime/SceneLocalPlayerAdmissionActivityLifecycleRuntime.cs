@@ -809,7 +809,6 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 ContextualRetirementCause.ActivityExit,
                 default,
-                compensateReleasedEntries: false,
                 source,
                 reason,
                 out issue);
@@ -827,7 +826,6 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 ContextualRetirementCause.EnterRollback,
                 default,
-                compensateReleasedEntries: false,
                 source,
                 reason,
                 out issue);
@@ -846,7 +844,6 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 ContextualRetirementCause.SessionPlayerLeave,
                 leaveToken,
-                compensateReleasedEntries: false,
                 source,
                 reason,
                 out issue);
@@ -864,7 +861,6 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 ContextualRetirementCause.SessionTermination,
                 default,
-                compensateReleasedEntries: false,
                 source,
                 reason,
                 out issue);
@@ -875,12 +871,10 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeContentOwner owner,
             ContextualRetirementCause cause,
             SessionPlayerLeaveToken leaveToken,
-            bool compensateReleasedEntries,
             string source,
             string reason,
             out string issue)
         {
-            var released = new List<Entry>();
             var failures = new List<string>();
 
             for (int index = entries.Count - 1; index >= 0; index--)
@@ -928,26 +922,12 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 entry.AdmissionActive = false;
-                released.Add(entry);
             }
 
             if (failures.Count == 0)
             {
                 issue = string.Empty;
                 return true;
-            }
-
-            if (compensateReleasedEntries && released.Count > 0)
-            {
-                if (!TryRestoreReleasedEntries(
-                        released,
-                        owner,
-                        source,
-                        reason,
-                        out string compensationIssue))
-                {
-                    failures.Add($"Released-entry compensation failed. {compensationIssue}");
-                }
             }
 
             issue = string.Join(" | ", failures);
@@ -1020,58 +1000,6 @@ namespace Immersive.Framework.PlayerParticipation
                     source,
                     $"{reason}:release-non-adopted-admission")
             };
-        }
-
-        private bool TryRestoreReleasedEntries(
-            List<Entry> released,
-            RuntimeContentOwner owner,
-            string source,
-            string reason,
-            out string issue)
-        {
-            var failures = new List<string>();
-            for (int index = released.Count - 1; index >= 0; index--)
-            {
-                Entry entry = released[index];
-                SceneLocalPlayerAdmissionRuntimeResult admission = _module.TryAdmit(
-                    entry.Authoring,
-                    owner,
-                    source,
-                    $"{reason}:compensate-admission:{index}");
-                if (admission == null || !admission.Succeeded || !admission.Token.IsValid)
-                {
-                    failures.Add(admission != null
-                        ? admission.ToDiagnosticString()
-                        : $"Admission compensation returned no result for '{entry.Authoring.name}'.");
-                    continue;
-                }
-
-                entry.AdmissionToken = admission.Token;
-                entry.AdmissionActive = true;
-                if (!TryConfirmSessionSelection(
-                        entry,
-                        source,
-                        reason,
-                        out string selectionIssue))
-                {
-                    failures.Add(selectionIssue);
-                    continue;
-                }
-
-                if (entry.AdoptionToken.IsValid &&
-                    !TryRestoreAdoption(
-                        entry,
-                        owner,
-                        source,
-                        reason,
-                        out string adoptionIssue))
-                {
-                    failures.Add(adoptionIssue);
-                }
-            }
-
-            issue = string.Join(" | ", failures);
-            return failures.Count == 0;
         }
 
         private bool TryConfirmSessionSelection(
