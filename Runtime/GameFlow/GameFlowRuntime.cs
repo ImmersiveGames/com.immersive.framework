@@ -160,6 +160,12 @@ namespace Immersive.Framework.GameFlow
             _routeLifecycleRuntime.SetPauseActivityBindingLifecycle(lifecycle);
         }
 
+        internal void SetPauseActivityLifecyclePort(
+            IPauseActivityLifecyclePort port)
+        {
+            _routeLifecycleRuntime.SetPauseActivityLifecyclePort(port);
+        }
+
         internal void SetCycleResetParticipantSource(ICycleResetParticipantSource participantSource)
         {
             _routeLifecycleRuntime.SetCycleResetParticipantSource(participantSource);

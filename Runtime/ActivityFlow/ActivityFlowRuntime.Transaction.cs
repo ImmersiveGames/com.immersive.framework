@@ -325,6 +325,24 @@ namespace Immersive.Framework.ActivityFlow
                         contentTransition);
                 }
 
+                if (!TryPrepareForActivityExit(
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        out string pauseActivityExitIssue))
+                {
+                    return await FailBeforeCommitAsync(
+                        transaction,
+                        nextActivity,
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        "Pause Activity exit precondition blocked Activity admission. " +
+                            pauseActivityExitIssue,
+                        activityOperationResult,
+                        contentTransition);
+                }
+
                 transaction.MarkReadyToCommit(
                     "Target Activity scenes, runtime scope and activation requirements are prepared.");
                 _currentActivityState = ActivityRuntimeState.ActiveWith(
@@ -568,6 +586,27 @@ namespace Immersive.Framework.ActivityFlow
 
             try
             {
+                if (!TryPrepareForActivityExit(
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        out string pauseActivityExitIssue))
+                {
+                    ActivityTransitionSnapshot precheckSnapshot = transaction.FailBeforeCommit(
+                        "Activity clear transition failed before commit because the Pause Activity exit precondition failed. " +
+                            pauseActivityExitIssue);
+                    FinishActivityTransition(transaction);
+                    await FrameworkLoadingProgressReporterUtility
+                        .ReportCompletedIfAnyAsync(
+                            resolvedProgressReporter,
+                            "ActivityTransition",
+                            "Activity transition ended after a precondition failure.");
+                    return ActivityFlowStartResult.Failed(
+                            "Activity clear transition failed before commit. " +
+                                pauseActivityExitIssue)
+                        .WithActivityTransition(precheckSnapshot);
+                }
+
                 transaction.MarkReadyToCommit(
                     "No target Activity requirements remain before clearing authority.");
                 _currentActivityState = ActivityRuntimeState.None(
@@ -1072,6 +1111,33 @@ namespace Immersive.Framework.ActivityFlow
                     "Pause Activity Binding release blocked Player and scene teardown. " +
                     diagnostic);
             }
+        }
+
+        /// <summary>
+        /// IF-ADR-005 Pause lifecycle cleanup precondition. previousActivity is still the
+        /// officially active Activity at every call site of this method (called before
+        /// MarkReadyToCommit / before _currentActivityState changes), so a Pause resume routed
+        /// through the canonical pipeline is naturally admitted. Returns true (no-op) when there
+        /// is no previous Activity or no port is wired. A false result must block the Activity
+        /// exit from committing; it never represents a best-effort cleanup.
+        /// </summary>
+        private bool TryPrepareForActivityExit(
+            ActivityAsset previousActivity,
+            string source,
+            string reason,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (previousActivity == null ||
+                _pauseActivityLifecyclePort == null)
+            {
+                return true;
+            }
+
+            return _pauseActivityLifecyclePort.PrepareForActivityExit(
+                source,
+                reason,
+                out diagnostic);
         }
 
         private void ConfigureActivityContentTransitionScope(

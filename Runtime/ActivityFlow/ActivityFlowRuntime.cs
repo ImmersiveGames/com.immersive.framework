@@ -39,6 +39,7 @@ namespace Immersive.Framework.ActivityFlow
         private readonly ActivityOperationExecutor _activityOperationExecutor = new ActivityOperationExecutor();
         private IActivityContentExecutionParticipantSource _activityContentExecutionParticipantSource;
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingLifecycle;
+        private IPauseActivityLifecyclePort _pauseActivityLifecyclePort;
         private CameraPresentationLifecycleRuntime _cameraPresentationLifecycle;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
@@ -435,6 +436,12 @@ namespace Immersive.Framework.ActivityFlow
             PauseActivityBindingRuntimeHostModule lifecycle)
         {
             _pauseActivityBindingLifecycle = lifecycle;
+        }
+
+        internal void SetPauseActivityLifecyclePort(
+            IPauseActivityLifecyclePort port)
+        {
+            _pauseActivityLifecyclePort = port;
         }
 
         internal IEventBinding SubscribeActivityEntered(Action<ActivityEnteredEvent> handler)

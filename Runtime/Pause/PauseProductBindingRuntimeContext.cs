@@ -236,6 +236,116 @@ namespace Immersive.Framework.Pause
             return pauseRestored && postureRestored;
         }
 
+        /// <summary>
+        /// Bypass entry point for framework-internal Pause lifecycle cleanup (IF-ADR-005 Pause
+        /// lifecycle cleanup). Restores the exact captured Pause-time PlayerInput Action Map
+        /// baseline and completes the InputMode transaction back to Gameplay, without evaluating
+        /// external Pause admission (GameFlow transition gate, Activity admission) and without
+        /// releasing or re-registering the PlayerInput binding. Callers are responsible for
+        /// resolving the logical PauseRuntime state to Running (via
+        /// IPauseProductApplicationPort.TryRestorePauseSnapshot) before invoking this.
+        /// </summary>
+        internal bool TryRestorePhysicalPostureForLifecycleExit(
+            string reason,
+            out string diagnostic)
+        {
+            if (!HasActivePlayerInputBinding)
+            {
+                diagnostic =
+                    "No active PlayerInput binding requires physical Pause posture restoration.";
+                return true;
+            }
+
+            if (!_pauseActionMapSetReceipt.IsValid)
+            {
+                diagnostic =
+                    "No captured physical Pause posture requires restoration.";
+                return true;
+            }
+
+            if (_requestInFlight)
+            {
+                diagnostic =
+                    "Physical Pause posture restoration rejected because another Pause product request is in progress.";
+                return false;
+            }
+
+            string resolvedReason =
+                reason.NormalizeTextOrFallback("activity-exit-pause-cleanup");
+
+            _requestInFlight = true;
+            try
+            {
+                InputModeRuntimeOperationResult begin =
+                    _inputMode.TryBegin(
+                        InputModeRequest.To(
+                            InputModeKind.Gameplay,
+                            nameof(PauseProductBindingRuntimeContext),
+                            resolvedReason),
+                        nameof(PauseProductBindingRuntimeContext),
+                        out InputModeRuntimeTransaction transaction);
+
+                if (begin.Ignored)
+                {
+                    _pauseActionMapSetReceipt = default;
+                    diagnostic =
+                        "InputMode was already Gameplay; no physical restoration was required.";
+                    return true;
+                }
+
+                if (!begin.Prepared)
+                {
+                    diagnostic =
+                        "Physical Pause posture restoration rejected because InputMode preparation failed. " +
+                        begin.Message;
+                    return false;
+                }
+
+                if (!_adapter.TryRestoreActionMapSet(
+                        _pauseActionMapSetReceipt,
+                        nameof(PauseProductBindingRuntimeContext),
+                        resolvedReason,
+                        out string physicalDiagnostic))
+                {
+                    _inputMode.Rollback(
+                        transaction,
+                        nameof(PauseProductBindingRuntimeContext),
+                        "physical-restore-failed");
+                    diagnostic =
+                        "Physical Pause posture restoration failed. " + physicalDiagnostic;
+                    return false;
+                }
+
+                InputModeRuntimeOperationResult commit =
+                    _inputMode.Commit(
+                        transaction,
+                        nameof(PauseProductBindingRuntimeContext),
+                        resolvedReason);
+                if (!commit.Committed)
+                {
+                    _adapter.TryApplyActionMapSet(
+                        _pauseActionMapSetReceipt.AppliedPrimaryActionMapName,
+                        _pauseActionMapSetReceipt.AppliedEnabledActionMapNames,
+                        nameof(PauseProductBindingRuntimeContext),
+                        "inputmode-commit-failed",
+                        out _,
+                        out string physicalRollbackDiagnostic);
+                    diagnostic =
+                        "Physical Pause posture restoration InputMode commit failed. compensation='" +
+                        physicalRollbackDiagnostic + "'.";
+                    return false;
+                }
+
+                _pauseActionMapSetReceipt = default;
+                diagnostic = "Physical Pause posture restored for Activity exit.";
+                return true;
+            }
+            finally
+            {
+                _requestInFlight = false;
+            }
+        }
+
         public PauseProductRequestResult RequestPause(
             PauseRequest request)
         {

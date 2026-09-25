@@ -215,6 +215,12 @@ namespace Immersive.Framework.RouteLifecycle
             _activityFlowRuntime.SetPauseActivityBindingLifecycle(lifecycle);
         }
 
+        internal void SetPauseActivityLifecyclePort(
+            IPauseActivityLifecyclePort port)
+        {
+            _activityFlowRuntime.SetPauseActivityLifecyclePort(port);
+        }
+
         internal void SetCycleResetParticipantSource(ICycleResetParticipantSource participantSource)
         {
             _cycleResetParticipantSource = participantSource ?? EmptyCycleResetParticipantSource.Instance;

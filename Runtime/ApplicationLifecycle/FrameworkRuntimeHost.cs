@@ -40,11 +40,12 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IPauseActivityLifecyclePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
         private const string PauseTransitionInProgressStatus = "RejectedTransitionInProgress";
+        private const string PauseActivityNotActiveIssueCode = "pause.activity-not-active";
 
 
         private GameApplicationAsset _gameApplication;
@@ -56,6 +57,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseRuntime _pauseRuntime;
         private PauseTimeScaleRuntime _pauseTimeScaleRuntime;
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
+        private PauseSurfaceSceneLifecycleParticipant _pauseSurfaceSceneLifecycleParticipant;
         private SceneLifecycleRuntime _sceneLifecycleRuntime;
         private ResetProductBindingSceneLifecycleParticipant _resetProductBindingSceneLifecycleParticipant;
         private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
@@ -618,6 +620,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
+            _pauseSurfaceSceneLifecycleParticipant?.SetSurfaceRuntime(_pauseSurfaceRuntime);
             GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
                 _globalUiSceneRuntime.TryBindPauseRequestTriggers(
                     _pauseProductBindingRuntime);
@@ -837,6 +840,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyRetainedActivityParticipantSources();
             _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();
+            ApplyPauseActivityLifecyclePort();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
                 _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
@@ -1586,9 +1590,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                 throw new InvalidOperationException("Pause runtime is not initialized.");
             }
 
-            var result = TryCreateTransitionBlockedPauseResult(request, out var transitionBlockedResult)
-                ? transitionBlockedResult
-                : _pauseRuntime.Request(request);
+            PauseResult result;
+            if (TryCreateTransitionBlockedPauseResult(request, out var transitionBlockedResult))
+            {
+                result = transitionBlockedResult;
+            }
+            else if (TryCreateActivityNotActivePauseResult(request, out var activityNotActiveResult))
+            {
+                result = activityNotActiveResult;
+            }
+            else
+            {
+                result = _pauseRuntime.Request(request);
+            }
+
             var timeScaleResult = _pauseTimeScaleRuntime != null
                 ? _pauseTimeScaleRuntime.Apply(result)
                 : default;
@@ -1630,6 +1645,48 @@ namespace Immersive.Framework.ApplicationLifecycle
                 request,
                 _pauseRuntime.State,
                 "Pause request rejected by transition policy because a framework transition or loading operation is in progress.",
+                issues);
+            return true;
+        }
+
+        /// <summary>
+        /// Pause capability admission (IF-ADR-005): a Pause request is only admitted while the
+        /// current GameFlow lifecycle has an effectively active, committed Activity within an
+        /// active Route. This reads the official RouteLifecycleRuntime/ActivityFlowRuntime
+        /// committed-Activity signal; it does not infer admission from CurrentActivity nullness
+        /// alone, and it neither owns nor mutates Pause state itself.
+        /// </summary>
+        private bool TryCreateActivityNotActivePauseResult(PauseRequest request, out PauseResult result)
+        {
+            if (_pauseRuntime == null)
+            {
+                result = default;
+                return false;
+            }
+
+            bool hasActiveActivity =
+                _gameFlowRuntime?.CurrentRouteLifecycleRuntime?.HasActiveActivity == true;
+            if (hasActiveActivity)
+            {
+                result = default;
+                return false;
+            }
+
+            string source = request.Source.NormalizeTextOrFallback(nameof(FrameworkRuntimeHost));
+            string reason = request.Reason.NormalizeTextOrFallback("pause.request");
+            var issues = new[]
+            {
+                PauseIssue.Blocking(
+                    PauseActivityNotActiveIssueCode,
+                    source,
+                    reason,
+                    "Pause request was rejected because no Activity is currently active. Pause capability is admitted only while an Activity is active within an active Route.")
+            };
+
+            result = PauseResult.RejectedResult(
+                request,
+                _pauseRuntime.State,
+                "Pause request rejected because no Activity is currently active.",
                 issues);
             return true;
         }
@@ -1752,8 +1809,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                     (IResetRegistrationRuntimePort)this,
                     (IResetExecutionRuntimePort)this,
                     (IResetSelectionExecutionRuntimePort)this);
+            _pauseSurfaceSceneLifecycleParticipant =
+                new PauseSurfaceSceneLifecycleParticipant(_pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
+                _pauseSurfaceSceneLifecycleParticipant,
                 _resetProductBindingSceneLifecycleParticipant,
                 new SceneLifecycleEventsParticipant());
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
@@ -1770,6 +1830,11 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _gameFlowRuntime?.SetPauseActivityBindingLifecycle(
                 _pauseActivityBindingModule);
+        }
+
+        private void ApplyPauseActivityLifecyclePort()
+        {
+            _gameFlowRuntime?.SetPauseActivityLifecyclePort(this);
         }
 
         private void ApplyRetainedActivityParticipantSources()
