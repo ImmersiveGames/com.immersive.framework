@@ -1,9 +1,10 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
 Status: **Accepted**  
-Last updated: 2026-08-10  
+Last updated: 2026-09-25  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
 Current technical conformity: **CLOSED FOR CURRENT ACCEPTED STAGE A BOUNDARY**  
+Pause admission/presentation contract: **ACCEPTED / IMPLEMENTATION PENDING (Cuts B–D)**  
 Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
 Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
@@ -19,6 +20,16 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 > corrected in the existing Pause product owner and the same regression then
 > passed 27/27 across two passes in one Play Mode session. FIRSTGAME remains
 > Stage B consumer evidence and does not reopen technical conformity.
+
+> **2026-09-25 amendment.** This ADR now also formalizes the Pause capability
+> admission and presentation contract described below (see "Pause capability
+> admission and lifecycle authority", "Pause presentation lifecycle" and
+> "Pause lifecycle cleanup"). That contract is accepted architecture; it is not
+> yet reflected in the package, product-surface or QA evidence recorded
+> elsewhere in this document, which continue to describe the
+> pre-admission-contract implementation. Implementation and QA for the new
+> contract are tracked as later cuts and do not reopen the Stage A closure
+> recorded below for its original, narrower scope.
 
 ## Context
 
@@ -61,6 +72,113 @@ Activity Entry Readiness Recovery Gate
 ```
 
 Do not infer that every type named "gate" must use the same ownership abstraction.
+
+## Pause capability admission and lifecycle authority
+
+The existence of a Session or a running Application does not by itself imply a
+Pause capability. Pause is a capability admitted by the current GameFlow
+lifecycle, not an ambient property of the running application.
+
+Pause capability is admitted only while the current lifecycle has an active
+Activity within an active Route. A Route with no active Activity (menus,
+presentations, and any other Route authored without an Activity) is a
+non-pausable context: a Pause request made in that context is rejected
+explicitly, with diagnostic evidence, rather than silently applied or silently
+ignored.
+
+Route and Activity lifecycle — specifically, the point at which an Activity
+transaction commits and the point at which it exits, whether standalone or as
+part of a Route replacement — is the lifecycle authority that determines when
+this admission exists. This is distinct from ownership of the technical Pause
+state:
+
+```text
+technical runtime owner   = PauseRuntime
+                            application-hosted, single-writer of
+                            Running/Paused
+
+lifecycle authority       = Route/Activity lifecycle (GameFlow)
+                            determines whether Pause admission currently
+                            exists; does not itself hold or mutate Pause
+                            state
+
+presentation lifetime     = the content (Persistent, RouteContent,
+                            ActivityContent) that owns a given
+                            IPauseSurfaceAdapter
+```
+
+`PauseRuntime` remains application-hosted in `FrameworkRuntimeHost` and remains
+the technical runtime owner and single-writer of `Running`/`Paused`. This ADR
+does not move Pause state into Route or Activity. Lifecycle authority governs
+admission of a Pause request; it does not become a second owner of Pause state.
+
+This is an intentional contract change, not a defect correction. Under the
+previous contract, a Pause request with no active Player binding still applied
+through the `AppliedWithoutPlayerInput` / `ApplicationOnly` execution mode
+described elsewhere in this ADR and in the Pause Usage guide, regardless of
+Route/Activity state. Under this contract, a Pause request made while no
+Activity is active is rejected explicitly. Consumers relying on the previous
+behavior in a Route without an Activity must treat this as a breaking, accepted
+change to the Pause contract.
+
+## Pause presentation lifecycle
+
+Pause presentation is no longer scoped exclusively to Persistent Content /
+UIGlobal.
+
+An `IPauseSurfaceAdapter` may contribute to Pause presentation for as long as
+the content that owns it is active, using the lifetimes already established
+elsewhere in this framework for that content:
+
+```text
+Persistent Content             adapter lifetime = application lifetime
+Route Primary / RouteContent   adapter lifetime = active Route occurrence
+ActivityContent                adapter lifetime = active Activity occurrence
+```
+
+An adapter's presentation lifetime is exactly the lifetime of the content it is
+authored in. This ADR introduces no separate lifetime model, registration
+authority, or ownership concept for Pause surfaces beyond the ownership already
+established for Persistent Content, Route content and Activity content.
+
+Multiple adapters may be concurrently active across these scopes. This does not
+require priority or selection between them: the existing semantics — the
+current `PauseSnapshot` is applied to every adapter that supports it — are
+preserved unchanged. No adapter is treated as more authoritative than another
+by virtue of the content scope it belongs to.
+
+Persistent Content remains a valid, always-in-scope source of Pause
+presentation; it is not demoted to a fallback and does not require
+Route/Activity-authored adapters to be present.
+
+How adapters authored in Route/Activity content are discovered and registered
+symmetrically to how `PauseRequestTrigger` is already discovered today is an
+implementation decision for a later cut, not specified by this ADR.
+
+## Pause lifecycle cleanup
+
+Leaving a pausable context — an Activity exiting, whether standalone or as part
+of a Route replacement — must leave no residual Pause-related state behind:
+
+```text
+no residual Paused logical state
+no residual Time.timeScale alteration
+no residual Pause capability Gate / Input blocker
+no residual Pause presentation (surface left visible or applied)
+```
+
+If the logical state was `Paused` when the pausable context is left, it is
+restored to `Running`, with all effects Pause itself would apply on Resume
+(Gate/Input state, `Time.timeScale`, presentation), before the next context
+(a replacement Route, a new Activity, or an explicit non-pausable Route) is
+considered active.
+
+This is a requirement on outcome and on the lifecycle point at which cleanup is
+guaranteed (Activity exit, ahead of the next context becoming active); it does
+not prescribe the specific mechanism (a host-owned lifecycle port, a scene
+lifecycle participant, an event subscription, or otherwise) used to wire that
+cleanup. That mechanism is an implementation decision for a later cut, informed
+by inspection of the existing lifecycle composition boundaries.
 
 ## Architectural constraints
 
@@ -379,6 +497,26 @@ consumer authoring does not require hidden runtime contracts
 
 The current package and executed QA evidence satisfy these Stage A criteria.
 
+## Pause admission/presentation contract status
+
+```text
+Pause capability admission (Route/Activity lifecycle authority)
+  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+
+Pause presentation lifecycle (Persistent/RouteContent/ActivityContent)
+  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+
+Pause lifecycle cleanup (no residual Paused/TimeScale/Gate/presentation)
+  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+```
+
+None of the package, product-surface or QA evidence recorded elsewhere in this
+document certifies these three items. They are tracked as separate
+implementation cuts. The Stage A closure, current assessment and completion
+criteria recorded elsewhere in this document describe the
+pre-admission-contract implementation and remain valid for that narrower,
+already-certified scope; they are not re-opened by this amendment.
+
 ## Normative summary
 
 ```text
@@ -388,4 +526,8 @@ Do not treat synthetic Inspector QA as product certification.
 Keep FIRSTGAME as separate consumer evidence.
 Preserve exact pre-Pause PlayerInput posture across Pause -> Resume.
 ADR-005 Stage A is closed for the current accepted boundary.
+Pause capability is admitted only by Route/Activity lifecycle authority; Session/Application existence never implies Pause capability.
+Pause presentation may be contributed by Persistent, RouteContent or ActivityContent adapters; apply-to-all-supported-adapters semantics are preserved, with no priority/selection introduced.
+Leaving a pausable context must leave no residual Paused state, Time.timeScale alteration, Gate/Input blocker or presentation.
+Do not move PauseRuntime out of FrameworkRuntimeHost, and do not create a second owner of Running/Paused state, to satisfy this contract.
 ```
