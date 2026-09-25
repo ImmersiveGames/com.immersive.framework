@@ -27,9 +27,10 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 > "Pause lifecycle cleanup"). That contract is accepted architecture; it is not
 > yet reflected in the package, product-surface or QA evidence recorded
 > elsewhere in this document, which continue to describe the
-> pre-admission-contract implementation. Implementation and QA for the new
-> contract are tracked as later cuts and do not reopen the Stage A closure
-> recorded below for its original, narrower scope.
+> pre-admission-contract implementation. Implementation of the new contract is
+> tracked as Cuts B–D. QA and certification of the amended contract are explicitly
+> outside this implementation effort and remain separate evidence; neither reopens
+> the Stage A closure recorded below for its original, narrower scope.
 
 ## Context
 
@@ -527,7 +528,7 @@ Keep FIRSTGAME as separate consumer evidence.
 Preserve exact pre-Pause PlayerInput posture across Pause -> Resume.
 ADR-005 Stage A is closed for the current accepted boundary.
 Pause capability is admitted only by Route/Activity lifecycle authority; Session/Application existence never implies Pause capability.
-Pause presentation may be contributed by Persistent, RouteContent or ActivityContent adapters; apply-to-all-supported-adapters semantics are preserved, with no priority/selection introduced.
+Pause presentation may be contributed by Persistent, Route Primary/RouteContent or ActivityContent adapters; apply-to-all-supported-adapters semantics are preserved, with no priority/selection introduced.
 Leaving a pausable context must leave no residual Paused state, Time.timeScale alteration, Gate/Input blocker or presentation.
 Do not move PauseRuntime out of FrameworkRuntimeHost, and do not create a second owner of Running/Paused state, to satisfy this contract.
 ```
