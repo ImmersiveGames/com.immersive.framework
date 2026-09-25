@@ -1002,6 +1002,50 @@ namespace Immersive.Framework.PlayerParticipation
             };
         }
 
+        private string RollbackCurrentSelectionAndAdmission(
+            SceneProvidedLocalPlayerAuthoring authoring,
+            PlayerSlotId playerSlotId,
+            int selectionRevision,
+            bool selectionApplied,
+            SceneLocalPlayerAdmissionToken admissionToken,
+            string source,
+            string reason)
+        {
+            var failures = new List<string>();
+
+            if (selectionApplied)
+            {
+                var clearRequest = new PlayerActorSelectionRequest(
+                    playerSlotId,
+                    null,
+                    source,
+                    $"{reason}:selection-rollback",
+                    selectionRevision);
+                PlayerActorSelectionResult clear =
+                    _module.TryClearActorSelection(clearRequest);
+                if (clear == null || !clear.Succeeded)
+                {
+                    failures.Add(clear != null
+                        ? clear.ToDiagnosticString()
+                        : $"Actor selection rollback returned no result for Slot '{playerSlotId.StableText}'.");
+                }
+            }
+
+            if (!TryReleaseAdmissionOnly(
+                    authoring,
+                    admissionToken,
+                    source,
+                    reason,
+                    out string admissionIssue))
+            {
+                failures.Add(admissionIssue);
+            }
+
+            return failures.Count == 0
+                ? string.Empty
+                : string.Join(" | ", failures);
+        }
+
         private bool TryReleaseAdmissionOnly(
             SceneProvidedLocalPlayerAuthoring authoring,
             SceneLocalPlayerAdmissionToken token,
