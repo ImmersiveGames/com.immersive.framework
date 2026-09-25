@@ -476,11 +476,6 @@ namespace Immersive.Framework.Reset.Unity
         {
             if (IsExpectedDeferredRegistration(reason))
             {
-                return;
-            }
-
-            if (IsExpectedDeferredRegistration(reason))
-            {
                 if (_ownerUnavailableLogged &&
                     string.Equals(
                         _lastOwnerUnavailableIssue,

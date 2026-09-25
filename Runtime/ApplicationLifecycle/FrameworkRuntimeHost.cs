@@ -319,7 +319,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                         context,
                         ObjectEntryScope.Route,
                         RuntimeContentScope.Route,
-                        _state.CurrentRouteName,
+                        _state.RouteLifecycleResult.RuntimeRouteScopeResult.Owner,
                         out owner,
                         out issue);
                 case ResetSubjectScope.Activity:
@@ -327,7 +327,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                         context,
                         ObjectEntryScope.Activity,
                         RuntimeContentScope.Activity,
-                        _state.CurrentActivityName,
+                        _state.ActivityFlowResult.RuntimeActivityScopeResult.Owner,
                         out owner,
                         out issue);
                 case ResetSubjectScope.Runtime:
@@ -335,7 +335,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                             context,
                             ObjectEntryScope.Activity,
                             RuntimeContentScope.Activity,
-                            _state.CurrentActivityName,
+                            _state.ActivityFlowResult.RuntimeActivityScopeResult.Owner,
                             out owner,
                             out _))
                     {
@@ -346,7 +346,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                             context,
                             ObjectEntryScope.Route,
                             RuntimeContentScope.Route,
-                            _state.CurrentRouteName,
+                            _state.RouteLifecycleResult.RuntimeRouteScopeResult.Owner,
                             out owner,
                             out _))
                     {
@@ -1668,7 +1668,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             ObjectEntryScopedCollectionContext context,
             ObjectEntryScope objectEntryScope,
             RuntimeContentScope runtimeContentScope,
-            string ownerName,
+            RuntimeContentOwner authoritativeOwner,
             out RuntimeContentOwner owner,
             out string issue)
         {
@@ -1685,18 +1685,27 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return false;
             }
 
-            try
+            if (!authoritativeOwner.IsValid)
             {
-                owner = new RuntimeContentOwner(runtimeContentScope, ownerIdentity, ownerName);
-                issue = string.Empty;
-                return true;
-            }
-            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
-            {
-                issue = exception.Message;
-                owner = default;
+                issue = $"No valid authoritative runtime owner is available for scope '{runtimeContentScope}'.";
                 return false;
             }
+
+            if (authoritativeOwner.Scope != runtimeContentScope)
+            {
+                issue = $"Authoritative runtime owner scope '{authoritativeOwner.Scope}' does not match expected scope '{runtimeContentScope}'.";
+                return false;
+            }
+
+            if (authoritativeOwner.OwnerIdentity != ownerIdentity)
+            {
+                issue = $"Authoritative runtime owner identity '{authoritativeOwner.OwnerIdentity.StableText}' does not match current context identity '{ownerIdentity.StableText}'.";
+                return false;
+            }
+
+            owner = authoritativeOwner;
+            issue = string.Empty;
+            return true;
         }
 
         private ObjectEntryScopedCollectionContext CreateCurrentObjectEntryScopedCollectionContext()
