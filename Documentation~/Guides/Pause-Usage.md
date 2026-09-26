@@ -245,3 +245,10 @@ The adapter only projects Pause state. It does not own Pause, input maps or
 6. Repeat with an official Player binding.
 7. Confirm `Applied` and `PlayerInputTransaction`.
 8. Leave Route/Activity and confirm exact trigger release.
+
+
+## Stable product status (2026-09-26)
+
+The current Pause product surface is Stable. The supported product paths are physical Player input through `PlayerPauseInput`, scene-authored Pause/Resume requests through `PauseRequestTrigger`, and lifecycle-scoped presentation through `IPauseSurfaceAdapter` implementations. Pause capability remains admitted only while an Activity is active; presentation presence does not grant Pause admission.
+
+Pause-specific QA/smoke implementation is not owned by the runtime package. The package keeps product/runtime contracts and diagnostics required by those contracts, while external certification may exercise them from a consumer QA project.
