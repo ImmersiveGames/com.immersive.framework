@@ -13,13 +13,13 @@ namespace Immersive.Framework.Pause
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Pause/Pause Activity Authoring")]
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A designer-first passive Activity intent for future product Pause binding.")]
+        FrameworkApiStatus.Stable,
+        "Stable Activity authoring contract for required product Pause binding.")]
     public sealed class ActivityPauseAuthoring : MonoBehaviour
     {
         [Header("Pause")]
         [SerializeField]
-        [Tooltip("This Activity requires product Pause binding for its officially admitted Local Player. The binding is materialized by a later lifecycle cut, not by this component.")]
+        [Tooltip("This Activity requires product Pause binding for its officially admitted Local Player. The Activity lifecycle materializes and releases the binding.")]
         private PauseActivityBindingRequiredness requiredness =
             PauseActivityBindingRequiredness.Required;
 
