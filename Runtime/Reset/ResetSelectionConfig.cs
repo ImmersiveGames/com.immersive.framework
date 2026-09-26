@@ -64,22 +64,36 @@ namespace Immersive.Framework.Reset
                     AddExplicitSubjects(subjects, issues);
                     break;
                 case ResetSelectionMode.CurrentActivitySubjects:
-                    if (!TryAddSubjectsForScope(runtimeHost, ResetSubjectScope.Activity, subjects, out ResetIssue activityIssue))
-                    {
-                        issues.Add(activityIssue);
-                    }
+                    AddCurrentOwnerSubjects(
+                        runtimeHost,
+                        ResetSubjectScope.Activity,
+                        subjects,
+                        issues);
                     break;
                 case ResetSelectionMode.CurrentRouteSubjects:
-                    if (!TryAddSubjectsForScope(runtimeHost, ResetSubjectScope.Route, subjects, out ResetIssue routeIssue))
-                    {
-                        issues.Add(routeIssue);
-                    }
+                    AddCurrentOwnerSubjects(
+                        runtimeHost,
+                        ResetSubjectScope.Route,
+                        subjects,
+                        issues);
                     break;
                 case ResetSelectionMode.CurrentRouteAndActivitySubjects:
-                    AddCurrentRouteActivityAndRuntimeSubjects(runtimeHost, subjects, issues);
+                    AddCurrentOwnerSubjects(
+                        runtimeHost,
+                        ResetSubjectScope.Route,
+                        subjects,
+                        issues);
+                    AddCurrentOwnerSubjects(
+                        runtimeHost,
+                        ResetSubjectScope.Activity,
+                        subjects,
+                        issues);
                     break;
                 case ResetSelectionMode.AllCurrentSubjects:
-                    AddCurrentRouteActivityAndRuntimeSubjects(runtimeHost, subjects, issues);
+                    subjects.AddRange(
+                        runtimeHost.ResetRegistry
+                            .SnapshotSubjects()
+                            .Select(subject => subject.SubjectId));
                     break;
                 case ResetSelectionMode.RuntimeOnlySubjects:
                     subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByOrigin(ResetSubjectOrigin.RuntimeRegistered).Select(subject => subject.SubjectId));
@@ -223,54 +237,31 @@ namespace Immersive.Framework.Reset
             }
         }
 
-        private static bool TryAddSubjectsForScope(
+        private static void AddCurrentOwnerSubjects(
             FrameworkRuntimeHost runtimeHost,
-            ResetSubjectScope scope,
-            List<ResetSubjectId> subjects,
-            out ResetIssue issue)
-        {
-            if (!runtimeHost.TryResolveCurrentResetOwner(scope, out RuntimeContentOwner owner, out string ownerIssue))
-            {
-                issue = ResetIssue.Error(
-                    ResetIssueKind.InvalidRequest,
-                    $"Reset selection could not resolve current owner for scope '{scope}'. {ownerIssue}");
-                return false;
-            }
-
-            subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByScopeAndOwner(scope, owner).Select(subject => subject.SubjectId));
-            issue = default;
-            return true;
-        }
-
-        private static void AddCurrentRouteActivityAndRuntimeSubjects(
-            FrameworkRuntimeHost runtimeHost,
+            ResetSubjectScope lifecycleScope,
             List<ResetSubjectId> subjects,
             List<ResetIssue> issues)
         {
-            RuntimeContentOwner routeOwner = default;
-            RuntimeContentOwner activityOwner = default;
-            bool hasRouteOwner = runtimeHost.TryResolveCurrentResetOwner(ResetSubjectScope.Route, out routeOwner, out string routeIssue);
-            bool hasActivityOwner = runtimeHost.TryResolveCurrentResetOwner(ResetSubjectScope.Activity, out activityOwner, out string activityIssue);
-
-            if (hasRouteOwner)
+            if (!runtimeHost.TryResolveCurrentResetOwner(
+                    lifecycleScope,
+                    out RuntimeContentOwner owner,
+                    out string ownerIssue))
             {
-                subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByScopeAndOwner(ResetSubjectScope.Route, routeOwner).Select(subject => subject.SubjectId));
-                subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByScopeAndOwner(ResetSubjectScope.Runtime, routeOwner).Select(subject => subject.SubjectId));
-            }
-            else
-            {
-                issues.Add(ResetIssue.Warning(ResetIssueKind.InvalidRequest, $"Reset selection could not resolve current route owner. {routeIssue}"));
+                issues.Add(ResetIssue.Error(
+                    ResetIssueKind.InvalidRequest,
+                    $"Reset selection could not resolve current owner for scope '{lifecycleScope}'. {ownerIssue}"));
+                return;
             }
 
-            if (hasActivityOwner)
-            {
-                subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByScopeAndOwner(ResetSubjectScope.Activity, activityOwner).Select(subject => subject.SubjectId));
-                subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByScopeAndOwner(ResetSubjectScope.Runtime, activityOwner).Select(subject => subject.SubjectId));
-            }
-            else
-            {
-                issues.Add(ResetIssue.Warning(ResetIssueKind.InvalidRequest, $"Reset selection could not resolve current activity owner. {activityIssue}"));
-            }
+            subjects.AddRange(
+                runtimeHost.ResetRegistry
+                    .GetSubjectsByScopeAndOwner(lifecycleScope, owner)
+                    .Select(subject => subject.SubjectId));
+            subjects.AddRange(
+                runtimeHost.ResetRegistry
+                    .GetSubjectsByScopeAndOwner(ResetSubjectScope.Runtime, owner)
+                    .Select(subject => subject.SubjectId));
         }
 
         private static IReadOnlyList<ResetSubjectId> NormalizeSubjectIds(IEnumerable<ResetSubjectId> subjectIds)
