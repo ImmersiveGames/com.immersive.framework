@@ -11,8 +11,8 @@ namespace Immersive.Framework.Pause
     /// are supplied, because Activity authoring is serialized intent rather than enabled behavior.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A explicit-root validator for passive Pause Activity binding authoring.")]
+        FrameworkApiStatus.Stable,
+        "Stable explicit-root validator for Pause Activity binding authoring.")]
     public static class ActivityPauseAuthoringValidator
     {
         public static PauseActivityBindingIntentResolution ResolveDeclarations(
