@@ -6,7 +6,7 @@ Normative classification: **Minimum product-surface standard accepted**
 Package conformity audit: **CLOSED — IF-ADR-010B**  
 Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
 IF-ADR-010C: **CANCELLED / NOT REQUIRED**  
-Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-032
+Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-008, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-032, IF-ADR-035
 
 > ADR-010 defines the product-surface rules.
 > It does not require equal tooling depth for every feature.
@@ -791,7 +791,44 @@ or
 an independently justified technical Editor invariant
 ```
 
-## 15. Normative summary
+## 15. Reset product-surface reconciliation — IF-ADR-035
+
+IF-ADR-035 corrects the Reset product model after real consumer use showed that exposing runtime subject identity, per-object lifecycle scope and explicit subject lists as normal authoring does not scale with gameplay composition.
+
+For Reset, ADR-010 now interprets Intent First as:
+
+```text
+Resettable
+  local reset capabilities
+
+ResetComposition
+  member composition
+  exceptional reset membership when needed
+
+Reset Request
+  semantic ResetTarget
+```
+
+The following are runtime/diagnostic concerns by default and must not be required normal authoring merely to make Reset execute:
+
+```text
+generated ResetSubjectId
+generated ResetParticipantId
+registration handles
+RuntimeContentOwner occurrence tokens
+registry bindings
+derived content ownership
+```
+
+Stable authored identity remains legitimate when a real cross-boundary reference requires it. That is gameplay/integration intent, not Reset bookkeeping.
+
+Reset composition may use typed hierarchy collection when hierarchy is an explicit authoring boundary. This does not authorize hierarchy names or paths as runtime identity.
+
+The existing Reset Inspector cleanup remains useful historical evidence, but the current `UnityResetSubjectAdapter`, `ResetSubjectReference`, `ResetSelectionConfig` and group-list surfaces are migration surfaces rather than the target product model.
+
+IF-ADR-035 is normative for Reset-specific authoring semantics.
+
+## 16. Normative summary
 
 ```text
 Manual explicit authoring is the default.
