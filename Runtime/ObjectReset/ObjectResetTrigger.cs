@@ -226,22 +226,6 @@ namespace Immersive.Framework.ObjectReset
             SetRequestState(FlowRequestEventPhase.Completed, FlowRequestOutcome.None, string.Empty, string.Empty, default, false);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            UnityResetSubjectAdapter qaTargetSubjectAdapter,
-            string qaResetSubjectId,
-            string qaReason,
-            bool qaAllowNoParticipants,
-            bool qaStopOnFailure)
-        {
-            targetSubject ??= new ResetSubjectReference();
-            targetSubject.ConfigureForQa(qaTargetSubjectAdapter, qaResetSubjectId);
-            reason = qaReason;
-            allowNoParticipants = qaAllowNoParticipants;
-            stopOnFailure = qaStopOnFailure;
-        }
-#endif
-
         private void EnsureLogger()
         {
             if (_logger == null)

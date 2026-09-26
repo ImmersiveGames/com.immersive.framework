@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Immersive.Foundation.Events;
 using Immersive.Framework.ApiStatus;
@@ -225,30 +224,6 @@ namespace Immersive.Framework.ObjectReset
         {
             SetRequestState(FlowRequestEventPhase.Completed, FlowRequestOutcome.None, string.Empty, string.Empty, default, false, default);
         }
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            string qaGroupId,
-            string qaReason,
-            ResetSelectionMode qaSelectionMode,
-            IReadOnlyList<ResetSubjectReference> qaExplicitSubjects,
-            bool qaAllowNoSubjects,
-            bool qaAllowNoParticipants,
-            bool qaStopOnFailure,
-            bool qaYieldBetweenSubjects)
-        {
-            groupId = qaGroupId;
-            reason = qaReason;
-            selection ??= new ResetSelectionConfig();
-            selection.ConfigureForQa(
-                qaSelectionMode,
-                qaExplicitSubjects,
-                qaAllowNoSubjects,
-                qaAllowNoParticipants,
-                qaStopOnFailure,
-                qaYieldBetweenSubjects);
-        }
-#endif
 
         private void EnsureLogger()
         {

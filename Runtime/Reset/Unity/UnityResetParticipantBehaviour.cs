@@ -118,20 +118,20 @@ namespace Immersive.Framework.Reset.Unity
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            string qaParticipantId,
-            ResetParticipantRequiredness qaRequiredness,
-            int qaOrder,
-            string qaDisplayName,
-            string qaSource,
-            string qaReason)
+        internal void ConfigureDefaults(
+            string defaultParticipantId,
+            ResetParticipantRequiredness defaultRequiredness,
+            int defaultOrder,
+            string defaultDisplayName,
+            string defaultSource,
+            string defaultReason)
         {
-            participantId = qaParticipantId;
-            requiredness = qaRequiredness;
-            order = qaOrder;
-            displayName = qaDisplayName;
-            source = qaSource;
-            reason = qaReason;
+            participantId = defaultParticipantId;
+            requiredness = defaultRequiredness;
+            order = defaultOrder;
+            displayName = defaultDisplayName;
+            source = defaultSource;
+            reason = defaultReason;
         }
 #endif
     }

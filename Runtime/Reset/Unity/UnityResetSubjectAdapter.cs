@@ -924,39 +924,5 @@ namespace Immersive.Framework.Reset.Unity
             return diagnosticTag.NormalizeTextOrFallback(fallback);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            bool qaRegisterOnEnable,
-            bool qaUnregisterOnDisable,
-            bool qaRetryUntilRuntimeAvailable,
-            UnityResetSubjectIdGenerationMode qaIdGeneration,
-            string qaSubjectId,
-            string qaRuntimeSubjectIdPrefix,
-            ResetSubjectScope qaScope,
-            string qaDisplayName,
-            string qaDiagnosticTag,
-            UnityResetParticipantDiscoveryMode qaParticipantDiscovery,
-            bool qaIncludeInactiveParticipants,
-            bool qaIncludeUnityResettableComponents = true,
-            ActorDeclaration qaSourceActor = null,
-            PlayerActorDeclaration qaSourcePlayerActor = null)
-        {
-            registerOnEnable = qaRegisterOnEnable;
-            unregisterOnDisable = qaUnregisterOnDisable;
-            retryUntilRuntimeAvailable = qaRetryUntilRuntimeAvailable;
-            idGeneration = qaIdGeneration;
-            subjectId = qaSubjectId;
-            runtimeSubjectIdPrefix = qaRuntimeSubjectIdPrefix;
-            scope = qaScope;
-            displayName = qaDisplayName;
-            diagnosticTag = qaDiagnosticTag;
-            participantDiscovery = qaParticipantDiscovery;
-            includeInactiveParticipants = qaIncludeInactiveParticipants;
-            includeUnityResettableComponents =
-                qaIncludeUnityResettableComponents;
-            sourceActor = qaSourceActor;
-            sourcePlayerActor = qaSourcePlayerActor;
-        }
-#endif
     }
 }

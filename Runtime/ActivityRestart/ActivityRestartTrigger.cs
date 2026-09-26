@@ -206,34 +206,6 @@ namespace Immersive.Framework.ActivityRestart
         public void ClearLastResult() =>
             SetRequestState(FlowRequestEventPhase.Completed, FlowRequestOutcome.None, string.Empty, string.Empty, null, false, default, default);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            ActivityAsset qaTargetActivity,
-            bool qaUseCurrentActivityWhenTargetMissing,
-            bool qaRequireTargetActivityIsCurrent,
-            string qaReason,
-            ResetSelectionMode qaSelectionMode,
-            System.Collections.Generic.IReadOnlyList<ResetSubjectReference> qaExplicitSubjects,
-            bool qaAllowNoSubjects,
-            bool qaAllowNoParticipants,
-            bool qaStopOnFailure,
-            bool qaYieldBetweenSubjects)
-        {
-            targetActivity = qaTargetActivity;
-            useCurrentActivityWhenTargetMissing = qaUseCurrentActivityWhenTargetMissing;
-            requireTargetActivityIsCurrent = qaRequireTargetActivityIsCurrent;
-            reason = qaReason;
-            resetSelection ??= new ResetSelectionConfig();
-            resetSelection.ConfigureForQa(
-                qaSelectionMode,
-                qaExplicitSubjects,
-                qaAllowNoSubjects,
-                qaAllowNoParticipants,
-                qaStopOnFailure,
-                qaYieldBetweenSubjects);
-        }
-#endif
-
         private string ResolveReason() => reason.NormalizeTextOrFallback(DefaultReason);
 
         private void EnsureLogger() => _logger ??= FrameworkLogger.Create<ActivityRestartTrigger>();

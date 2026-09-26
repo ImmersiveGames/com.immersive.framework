@@ -19,7 +19,7 @@ namespace Immersive.Framework.Reset.Unity
         #if UNITY_EDITOR
         private void Reset()
         {
-            ConfigureForQa(
+            ConfigureDefaults(
                 "game-object-active",
                 ResetParticipantRequiredness.Required,
                 10,
@@ -73,14 +73,5 @@ namespace Immersive.Framework.Reset.Unity
         {
             return target != null ? target : gameObject;
         }
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureActiveStateForQa(GameObject qaTarget, bool qaCaptureOnEnable, bool qaBaselineActive)
-        {
-            target = qaTarget;
-            captureBaselineOnEnable = qaCaptureOnEnable;
-            baselineActive = qaBaselineActive;
-        }
-#endif
     }
 }

@@ -89,14 +89,6 @@ namespace Immersive.Framework.Reset
             return $"adapter='{adapterName}' subjectId='{subjectId.ToDiagnosticText("<none>")}' resolvedSubjectId='{resolved}'";
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(UnityResetSubjectAdapter qaSubjectAdapter, string qaSubjectId)
-        {
-            subjectAdapter = qaSubjectAdapter;
-            subjectId = qaSubjectId;
-        }
-#endif
-
         private string ResolveSubjectIdText()
         {
             if (subjectAdapter != null)

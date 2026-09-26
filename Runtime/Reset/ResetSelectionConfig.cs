@@ -139,26 +139,6 @@ namespace Immersive.Framework.Reset
                 yieldBetweenSubjects);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            ResetSelectionMode qaMode,
-            IReadOnlyList<ResetSubjectReference> qaExplicitSubjects,
-            bool qaAllowNoSubjects,
-            bool qaAllowNoParticipants,
-            bool qaStopOnFailure,
-            bool qaYieldBetweenSubjects)
-        {
-            mode = qaMode;
-            explicitSubjects = qaExplicitSubjects == null
-                ? new List<ResetSubjectReference>()
-                : qaExplicitSubjects.Where(reference => reference != null).ToList();
-            allowNoSubjects = qaAllowNoSubjects;
-            allowNoParticipants = qaAllowNoParticipants;
-            stopOnFailure = qaStopOnFailure;
-            yieldBetweenSubjects = qaYieldBetweenSubjects;
-        }
-#endif
-
         public bool Equals(ResetSelectionConfig other)
         {
             if (other == null)

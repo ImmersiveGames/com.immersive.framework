@@ -31,7 +31,7 @@ namespace Immersive.Framework.Reset.Unity
         #if UNITY_EDITOR
         private void Reset()
         {
-            ConfigureForQa(
+            ConfigureDefaults(
                 "transform",
                 ResetParticipantRequiredness.Required,
                 0,
