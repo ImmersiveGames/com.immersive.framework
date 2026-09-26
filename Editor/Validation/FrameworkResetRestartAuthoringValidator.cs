@@ -152,7 +152,7 @@ namespace Immersive.Framework.Editor.Validation
             if (!Enum.IsDefined(typeof(ResetSelectionMode), mode) || mode == ResetSelectionMode.Unknown)
             {
                 report.AddError(
-                    $"{label} has invalid Reset Selection Mode. Choose ExplicitSubjects, CurrentActivitySubjects, CurrentRouteSubjects, CurrentRouteAndActivitySubjects, AllCurrentSubjects, RuntimeOnlySubjects or SceneOnlySubjects.",
+                    $"{label} has invalid Reset Selection Mode. Choose ExplicitSubjects, CurrentActivitySubjects, CurrentRouteSubjects, CurrentRouteAndActivitySubjects or AllCurrentSubjects.",
                     context);
                 return;
             }
@@ -178,7 +178,7 @@ namespace Immersive.Framework.Editor.Validation
             if (mode == ResetSelectionMode.CurrentActivitySubjects)
             {
                 report.AddInfo(
-                    "Activity Restart Trigger uses CurrentActivitySubjects. Route-scoped ResetSubjects such as a route-owned player are not included by this policy.",
+                    "Activity Restart Trigger uses CurrentActivitySubjects. It includes Activity-scoped subjects and Runtime-scoped subjects owned by the current Activity; Route-owned subjects are not included by this policy.",
                     context);
             }
         }
