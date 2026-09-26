@@ -186,6 +186,37 @@ lifecycle participant, an event subscription, or otherwise) used to wire that
 cleanup. That mechanism is an implementation decision for a later cut, informed
 by inspection of the existing lifecycle composition boundaries.
 
+## Reset selection ownership semantics
+
+> **2026-09-26 Reset selection amendment.** Lifecycle-oriented Reset selection is defined by current runtime ownership, not by registration origin. This clarifies the public Reset selection contract before stabilization; implementation remains a subsequent cut.
+
+`Origin` (`SceneAuthored` / `RuntimeRegistered`) describes registration provenance, not lifecycle ownership. Lifecycle-oriented selection is derived from `ResetSubjectScope` together with `RuntimeContentOwner`.
+
+```text
+ExplicitSubjects
+  -> only explicitly authored subject references
+
+CurrentActivitySubjects
+  -> Activity-scoped subjects owned by the current Activity
+  -> Runtime-scoped subjects owned by the current Activity
+
+CurrentRouteSubjects
+  -> Route-scoped subjects owned by the current Route
+  -> Runtime-scoped subjects owned by the current Route
+
+CurrentRouteAndActivitySubjects
+  -> union of CurrentRouteSubjects and CurrentActivitySubjects
+
+AllCurrentSubjects
+  -> every currently valid subject registered in ResetRegistry
+```
+
+`RuntimeOnlySubjects` and `SceneOnlySubjects` are registration-origin filters rather than lifecycle/product selection concepts and are deprecated from the intended public selection surface. Their removal/migration belongs to the implementation cut after reference inspection.
+
+For Activity Restart, the intended default Reset selection is `CurrentActivitySubjects`: reset state owned by the Activity occurrence, then Clear and Reenter that Activity. `ExplicitSubjects` remains available for deliberately partial restart behavior.
+
+This amendment does not change Reset execution ownership: `ResetRegistry` remains the registered subject/participant source, Reset execution remains framework-owned, and Activity Restart remains the GameFlow authority for Clear/Reenter. No new ownership layer or infrastructure is introduced.
+
 ## Architectural constraints
 
 - Runtime authority is scoped, typed and lifetime-explicit.
