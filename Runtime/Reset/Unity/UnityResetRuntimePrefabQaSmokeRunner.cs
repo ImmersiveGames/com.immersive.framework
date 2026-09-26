@@ -95,7 +95,7 @@ namespace Immersive.Framework.Reset.Unity
                 trigger.ConfigureForQa(
                     "qa.reset.12f.runtime-group",
                     "qa.reset.12f.runtime-group.reset",
-                    ResetSelectionMode.RuntimeOnlySubjects,
+                    ResetSelectionMode.AllCurrentSubjects,
                     Array.Empty<ResetSubjectReference>(),
                     qaAllowNoSubjects: false,
                     qaAllowNoParticipants: false,
@@ -161,7 +161,7 @@ namespace Immersive.Framework.Reset.Unity
                 trigger.ConfigureForQa(
                     "qa.reset.12f.runtime-group-after-destroy",
                     "qa.reset.12f.runtime-group.after-destroy",
-                    ResetSelectionMode.RuntimeOnlySubjects,
+                    ResetSelectionMode.AllCurrentSubjects,
                     Array.Empty<ResetSubjectReference>(),
                     qaAllowNoSubjects: false,
                     qaAllowNoParticipants: false,
