@@ -7,10 +7,10 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.Pause
 {
     /// <summary>
-    /// API status: Experimental. Passive immutable snapshot of logical Pause state.
+    /// API status: Stable. Passive immutable snapshot of logical Pause state.
     /// The snapshot may be logged or inspected, but it does not own UI, input, Time.timeScale or Gate execution.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F20B passive Pause snapshot primitive; diagnostics only.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Stable passive snapshot of canonical logical Pause state.")]
     public readonly struct PauseSnapshot : IEquatable<PauseSnapshot>
     {
         private readonly PauseIssue[] _issues;
