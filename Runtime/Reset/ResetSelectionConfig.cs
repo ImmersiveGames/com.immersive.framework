@@ -17,7 +17,7 @@ namespace Immersive.Framework.Reset
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12D inline ResetSelectionPolicy config.")]
     public sealed class ResetSelectionConfig : IEquatable<ResetSelectionConfig>
     {
-        [SerializeField] private ResetSelectionMode mode = ResetSelectionMode.ExplicitSubjects;
+        [SerializeField] private ResetSelectionMode mode = ResetSelectionMode.CurrentActivitySubjects;
         [SerializeField] private List<ResetSubjectReference> explicitSubjects = new List<ResetSubjectReference>();
         [SerializeField] private bool allowNoSubjects;
         [SerializeField] private bool allowNoParticipants = true;
