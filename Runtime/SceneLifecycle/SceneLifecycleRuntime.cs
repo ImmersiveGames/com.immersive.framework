@@ -76,7 +76,10 @@ namespace Immersive.Framework.SceneLifecycle
                 var loadResult = await TryLoadSceneSingleAsync(scenePath, sceneName, progressReporter);
                 if (!loadResult.Loaded)
                 {
-                    return loadResult;
+                    TryCompensateWithSceneAvailable(activeScene, out string replacementCompensationDiagnostic);
+                    return replacementCompensationDiagnostic.Length == 0
+                        ? loadResult
+                        : SceneLifecycleLoadResult.Failed(loadResult.Message + replacementCompensationDiagnostic);
                 }
 
                 loadMode = SingleLoadMode;
@@ -211,8 +214,9 @@ namespace Immersive.Framework.SceneLifecycle
                 var operation = SceneManager.UnloadSceneAsync(loadedScene);
                 if (operation == null)
                 {
+                    TryCompensateWithSceneAvailable(loadedScene, out string startCompensationDiagnostic);
                     return SceneLifecycleUnloadResult.Failed(
-                        $"Scene Lifecycle failed to start unloading Scene '{sceneLabel}'.");
+                        $"Scene Lifecycle failed to start unloading Scene '{sceneLabel}'.{startCompensationDiagnostic}");
                 }
 
                 await ReportDeterminateProgressAsync(
@@ -247,8 +251,9 @@ namespace Immersive.Framework.SceneLifecycle
                 var remainingScene = FindLoadedScene(scenePath, sceneName);
                 if (remainingScene.IsValid() && remainingScene.isLoaded)
                 {
+                    TryCompensateWithSceneAvailable(remainingScene, out string stillLoadedCompensationDiagnostic);
                     return SceneLifecycleUnloadResult.Failed(
-                        $"Scene Lifecycle could not confirm Scene '{ResolveSceneLabel(scenePath, sceneName)}' was unloaded.");
+                        $"Scene Lifecycle could not confirm Scene '{ResolveSceneLabel(scenePath, sceneName)}' was unloaded.{stillLoadedCompensationDiagnostic}");
                 }
 
                 return SceneLifecycleUnloadResult.UnloadedScene(
@@ -257,8 +262,9 @@ namespace Immersive.Framework.SceneLifecycle
             }
             catch (Exception exception)
             {
+                TryCompensateWithSceneAvailable(loadedScene, out string exceptionCompensationDiagnostic);
                 return SceneLifecycleUnloadResult.Failed(
-                    $"Scene Lifecycle failed to unload Scene '{ResolveSceneLabel(scenePath, sceneName)}'. {exception.GetType().Name}: {exception.Message}");
+                    $"Scene Lifecycle failed to unload Scene '{ResolveSceneLabel(scenePath, sceneName)}'. {exception.GetType().Name}: {exception.Message}{exceptionCompensationDiagnostic}");
             }
         }
 
@@ -525,6 +531,39 @@ namespace Immersive.Framework.SceneLifecycle
                 return true;
             }
             return NotifySceneReleasing(activeScene, "single-scene-replacement", out issue);
+        }
+
+        /// <summary>
+        /// Reconciles Scene Lifecycle participants with a Scene that remained really loaded
+        /// after NotifySceneReleasing already succeeded for it but the subsequent Unity scene
+        /// operation (unload or Single-load replacement) failed. This does not give
+        /// ISceneLifecycleParticipant an exactly-once contract: NotifySceneAvailable already
+        /// fires more than once per physical Scene lifetime today (every AlreadyLoaded re-entry
+        /// in LoadPrimarySceneAsync/LoadAdditiveSceneAsync), so re-notifying availability here is
+        /// the same, already-existing notification semantics applied to one more real case, not a
+        /// new one. It never changes a failed operation into a success; it only restores
+        /// participant composition to match the Scene that factually remained valid and loaded.
+        /// If the Scene is no longer valid/loaded, there is nothing to reconcile and this is a
+        /// no-op (empty diagnostic, returns true).
+        /// </summary>
+        private bool TryCompensateWithSceneAvailable(Scene scene, out string compensationDiagnostic)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                compensationDiagnostic = string.Empty;
+                return true;
+            }
+
+            if (!NotifySceneAvailable(scene, out string issue))
+            {
+                compensationDiagnostic =
+                    $" Scene Lifecycle composition restoration also failed for Scene '{scene.name.NormalizeTextOrFallback("<unnamed>")}' that remained loaded after the failed operation. {issue}";
+                return false;
+            }
+
+            compensationDiagnostic =
+                $" Scene Lifecycle composition was restored for Scene '{scene.name.NormalizeTextOrFallback("<unnamed>")}' that remained loaded after the failed operation.";
+            return true;
         }
 
         private bool NotifySceneAvailable(Scene scene, out string issue)
