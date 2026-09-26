@@ -6,8 +6,8 @@ namespace Immersive.Framework.Pause
     /// Result of resolving Pause Activity binding declarations from explicit Activity roots or declarations.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A Pause Activity binding intent resolution status.")]
+        FrameworkApiStatus.Stable,
+        "Stable Pause Activity binding intent resolution status.")]
     public enum PauseActivityBindingIntentStatus
     {
         Unknown = 0,
