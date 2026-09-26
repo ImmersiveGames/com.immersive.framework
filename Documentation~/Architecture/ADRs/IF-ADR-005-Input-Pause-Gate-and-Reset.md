@@ -1,10 +1,10 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
 Status: **Accepted**  
-Last updated: 2026-09-25  
+Last updated: 2026-09-26  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
 Current technical conformity: **CLOSED FOR CURRENT ACCEPTED STAGE A BOUNDARY**  
-Pause admission/presentation contract: **ACCEPTED / IMPLEMENTATION PENDING (Cuts B–D)**  
+Pause admission/presentation contract: **IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING**  
 Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
 Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
@@ -21,16 +21,19 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 > passed 27/27 across two passes in one Play Mode session. FIRSTGAME remains
 > Stage B consumer evidence and does not reopen technical conformity.
 
-> **2026-09-25 amendment.** This ADR now also formalizes the Pause capability
-> admission and presentation contract described below (see "Pause capability
-> admission and lifecycle authority", "Pause presentation lifecycle" and
-> "Pause lifecycle cleanup"). That contract is accepted architecture; it is not
-> yet reflected in the package, product-surface or QA evidence recorded
-> elsewhere in this document, which continue to describe the
-> pre-admission-contract implementation. Implementation of the new contract is
-> tracked as Cuts B–D. QA and certification of the amended contract are explicitly
-> outside this implementation effort and remain separate evidence; neither reopens
-> the Stage A closure recorded below for its original, narrower scope.
+> **2026-09-26 implementation update.** The Pause capability admission and
+> presentation amendment accepted on 2026-09-25 is now implemented across Cuts
+> B–D. Pause admission requires an active Activity; lifecycle-scoped Pause Surface
+> contributions are composed from Route Primary, RouteContent and ActivityContent
+> alongside the Persistent Content baseline; Activity exit deterministically
+> restores Running/TimeScale/Gate posture before commit; and Scene Lifecycle
+> failure compensation restores participant composition when a release attempt
+> fails while the Scene remains loaded. The Unity project compiles and the
+> existing Pause Menu was manually exercised through two Pause/Resume cycles:
+> RouteContent surface discovery succeeded, the surface received Paused/Running,
+> TimeScale transitioned 1→0→1, and gameplay input was blocked/restored. This is
+> manual integration evidence only. QA and certification of the amended contract
+> remain explicitly outside this implementation effort and are still pending.
 
 ## Context
 
@@ -502,21 +505,23 @@ The current package and executed QA evidence satisfy these Stage A criteria.
 
 ```text
 Pause capability admission (Route/Activity lifecycle authority)
-  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+  IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING
 
-Pause presentation lifecycle (Persistent/RouteContent/ActivityContent)
-  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+Pause presentation lifecycle (Persistent/Route Primary/RouteContent/ActivityContent)
+  IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING
 
 Pause lifecycle cleanup (no residual Paused/TimeScale/Gate/presentation)
-  ACCEPTED ARCHITECTURE / NOT YET IMPLEMENTED
+  IMPLEMENTED / COMPILES / QA PENDING
+
+Scene Lifecycle release-failure compensation
+  IMPLEMENTED / STATICALLY REVIEWED / QA PENDING
 ```
 
-None of the package, product-surface or QA evidence recorded elsewhere in this
-document certifies these three items. They are tracked as separate
-implementation cuts. The Stage A closure, current assessment and completion
-criteria recorded elsewhere in this document describe the
-pre-admission-contract implementation and remain valid for that narrower,
-already-certified scope; they are not re-opened by this amendment.
+The amended contract is implemented and has compilation plus manual integration
+evidence, but it is not QA-certified by this work. The Stage A closure, current
+assessment and completion criteria recorded elsewhere in this document continue
+to describe the earlier, narrower certified boundary. They are not evidence of
+QA certification for the amended admission/presentation/cleanup contract.
 
 ## Normative summary
 
