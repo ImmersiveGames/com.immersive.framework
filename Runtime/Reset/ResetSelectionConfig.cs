@@ -64,19 +64,17 @@ namespace Immersive.Framework.Reset
                     AddExplicitSubjects(subjects, issues);
                     break;
                 case ResetSelectionMode.CurrentActivitySubjects:
-                    AddCurrentOwnerSubjects(
+                    return ResetTargetResolver.Resolve(
                         runtimeHost,
-                        ResetSubjectScope.Activity,
-                        subjects,
-                        issues);
-                    break;
+                        ResetTarget.CurrentActivity(),
+                        resolvedSource,
+                        resolvedReason);
                 case ResetSelectionMode.CurrentRouteSubjects:
-                    AddCurrentOwnerSubjects(
+                    return ResetTargetResolver.Resolve(
                         runtimeHost,
-                        ResetSubjectScope.Route,
-                        subjects,
-                        issues);
-                    break;
+                        ResetTarget.CurrentRoute(),
+                        resolvedSource,
+                        resolvedReason);
                 case ResetSelectionMode.CurrentRouteAndActivitySubjects:
                     AddCurrentOwnerSubjects(
                         runtimeHost,
