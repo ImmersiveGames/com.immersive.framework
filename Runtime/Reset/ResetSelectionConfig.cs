@@ -95,12 +95,6 @@ namespace Immersive.Framework.Reset
                             .SnapshotSubjects()
                             .Select(subject => subject.SubjectId));
                     break;
-                case ResetSelectionMode.RuntimeOnlySubjects:
-                    subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByOrigin(ResetSubjectOrigin.RuntimeRegistered).Select(subject => subject.SubjectId));
-                    break;
-                case ResetSelectionMode.SceneOnlySubjects:
-                    subjects.AddRange(runtimeHost.ResetRegistry.GetSubjectsByOrigin(ResetSubjectOrigin.SceneAuthored).Select(subject => subject.SubjectId));
-                    break;
                 default:
                     return ResetSelectionResolution.FailedResult(
                         ResetSelectionMode.ExplicitSubjects,
