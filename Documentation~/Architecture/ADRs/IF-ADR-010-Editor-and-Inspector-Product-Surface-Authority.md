@@ -1,7 +1,7 @@
 # IF-ADR-010 — Editor and Inspector Product Surface Authority
 
 Status: **Accepted / Camera Class C contract consolidated by IF-ADR-032; historical ADR-022 evidence retained**  
-Last updated: **2026-08-20**  
+Last updated: **2026-09-26**  
 Normative classification: **Minimum product-surface standard accepted**  
 Package conformity audit: **CLOSED — IF-ADR-010B**  
 Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
@@ -74,10 +74,13 @@ materialization receipts
 
 are conditional capabilities, not universal requirements.
 
-### Governing rule
+### Governing rules
 
 ```text
 ADR-010 compliance is not measured by the amount of tooling or automation.
+
+The normal Inspector is an authoring surface, not embedded documentation
+and not a QA/certification dashboard.
 ```
 
 A simple feature may be fully compliant with:
@@ -107,14 +110,38 @@ Normal authoring represents user-authored intent and configuration.
 Consumers should not need private runtime modules, hidden handles, occurrence
 identifiers or generated technical bindings to perform normal configuration.
 
-### 3.2 Framework may derive technical facts
+### 3.2 Normal Inspector is concise authoring
+
+The normal Inspector should expose the decisions a consumer must author and the
+minimum immediate evidence needed to know whether that configuration is usable.
+
+Do not add persistent explanatory prose merely to restate component purpose,
+architecture, ownership, lifecycle or facts already clear from section/field labels.
+
+Use, in order of preference:
+
+```text
+clear component/section/field names
+tooltips for optional contextual explanation
+actionable diagnostics when configuration is invalid
+Advanced / Debug for derived or technical evidence
+documentation for architecture and lifecycle explanation
+```
+
+A short description is justified only when omitting it would create material
+ambiguity or a realistic configuration mistake.
+
+Normal authoring should not repeat derived configuration owned by another
+component merely because it can be resolved and displayed.
+
+### 3.3 Framework may derive technical facts
 
 Technical configuration may be derived when the derivation is deterministic and
 contains no new gameplay decision.
 
 Derived technical state is materialization, not a second authored authority.
 
-### 3.3 Runtime remains runtime authority
+### 3.4 Runtime remains runtime authority
 
 Editor convenience must not introduce:
 
@@ -130,7 +157,7 @@ silent fallback
 Runtime authority remains in the appropriate scoped Session, Context, Service,
 runtime module or typed adapter.
 
-### 3.4 No accidental gameplay from authoring
+### 3.5 No accidental gameplay from authoring
 
 Authoring components and Editor tooling must not execute gameplay by accident.
 
@@ -159,18 +186,25 @@ A dedicated Create menu is not required.
 
 ### 4.2 Intent First
 
-Normal Inspector semantics should prioritize, where applicable:
+"Intent First" means that the editable controls representing consumer-authored
+intent appear first. It does **not** require an `Intent` section, explanatory
+paragraph, purpose banner or duplicated description.
+
+For a simple Class A component, the preferred normal surface is approximately:
 
 ```text
-Intent / purpose
-Configuration
-Configuration Status / Validation
-Runtime Status
-Explicit Actions
+Product identity
+Authored configuration
+Configuration Status
+Actions, when useful
 Advanced / Debug
 ```
 
-This is semantic vocabulary, not a mandatory visual template.
+Runtime status belongs in the normal surface only when it directly informs a
+consumer action during ordinary Play Mode use. Detailed runtime evidence belongs
+under Advanced / Debug.
+
+Section names are semantic guidance, not a mandatory visual template.
 
 ### 4.3 Configuration Status
 
@@ -188,6 +222,10 @@ last Editor/runtime operation
 ### 4.4 Actionable Diagnostics
 
 Diagnostics should identify the actual problem and relevant context.
+
+A valid configuration should normally require little more than concise status
+evidence. Detailed explanatory text is primarily for invalid, blocked or
+ambiguous states where it helps the consumer correct the authoring.
 
 The existing framework validation infrastructure remains canonical where
 applicable. ADR-010 does not create a second validation architecture.
@@ -211,7 +249,11 @@ Avoid broad actions that invent gameplay intent.
 
 ### 4.6 Advanced / Debug
 
-Technical evidence should be inspectable without dominating normal authoring.
+Technical, derived and diagnostic evidence should be inspectable without
+dominating normal authoring.
+
+Information belongs here by default when the consumer does not author it and
+does not need it to make the next normal authoring decision.
 
 Possible evidence includes:
 
@@ -443,11 +485,16 @@ Expected:
 
 ```text
 official path
-clear Inspector
-validation
-runtime evidence when applicable
-Advanced / Debug where relevant
+concise Inspector centered on authored decisions
+configuration status
+actionable diagnostics when invalid
+explicit actions when useful
+Advanced / Debug for derived/runtime evidence when relevant
 ```
+
+A Class A Inspector should normally resemble a compact authoring form, not a
+walkthrough of the feature. Adding explanatory sections or resolved runtime
+facts without a concrete authoring need is a product-surface regression.
 
 Normally unnecessary:
 
@@ -752,9 +799,12 @@ Manual explicit authoring is the default.
 The framework should:
   present
   organize
-  explain
   validate
   diagnose
+
+The normal Inspector is a concise authoring surface.
+It should not become embedded documentation or a QA dashboard.
+Explain architecture in documentation; use tooltips only where context is useful.
 
 The framework may automate technical materialization
 only when derivation is deterministic and does not invent user intent.
