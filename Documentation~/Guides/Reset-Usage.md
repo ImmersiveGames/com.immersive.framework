@@ -1,9 +1,25 @@
 # Reset Usage
 
-Status: Current
-Last updated: 2026-07-23
+Status: Transitional — legacy Reset authoring remains implemented; IF-ADR-035 defines the replacement model
+Last updated: 2026-09-26
 
-## Choose the correct operation
+> **Architecture transition (IF-ADR-035):** The instructions below describe the currently implemented legacy Reset authoring path. They remain valid for existing content during migration, but they are not the target product model. New architecture work must converge on `Resettable -> ResetComposition -> ResetTarget`, with content ownership derived from composition/materialization origin and Reset membership modeled separately. Do not expand the legacy textual-ID/scope/list authoring model.
+
+## Target authoring model (not yet implemented)
+
+```text
+Reset capability
+  -> Resettable
+      -> optional ResetComposition
+          -> ResetTarget
+              -> existing ResetRegistry / ResetExecutor during migration
+```
+
+Normal target authoring does not require textual Reset IDs, per-object ownership scope or explicit subject-ID groups. Stable identity remains opt-in for real cross-boundary specific targeting.
+
+## Legacy operation mapping during migration
+
+
 
 | Need | Surface |
 |---|---|
