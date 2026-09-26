@@ -1,10 +1,11 @@
 # IF-ADR-033 — Session Player Post-Admission Convergence and Contextual Binding Authority
 
-Status: **Proposed / implementation not started / QA not certified**  
+Status: **Accepted / implementation in progress / QA not certified**  
 Proposed: **2026-09-24**  
 Type: architecture / runtime authority / Player lifecycle / Activity representation / Scene-Provided admission  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023, IF-ADR-024, IF-ADR-025  
-Normative relationship: **This ADR refines the post-admission implementation boundary of IF-ADR-019. It does not replace IF-ADR-019 or IF-ADR-020.**
+Normative relationship: **This ADR refines the post-admission implementation boundary of IF-ADR-019. It does not replace IF-ADR-019 or IF-ADR-020.**  
+Amended: **2026-09-26 — Route re-entry exposed the missing pre-admission candidate quarantine / retained-Host correlation contract.**
 
 ## 1. Context
 
@@ -309,6 +310,58 @@ Candidate discovery may therefore still run for conflict detection.
 
 It must not be used to reconstruct the contextual binding of an already-admitted Player.
 
+### 4.8 Later Scene-Provided candidates are inert until admission authority resolves them
+
+A Scene-Provided object materialized by scene load is a **candidate**, not an active Player merely because its GameObject exists.
+
+When a Slot already owns a retained Session physical Player, a later candidate for that Slot must not acquire physical or product authority before Player Participation resolves the candidate:
+
+```text
+scene load materializes candidate
+        ↓
+candidate remains physically inert
+        ↓
+Player Participation correlates Slot / retained Session Host
+        ↓
+already-admitted Slot
+    -> candidate is redundant/conflicting evidence
+    -> retained Session Host remains authoritative
+    -> candidate is retired / kept non-authoritative
+        ↓
+provider-neutral contextual binding is created from Session state
+```
+
+In particular, before that decision a candidate must not:
+
+- acquire or re-pair input devices;
+- become a second Session physical Host;
+- create a contextual assignment;
+- publish Player gameplay readiness;
+- register Pause or other product bindings as if it were the admitted Player;
+- replace, disable, or mutate the retained Session physical Player.
+
+Unity component activation order is therefore part of the integration contract. A Scene-Provided composition must not rely on an ordinary enabled `PlayerInput` whose `OnEnable` can acquire devices before Player Participation has resolved admission authority.
+
+The exact Unity-facing gating mechanism is an implementation detail, but its ownership is not: **Player Participation owns the candidate-to-Session-Player decision.** Downstream systems consume only the admitted / correlated Player result; they do not independently infer Player authority by scanning a newly loaded scene.
+
+For an already-admitted Slot, correlation is against canonical Session physical Host evidence. A newly instantiated object with the same authored Slot intent is not the retained Host merely because its authoring matches. If it is not the retained physical occurrence, it is treated as a later candidate under §4.7 and cannot enter the old Scene-Provided reprojection path.
+
+This closes the Route re-entry failure where:
+
+```text
+retained Session Player A owns devices
+        +
+reloaded scene instantiates candidate B
+        ↓
+B.PlayerInput.OnEnable attempts device acquisition
+        ↓
+TryAdmit treats Joined + SceneProvided as reprojection
+        ↓
+RegisterSessionPhysicalHost finally detects Host conflict
+```
+
+The conflict must be resolved before B can exercise physical or downstream product authority, not detected only during physical Host commit.
+
 ## 5. Target lifecycle
 
 ### 5.1 First Manager-Provisioned admission
@@ -552,7 +605,9 @@ path is removed.
 
 A newly discovered Scene-Provided candidate for an already-admitted Slot is evaluated only as redundant / conflicting candidate evidence under IF-ADR-019 §9.
 
-It may produce an explicit diagnostic or rejection, but it never creates the Activity contextual binding, re-Joins the Player, replaces the physical Host or performs a second Actor adoption.
+The candidate must remain physically non-authoritative until that evaluation completes. In particular, its `PlayerInput` must not acquire devices and downstream products such as Pause must not bind to it merely because it exists in the loaded scene.
+
+It may produce an explicit diagnostic or rejection, but it never creates the Activity contextual binding, re-Joins the Player, replaces the physical Host or performs a second Actor adoption. The retained Session physical Host remains authoritative and normal contextual representation is recreated provider-neutrally from Session state.
 
 ### PLAYER-033-C — observation and QA contract reconciliation
 
@@ -608,7 +663,7 @@ Certify the provider-neutral model through:
 - conflicting later Scene-Provided candidate;
 - SceneProvided authoring-independence proof.
 
-PLAYER-033-D is executed in QAFramework, not by treating package-local static checks as certification.
+PLAYER-033-D requires runtime integration certification in the project QA environment. Package-local static checks alone are not certification.
 
 ### PLAYER-033-E — documentation reconciliation and closure
 
@@ -704,7 +759,7 @@ Runtime validation still proves:
 - current contextual token belongs to the expected Activity / Route owner;
 - Host binding identity matches the current contextual binding;
 - stale contextual tokens are rejected;
-- later conflicting Scene-Provided candidates are reported / rejected.
+- later conflicting Scene-Provided candidates are reported / rejected before they acquire physical or downstream product authority.
 
 ## 9. Rejected alternatives
 
@@ -761,7 +816,7 @@ Existing domain authorities already own Session membership, physical preparation
 
 No implementation cut is certified by static review alone.
 
-QA runs in the QAFramework environment.
+QA runs in the current project QA environment; the architecture does not require a specific test harness.
 
 ### 10.1 Mandatory invariants across non-terminal operations
 
@@ -814,12 +869,18 @@ With an admitted SceneProvided Player already present:
 ```text
 later Activity / Route declares a new SceneProvided candidate for same Slot
     ↓
+candidate remains physically inert
+    ↓
+correlate against retained Session physical Host
+    ↓
 explicit redundant/conflict diagnostic
     ↓
+no device acquisition by candidate
 no replacement
 no re-Join
 no physical handoff
 no second Actor
+no downstream Pause/product binding from candidate
 ```
 
 ### 10.4 Negative assignment contract
