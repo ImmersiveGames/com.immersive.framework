@@ -4,7 +4,7 @@ Status: **Accepted**
 Last updated: 2026-09-26  
 Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
 Current technical conformity: **CLOSED FOR CURRENT ACCEPTED STAGE A BOUNDARY**  
-Pause admission/presentation contract: **IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING**  
+Pause product feature: **STABLE**  
 Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
 Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
@@ -21,6 +21,8 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 > passed 27/27 across two passes in one Play Mode session. FIRSTGAME remains
 > Stage B consumer evidence and does not reopen technical conformity.
 
+> **2026-09-26 stable promotion.** The current Pause product surface is promoted to Stable after validation of the three supported consumer paths: physical Player Pause input, direct scene-authored Pause/Resume requests, and lifecycle-scoped Pause presentation. Pause-specific package-owned QA/smoke runners were removed; external QA may certify the Stable contracts without owning runtime implementation.
+>
 > **2026-09-26 implementation update.** The Pause capability admission and
 > presentation amendment accepted on 2026-09-25 is now implemented across Cuts
 > B–D. Pause admission requires an active Activity; lifecycle-scoped Pause Surface
@@ -505,16 +507,16 @@ The current package and executed QA evidence satisfy these Stage A criteria.
 
 ```text
 Pause capability admission (Route/Activity lifecycle authority)
-  IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING
+  STABLE
 
 Pause presentation lifecycle (Persistent/Route Primary/RouteContent/ActivityContent)
-  IMPLEMENTED / MANUALLY INTEGRATED / QA PENDING
+  STABLE
 
 Pause lifecycle cleanup (no residual Paused/TimeScale/Gate/presentation)
-  IMPLEMENTED / COMPILES / QA PENDING
+  STABLE
 
 Scene Lifecycle release-failure compensation
-  IMPLEMENTED / STATICALLY REVIEWED / QA PENDING
+  IMPLEMENTED / INTERNAL
 ```
 
 The amended contract is implemented and has compilation plus manual integration
