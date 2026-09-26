@@ -1,3 +1,4 @@
+using Immersive.Framework.Editor.Common;
 using Immersive.Framework.Pause;
 using Immersive.Framework.UnityInput;
 using UnityEditor;
@@ -9,6 +10,13 @@ namespace Immersive.Framework.Editor.Pause
     [CustomEditor(typeof(PlayerPauseInput))]
     internal sealed class PlayerPauseInputEditor : UnityEditor.Editor
     {
+        private const string Unresolved = "<unresolved>";
+
+        private static readonly GUIContent PauseActionLabel =
+            new GUIContent(
+                "Pause Action",
+                "Input Action that requests Pause. It must exist in the PlayerInput actions of the co-located Gate Adapter.");
+
         private SerializedProperty _pauseAction;
         private bool _showAdvancedDebug;
 
@@ -20,106 +28,106 @@ namespace Immersive.Framework.Editor.Pause
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            EditorGUILayout.LabelField("Pause Input", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_pauseAction, new GUIContent("Pause Action"));
+            var binding = (PlayerPauseInput)target;
 
-            using (new EditorGUI.DisabledScope(true))
+            FrameworkAuthoringInspectorGui.ProductHeader("Pause PlayerInput Binding", string.Empty);
+
+            FrameworkAuthoringInspectorGui.Section("Configuration");
+            EditorGUILayout.PropertyField(_pauseAction, PauseActionLabel);
+            serializedObject.ApplyModifiedProperties();
+
+            DrawConfigurationStatus(binding);
+
+            if (Application.isPlaying)
             {
-                EditorGUILayout.TextField("Global Action Map", ResolveGlobalMapName());
+                DrawRuntimeStatus(binding);
             }
 
-            serializedObject.ApplyModifiedProperties();
-            DrawGateComposition();
-            DrawAuthoringStatus();
-
-            EditorGUILayout.Space();
-            _showAdvancedDebug = EditorGUILayout.Foldout(
-                _showAdvancedDebug,
-                "Advanced / Debug",
-                true);
-
+            _showAdvancedDebug = FrameworkAuthoringInspectorGui.AdvancedFoldout(_showAdvancedDebug);
             if (_showAdvancedDebug)
             {
-                DrawAdvancedDebug();
+                DrawAdvancedDebug(binding);
             }
         }
 
-        private void DrawGateComposition()
+        private static void DrawConfigurationStatus(PlayerPauseInput binding)
         {
-            var binding = (PlayerPauseInput)target;
-            UnityPlayerInputGateAdapter[] adapters =
-                binding.GetComponents<UnityPlayerInputGateAdapter>();
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(
-                "Required Gate Composition",
-                EditorStyles.boldLabel);
-
-            if (adapters.Length == 1 && adapters[0] != null)
-            {
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.ObjectField(
-                        "Unity PlayerInput Gate Adapter",
-                        adapters[0],
-                        typeof(UnityPlayerInputGateAdapter),
-                        true);
-                    EditorGUILayout.ObjectField(
-                        "Player Input",
-                        adapters[0].PlayerInput,
-                        typeof(PlayerInput),
-                        true);
-                    EditorGUILayout.TextField(
-                        "Gameplay Action Map",
-                        adapters[0].GameplayActionMapName);
-                }
-
-                EditorGUILayout.HelpBox(
-                    "Player Input and Gameplay Action Map are authored exclusively by the co-located Gate Adapter.",
-                    MessageType.Info);
-                return;
-            }
-
-            EditorGUILayout.HelpBox(
-                "Add exactly one Unity PlayerInput Gate Adapter on this GameObject and configure its Player Input and Gameplay Action Map.",
-                MessageType.Warning);
-        }
-
-        private void DrawAuthoringStatus()
-        {
-            var binding = (PlayerPauseInput)target;
             bool valid = binding.TryValidateAuthoring(out string diagnostic);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Status", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Authoring", valid ? "Ready" : "Incomplete");
-            EditorGUILayout.HelpBox(
-                valid ? "Pause input authoring is ready." : diagnostic,
-                valid ? MessageType.Info : MessageType.Warning);
+            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+            FrameworkAuthoringInspectorGui.Status(valid ? "Ready" : "Incomplete");
+
+            if (!valid)
+            {
+                EditorGUILayout.HelpBox(diagnostic, MessageType.Warning);
+            }
         }
 
-        private void DrawAdvancedDebug()
+        private static void DrawRuntimeStatus(PlayerPauseInput binding)
         {
-            var binding = (PlayerPauseInput)target;
+            FrameworkAuthoringInspectorGui.Section("Runtime Status");
+            EditorGUILayout.LabelField("Binding", binding.BindingStatus);
+
+            if (!binding.HasActiveBinding)
+            {
+                EditorGUILayout.HelpBox(
+                    "No active Pause binding. See Advanced / Debug for the binding diagnostic.",
+                    MessageType.Warning);
+            }
+        }
+
+        private void DrawAdvancedDebug(PlayerPauseInput binding)
+        {
             EditorGUI.indentLevel++;
-            EditorGUILayout.LabelField("Runtime Binding Status", binding.BindingStatus);
+
+            UnityPlayerInputGateAdapter[] adapters =
+                binding.GetComponents<UnityPlayerInputGateAdapter>();
+            UnityPlayerInputGateAdapter adapter =
+                adapters.Length == 1 ? adapters[0] : null;
+            InputActionReference reference =
+                _pauseAction.objectReferenceValue as InputActionReference;
+            InputAction sourceAction = reference != null ? reference.action : null;
+
+            FrameworkAuthoringInspectorGui.Section("Resolved Configuration");
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.ObjectField(
+                    "Gate Adapter",
+                    adapter,
+                    typeof(UnityPlayerInputGateAdapter),
+                    true);
+                EditorGUILayout.ObjectField(
+                    "Player Input",
+                    adapter != null ? adapter.PlayerInput : null,
+                    typeof(PlayerInput),
+                    true);
+                EditorGUILayout.TextField(
+                    "Global Action Map",
+                    ValueOrUnresolved(binding.GlobalActionMapName));
+                EditorGUILayout.TextField(
+                    "Gameplay Action Map",
+                    ValueOrUnresolved(binding.GameplayActionMapName));
+                EditorGUILayout.TextField(
+                    "Pause Action ID",
+                    sourceAction != null ? sourceAction.id.ToString() : Unresolved);
+            }
+
+            FrameworkAuthoringInspectorGui.Section("Runtime Binding");
+            EditorGUILayout.LabelField("Status", binding.BindingStatus);
             EditorGUILayout.LabelField(
-                "Has Active Binding",
-                binding.HasActiveBinding ? "True" : "False");
-            EditorGUILayout.HelpBox(binding.BindingDiagnostic, MessageType.None);
+                "Active Binding",
+                binding.HasActiveBinding ? "Yes" : "No");
+            if (!string.IsNullOrWhiteSpace(binding.BindingDiagnostic))
+            {
+                EditorGUILayout.LabelField(
+                    binding.BindingDiagnostic,
+                    EditorStyles.wordWrappedMiniLabel);
+            }
+
             EditorGUI.indentLevel--;
         }
 
-        private string ResolveGlobalMapName()
-        {
-            InputActionReference reference =
-                _pauseAction.objectReferenceValue as InputActionReference;
-
-            return reference != null &&
-                reference.action != null &&
-                reference.action.actionMap != null
-                    ? reference.action.actionMap.name
-                    : "<derived from Pause Action>";
-        }
+        private static string ValueOrUnresolved(string value) =>
+            string.IsNullOrWhiteSpace(value) ? Unresolved : value;
     }
 }
