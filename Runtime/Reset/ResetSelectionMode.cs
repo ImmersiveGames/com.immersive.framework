@@ -13,8 +13,6 @@ namespace Immersive.Framework.Reset
         CurrentActivitySubjects = 20,
         CurrentRouteSubjects = 30,
         CurrentRouteAndActivitySubjects = 40,
-        AllCurrentSubjects = 50,
-        RuntimeOnlySubjects = 60,
-        SceneOnlySubjects = 70
+        AllCurrentSubjects = 50
     }
 }
