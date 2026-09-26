@@ -7,20 +7,24 @@ namespace Immersive.Framework.Editor.Reset
     [CustomEditor(typeof(ObjectResetGroupTrigger))]
     internal sealed class ObjectResetGroupTriggerEditor : UnityEditor.Editor
     {
+        private static readonly GUIContent GroupIdLabel = new GUIContent(
+            "Group ID",
+            "Stable authoring identity for this group request. It is not Source or Reason.");
+        private static readonly GUIContent ReasonLabel = new GUIContent(
+            "Reason",
+            "Optional diagnostics reason for this Object Reset Group request.");
+
         private SerializedProperty _groupId;
         private SerializedProperty _reason;
         private SerializedProperty _selection;
-        private SerializedProperty _mode;
-        private SerializedProperty _explicitSubjects;
-        private bool _advanced;
+        private bool _showAdvanced;
+        private bool _showDiagnostics;
 
         private void OnEnable()
         {
             _groupId = serializedObject.FindProperty("groupId");
             _reason = serializedObject.FindProperty("reason");
             _selection = serializedObject.FindProperty("selection");
-            _mode = _selection?.FindPropertyRelative("mode");
-            _explicitSubjects = _selection?.FindPropertyRelative("explicitSubjects");
         }
 
         public override void OnInspectorGUI()
@@ -28,130 +32,139 @@ namespace Immersive.Framework.Editor.Reset
             serializedObject.Update();
             var trigger = (ObjectResetGroupTrigger)target;
 
-            FrameworkAuthoringInspectorGui.ProductHeader(
-                "Object Reset Group Trigger",
-                "Requests one Reset operation for a configured selection of Reset Subjects.");
-            FrameworkAuthoringInspectorGui.IntentSummary(BuildIntent());
+            FrameworkAuthoringInspectorGui.ProductHeader("Object Reset Group Trigger", string.Empty);
 
-            FrameworkAuthoringInspectorGui.Section("Identity");
-            EditorGUILayout.PropertyField(_groupId, new GUIContent("Group ID"));
+            DrawConfiguration();
+            DrawConfigurationStatus(trigger);
+            DrawAdvanced();
+            DrawDiagnostics(trigger);
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration");
+
+            EditorGUILayout.PropertyField(_groupId, GroupIdLabel);
             using (new EditorGUI.DisabledScope(targets.Length != 1 || !string.IsNullOrWhiteSpace(_groupId.stringValue)))
             {
                 if (GUILayout.Button("Generate ID"))
                 {
-                    FrameworkAuthoringInspectorGui.ApplySuggestion(serializedObject, _groupId,
-                        FrameworkAuthoringSuggestionUtility.SuggestIdentity(target, "reset.group"), "Generate Reset Group ID");
+                    FrameworkAuthoringInspectorGui.ApplySuggestion(
+                        serializedObject,
+                        _groupId,
+                        FrameworkAuthoringSuggestionUtility.SuggestIdentity(target, "reset.group"),
+                        "Generate Reset Group ID");
                 }
             }
-            EditorGUILayout.HelpBox("The Group ID is stable authoring identity. It is not Source or Reason.", MessageType.None);
 
-            FrameworkAuthoringInspectorGui.Section("Reset Selection");
             if (_selection == null)
             {
-                EditorGUILayout.HelpBox("Invalid: the current ObjectResetGroupTrigger contract has no Reset Selection.", MessageType.Error);
+                EditorGUILayout.HelpBox(
+                    "Invalid: the current ObjectResetGroupTrigger contract has no Reset Selection.",
+                    MessageType.Error);
             }
             else
             {
-                EditorGUILayout.PropertyField(_mode, new GUIContent("Selection Mode"));
-                if (_mode != null && _mode.enumValueIndex == 0)
-                {
-                    EditorGUILayout.PropertyField(_explicitSubjects, new GUIContent("Explicit Subjects"), true);
-                    EditorGUILayout.LabelField("Configured Subjects", _explicitSubjects.arraySize.ToString());
-                }
-                EditorGUILayout.PropertyField(_selection.FindPropertyRelative("allowNoSubjects"));
-                EditorGUILayout.PropertyField(_selection.FindPropertyRelative("allowNoParticipants"));
-                EditorGUILayout.PropertyField(_selection.FindPropertyRelative("stopOnFailure"));
+                ResetSelectionConfigEditorGui.DrawSelection(_selection);
             }
 
-            FrameworkAuthoringInspectorGui.Section("Request Metadata");
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField("Source", nameof(ObjectResetGroupTrigger));
-            }
-            EditorGUILayout.PropertyField(_reason, new GUIContent("Reason"));
+            EditorGUILayout.PropertyField(_reason, ReasonLabel);
             using (new EditorGUI.DisabledScope(targets.Length != 1 || !string.IsNullOrWhiteSpace(_reason.stringValue)))
             {
                 if (GUILayout.Button("Use Suggested Reason"))
                 {
-                    FrameworkAuthoringInspectorGui.ApplySuggestion(serializedObject, _reason,
-                        FrameworkAuthoringSuggestionUtility.SuggestReason(target, "reset.group"), "Suggest Reset Group Reason");
+                    FrameworkAuthoringInspectorGui.ApplySuggestion(
+                        serializedObject,
+                        _reason,
+                        FrameworkAuthoringSuggestionUtility.SuggestReason(target, "reset.group"),
+                        "Suggest Reset Group Reason");
                 }
             }
-
-            DrawConfigurationStatus();
-            if (Application.isPlaying && targets.Length == 1)
-            {
-                FrameworkAuthoringInspectorGui.RuntimeBinding(trigger.ResetSelectionExecutionRuntimeBindingStatus,
-                    trigger.ResetSelectionExecutionRuntimeBindingDiagnostic,
-                    "Ensure this component is active under roots processed by the official Reset Scene Lifecycle composition.");
-                DrawRuntimeEvidence(trigger);
-                using (new EditorGUI.DisabledScope(!trigger.HasResetSelectionExecutionRuntimeBinding || trigger.IsRequestInFlight))
-                {
-                    if (GUILayout.Button(trigger.IsRequestInFlight ? "Group Reset In Progress" : "Request Group Reset"))
-                    {
-                        trigger.RequestObjectResetGroup();
-                    }
-                }
-            }
-
-            _advanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_advanced);
-            if (_advanced)
-            {
-                EditorGUILayout.LabelField("Resolved Group ID", trigger.ResolvedGroupId);
-                EditorGUILayout.LabelField("Resolved Reason", trigger.ResolvedReason);
-                EditorGUILayout.LabelField("Raw Selection", trigger.Selection != null ? trigger.Selection.ToString() : "<missing>");
-                EditorGUILayout.LabelField("Last Result", trigger.HasLastResult ? trigger.LastResult.ToString() : "<none>");
-            }
-            serializedObject.ApplyModifiedProperties();
         }
 
-        private string BuildIntent()
-        {
-            if (_mode == null)
-            {
-                return "Configure a Reset Subject selection.";
-            }
-
-            if (_mode.enumValueIndex == 0)
-            {
-                return $"Reset {_explicitSubjects.arraySize} explicitly selected Subject(s) as one group.";
-            }
-
-            return "Reset Subjects resolved by " + _mode.enumDisplayNames[_mode.enumValueIndex] + ".";
-        }
-
-        private void DrawConfigurationStatus()
+        private void DrawConfigurationStatus(ObjectResetGroupTrigger trigger)
         {
             FrameworkAuthoringInspectorGui.Section("Configuration Status");
-            if (string.IsNullOrWhiteSpace(_groupId.stringValue))
+
+            bool ready = !string.IsNullOrWhiteSpace(_groupId.stringValue) &&
+                _selection != null &&
+                !(ResetSelectionConfigEditorGui.IsExplicitSelectionEmpty(_selection) &&
+                  !ResetSelectionConfigEditorGui.AllowsNoSubjects(_selection));
+            FrameworkAuthoringInspectorGui.Status(ready ? "Ready" : "Incomplete");
+
+            if (!ready)
             {
-                EditorGUILayout.HelpBox("Incomplete: Group ID is empty. Generate or enter a stable Group ID.", MessageType.Error);
+                string message = string.IsNullOrWhiteSpace(_groupId.stringValue)
+                    ? "Group ID is empty. Generate or enter a stable Group ID."
+                    : _selection == null
+                        ? "Reset Selection is missing from the serialized component contract."
+                        : "Explicit Subjects is selected, but no Subject references are configured and Allow No Subjects is disabled.";
+                EditorGUILayout.HelpBox(message, MessageType.Warning);
             }
-            else if (_selection == null)
+
+            if (Application.isPlaying && targets.Length == 1)
             {
-                EditorGUILayout.HelpBox("Invalid: Reset Selection is missing from the serialized component contract.", MessageType.Error);
-            }
-            else if (_mode != null && _mode.enumValueIndex == 0 && _explicitSubjects.arraySize == 0)
-            {
-                EditorGUILayout.HelpBox("Incomplete: Explicit Subjects is selected, but no Subject references are configured. Add at least one UnityResetSubjectAdapter reference.", MessageType.Warning);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox("Ready. Runtime subject registration remains a Play Mode concern.", MessageType.Info);
+                EditorGUILayout.LabelField(
+                    "Runtime",
+                    trigger.HasResetSelectionExecutionRuntimeBinding ? "Bound" : "Not bound");
             }
         }
 
-        private static void DrawRuntimeEvidence(ObjectResetGroupTrigger trigger)
+        private void DrawAdvanced()
         {
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
+            if (!_showAdvanced || _selection == null)
+            {
+                return;
+            }
+
+            ResetSelectionConfigEditorGui.DrawAdvanced(_selection);
+        }
+
+        private void DrawDiagnostics(ObjectResetGroupTrigger trigger)
+        {
+            _showDiagnostics = EditorGUILayout.Foldout(_showDiagnostics, "Diagnostics", true);
+            if (!_showDiagnostics)
+            {
+                return;
+            }
+
+            if (targets.Length != 1)
+            {
+                EditorGUILayout.HelpBox("Diagnostics are shown for single-object selection only.", MessageType.None);
+                return;
+            }
+
+            EditorGUILayout.LabelField("Resolved Group ID", trigger.ResolvedGroupId);
+            EditorGUILayout.LabelField("Resolved Reason", trigger.ResolvedReason);
+            EditorGUILayout.LabelField("Raw Selection", trigger.Selection != null ? trigger.Selection.ToString() : "<missing>");
+
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            FrameworkAuthoringInspectorGui.RuntimeBinding(
+                trigger.ResetSelectionExecutionRuntimeBindingStatus,
+                trigger.ResetSelectionExecutionRuntimeBindingDiagnostic,
+                "Ensure this component is active under roots processed by the official Reset Scene Lifecycle composition.");
+
             FrameworkAuthoringInspectorGui.Section("Runtime Request Evidence");
             EditorGUILayout.LabelField("Request In Flight", trigger.IsRequestInFlight ? "Yes" : "No");
-            EditorGUILayout.LabelField("Last Status", trigger.LastResultStatus.ToString());
             EditorGUILayout.LabelField("Last Target Count", trigger.LastTargetCount.ToString());
-            EditorGUILayout.LabelField("Participants", trigger.LastParticipantCount.ToString());
-            EditorGUILayout.LabelField("Failed Participants", trigger.LastFailedParticipantCount.ToString());
-            if (!string.IsNullOrWhiteSpace(trigger.LastMessage))
+            EditorGUILayout.HelpBox(
+                trigger.LastResultSummary,
+                trigger.LastRequestFailed ? MessageType.Error : trigger.LastRequestIgnored ? MessageType.Warning : MessageType.Info);
+
+            FrameworkAuthoringInspectorGui.Section("Runtime Test");
+            using (new EditorGUI.DisabledScope(!trigger.HasResetSelectionExecutionRuntimeBinding || trigger.IsRequestInFlight))
             {
-                EditorGUILayout.HelpBox(trigger.LastMessage, trigger.LastRequestFailed ? MessageType.Error : MessageType.Info);
+                if (GUILayout.Button(trigger.IsRequestInFlight ? "Group Reset In Progress" : "Request Group Reset"))
+                {
+                    trigger.RequestObjectResetGroup();
+                }
             }
         }
     }

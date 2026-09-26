@@ -1,3 +1,5 @@
+using Immersive.Framework.Editor.Common;
+using Immersive.Framework.Reset;
 using Immersive.Framework.Reset.Unity;
 using UnityEditor;
 using UnityEngine;
@@ -7,6 +9,17 @@ namespace Immersive.Framework.Editor.Reset
     [CustomEditor(typeof(UnityTransformResetParticipant))]
     internal sealed class UnityTransformResetParticipantEditor : UnityEditor.Editor
     {
+        private static readonly GUIContent TargetLabel = new GUIContent(
+            "Target",
+            "Transform to restore. Falls back to this component's own Transform when empty.");
+        private static readonly GUIContent CaptureOnEnableLabel = new GUIContent(
+            "Capture Baseline On Enable",
+            "When enabled, the baseline below is captured from the target Transform every time the Participant becomes enabled.");
+        private static readonly GUIContent RequirednessLabel = new GUIContent(
+            "Requiredness",
+            "Required failures block the Subject reset result. Optional failures follow the runtime optional-participant policy.");
+        private static readonly GUIContent OrderLabel = new GUIContent("Order", "Lower values execute first.");
+
         private SerializedProperty _participantId, _requiredness, _order, _displayName, _source, _reason;
         private SerializedProperty _targetTransform, _captureOnEnable, _resetPosition, _resetRotation, _resetScale, _baselinePosition, _baselineRotation, _baselineScale;
         private bool _showBaseline, _showAdvanced, _showDiagnostics;
@@ -22,16 +35,44 @@ namespace Immersive.Framework.Editor.Reset
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
-            UnityResetParticipantEditorUtility.DrawCommon(_displayName, _requiredness, _order);
-            EditorGUILayout.Space(6f); EditorGUILayout.LabelField("Transform Reset", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(_targetTransform, new GUIContent("Target"));
-            EditorGUILayout.PropertyField(_captureOnEnable, new GUIContent("Capture Baseline On Enable"));
-            EditorGUILayout.LabelField("Restore", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(_resetPosition, new GUIContent("Position")); EditorGUILayout.PropertyField(_resetRotation, new GUIContent("Rotation")); EditorGUILayout.PropertyField(_resetScale, new GUIContent("Scale"));
-            EditorGUILayout.HelpBox(_captureOnEnable.boolValue ? "The baseline is captured from the target Transform when the Participant becomes enabled." : "The serialized baseline below is used until an explicit capture updates it.", MessageType.None);
-            DrawBaseline(); DrawActions();
-            UnityResetParticipantEditorUtility.DrawIdentityAndDiagnostics((UnityResetParticipantBehaviour)target, _participantId, _source, _reason, ref _showAdvanced, ref _showDiagnostics);
+
+            FrameworkAuthoringInspectorGui.ProductHeader("Transform Reset Participant", string.Empty);
+
+            DrawConfiguration();
+            DrawBaseline();
+            DrawConfigurationStatus();
+            DrawActions();
+            UnityResetParticipantEditorUtility.DrawIdentityAndDiagnostics(
+                (UnityResetParticipantBehaviour)target,
+                _participantId,
+                _source,
+                _reason,
+                ref _showAdvanced,
+                ref _showDiagnostics,
+                _displayName);
+
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration");
+            EditorGUILayout.PropertyField(_targetTransform, TargetLabel);
+            EditorGUILayout.PropertyField(_captureOnEnable, CaptureOnEnableLabel);
+
+            EditorGUILayout.LabelField("Restore", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(_resetPosition, new GUIContent("Position"));
+            EditorGUILayout.PropertyField(_resetRotation, new GUIContent("Rotation"));
+            EditorGUILayout.PropertyField(_resetScale, new GUIContent("Scale"));
+
+            EditorGUILayout.LabelField("Execution", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(_requiredness, RequirednessLabel);
+            EditorGUILayout.PropertyField(_order, OrderLabel);
+
+            if (!_resetPosition.boolValue && !_resetRotation.boolValue && !_resetScale.boolValue)
+            {
+                EditorGUILayout.HelpBox("No Restore channel is selected. Reset will be a no-op.", MessageType.Warning);
+            }
         }
 
         private void DrawBaseline()
@@ -41,9 +82,18 @@ namespace Immersive.Framework.Editor.Reset
             using (new EditorGUI.DisabledScope(true)) { EditorGUILayout.PropertyField(_baselinePosition); EditorGUILayout.PropertyField(_baselineRotation); EditorGUILayout.PropertyField(_baselineScale); }
         }
 
+        private void DrawConfigurationStatus()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+            bool ready = !string.IsNullOrWhiteSpace(_participantId.stringValue) &&
+                _requiredness.intValue != (int)ResetParticipantRequiredness.Unknown &&
+                (_resetPosition.boolValue || _resetRotation.boolValue || _resetScale.boolValue);
+            FrameworkAuthoringInspectorGui.Status(ready ? "Ready" : "Incomplete");
+        }
+
         private void DrawActions()
         {
-            EditorGUILayout.Space(6f); EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
+            FrameworkAuthoringInspectorGui.Section("Actions");
             using (new EditorGUI.DisabledScope(targets.Length != 1))
             {
                 if (GUILayout.Button("Capture Current Transform As Baseline")) CaptureCurrentBaseline();

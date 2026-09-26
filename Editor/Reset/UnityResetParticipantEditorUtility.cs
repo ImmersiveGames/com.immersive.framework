@@ -25,11 +25,17 @@ namespace Immersive.Framework.Editor.Reset
             SerializedProperty source,
             SerializedProperty reason,
             ref bool showAdvanced,
-            ref bool showDiagnostics)
+            ref bool showDiagnostics,
+            SerializedProperty displayName = null)
         {
             showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced", true);
             if (showAdvanced)
             {
+                if (displayName != null)
+                {
+                    EditorGUILayout.PropertyField(displayName, new GUIContent("Display Name"));
+                }
+
                 using (new EditorGUI.DisabledScope(true)) EditorGUILayout.PropertyField(participantId, new GUIContent("Participant ID"));
                 EditorGUILayout.PropertyField(source, new GUIContent("Source"));
                 EditorGUILayout.PropertyField(reason, new GUIContent("Reason"));

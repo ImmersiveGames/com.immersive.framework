@@ -1,4 +1,5 @@
 using Immersive.Framework.CycleReset;
+using Immersive.Framework.Editor.Common;
 using UnityEditor;
 using UnityEngine;
 namespace Immersive.Framework.Editor.Authoring
@@ -7,7 +8,12 @@ namespace Immersive.Framework.Editor.Authoring
     [CanEditMultipleObjects]
     internal sealed class RouteCycleResetTriggerEditor : UnityEditor.Editor
     {
+        private static readonly GUIContent ReasonLabel = new GUIContent(
+            "Reason",
+            "Optional diagnostics reason. Keep it route/activity-cycle oriented. Avoid object/player/component wording; those reset levels are later phases.");
+
         private SerializedProperty _reason;
+        private bool _showDiagnostics;
 
         private void OnEnable()
         {
@@ -18,33 +24,37 @@ namespace Immersive.Framework.Editor.Authoring
         {
             serializedObject.Update();
 
-            EditorGUILayout.LabelField("Route Cycle Reset Trigger", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Requests a Route Cycle Reset through the framework runtime. This is a cycle-level reset only: it does not reset a specific object, component, Player, Actor, pool, save snapshot or scene reload.",
-                MessageType.Info);
+            FrameworkAuthoringInspectorGui.ProductHeader("Route Cycle Reset Trigger", string.Empty);
 
-            EditorGUILayout.PropertyField(
-                _reason,
-                new GUIContent(
-                    "Reason",
-                    "Optional diagnostics reason. Keep it route/activity-cycle oriented. Avoid object/player/component wording; those reset levels are later phases."));
-
+            FrameworkAuthoringInspectorGui.Section("Configuration");
+            EditorGUILayout.PropertyField(_reason, ReasonLabel);
             DrawReasonGuardrail(_reason);
 
-            EditorGUILayout.Space(6);
-            EditorGUILayout.HelpBox(
-                "Expected F12 behaviour: with no reset participants discovered yet, a successful trigger request can report SucceededNoParticipants. That is valid until local/object reset participants exist.",
-                MessageType.Info);
+            if (Application.isPlaying && targets.Length == 1)
+            {
+                var trigger = (RouteCycleResetTrigger)target;
+                FrameworkAuthoringInspectorGui.RuntimeBinding(
+                    trigger.RouteCycleResetRuntimeBindingStatus,
+                    trigger.RouteCycleResetRuntimeBindingDiagnostic,
+                    "Ensure this component is active under roots processed by the official Cycle Reset Scene Lifecycle composition.");
+            }
 
-            DrawRuntimeResult();
+            DrawDiagnostics();
 
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawRuntimeResult()
+        private void DrawDiagnostics()
         {
-            if (!Application.isPlaying || targets.Length != 1)
+            _showDiagnostics = EditorGUILayout.Foldout(_showDiagnostics, "Diagnostics", true);
+            if (!_showDiagnostics)
             {
+                return;
+            }
+
+            if (targets.Length != 1)
+            {
+                EditorGUILayout.HelpBox("Diagnostics are shown for single-object selection only.", MessageType.None);
                 return;
             }
 
@@ -54,30 +64,21 @@ namespace Immersive.Framework.Editor.Authoring
                 return;
             }
 
-            EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField("Runtime Result", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("In Flight", trigger.IsRequestInFlight ? "Yes" : "No");
-            EditorGUILayout.LabelField("Last Phase", trigger.LastEventPhase.ToString());
-            EditorGUILayout.LabelField("Last Outcome", trigger.LastOutcome.ToString());
-            EditorGUILayout.LabelField("Last Result Status", trigger.LastResultStatus.ToString());
+            if (!Application.isPlaying)
+            {
+                EditorGUILayout.LabelField("Runtime evidence is available in Play Mode.", EditorStyles.wordWrappedMiniLabel);
+                return;
+            }
 
+            FrameworkAuthoringInspectorGui.Section("Runtime Request Evidence");
+            EditorGUILayout.LabelField("In Flight", trigger.IsRequestInFlight ? "Yes" : "No");
+            EditorGUILayout.LabelField("Last Outcome", trigger.LastOutcome.ToString());
             if (!string.IsNullOrWhiteSpace(trigger.LastReason))
             {
                 EditorGUILayout.LabelField("Last Reason", trigger.LastReason);
             }
 
-            if (!string.IsNullOrWhiteSpace(trigger.LastMessage))
-            {
-                EditorGUILayout.HelpBox(trigger.LastMessage, ResolveRuntimeMessageType(trigger));
-            }
-
-            if (trigger.HasLastResult)
-            {
-                EditorGUILayout.LabelField("Participants", trigger.LastParticipantCount.ToString());
-                EditorGUILayout.LabelField("Succeeded / Skipped / Failed", $"{trigger.LastSucceededParticipantCount} / {trigger.LastSkippedParticipantCount} / {trigger.LastFailedParticipantCount}");
-                EditorGUILayout.LabelField("Blocking / Non-blocking Issues", $"{trigger.LastBlockingIssueCount} / {trigger.LastNonBlockingIssueCount}");
-                EditorGUILayout.HelpBox(trigger.LastResultSummary, MessageType.None);
-            }
+            EditorGUILayout.HelpBox(trigger.LastResultSummary, ResolveRuntimeMessageType(trigger));
         }
 
         private static MessageType ResolveRuntimeMessageType(RouteCycleResetTrigger trigger)
@@ -105,9 +106,6 @@ namespace Immersive.Framework.Editor.Authoring
             var value = reason.stringValue;
             if (string.IsNullOrWhiteSpace(value))
             {
-                EditorGUILayout.HelpBox(
-                    "No custom reason set. Runtime diagnostics will use the default Route Cycle Reset reason.",
-                    MessageType.Info);
                 return;
             }
 

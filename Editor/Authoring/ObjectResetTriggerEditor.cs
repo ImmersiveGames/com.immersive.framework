@@ -8,11 +8,25 @@ namespace Immersive.Framework.Editor.Authoring
     [CanEditMultipleObjects]
     internal sealed class ObjectResetTriggerEditor : UnityEditor.Editor
     {
+        private static readonly GUIContent TargetSubjectLabel = new GUIContent(
+            "Target Subject",
+            "Assign a UnityResetSubjectAdapter or provide an explicit ResetSubjectId text. The adapter takes precedence when both are set.");
+        private static readonly GUIContent ReasonLabel = new GUIContent(
+            "Reason",
+            "Optional diagnostics reason for this Object Reset request.");
+        private static readonly GUIContent AllowNoParticipantsLabel = new GUIContent(
+            "Allow No Participants",
+            "When enabled, a selected ResetSubject with no participants succeeds as SucceededNoParticipants.");
+        private static readonly GUIContent StopOnFailureLabel = new GUIContent(
+            "Stop On Failure",
+            "Stops execution after the first blocking failure inside this single-subject request.");
+
         private SerializedProperty _targetSubject;
         private SerializedProperty _reason;
         private SerializedProperty _allowNoParticipants;
         private SerializedProperty _stopOnFailure;
-        private bool _advanced;
+        private bool _showAdvanced;
+        private bool _showDiagnostics;
 
         private void OnEnable()
         {
@@ -26,42 +40,26 @@ namespace Immersive.Framework.Editor.Authoring
         {
             serializedObject.Update();
 
-            FrameworkAuthoringInspectorGui.ProductHeader(
-                "Object Reset Trigger",
-                "Requests Reset for one authored Reset Subject.");
+            FrameworkAuthoringInspectorGui.ProductHeader("Object Reset Trigger", string.Empty);
 
-            FrameworkAuthoringInspectorGui.Section("Target / Intent");
+            ObjectResetTargetAuthoringValidationResult targetValidation = DrawConfiguration();
+            DrawConfigurationStatus(targetValidation);
+            DrawAdvanced();
+            DrawDiagnostics();
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private ObjectResetTargetAuthoringValidationResult DrawConfiguration()
+        {
+            FrameworkAuthoringInspectorGui.Section("Configuration");
 
             if (_targetSubject != null)
             {
-                EditorGUILayout.PropertyField(
-                    _targetSubject,
-                    new GUIContent(
-                        "Target Subject",
-                        "Assign a UnityResetSubjectAdapter or provide an explicit ResetSubjectId text."),
-                    includeChildren: true);
+                EditorGUILayout.PropertyField(_targetSubject, TargetSubjectLabel, includeChildren: true);
             }
 
-            serializedObject.ApplyModifiedProperties();
-            ObjectResetTargetAuthoringValidationResult targetValidation =
-                ObjectResetTargetAuthoringValidator.Validate(_targetSubject);
-            FrameworkAuthoringInspectorGui.IntentSummary(BuildIntentSummary(targetValidation));
-            EditorGUILayout.HelpBox(
-                targetValidation.HasAdapter
-                    ? "An assigned Reset Subject Adapter is the authored target. A direct Reset Subject ID is optional and follows the runtime precedence shown below."
-                    : "Use either an authored Reset Subject Adapter or a direct authored Reset Subject ID.",
-                MessageType.None);
-
-            FrameworkAuthoringInspectorGui.Section("Request Metadata");
-            using (new EditorGUI.DisabledScope(true))
-            {
-                EditorGUILayout.TextField("Source", nameof(ObjectResetTrigger));
-            }
-            EditorGUILayout.PropertyField(
-                _reason,
-                new GUIContent(
-                    "Reason",
-                    "Optional diagnostics reason for this Object Reset request."));
+            EditorGUILayout.PropertyField(_reason, ReasonLabel);
             using (new EditorGUI.DisabledScope(targets.Length != 1 || !string.IsNullOrWhiteSpace(_reason.stringValue)))
             {
                 if (GUILayout.Button("Use Suggested Reason"))
@@ -74,94 +72,103 @@ namespace Immersive.Framework.Editor.Authoring
                 }
             }
 
-            FrameworkAuthoringInspectorGui.Section("Execution Policy");
-            EditorGUILayout.PropertyField(
-                _allowNoParticipants,
-                new GUIContent(
-                    "Allow No Participants",
-                    "When enabled, a selected ResetSubject with no participants succeeds as SucceededNoParticipants."));
-
-            EditorGUILayout.PropertyField(
-                _stopOnFailure,
-                new GUIContent(
-                    "Stop On Failure",
-                    "Stops execution after the first blocking failure inside this single-subject request."));
-
-            FrameworkAuthoringInspectorGui.Section("Configuration Status");
-            EditorGUILayout.HelpBox(
-                targetValidation.IsValid
-                    ? "Ready. " + targetValidation.Message
-                    : "Incomplete. " + targetValidation.Message,
-                targetValidation.IsValid ? MessageType.Info : MessageType.Error);
-
-            DrawRuntimeResult();
-
-            _advanced = FrameworkAuthoringInspectorGui.AdvancedFoldout(_advanced);
-            if (_advanced && targets.Length == 1)
-            {
-                var trigger = (ObjectResetTrigger)target;
-                EditorGUILayout.LabelField("Binding Diagnostic", trigger.ResetExecutionRuntimeBindingDiagnostic);
-                DrawAdvancedTargetEvidence(trigger);
-                EditorGUILayout.LabelField("Raw Last Result", trigger.HasLastResult ? trigger.LastResult.ToString() : "<none>");
-            }
-
-            serializedObject.ApplyModifiedProperties();
+            return ObjectResetTargetAuthoringValidator.Validate(_targetSubject);
         }
 
-        private void DrawRuntimeResult()
+        private void DrawConfigurationStatus(ObjectResetTargetAuthoringValidationResult targetValidation)
         {
-            if (!Application.isPlaying || targets.Length != 1)
+            FrameworkAuthoringInspectorGui.Section("Configuration Status");
+            FrameworkAuthoringInspectorGui.Status(targetValidation.IsValid ? "Ready" : "Incomplete");
+            if (!targetValidation.IsValid)
+            {
+                EditorGUILayout.HelpBox(targetValidation.Message, MessageType.Error);
+            }
+
+            if (Application.isPlaying && targets.Length == 1)
+            {
+                var trigger = (ObjectResetTrigger)target;
+                EditorGUILayout.LabelField("Runtime", trigger.HasResetExecutionRuntimeBinding ? "Bound" : "Not bound");
+            }
+        }
+
+        private void DrawAdvanced()
+        {
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
+            if (!_showAdvanced)
             {
                 return;
             }
 
-            var trigger = target as ObjectResetTrigger;
-            if (trigger == null)
+            EditorGUILayout.LabelField("Execution Policy", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(_allowNoParticipants, AllowNoParticipantsLabel);
+            EditorGUILayout.PropertyField(_stopOnFailure, StopOnFailureLabel);
+        }
+
+        private void DrawDiagnostics()
+        {
+            _showDiagnostics = EditorGUILayout.Foldout(_showDiagnostics, "Diagnostics", true);
+            if (!_showDiagnostics)
             {
                 return;
             }
+
+            if (targets.Length != 1)
+            {
+                EditorGUILayout.HelpBox("Diagnostics are shown for single-object selection only.", MessageType.None);
+                return;
+            }
+
+            var trigger = (ObjectResetTrigger)target;
 
             FrameworkAuthoringInspectorGui.RuntimeBinding(
                 trigger.ResetExecutionRuntimeBindingStatus,
                 trigger.ResetExecutionRuntimeBindingDiagnostic,
                 "Ensure this component is active under roots processed by the official Reset Scene Lifecycle composition.");
-            DrawRuntimeTargetReadiness(trigger);
+
+            FrameworkAuthoringInspectorGui.Section("Target Evidence");
+            DrawTargetEvidence(trigger);
+
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
             FrameworkAuthoringInspectorGui.Section("Runtime Request Evidence");
             EditorGUILayout.LabelField("In Flight", trigger.IsRequestInFlight ? "Yes" : "No");
-            EditorGUILayout.LabelField("Last Phase", trigger.LastEventPhase.ToString());
             EditorGUILayout.LabelField("Last Outcome", trigger.LastOutcome.ToString());
-            EditorGUILayout.LabelField("Last Result Status", trigger.LastResultStatus.ToString());
-
             if (!string.IsNullOrWhiteSpace(trigger.LastReason))
             {
                 EditorGUILayout.LabelField("Last Reason", trigger.LastReason);
             }
 
-            if (!string.IsNullOrWhiteSpace(trigger.LastMessage))
-            {
-                EditorGUILayout.HelpBox(trigger.LastMessage, ResolveRuntimeMessageType(trigger));
-            }
+            EditorGUILayout.HelpBox(trigger.LastResultSummary, ResolveRuntimeMessageType(trigger));
 
-            if (trigger.HasLastResult)
+            FrameworkAuthoringInspectorGui.Section("Runtime Test");
+            using (new EditorGUI.DisabledScope(!trigger.HasResetExecutionRuntimeBinding || trigger.IsRequestInFlight))
             {
-                EditorGUILayout.LabelField("Participants", trigger.LastParticipantCount.ToString());
-                EditorGUILayout.LabelField("Succeeded / Skipped / Failed", $"{trigger.LastSucceededParticipantCount} / {trigger.LastSkippedParticipantCount} / {trigger.LastFailedParticipantCount}");
-                EditorGUILayout.LabelField("Blocking / Non-blocking Issues", $"{trigger.LastBlockingIssueCount} / {trigger.LastNonBlockingIssueCount}");
-                EditorGUILayout.HelpBox(trigger.LastResultSummary, MessageType.None);
-            }
-
-            using (new EditorGUI.DisabledScope(
-                       !trigger.HasResetExecutionRuntimeBinding ||
-                       trigger.IsRequestInFlight))
-            {
-                if (GUILayout.Button(
-                        trigger.IsRequestInFlight
-                            ? "Object Reset In Progress"
-                            : "Request Object Reset"))
+                if (GUILayout.Button(trigger.IsRequestInFlight ? "Object Reset In Progress" : "Request Object Reset"))
                 {
                     trigger.RequestObjectReset();
                 }
             }
+        }
+
+        private static void DrawTargetEvidence(ObjectResetTrigger trigger)
+        {
+            if (trigger.TargetSubjectAdapter == null)
+            {
+                EditorGUILayout.LabelField("Target Source", "Direct authored Reset Subject ID");
+                return;
+            }
+
+            var adapter = trigger.TargetSubjectAdapter;
+            EditorGUILayout.LabelField("Target Source", "Reset Subject Adapter");
+            EditorGUILayout.LabelField("Scope", adapter.Scope.ToString());
+            EditorGUILayout.LabelField("Registration Binding", adapter.ResetRegistrationRuntimeBindingStatus);
+            EditorGUILayout.LabelField("Registration", adapter.IsRegistered ? "Registered" : "Not registered");
+            EditorGUILayout.LabelField(
+                "Resolved Subject ID",
+                adapter.SubjectId.IsValid ? adapter.SubjectId.StableText : "Not resolved");
         }
 
         private static MessageType ResolveRuntimeMessageType(ObjectResetTrigger trigger)
@@ -177,59 +184,6 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             return MessageType.Info;
-        }
-
-        private static string BuildIntentSummary(
-            ObjectResetTargetAuthoringValidationResult validation)
-        {
-            switch (validation.Status)
-            {
-                case ObjectResetTargetAuthoringValidationStatus.ValidAdapterReference:
-                    return "Reset the authored Reset Subject Adapter target.";
-                case ObjectResetTargetAuthoringValidationStatus.ValidAuthoredSubjectId:
-                    return "Reset the authored Reset Subject ID target.";
-                default:
-                    return "Choose one authored Reset Subject target.";
-            }
-        }
-
-        private static void DrawRuntimeTargetReadiness(ObjectResetTrigger trigger)
-        {
-            if (trigger.TargetSubjectAdapter == null)
-            {
-                return;
-            }
-
-            FrameworkAuthoringInspectorGui.Section("Runtime Target Readiness");
-            if (trigger.TargetSubjectAdapter.IsRegistered)
-            {
-                EditorGUILayout.LabelField("Runtime Registration", "Registered");
-                return;
-            }
-
-            EditorGUILayout.LabelField("Runtime Readiness", "Waiting for runtime owner or registration");
-            EditorGUILayout.HelpBox(
-                "Authoring remains ready. The adapter will resolve its runtime Subject ID after Reset Scene Lifecycle binding and owner availability.",
-                MessageType.Info);
-        }
-
-        private static void DrawAdvancedTargetEvidence(ObjectResetTrigger trigger)
-        {
-            if (trigger.TargetSubjectAdapter == null)
-            {
-                EditorGUILayout.LabelField("Target Source", "Direct authored Reset Subject ID");
-                return;
-            }
-
-            var adapter = trigger.TargetSubjectAdapter;
-            EditorGUILayout.LabelField("Target Source", "Reset Subject Adapter");
-            EditorGUILayout.LabelField("Registration Binding", adapter.ResetRegistrationRuntimeBindingStatus);
-            EditorGUILayout.LabelField("Scope", adapter.Scope.ToString());
-            EditorGUILayout.LabelField("Registration", adapter.IsRegistered ? "Registered" : "Not registered");
-            EditorGUILayout.LabelField(
-                "Resolved Subject ID",
-                adapter.SubjectId.IsValid ? adapter.SubjectId.StableText : "<not resolved>");
-            EditorGUILayout.HelpBox(adapter.ResetRegistrationRuntimeBindingDiagnostic, MessageType.None);
         }
     }
 }
