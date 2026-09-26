@@ -6,8 +6,8 @@ namespace Immersive.Framework.Pause
     /// Declares whether an Activity requires product Pause binding for its admitted Local Player.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A explicit Pause Activity binding intent requiredness.")]
+        FrameworkApiStatus.Stable,
+        "Stable explicit Pause Activity binding requiredness.")]
     public enum PauseActivityBindingRequiredness
     {
         Unknown = 0,
