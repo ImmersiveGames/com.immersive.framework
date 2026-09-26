@@ -8,7 +8,7 @@ Pause product feature: **STABLE**
 Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
 Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
 Product surface status: **AVAILABLE / direct authoring surfaces are sufficient for the current lifecycle**  
-Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-011  
+Related decisions: IF-ADR-001, IF-ADR-003, IF-ADR-006, IF-ADR-007, IF-ADR-010, IF-ADR-011, IF-ADR-035  
 Current reconciliation: [ADR-005 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-005-RECONCILIATION-2026-08-10.md)  
 Git package baseline originally reconciled: `7b53b47814ddf59159972f56db171d60d421b14f` (`Camera-Docs`)  
 Git QA baseline originally reconciled: `d000303c6409338888c8abe21e83c70759171df6` (`Cam-Pass`)  
@@ -21,6 +21,10 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 > passed 27/27 across two passes in one Play Mode session. FIRSTGAME remains
 > Stage B consumer evidence and does not reopen technical conformity.
 
+> **2026-09-26 Reset corrective supersession — IF-ADR-035.** The Reset execution core established by this ADR remains valid, but IF-ADR-035 supersedes this ADR's Reset authoring/selection assumptions where they conflict. In particular, authored `ResetSubjectScope` is no longer the target product authority for content ownership or semantic Reset membership; normal authoring must not require textual Reset subject IDs or explicit subject-ID lists solely for execution; Reset ownership is derived from content origin; Reset membership is a separate semantic policy; and semantic requests converge on `ResetTarget`. `ResetRegistry`, `ResetExecutor`, typed results/issues and local Reset participants remain the initial execution foundation during migration.
+>
+> The 2026-09-26 Reset selection amendment below is therefore historical for the legacy path. Its `CurrentActivitySubjects` / `CurrentRouteSubjects` behavior remains implemented until RESET-035 migration replaces it, but it is not the target product model. Activity Restart must also account for the fact that Activity Clear/Reenter physically recreates Activity-owned scene content; pre-Clear Reset is primarily meaningful for surviving state, including Route-owned content with Activity Reset membership.
+>
 > **2026-09-26 stable promotion.** The current Pause product surface is promoted to Stable after validation of the three supported consumer paths: physical Player Pause input, direct scene-authored Pause/Resume requests, and lifecycle-scoped Pause presentation. Pause-specific package-owned QA/smoke runners were removed; external QA may certify the Stable contracts without owning runtime implementation.
 >
 > **2026-09-26 implementation update.** The Pause capability admission and
