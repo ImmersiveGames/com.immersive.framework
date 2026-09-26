@@ -3608,9 +3608,13 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             if (_gameFlowRuntime == null || !update.IsValid ||
                 !ReferenceEquals(_state.CurrentRoute, _gameFlowRuntime.CurrentRoute) ||
-                !ReferenceEquals(_state.CurrentActivity, update.Activity) ||
+                !ReferenceEquals(_gameFlowRuntime.CurrentActivity, update.Activity) ||
                 !_gameFlowRuntime.CurrentOccurrence.Matches(update.Activity, update.Occurrence.TransitionSequence) ||
                 !_gameFlowRuntime.TryGetCurrentRouteLifecycleResult(out RouteLifecycleStartResult routeResult) ||
+                !ReferenceEquals(routeResult.ActivityFlowResult.Activity, update.Activity) ||
+                !ReferenceEquals(
+                    routeResult.ActivityFlowResult.ActivityReadinessState.Activity,
+                    update.Activity) ||
                 _state.ActivityReadinessState.Equals(update.ReadinessState))
             {
                 return;
@@ -3685,6 +3689,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 contribution.PendingCount,
                 contribution.CompletedCount,
                 contribution.FailedCount,
+                occurrence.TransitionSequence,
                 ++_activityReadinessPresentationRevision);
             bool published = false;
             for (int i = 0; i < observers.Count; i++)

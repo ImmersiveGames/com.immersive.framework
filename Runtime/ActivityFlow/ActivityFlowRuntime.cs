@@ -355,6 +355,34 @@ namespace Immersive.Framework.ActivityFlow
             return true;
         }
 
+        private void PublishCommittedAuthorableReadiness(
+            ActivityReadinessOccurrence occurrence,
+            ActivityReadinessState readinessState,
+            string reason)
+        {
+            if (!occurrence.IsValid ||
+                !_currentReadinessOccurrence.Matches(
+                    occurrence.Activity,
+                    occurrence.TransitionSequence) ||
+                !_hasCurrentActivityContext ||
+                !_currentActivityState.IsActive ||
+                !ReferenceEquals(_currentActivityState.Activity, occurrence.Activity) ||
+                !readinessState.HasActivity ||
+                !ReferenceEquals(readinessState.Activity, occurrence.Activity))
+            {
+                throw new InvalidOperationException(
+                    "Committed Activity readiness can be published only for the canonical current occurrence.");
+            }
+
+            _activityReadinessRevision++;
+            _activityReadinessUpdates.Publish(
+                new ActivityReadinessUpdate(
+                    occurrence,
+                    readinessState,
+                    reason,
+                    _activityReadinessRevision));
+        }
+
         private void InvalidatePendingAuthorableReadiness(string reason)
         {
             ActivityReadinessOccurrenceState pending =

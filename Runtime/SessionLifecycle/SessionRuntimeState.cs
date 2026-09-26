@@ -151,9 +151,12 @@ namespace Immersive.Framework.SessionLifecycle
             RouteLifecycleStartResult routeLifecycleResult,
             ActivityReadinessState activityReadinessState)
         {
+            ActivityFlowStartResult currentActivityFlowResult =
+                routeLifecycleResult.ActivityFlowResult
+                    .WithActivityReadinessState(activityReadinessState);
             return new SessionRuntimeState(GameApplication, CurrentRoute, routeLifecycleResult,
                 RouteContentSet, SessionContentSet, PrimarySceneResult,
-                ActivityFlowResult.WithActivityReadinessState(activityReadinessState), SessionStarted);
+                currentActivityFlowResult, SessionStarted);
         }
     }
 }

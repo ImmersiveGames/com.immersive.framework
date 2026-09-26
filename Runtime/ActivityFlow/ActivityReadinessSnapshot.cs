@@ -18,6 +18,33 @@ namespace Immersive.Framework.ActivityFlow
             int completedCount,
             int failedCount,
             int revision)
+            : this(
+                activity,
+                isReady,
+                reason,
+                participantCount,
+                requiredCount,
+                optionalCount,
+                pendingCount,
+                completedCount,
+                failedCount,
+                0,
+                revision)
+        {
+        }
+
+        public ActivityReadinessSnapshot(
+            ActivityAsset activity,
+            bool isReady,
+            string reason,
+            int participantCount,
+            int requiredCount,
+            int optionalCount,
+            int pendingCount,
+            int completedCount,
+            int failedCount,
+            int occurrence,
+            int revision)
         {
             Activity = activity;
             IsReady = isReady;
@@ -28,6 +55,7 @@ namespace Immersive.Framework.ActivityFlow
             PendingCount = pendingCount;
             CompletedCount = completedCount;
             FailedCount = failedCount;
+            Occurrence = occurrence > 0 ? occurrence : 0;
             Revision = revision;
         }
 
@@ -41,6 +69,8 @@ namespace Immersive.Framework.ActivityFlow
         public int PendingCount { get; }
         public int CompletedCount { get; }
         public int FailedCount { get; }
+        public int Occurrence { get; }
+        public bool HasOccurrence => Occurrence > 0;
         public int Revision { get; }
     }
 }

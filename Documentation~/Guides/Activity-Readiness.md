@@ -278,6 +278,16 @@ parse logs as a command path
 
 Local UI progress may explain a game-specific condition, but it must not replace the framework Loading authority.
 
+`LastSnapshot` identifies both the committed `Activity` and its readiness
+`Occurrence`. `Revision` orders public presentation changes; it is not an
+occurrence identity.
+
+For `Wait Visible`, the target Activity is committed as the canonical current
+Activity before the request finishes waiting for readiness. Its public observer
+therefore receives `Preparing` for that committed occurrence while the request
+remains pending, followed by `Ready` for the same occurrence. The observer does
+not publish a future target before Activity commit.
+
 ## Repeatable isolated comparison pattern
 
 When a consumer wants to compare `Wait Visible` and `Wait Covered` using the **same Activity-owned preparation scene**, use a neutral baseline Activity between test entries if each test is expected to exercise a fresh materialization.

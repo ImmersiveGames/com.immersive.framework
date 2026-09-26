@@ -524,8 +524,17 @@ namespace Immersive.Framework.ActivityFlow
                     transaction.Sequence);
                 _currentReadinessOccurrence = pendingReadinessOccurrence;
                 SetCurrentActivityContext(result);
-                PromotePendingAuthorableReadiness(
-                    pendingReadinessOccurrence);
+                if (!PromotePendingAuthorableReadiness(
+                        pendingReadinessOccurrence))
+                {
+                    throw new InvalidOperationException(
+                        "Committed Activity readiness occurrence could not be promoted to current.");
+                }
+
+                PublishCommittedAuthorableReadiness(
+                    pendingReadinessOccurrence,
+                    aggregateReadiness,
+                    aggregateReadiness.Reason);
                 return result;
             }
             catch (Exception exception)
