@@ -9,8 +9,8 @@ namespace Immersive.Framework.Pause
     /// It carries no Player, host, binding, token, or runtime authority reference.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A immutable Pause Activity binding intent; materialization is deferred.")]
+        FrameworkApiStatus.Stable,
+        "Stable immutable Activity-owned product Pause binding intent.")]
     public readonly struct PauseActivityBindingIntent : IEquatable<PauseActivityBindingIntent>
     {
         public PauseActivityBindingIntent(
