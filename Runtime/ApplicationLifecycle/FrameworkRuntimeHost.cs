@@ -841,6 +841,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _activityReadinessBinding = _gameFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
             ApplyPauseActivityBindingLifecycle();
             ApplyPauseActivityLifecyclePort();
+            ApplyResettableOwnerRegistration();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
                 _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(

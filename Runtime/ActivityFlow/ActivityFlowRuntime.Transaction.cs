@@ -226,6 +226,12 @@ namespace Immersive.Framework.ActivityFlow
                     resolvedSource,
                     resolvedReason);
 
+                PrepareResettableRegistration(
+                    runtimeEnterResult.Owner,
+                    sceneCompositionResult,
+                    resolvedSource,
+                    resolvedReason);
+
                 ActivityRequestTriggerBinderResult activityTriggerBinder =
                     TryBindActivityRequestTriggers(sceneCompositionResult);
                 if (!activityTriggerBinder.Succeeded)
@@ -372,6 +378,10 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     resolvedReason);
+                ReleaseResettableRegistrationForPreviousActivity(
+                    previousActivity,
+                    resolvedSource,
+                    "activity-exit");
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "All previous Activity participants completed Exit before target Enter.");
@@ -652,6 +662,10 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     resolvedReason);
+                ReleaseResettableRegistrationForPreviousActivity(
+                    previousActivity,
+                    resolvedSource,
+                    "activity-clear");
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "Previous Activity participants completed release.");
@@ -885,6 +899,21 @@ namespace Immersive.Framework.ActivityFlow
                         $" Pause Activity Binding compensation threw '{rollbackException.GetType().Name}': " +
                         rollbackException.Message;
                 }
+            }
+
+            try
+            {
+                compensationDiagnostic +=
+                    RollbackTargetResettableRegistration(
+                        targetActivity,
+                        source,
+                        "activity-transition-failed-before-commit");
+            }
+            catch (Exception rollbackException)
+            {
+                compensationDiagnostic +=
+                    $" Resettable registration compensation threw '{rollbackException.GetType().Name}': " +
+                    rollbackException.Message;
             }
 
             try

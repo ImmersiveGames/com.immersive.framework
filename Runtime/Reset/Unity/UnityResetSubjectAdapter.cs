@@ -88,6 +88,8 @@ namespace Immersive.Framework.Reset.Unity
 
         public ResetSubjectScope Scope => scope;
 
+        internal UnityResetParticipantDiscoveryMode ParticipantDiscovery => participantDiscovery;
+
         public ActorDeclaration SourceActor => sourceActor;
 
         public bool HasSourceActor => sourceActor != null;
