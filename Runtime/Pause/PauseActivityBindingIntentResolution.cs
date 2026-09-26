@@ -9,8 +9,8 @@ namespace Immersive.Framework.Pause
     /// It does not compose or mutate Pause runtime state.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P2.1A immutable Pause Activity binding intent resolution.")]
+        FrameworkApiStatus.Stable,
+        "Stable immutable Pause Activity binding intent resolution.")]
     public readonly struct PauseActivityBindingIntentResolution :
         IEquatable<PauseActivityBindingIntentResolution>
     {
