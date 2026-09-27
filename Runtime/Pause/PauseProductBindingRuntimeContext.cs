@@ -461,7 +461,9 @@ namespace Immersive.Framework.Pause
                         nameof(PauseProductBindingRuntimeContext),
                         "application-pause-failed");
                     return Record(
-                        PauseProductRequestStatus.Failed,
+                        pauseResult.Rejected
+                            ? PauseProductRequestStatus.Rejected
+                            : PauseProductRequestStatus.Failed,
                         pauseResult,
                         begin,
                         pauseDiagnostic);
@@ -598,7 +600,9 @@ namespace Immersive.Framework.Pause
                         out string diagnostic))
                 {
                     return Record(
-                        PauseProductRequestStatus.Failed,
+                        pauseResult.Rejected
+                            ? PauseProductRequestStatus.Rejected
+                            : PauseProductRequestStatus.Failed,
                         pauseResult,
                         null,
                         diagnostic);
@@ -680,7 +684,8 @@ namespace Immersive.Framework.Pause
                         result.Diagnostic));
 
             if (result.Succeeded ||
-                result.Ignored)
+                result.Ignored ||
+                result.Status == PauseProductRequestStatus.Rejected)
             {
                 _logger.Debug(
                     PhysicalInputLog,
