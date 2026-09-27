@@ -258,6 +258,7 @@ namespace Immersive.Framework.PlayerParticipation
                 admission.CurrentSummary.IsAdmitted;
 
             if (!TryBindInputConsumer(
+                    host,
                     actor,
                     gameplayInputReader,
                     chain.input,
@@ -269,6 +270,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         private bool TryBindInputConsumer(
+            LocalPlayerHostAuthoring host,
             PlayerActorDeclaration actor,
             PlayerGameplayInputReader consumer,
             PlayerGameplayInputBindingSummary input,
@@ -318,13 +320,19 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            int gameplayInputReaderCount =
+                actor.GetComponentsInChildren<PlayerGameplayInputReader>(true)
+                    .Length;
             if (!consumer.TryBindRuntime(
+                    host,
                     actor,
                     actor.PlayerInput,
                     gameplayActionMap,
+                    gameplayInputReaderCount,
                     input.Token,
                     IsGameplayInputReady,
                     ResolveRuntimeGameplayAvailability,
+                    ResolveCurrentInputBindingToken,
                     out issue))
                 return false;
 
@@ -350,6 +358,16 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayInputBindingToken bindingToken)
         {
             return _inputContext.ResolveRuntimeAvailability(bindingToken);
+        }
+
+        private PlayerGameplayInputBindingToken ResolveCurrentInputBindingToken(
+            PlayerSlotId playerSlotId)
+        {
+            return _inputContext.TryGetRetainedInputBinding(
+                    playerSlotId,
+                    out PlayerGameplayInputBindingSummary current)
+                ? current.Token
+                : default;
         }
 
         private void ReleaseInputConsumer(PlayerSlotId playerSlotId, string reason)

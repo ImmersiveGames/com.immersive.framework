@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -31,6 +32,7 @@ namespace Immersive.Framework.PlayerParticipation
         [NonSerialized] private PlayerGameplayInputBindingToken _bindingToken;
         [NonSerialized] private Func<PlayerGameplayInputBindingToken, bool> _readinessEvaluator;
         [NonSerialized] private Func<PlayerGameplayInputBindingToken, PlayerGameplayInputAvailability> _availabilityEvaluator;
+        [NonSerialized] private Func<PlayerSlotId, PlayerGameplayInputBindingToken> _currentBindingTokenEvaluator;
         [NonSerialized] private int _bindingRevision;
         [NonSerialized] private string _diagnostic = UnboundDiagnostic;
 
@@ -124,12 +126,15 @@ namespace Immersive.Framework.PlayerParticipation
         }
 
         internal bool TryBindRuntime(
+            LocalPlayerHostAuthoring resolvedHost,
             PlayerActorDeclaration resolvedActorDeclaration,
             PlayerInput resolvedPlayerInput,
             InputActionMap resolvedGameplayActionMap,
+            int resolvedReaderCount,
             PlayerGameplayInputBindingToken resolvedBindingToken,
             Func<PlayerGameplayInputBindingToken, bool> resolvedReadinessEvaluator,
             Func<PlayerGameplayInputBindingToken, PlayerGameplayInputAvailability> resolvedAvailabilityEvaluator,
+            Func<PlayerSlotId, PlayerGameplayInputBindingToken> resolvedCurrentBindingTokenEvaluator,
             out string issue)
         {
             issue = string.Empty;
@@ -177,6 +182,8 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 _readinessEvaluator = resolvedReadinessEvaluator;
                 _availabilityEvaluator = resolvedAvailabilityEvaluator;
+                _currentBindingTokenEvaluator =
+                    resolvedCurrentBindingTokenEvaluator;
                 _diagnostic = "Player gameplay input reader is already current.";
                 return true;
             }
@@ -189,6 +196,8 @@ namespace Immersive.Framework.PlayerParticipation
             _bindingToken = resolvedBindingToken;
             _readinessEvaluator = resolvedReadinessEvaluator;
             _availabilityEvaluator = resolvedAvailabilityEvaluator;
+            _currentBindingTokenEvaluator =
+                resolvedCurrentBindingTokenEvaluator;
             _resolvedActions.Clear();
             _bindingRevision++;
             _diagnostic = "Player gameplay input reader is current for the Activity gameplay occurrence.";
@@ -242,7 +251,9 @@ namespace Immersive.Framework.PlayerParticipation
                         authoredAction,
                         out runtimeAction,
                         out _diagnostic))
+                {
                     return false;
+                }
 
                 _resolvedActions[actionId] = runtimeAction;
             }
@@ -333,6 +344,7 @@ namespace Immersive.Framework.PlayerParticipation
             _bindingToken = default;
             _readinessEvaluator = null;
             _availabilityEvaluator = null;
+            _currentBindingTokenEvaluator = null;
             _resolvedActions.Clear();
 
             if (incrementRevision && hadBinding)
