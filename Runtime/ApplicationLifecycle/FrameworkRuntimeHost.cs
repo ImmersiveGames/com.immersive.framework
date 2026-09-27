@@ -691,6 +691,22 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             if (_gameApplication.PlayerSessionEnabled &&
+                !PauseSessionPlayerInputBindingRuntimeHostModule.TryAttach(
+                    this,
+                    playerActorPreparation,
+                    _pauseProductBindingRuntime,
+                    out _,
+                    out string pausePlayerInputBindingIssue))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    "Pause Session PlayerInput binding attachment failed. " +
+                    pausePlayerInputBindingIssue);
+                _state = FrameworkRuntimeState.FromGameFlowResult(
+                    _gameApplication,
+                    failed);
+                return failed;
+            }
+            if (_gameApplication.PlayerSessionEnabled &&
                 playerCameraOutputTopology.BindingCount > 0)
             {
                 if (!this.TryGetPlayerParticipationRuntime(

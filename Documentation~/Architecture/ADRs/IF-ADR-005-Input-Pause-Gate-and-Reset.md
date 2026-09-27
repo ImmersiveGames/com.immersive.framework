@@ -574,3 +574,45 @@ Pause presentation may be contributed by Persistent, Route Primary/RouteContent 
 Leaving a pausable context must leave no residual Paused state, Time.timeScale alteration, Gate/Input blocker or presentation.
 Do not move PauseRuntime out of FrameworkRuntimeHost, and do not create a second owner of Running/Paused state, to satisfy this contract.
 ```
+
+
+## Pause physical input lifetime amendment — 2026-09-26
+
+Physical Pause input follows the **Session Local Player Host occurrence**, not
+Route/Activity scene discovery.
+
+The ownership model is:
+
+```text
+Session Player occurrence
+  -> Local Player Host
+  -> PlayerInput / InputUser / paired devices
+  -> co-located PlayerPauseInput
+
+Route / Activity lifecycle
+  -> admits or rejects Pause capability
+  -> does not own the physical PlayerInput binding
+```
+
+`PlayerPauseInput` consumes the same `PlayerInput` already owned by the
+Session Host through the co-located `UnityPlayerInputGateAdapter`. It never
+creates, pairs or owns a second `PlayerInput`, `InputUser` or device set.
+
+The Pause-side runtime observes canonical Session physical Host evidence from
+Player Participation. Dependency direction remains `Pause -> Player
+Participation`; Player Participation does not depend on Pause.
+
+Scene Lifecycle continues to compose scene-authored `PauseRequestTrigger`
+instances, but it no longer acquires or releases `PlayerPauseInput`.
+Consequently, Route/Activity scene replacement cannot terminate physical Pause
+input while the Session Host occurrence remains current.
+
+`ActivityPauseAuthoring` remains Activity intent/eligibility evidence. When an
+Activity observes a `PlayerPauseInput` already bound by the Session Host
+lifetime, it does not acquire a second registration and therefore must not
+release that Session-owned registration on Activity exit.
+
+Session Host release/Leave terminates the physical Pause binding. A later Join
+creates a fresh Host occurrence and a fresh binding. Pause admission remains
+unchanged: physical input may exist while no Activity is active, but the Pause
+request is still rejected by the existing Activity admission contract.
