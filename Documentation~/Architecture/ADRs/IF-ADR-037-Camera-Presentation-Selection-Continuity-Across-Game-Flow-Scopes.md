@@ -129,3 +129,38 @@ Tests must prove identity and ownership, not only visual continuity:
 - replacement failure preserves the last valid effective Presentation.
 - explicit scope-owned contextual Presentations still release with their owner.
 - Output Default remains available when no normal effective Presentation exists or when explicitly selected by supported policy.
+
+## 10. Nested Route and Startup Activity selection conflict
+
+A Route and the Startup Activity entered as part of that same Route-start transaction may both declare persistent Camera Presentation selection, but they must not declare persistent selections for the same `CameraOutputId` while the Route selection is still pending.
+
+The accepted rule is:
+
+    Route pending selection [Output A] + Startup Activity selection [Output B]
+        -> valid; both may prepare independently
+
+    Route pending selection [Output A] + Startup Activity selection [Output A]
+        -> invalid composition; reject before either owner is irreversibly committed
+
+This is intentionally different from a later Activity transition after the Route has committed. A later Activity may replace the currently effective persistent selection for the same Output using the normal transactional replacement semantics in section 4.
+
+Rationale:
+
+- Route selection and Startup Activity selection are two selection authorities participating in nested Game Flow transactions, not two ordinary admitted requests competing for winner status.
+- `CameraRequest` precedence answers which already-admitted normal request wins; it does not define which pending Game Flow selection owns the persistent selection after nested transactions commit.
+- Inferring "Activity wins" from contextual Presentation precedence would therefore conflate request arbitration with persistent selection ownership.
+- No current consumer requires two simultaneously pending selectors for the same Output.
+- Rejecting the ambiguous composition keeps ownership and rollback single-writer per Output and avoids introducing a second selection-arbitration protocol.
+
+Transactional requirements:
+
+- conflict detection is per `CameraOutputId`, not global across all Outputs;
+- the conflict must fail while the entering operation is still reversible;
+- rejecting the Startup Activity selection must not release or promote the Route candidate;
+- Route failure still rolls back its own pending selection normally;
+- Activity failure must not mutate another owner's pending selection;
+- no pending-selection conflict may be resolved through `CameraOutputContext` precedence;
+- diagnostics must identify the conflicting Output and owners sufficiently for authoring correction.
+
+This restriction may be revisited only when a concrete consumer requires same-Output nested selection. Such a change must define explicit selection precedence, commit ordering and rollback ownership before implementation; request precedence alone is not sufficient.
+
