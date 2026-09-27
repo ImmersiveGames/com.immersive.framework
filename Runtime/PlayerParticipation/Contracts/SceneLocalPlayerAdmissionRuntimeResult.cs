@@ -66,6 +66,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool Succeeded => Status is
             SceneLocalPlayerAdmissionRuntimeStatus.SucceededAdmitted or
             SceneLocalPlayerAdmissionRuntimeStatus.SucceededAlreadyAdmitted or
+            SceneLocalPlayerAdmissionRuntimeStatus.SucceededRedundantCandidate or
             SceneLocalPlayerAdmissionRuntimeStatus.SucceededReleased or
             SceneLocalPlayerAdmissionRuntimeStatus.SucceededAlreadyReleased;
 

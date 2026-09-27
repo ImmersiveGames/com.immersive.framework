@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Gate;
+using Immersive.Framework.PlayerParticipation;
 using Immersive.Logging.Records;
 using Immersive.Framework.ApiStatus;
 using UnityEngine;
@@ -784,6 +785,9 @@ namespace Immersive.Framework.UnityInput
         {
             EnsureLogger();
 
+            PlayerInput resolvedPlayerInput =
+                ResolvePlayerInput();
+
             _logger.Warning(
                 "Unity PlayerInput Gate Adapter physical write failed.",
                 LogFields.Of(
@@ -805,7 +809,47 @@ namespace Immersive.Framework.UnityInput
                     LogFields.Field(
                         "reason",
                         reason.NormalizeTextOrFallback(
-                            "gate-adapter"))));
+                            "gate-adapter")),
+                    // --- Diagnostics-only fields, see BuildLogFields for rationale.
+                    LogFields.Field(
+                        "adapterInstanceId",
+                        GetEntityId()),
+                    LogFields.Field(
+                        "playerInputInstanceId",
+                        resolvedPlayerInput != null
+                            ? (object)resolvedPlayerInput.GetEntityId()
+                            : 0),
+                    LogFields.Field(
+                        "playerInputEnabled",
+                        resolvedPlayerInput != null &&
+                        resolvedPlayerInput.enabled),
+                    LogFields.Field(
+                        "currentActionMapName",
+                        resolvedPlayerInput != null &&
+                        resolvedPlayerInput.currentActionMap != null
+                            ? resolvedPlayerInput.currentActionMap.name
+                            : "<none>"),
+                    LogFields.Field(
+                        "currentActionMapId",
+                        resolvedPlayerInput != null &&
+                        resolvedPlayerInput.currentActionMap != null
+                            ? resolvedPlayerInput.currentActionMap.id.ToString()
+                            : "<none>"),
+                    LogFields.Field(
+                        "currentActionMapEnabled",
+                        resolvedPlayerInput != null &&
+                        resolvedPlayerInput.currentActionMap != null &&
+                        resolvedPlayerInput.currentActionMap.enabled),
+                    LogFields.Field(
+                        "isBlockedByAdapter",
+                        _isBlockedByAdapter),
+                    LogFields.Field(
+                        "actionMapWasEnabledBeforeBlock",
+                        _actionMapWasEnabledBeforeBlock),
+                    LogFields.Field(
+                        "coLocatedLocalPlayerHost",
+                        ResolveCoLocatedHostIdentity(
+                            resolvedPlayerInput))));
         }
 
         private void LogMissingTargetOnce(
@@ -925,7 +969,71 @@ namespace Immersive.Framework.UnityInput
                 LogFields.Field(
                     "reason",
                     reason.NormalizeTextOrFallback(
-                        "gate-adapter")));
+                        "gate-adapter")),
+                // --- Diagnostics-only fields added to disambiguate this adapter/PlayerInput
+                // instance from another co-existing instance (e.g. a retained Session-owned
+                // Host vs. a redundant Scene-Provided candidate). No behavior depends on these.
+                LogFields.Field(
+                    "adapterInstanceId",
+                    GetEntityId()),
+                LogFields.Field(
+                    "playerInputInstanceId",
+                    resolvedPlayerInput != null
+                        ? (object)resolvedPlayerInput.GetEntityId()
+                        : 0),
+                LogFields.Field(
+                    "playerInputEnabled",
+                    resolvedPlayerInput != null &&
+                    resolvedPlayerInput.enabled),
+                LogFields.Field(
+                    "currentActionMapName",
+                    resolvedPlayerInput != null &&
+                    resolvedPlayerInput.currentActionMap != null
+                        ? resolvedPlayerInput.currentActionMap.name
+                        : "<none>"),
+                LogFields.Field(
+                    "currentActionMapId",
+                    resolvedPlayerInput != null &&
+                    resolvedPlayerInput.currentActionMap != null
+                        ? resolvedPlayerInput.currentActionMap.id.ToString()
+                        : "<none>"),
+                LogFields.Field(
+                    "currentActionMapEnabled",
+                    resolvedPlayerInput != null &&
+                    resolvedPlayerInput.currentActionMap != null &&
+                    resolvedPlayerInput.currentActionMap.enabled),
+                LogFields.Field(
+                    "isBlockedByAdapter",
+                    _isBlockedByAdapter),
+                LogFields.Field(
+                    "actionMapWasEnabledBeforeBlock",
+                    _actionMapWasEnabledBeforeBlock),
+                LogFields.Field(
+                    "coLocatedLocalPlayerHost",
+                    ResolveCoLocatedHostIdentity(
+                        resolvedPlayerInput)));
+        }
+
+        /// <summary>
+        /// Diagnostics-only helper. Looks up a <see cref="LocalPlayerHostAuthoring"/> on the
+        /// same GameObject as the resolved PlayerInput (never a global/scene-wide search) so
+        /// its identity can be correlated against PlayerHostEvidenceProjection's diagnostic
+        /// logs. Returns "&lt;none&gt;" when no such component is co-located.
+        /// </summary>
+        private static string ResolveCoLocatedHostIdentity(
+            PlayerInput resolvedPlayerInput)
+        {
+            if (resolvedPlayerInput == null)
+            {
+                return "<none>";
+            }
+
+            LocalPlayerHostAuthoring coLocatedHost =
+                resolvedPlayerInput.GetComponent<LocalPlayerHostAuthoring>();
+
+            return coLocatedHost != null
+                ? $"{coLocatedHost.name}#{coLocatedHost.GetEntityId()}"
+                : "<none>";
         }
 
         private void EnsureLogger() =>

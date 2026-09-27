@@ -15,6 +15,17 @@ namespace Immersive.Framework.PlayerParticipation
 
         SucceededAdmitted = 10,
         SucceededAlreadyAdmitted = 20,
+
+        /// <summary>
+        /// ADR-033 §4.7/§4.8: the candidate does not correlate with the retained Session
+        /// physical Host for an already-admitted Slot. It is redundant/conflicting evidence,
+        /// acquires no physical or contextual authority, and is never used to reconstruct the
+        /// contextual binding of the admitted Player. The retained Session Player remains
+        /// authoritative; canonical Activity Player lifecycle recreates the contextual binding
+        /// provider-neutrally from Session state instead.
+        /// </summary>
+        SucceededRedundantCandidate = 25,
+
         SucceededReleased = 30,
         SucceededAlreadyReleased = 40,
 

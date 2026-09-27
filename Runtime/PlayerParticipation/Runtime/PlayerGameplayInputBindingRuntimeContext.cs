@@ -438,7 +438,22 @@ namespace Immersive.Framework.PlayerParticipation
                         actorDeclaration) &&
                     ReferenceEquals(existing.playerInput, playerInput) &&
                     ReferenceEquals(existing.gateAdapter, gateAdapter);
+                // A retained previous binding is only safe to treat as "already current"
+                // without re-issuing the physical Unity action-map write when it is genuinely
+                // Bound. A ReleaseFailed or Divergent previous state means the last known
+                // physical write outcome for this Slot is untrustworthy (Activity Exit's
+                // restore write did not confirm success, or a later confirmation diverged) --
+                // reusing it as "no-op, already correct" would silently leave
+                // PlayerInput.currentActionMap/the gameplay ActionMap.enabled in whatever state
+                // that failed/divergent attempt left them, even though this call would report
+                // success. Route that case through the same explicit re-select already used for
+                // an actual action-map change, so the physical map is always re-established
+                // rather than assumed.
+                bool previousStateTrustworthy =
+                    previous.State == PlayerGameplayInputBindingState.Bound;
+
                 if (sameStructuralEvidence &&
+                    previousStateTrustworthy &&
                     previous.ActionMapName == actionMapName)
                 {
                     gateAdapter.ApplyCurrentGate();
@@ -473,8 +488,8 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 if (sameStructuralEvidence &&
-                    previous.ActionMapName != actionMapName &&
-                    !previous.IsReleaseFailed)
+                    (!previousStateTrustworthy ||
+                     previous.ActionMapName != actionMapName))
                 {
                     return TryReconfigureDesiredActionMap(
                         requestedSlot,

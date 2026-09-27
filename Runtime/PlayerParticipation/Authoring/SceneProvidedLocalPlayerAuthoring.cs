@@ -88,6 +88,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal void SetActorAdoptionResult(ScenePlayerActorAdoptionResult result) => _lastActorAdoptionResult = result;
         internal void SetRuntimeResult(SceneLocalPlayerAdmissionRuntimeResult result, string diagnostic) { _lastRuntimeResult = result; _runtimeDiagnostic = diagnostic ?? string.Empty; }
+
         private void OnDestroy() => _runtimeModule?.HandleAuthoringDestroyed(this);
 
 #if UNITY_EDITOR

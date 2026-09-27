@@ -189,6 +189,63 @@ namespace Immersive.Framework.PlayerParticipation
                         : _diagnostic);
             }
 
+            // ADR-033 §4.7/§4.8: for an already-admitted Slot, correlate this candidate against
+            // the canonical retained Session physical Host BEFORE any candidate physical commit
+            // (host restore/registration) is attempted. A candidate that is not the exact
+            // retained Host is redundant/conflicting evidence -- it must never re-admit, re-Join,
+            // reproject or re-register the physical Host, and it acquires no physical or
+            // contextual authority. The retained Session Player remains authoritative; canonical
+            // Activity Player lifecycle (outside this admission runtime) recreates the contextual
+            // binding provider-neutrally from Session state. The candidate's PlayerInput remains
+            // held by its ADR-033 §4.8 candidate gate (never released here).
+            if (authoring != null &&
+                authoring.TryGetPlayerSlotId(out PlayerSlotId candidateSlotId, out _) &&
+                _participationContext.TryGetSlotSnapshot(
+                    candidateSlotId,
+                    out PlayerSlotRuntimeSnapshot candidateSlot) &&
+                candidateSlot.IsJoined &&
+                _hostEvidenceOwner.TryGetRetainedHostEvidence(
+                    candidateSlotId,
+                    out PlayerHostEvidenceSnapshot retainedEvidence) &&
+                retainedEvidence.HasRetainedHostReference &&
+                !ReferenceEquals(retainedEvidence.Host, authoring.LocalPlayerHost))
+            {
+                // ADR-033 §4.8: even a *failed* PlayerInput.OnEnable device/control-scheme
+                // negotiation by this candidate is a forbidden "re-pair" attempt against
+                // devices already owned by the retained Session physical Host, and Unity's
+                // Input System may leave shared device/user pairing state disturbed by that
+                // attempt regardless of whether it succeeded. Deactivating the candidate's
+                // entire GameObject (a direct reference already held here, never a
+                // global/scene-wide search) forces Unity's own PlayerInput.OnDisable cleanup
+                // path to run, which is the canonical way to unwind any such attempt, and
+                // permanently stops every component on this candidate (including its own
+                // UnityPlayerInputGateAdapter) from doing further work. The retained Host is
+                // never touched by this call.
+                if (authoring.LocalPlayerHost != null)
+                {
+                    authoring.LocalPlayerHost.gameObject.SetActive(false);
+                }
+
+                var redundant = new SceneLocalPlayerAdmissionRuntimeResult(
+                    SceneLocalPlayerAdmissionRuntimeStatus.SucceededRedundantCandidate,
+                    SceneLocalPlayerAdmissionRuntimeStatus.SucceededRedundantCandidate,
+                    "AdmitSceneLocalPlayer",
+                    authoring,
+                    default,
+                    null,
+                    null,
+                    null,
+                    candidateSlot,
+                    candidateSlot,
+                    source,
+                    reason,
+                    "Scene-Provided candidate does not correlate with the retained Session physical Host for an already-admitted Slot. Treated as redundant/conflicting evidence under ADR-019 §9 / ADR-033 §4.7; the retained Session Player remains authoritative and this candidate acquires no physical or contextual authority.");
+                RecordOperation(redundant, false, false);
+                _diagnostic = redundant.ToDiagnosticString();
+                authoring.SetRuntimeResult(redundant, _diagnostic);
+                return redundant;
+            }
+
             bool hadActiveAdmission = _runtime.TryGetActiveToken(
                 authoring,
                 out _);
@@ -260,6 +317,16 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     preparedActor.BindPlayerInputEvidence(
                         authoring.LocalPlayerHost.PlayerInput);
+                }
+
+                if (registration.Succeeded)
+                {
+                    // ADR-033 §4.8: this exact candidate Host is now (or remains) the
+                    // Session-authoritative physical Host for the Slot. Release its
+                    // pre-admission candidate gate so PlayerInput.OnEnable can proceed under
+                    // Player Participation authority. No-op if it was never held (e.g. the
+                    // same-instance-rediscovered case already released it on first admission).
+                    authoring.LocalPlayerHost?.TryReleaseInputCandidateGate(out _);
                 }
             }
 

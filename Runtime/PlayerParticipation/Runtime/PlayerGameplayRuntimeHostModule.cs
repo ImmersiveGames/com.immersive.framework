@@ -617,6 +617,61 @@ namespace Immersive.Framework.PlayerParticipation
                 message);
         }
 
+        // Adapter.Update applies the physical gate release. This module reacts
+        // afterwards, while it still owns binding availability and admission readiness.
+        private void LateUpdate()
+        {
+            if (_shuttingDown || !IsReady)
+            {
+                return;
+            }
+
+            RefreshGameplayReadinessAfterGateRelease();
+        }
+
+        private void RefreshGameplayReadinessAfterGateRelease()
+        {
+            PlayerGameplayAdmissionSnapshot admissions =
+                _admissionContext.CreateSnapshot();
+            if (admissions == null ||
+                !admissions.IsInitialized ||
+                admissions.BlockedByInputGateCount == 0)
+            {
+                return;
+            }
+
+            const string source = nameof(PlayerGameplayRuntimeHostModule);
+            for (int index = 0; index < admissions.Slots.Count; index++)
+            {
+                PlayerGameplayAdmissionSummary admission = admissions.Slots[index];
+                if (!admission.IsBlockedByInputGate ||
+                    !admission.Token.IsValid ||
+                    !admission.InputBindingToken.IsValid)
+                {
+                    continue;
+                }
+
+                PlayerGameplayInputBindingResult availability =
+                    RefreshInputAvailability(
+                        admission.PlayerSlotId,
+                        admission.InputBindingToken,
+                        source,
+                        "observe-input-gate-while-gameplay-admission-blocked");
+                if (availability == null ||
+                    !availability.Succeeded ||
+                    !availability.CurrentSummary.IsAllowed)
+                {
+                    continue;
+                }
+
+                _admissionContext.TryRefreshReadiness(
+                    admission.PlayerSlotId,
+                    admission.Token,
+                    source,
+                    "input-gate-released");
+            }
+        }
+
         private void OnDestroy()
         {
             if (_shuttingDown)

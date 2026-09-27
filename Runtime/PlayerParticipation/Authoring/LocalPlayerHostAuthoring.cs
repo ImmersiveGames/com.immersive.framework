@@ -48,6 +48,7 @@ namespace Immersive.Framework.PlayerParticipation
         [NonSerialized] private int _joinedConfiguredIndex = -1;
         [NonSerialized] private string _admissionSource = string.Empty;
         [NonSerialized] private string _admissionReason = string.Empty;
+        [NonSerialized] private bool _inputHeldForCandidateGate;
 
         public PlayerInput PlayerInput => playerInput;
         public Transform ActorMount => actorMount;
@@ -68,6 +69,59 @@ namespace Immersive.Framework.PlayerParticipation
         public bool HasPlayerActorRuntime =>
             actorMount != null &&
             actorMount.GetComponentInChildren<ActorDeclaration>(true) != null;
+
+        /// <summary>
+        /// ADR-033 §4.8 candidate gate: true while this Host's PlayerInput has been held
+        /// disabled pending a Player Participation admission decision for a Scene-Provided
+        /// candidate. Owner/lifetime are explicit: this Host's own Awake requests the hold
+        /// (self-detected via a co-located <see cref="SceneProvidedLocalPlayerAuthoring"/>,
+        /// before Unity can call this GameObject's PlayerInput.OnEnable), and only Player
+        /// Participation (Scene Local Player admission) may release it.
+        /// </summary>
+        public bool IsInputHeldForCandidateGate => _inputHeldForCandidateGate;
+
+        /// <summary>
+        /// ADR-033 §4.8: holds this Host's PlayerInput disabled so it cannot acquire or
+        /// re-pair input devices before Player Participation has resolved admission authority
+        /// for the Scene-Provided candidate that owns this Host. Called from this Host's own
+        /// Awake (see below), which is guaranteed by Unity to run before this same GameObject's
+        /// PlayerInput.OnEnable. Idempotent.
+        /// </summary>
+        internal void HoldInputForSceneProvidedCandidateGate()
+        {
+            if (playerInput != null && playerInput.enabled)
+            {
+                playerInput.enabled = false;
+            }
+
+            _inputHeldForCandidateGate = true;
+        }
+
+        /// <summary>
+        /// ADR-033 §4.8: releases the candidate gate and re-enables PlayerInput. Only called by
+        /// Player Participation (Scene Local Player admission) once this exact Host has been
+        /// determined to be the Session-authoritative physical Host for its Slot -- never for a
+        /// redundant/conflicting candidate. Idempotent; a Host that was never gated (e.g.
+        /// Manager-Provisioned) is a no-op success.
+        /// </summary>
+        internal bool TryReleaseInputCandidateGate(out string issue)
+        {
+            issue = string.Empty;
+            if (!_inputHeldForCandidateGate)
+            {
+                return true;
+            }
+
+            if (playerInput == null)
+            {
+                issue = "Local Player Host has no PlayerInput reference to release from the candidate gate.";
+                return false;
+            }
+
+            playerInput.enabled = true;
+            _inputHeldForCandidateGate = false;
+            return true;
+        }
 
         /// <summary>
         /// Validates the reusable PlayerInputManager provisioning shape. The Actor Mount must be
@@ -428,5 +482,22 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 #endif
+
+        // ADR-033 §4.8: hold this Host's PlayerInput inert until Player Participation
+        // resolves admission authority, but only for a Scene-Provided composition -- detected
+        // by a co-located SceneProvidedLocalPlayerAuthoring in this Host's own hierarchy (a
+        // local lookup, never a global/scene-wide search). Manager-Provisioned Hosts have no
+        // such descendant and are unaffected. This runs from the SAME GameObject as PlayerInput
+        // (LocalPlayerHostAuthoring is `[RequireComponent(typeof(PlayerInput))]` on this exact
+        // GameObject) so it is Unity's earliest same-object hook available to this authority,
+        // rather than a sibling/child GameObject's Awake, which does not carry the same
+        // ordering guarantee relative to this GameObject's own PlayerInput.
+        private void Awake()
+        {
+            if (GetComponentInChildren<SceneProvidedLocalPlayerAuthoring>(true) != null)
+            {
+                HoldInputForSceneProvidedCandidateGate();
+            }
+        }
     }
 }

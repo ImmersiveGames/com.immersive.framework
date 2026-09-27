@@ -206,11 +206,37 @@ namespace Immersive.Framework.PlayerParticipation
                     owner,
                     resolvedSource,
                     $"{resolvedReason}:admit:{index}");
-                if (admission == null || !admission.Succeeded || !admission.Token.IsValid)
+                if (admission == null || !admission.Succeeded)
                 {
                     string issue = admission != null
                         ? admission.ToDiagnosticString()
                         : $"Scene Local Player admission returned no result for '{surface.name}'.";
+                    return FailEnterAndRollback(
+                        activity,
+                        owner,
+                        entries,
+                        resolvedSource,
+                        resolvedReason,
+                        SceneLocalPlayerAdmissionActivityLifecycleStatus.FailedAdmission,
+                        issue);
+                }
+
+                if (admission.Status ==
+                    SceneLocalPlayerAdmissionRuntimeStatus.SucceededRedundantCandidate)
+                {
+                    // ADR-033 §4.7/§4.8: this candidate is redundant/conflicting evidence for
+                    // an already-admitted Slot. It acquired no physical or contextual
+                    // authority, so it contributes no Entry here and needs no rollback
+                    // bookkeeping. The retained Session Player remains authoritative; the
+                    // canonical Activity Player lifecycle recreates the contextual binding
+                    // provider-neutrally from Session state once this method returns.
+                    continue;
+                }
+
+                if (!admission.Token.IsValid)
+                {
+                    string issue =
+                        $"Scene Local Player admission returned a succeeded result without a valid token for '{surface.name}'.";
                     return FailEnterAndRollback(
                         activity,
                         owner,
