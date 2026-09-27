@@ -634,8 +634,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerGameplayAdmissionSnapshot admissions =
                 _admissionContext.CreateSnapshot();
             if (admissions == null ||
-                !admissions.IsInitialized ||
-                admissions.BlockedByInputGateCount == 0)
+                !admissions.IsInitialized)
             {
                 return;
             }
@@ -644,32 +643,84 @@ namespace Immersive.Framework.PlayerParticipation
             for (int index = 0; index < admissions.Slots.Count; index++)
             {
                 PlayerGameplayAdmissionSummary admission = admissions.Slots[index];
-                if (!admission.IsBlockedByInputGate ||
+                if ((!admission.IsBlockedByInputGate && !admission.IsReady) ||
                     !admission.Token.IsValid ||
                     !admission.InputBindingToken.IsValid)
                 {
                     continue;
                 }
 
-                PlayerGameplayInputBindingResult availability =
+                if (admission.IsBlockedByInputGate)
+                {
+                    PlayerGameplayInputBindingResult availability =
+                        ObserveUngatedContractedGameplayMap(
+                            admission,
+                            source,
+                            "observe-input-gate-while-gameplay-admission-blocked");
+                    if (availability == null ||
+                        !availability.Succeeded ||
+                        !availability.CurrentSummary.IsAllowed)
+                    {
+                        continue;
+                    }
+
+                    _admissionContext.TryRefreshReadiness(
+                        admission.PlayerSlotId,
+                        admission.Token,
+                        source,
+                        "input-gate-released");
+                    continue;
+                }
+
+                if (_inputContext.TryReassertUngatedContractedGameplayMap(
+                        admission.PlayerSlotId,
+                        admission.InputBindingToken,
+                        source,
+                        "reassert-contracted-gameplay-map-while-admission-ready"))
+                {
                     RefreshInputAvailability(
                         admission.PlayerSlotId,
                         admission.InputBindingToken,
                         source,
-                        "observe-input-gate-while-gameplay-admission-blocked");
-                if (availability == null ||
-                    !availability.Succeeded ||
-                    !availability.CurrentSummary.IsAllowed)
-                {
-                    continue;
+                        "contracted-gameplay-map-reasserted");
                 }
-
-                _admissionContext.TryRefreshReadiness(
-                    admission.PlayerSlotId,
-                    admission.Token,
-                    source,
-                    "input-gate-released");
             }
+        }
+
+        private PlayerGameplayInputBindingResult ObserveUngatedContractedGameplayMap(
+            PlayerGameplayAdmissionSummary admission,
+            string source,
+            string reason)
+        {
+            PlayerGameplayInputBindingResult availability =
+                RefreshInputAvailability(
+                    admission.PlayerSlotId,
+                    admission.InputBindingToken,
+                    source,
+                    reason);
+            if (availability == null ||
+                !availability.Succeeded ||
+                availability.CurrentSummary.IsAllowed ||
+                availability.CurrentSummary.Availability !=
+                    PlayerGameplayInputAvailability.ActionsUnavailable)
+            {
+                return availability;
+            }
+
+            if (!_inputContext.TryReassertUngatedContractedGameplayMap(
+                    admission.PlayerSlotId,
+                    admission.InputBindingToken,
+                    source,
+                    "reassert-contracted-gameplay-map-after-gate-release"))
+            {
+                return availability;
+            }
+
+            return RefreshInputAvailability(
+                admission.PlayerSlotId,
+                admission.InputBindingToken,
+                source,
+                "contracted-gameplay-map-reasserted");
         }
 
         private void OnDestroy()

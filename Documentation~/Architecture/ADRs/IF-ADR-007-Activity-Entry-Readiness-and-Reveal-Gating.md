@@ -1,7 +1,8 @@
 # IF-ADR-007 — Activity Entry Readiness and Reveal Gating
 
 Status: **Accepted**  
-Last updated: 2026-08-27  
+Last updated: 2026-09-27  
+Amended: **2026-09-27 — entry-gate provisional GameplayReady admission.**  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-011, IF-ADR-012, IF-ADR-021  
 Current reconciliation: [ADR-007 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-007-RECONCILIATION-2026-08-11.md)  
 Player dynamic-recovery evidence: [2026-08-27 Activity Player Relocation Fail-Fast and Readiness Recovery](../Reconciliation/IF-ADR-021A-Activity-Player-Relocation-Fail-Fast-and-Readiness-Recovery-2026-08-27.md)
@@ -58,6 +59,30 @@ fabricate readiness or infer consumer intent.
 
 A downstream gameplay consumer remaining unbound while the Activity only requires
 `LogicalActorsPrepared` is not, by itself, evidence of a readiness regression.
+
+### Entry-gate provisional gameplay admission
+
+Amended 2026-09-27. A Route or Activity transition may reconstruct the contextual
+gameplay chain while the Transition Gate still blocks gameplay input. That block is
+provisional and does not transfer gameplay authority to the gate.
+
+```text
+BlockedByInputGate
+  may be accepted while the only current blocker is the entry/transition gate
+  may complete the Player readiness contribution that releases that gate
+  must not be reported as gameplayReady
+```
+
+Completing that contribution is what lets the gate release without a deadlock between
+readiness and the gate. It is not evidence that gameplay input is consumable.
+
+After the Transition Gate releases, the same gameplay admission must converge to
+`Ready`, and the contracted gameplay action map must be physically usable, before the
+next normal gameplay consumption. Activity readiness must not declare
+`gameplayReady=true` independently of `admission.GameplayReady`.
+
+The physical gate adapter remains a posture boundary. It does not learn Route,
+Activity, or admission. Session Player ownership does not change.
 
 The current accepted boundary does not impose an elapsed-time timeout on Activity
 entry readiness. A waiting operation remains pending until its captured occurrence

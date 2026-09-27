@@ -1,7 +1,8 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
 Status: **Accepted**  
-Last updated: 2026-08-17  
+Last updated: 2026-09-27  
+Amended: **2026-09-27 — GameplayReady admission versus entry-gate block.**  
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016
 Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 
@@ -90,6 +91,22 @@ Gameplay consumer
   -> consumes already-established current gameplay authority
   -> does not Join, select, prepare or promote readiness
 ```
+
+### Entry-gate provisional admission
+
+Amended 2026-09-27, with IF-ADR-007. `All Joined Slots` plus `GameplayReady` still
+requires a usable gameplay chain after a Route and Activity transition. The Session
+Player, its Host, and its PlayerInput stay Session-owned. The contextual admission
+is what the transition rebuilds.
+
+While the only blocker is the entry/transition gate, `BlockedByInputGate` may be
+retained and may satisfy the Player contribution enough to release that gate. The
+readiness record must still report `gameplayReady` from `admission.GameplayReady`.
+A blocked admission is not `gameplayReady`.
+
+When the gate is gone, that admission converges to `Ready` and the contracted
+gameplay action map is enabled before the next normal gameplay read. No new owner,
+service, or event is introduced for that convergence.
 
 ## Constraints
 

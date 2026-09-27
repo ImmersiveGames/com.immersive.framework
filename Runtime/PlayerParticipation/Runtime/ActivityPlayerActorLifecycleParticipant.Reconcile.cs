@@ -270,6 +270,10 @@ namespace Immersive.Framework.PlayerParticipation
                 _participationContext.CreateSnapshot();
             var slots = new List<PlayerReadinessSlotRecord>(
                 projectedSlots.Count);
+            bool gameplayReadyFollowsBlockedAdmission = false;
+            bool requiresGameplayReady =
+                (int)requirementLevel >=
+                    (int)PlayerParticipationRequirementLevel.GameplayReady;
             for (int index = 0; index < projectedSlots.Count; index++)
             {
                 PlayerSlotRuntimeSnapshot slot = projectedSlots[index];
@@ -277,6 +281,13 @@ namespace Immersive.Framework.PlayerParticipation
                     FindPreparedToken(slot.PlayerSlotId);
                 PlayerGameplayAdmissionToken admissionToken =
                     FindGameplayAdmissionToken(slot.PlayerSlotId);
+                bool gameplayReady = !requiresGameplayReady ||
+                    IsCurrentAdmissionGameplayReady(slot.PlayerSlotId);
+                if (requiresGameplayReady && !gameplayReady)
+                {
+                    gameplayReadyFollowsBlockedAdmission = true;
+                }
+
                 slots.Add(new PlayerReadinessSlotRecord
                 {
                     playerSlotId = slot.PlayerSlotId,
@@ -293,7 +304,7 @@ namespace Immersive.Framework.PlayerParticipation
                         (int)requirementLevel <
                             (int)PlayerParticipationRequirementLevel.GameplayReady ||
                         admissionToken.IsValid,
-                    gameplayReady = true,
+                    gameplayReady = gameplayReady,
                     preparationToken = preparationToken,
                     gameplayAdmissionToken = admissionToken,
                     readinessReason =
@@ -322,8 +333,9 @@ namespace Immersive.Framework.PlayerParticipation
                 released = false,
                 readinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied,
-                message =
-                    "Activity Player lifecycle requirement was satisfied during Activity enter."
+                message = gameplayReadyFollowsBlockedAdmission
+                    ? "Activity Player contribution completed while gameplay admission is blocked by the entry gate. gameplayReady follows admission.GameplayReady."
+                    : "Activity Player lifecycle requirement was satisfied during Activity enter."
             };
             SynchronizePlayerReadinessContributionAfterRecordCreated();
             _preparationModule.RequestActiveActivityReconciliation();
@@ -1565,6 +1577,17 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return admission.Token;
+        }
+
+        private bool IsCurrentAdmissionGameplayReady(PlayerSlotId playerSlotId)
+        {
+            return _preparationModule.TryGetPlayerGameplayRuntime(
+                    out PlayerGameplayRuntimeHostModule gameplay,
+                    out _) &&
+                gameplay.TryGetCurrentAdmission(
+                    playerSlotId,
+                    out PlayerGameplayAdmissionSummary admission) &&
+                admission.GameplayReady;
         }
 
         private static bool TryFindSlot(

@@ -1029,6 +1029,64 @@ namespace Immersive.Framework.PlayerParticipation
                 _lastOperationMessage);
         }
 
+        internal bool TryReassertUngatedContractedGameplayMap(
+            PlayerSlotId playerSlotId,
+            PlayerGameplayInputBindingToken expectedBinding,
+            string source,
+            string reason)
+        {
+            if (!_slots.TryGetValue(
+                    playerSlotId,
+                    out PlayerGameplayInputBindingSummary previous) ||
+                !previous.IsBound ||
+                !expectedBinding.IsValid ||
+                previous.Token != expectedBinding ||
+                !_records.TryGetValue(
+                    playerSlotId,
+                    out BindingRecord record) ||
+                record.gateAdapter == null ||
+                record.playerInput == null ||
+                record.playerInput.actions == null)
+            {
+                return false;
+            }
+
+            string mapName = previous.DesiredActionMapName.NormalizeText();
+            if (string.IsNullOrEmpty(mapName))
+            {
+                return false;
+            }
+
+            InputActionMap contractedMap = record.playerInput.actions.FindActionMap(
+                mapName,
+                throwIfNotFound: false);
+            if (contractedMap == null || contractedMap.enabled)
+            {
+                return false;
+            }
+
+            record.gateAdapter.ApplyCurrentGate();
+            if (record.gateAdapter.IsBlockedByAdapter ||
+                !record.playerInput.enabled)
+            {
+                return false;
+            }
+
+            if (!record.gateAdapter.TrySelectActionMap(
+                    mapName,
+                    source,
+                    reason,
+                    out _,
+                    out _))
+            {
+                return false;
+            }
+
+            record.gateAdapter.ApplyCurrentGate();
+            return !record.gateAdapter.IsBlockedByAdapter &&
+                contractedMap.enabled;
+        }
+
         internal PlayerGameplayInputBindingResult TryRefreshAvailability(
             PlayerSlotId playerSlotId,
             PlayerGameplayInputBindingToken expectedBinding,
