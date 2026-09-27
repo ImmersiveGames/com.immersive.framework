@@ -55,6 +55,11 @@ namespace Immersive.Framework.Authoring
             Array.Empty<CameraPresentationDefinition>();
 
         [SerializeField]
+        [Tooltip("Optional persistent Camera Presentation selections declared by this Route. Selected occurrences are Session-owned and remain effective when a later Route declares no selections.")]
+        private CameraPresentationDefinition[] cameraPresentationSelections =
+            Array.Empty<CameraPresentationDefinition>();
+
+        [SerializeField]
         [Tooltip("Controls which requests/capabilities are blocked while this Route transition is running. Route transitions should normally block input, interaction and gameplay.")]
         private TransitionGateMode transitionGateMode = TransitionGateMode.InputInteractionAndGameplay;
 
@@ -150,6 +155,15 @@ namespace Immersive.Framework.Authoring
 
         public bool HasCameraPresentations =>
             cameraPresentations != null && cameraPresentations.Length > 0;
+
+        public IReadOnlyList<CameraPresentationDefinition>
+            CameraPresentationSelections =>
+                cameraPresentationSelections ??
+                Array.Empty<CameraPresentationDefinition>();
+
+        public bool HasCameraPresentationSelections =>
+            cameraPresentationSelections != null &&
+            cameraPresentationSelections.Length > 0;
 
         public RoutePlayerSpatialEntryPolicy PlayerSpatialEntryPolicy
         {

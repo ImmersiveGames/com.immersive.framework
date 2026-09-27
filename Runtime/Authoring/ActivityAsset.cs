@@ -79,6 +79,11 @@ namespace Immersive.Framework.Authoring
             Array.Empty<CameraPresentationDefinition>();
 
         [SerializeField]
+        [Tooltip("Optional persistent Camera Presentation selections declared by this Activity. Selected occurrences are Session-owned and remain effective when a later Activity declares no selections.")]
+        private CameraPresentationDefinition[] cameraPresentationSelections =
+            Array.Empty<CameraPresentationDefinition>();
+
+        [SerializeField]
         [Tooltip("Controls which requests/capabilities are blocked while this Activity transition is running. For Fade/FadeWithLoading, InputInteractionAndGameplay is recommended.")]
         private TransitionGateMode transitionGateMode = TransitionGateMode.LifecycleRequestsOnly;
 
@@ -281,6 +286,15 @@ namespace Immersive.Framework.Authoring
 
         public bool HasCameraPresentations =>
             cameraPresentations != null && cameraPresentations.Length > 0;
+
+        public IReadOnlyList<CameraPresentationDefinition>
+            CameraPresentationSelections =>
+                cameraPresentationSelections ??
+                Array.Empty<CameraPresentationDefinition>();
+
+        public bool HasCameraPresentationSelections =>
+            cameraPresentationSelections != null &&
+            cameraPresentationSelections.Length > 0;
 
         public ActivityVisualTransitionMode VisualTransitionMode
         {

@@ -503,6 +503,19 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentDiscoveryScope);
             if (!TryEnterPlayerSpatialEntry(playerSpatialEntryContext, out string playerSpatialEntryIssue))
             {
+                string cameraSelectionRollbackIssue = string.Empty;
+                if (_cameraPresentationLifecycle != null &&
+                    !_cameraPresentationLifecycle.TryRollbackSelection(
+                        route,
+                        source,
+                        "camera-route-selection-player-spatial-entry-rollback",
+                        out cameraSelectionRollbackIssue))
+                {
+                    cameraSelectionRollbackIssue =
+                        " Camera selection rollback failed. " +
+                        cameraSelectionRollbackIssue;
+                }
+
                 _cameraPresentationLifecycle?.TryExitRoute(
                     route,
                     source,
@@ -516,7 +529,9 @@ namespace Immersive.Framework.RouteLifecycle
                     route,
                     source,
                     "route-player-spatial-entry-rollback");
-                return RouteLifecycleStartResult.Failed(playerSpatialEntryIssue);
+                return RouteLifecycleStartResult.Failed(
+                    playerSpatialEntryIssue +
+                    cameraSelectionRollbackIssue);
             }
 
             var startupActivityProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
@@ -548,6 +563,19 @@ namespace Immersive.Framework.RouteLifecycle
             if (!startupActivityFlowResult.Completed)
             {
                 ExitCurrentPlayerSpatialEntry();
+                string cameraSelectionRollbackIssue = string.Empty;
+                if (_cameraPresentationLifecycle != null &&
+                    !_cameraPresentationLifecycle.TryRollbackSelection(
+                        route,
+                        source,
+                        "camera-route-selection-startup-activity-rollback",
+                        out cameraSelectionRollbackIssue))
+                {
+                    cameraSelectionRollbackIssue =
+                        " Camera selection rollback failed. " +
+                        cameraSelectionRollbackIssue;
+                }
+
                 _cameraPresentationLifecycle?.TryExitRoute(
                     route,
                     source,
@@ -561,8 +589,21 @@ namespace Immersive.Framework.RouteLifecycle
                     route,
                     source,
                     "route-startup-activity-rollback");
-                return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
+                return RouteLifecycleStartResult.Failed(
+                    startupActivityFlowResult.Message +
+                    cameraSelectionRollbackIssue);
             }
+
+            if (_cameraPresentationLifecycle != null &&
+                !_cameraPresentationLifecycle.TryCommitSelection(
+                    route,
+                    out string cameraSelectionCommitIssue))
+            {
+                return RouteLifecycleStartResult.Failed(
+                    "Route Camera Presentation selection commit failed. " +
+                    cameraSelectionCommitIssue);
+            }
+
             ActivityFlowStartResult routeStartupActivityFlowResult =
                 startupActivityFlowResult;
             if (beforeStartupActivityActivation != null)

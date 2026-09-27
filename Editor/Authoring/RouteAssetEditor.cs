@@ -51,6 +51,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _routeContentProfile;
         private SerializedProperty _startupActivity;
         private SerializedProperty _cameraPresentations;
+        private SerializedProperty _cameraPresentationSelections;
         private SerializedProperty _transitionGateMode;
         private SerializedProperty _description;
 
@@ -83,6 +84,9 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("startupActivity");
             _cameraPresentations =
                 serializedObject.FindProperty("cameraPresentations");
+            _cameraPresentationSelections =
+                serializedObject.FindProperty(
+                    "cameraPresentationSelections");
             _transitionGateMode =
                 serializedObject.FindProperty("transitionGateMode");
             _description =
@@ -314,10 +318,17 @@ namespace Immersive.Framework.Editor.Authoring
             DrawSection("Camera");
 
             EditorGUILayout.PropertyField(
+                _cameraPresentationSelections,
+                new GUIContent(
+                    "Selected Presentations",
+                    "Optional persistent Camera selections declared by this Route. An empty list preserves the current selection. Selected occurrences are owned by the Session, not by this Route."),
+                true);
+
+            EditorGUILayout.PropertyField(
                 _cameraPresentations,
                 new GUIContent(
-                    "Presentations",
-                    "Optional Camera Presentations owned by this Route occurrence. Leave empty to fall back to Session requests or the Output Default Rig."),
+                    "Contextual Presentations",
+                    "Optional Camera Presentations owned by this Route occurrence. They release when this Route exits."),
                 true);
         }
 

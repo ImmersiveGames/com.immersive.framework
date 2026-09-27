@@ -1,0 +1,25 @@
+{
+  "name": "Immersive.Framework.Camera.Editor.Tests",
+  "rootNamespace": "Immersive.Framework.Camera.Tests",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "Unity.Cinemachine",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

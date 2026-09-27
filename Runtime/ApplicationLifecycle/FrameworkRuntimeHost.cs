@@ -835,7 +835,8 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _cameraOutputTopology,
                     _cameraSubjectAvailabilityContext,
                     _playerCameraPresentationSelectionRuntime,
-                    transform);
+                    transform,
+                    _runtimeSessionScopeResult.Context);
             _gameFlowRuntime.SetCameraPresentationLifecycle(
                 _cameraPresentationLifecycleRuntime);
 

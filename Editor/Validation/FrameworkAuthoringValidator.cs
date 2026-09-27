@@ -397,6 +397,45 @@ namespace Immersive.Framework.Editor.Validation
             }
         }
 
+        private static void ValidateCameraPresentationSelections(
+            FrameworkAuthoringValidationReport report,
+            Object owner,
+            string ownerLabel,
+            IReadOnlyList<CameraPresentationDefinition> selections)
+        {
+            ValidateOwnedCameraPresentations(
+                report,
+                owner,
+                $"{ownerLabel} Selected",
+                selections);
+
+            if (selections == null || selections.Count == 0)
+            {
+                return;
+            }
+
+            var outputs = new HashSet<CameraOutputId>();
+            for (int index = 0; index < selections.Count; index++)
+            {
+                CameraPresentationDefinition definition =
+                    selections[index];
+                if (definition == null ||
+                    definition.OutputDefinition == null)
+                {
+                    continue;
+                }
+
+                CameraOutputId outputId =
+                    definition.OutputDefinition.OutputId;
+                if (!outputs.Add(outputId))
+                {
+                    report.AddError(
+                        $"{ownerLabel} Camera Presentation Selections contains more than one selection for Output '{outputId}'. CAMERA-037-B permits at most one selected Presentation per Output.",
+                        definition);
+                }
+            }
+        }
+
         private static void ValidatePersistentContentComposition(
             FrameworkAuthoringValidationReport report,
             GameApplicationAsset gameApplication,
@@ -1141,6 +1180,12 @@ namespace Immersive.Framework.Editor.Validation
                 route,
                 "Route",
                 route.CameraPresentations);
+
+            ValidateCameraPresentationSelections(
+                report,
+                route,
+                "Route",
+                route.CameraPresentationSelections);
 
             if (route.StartupActivity == null)
             {
