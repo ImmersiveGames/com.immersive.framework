@@ -9,18 +9,19 @@ using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Pause
 {
+    /// <summary>
+    /// Scene-scoped composition for authored Pause request triggers.
+    /// Physical Player Pause input follows the Session Local Player Host lifetime.
+    /// </summary>
     internal sealed class PauseProductBindingSceneLifecycleParticipant :
         ISceneLifecycleParticipant
     {
-        private readonly IPauseProductBindingPort _bindingPort;
         private readonly IPauseProductRequestPort _requestPort;
         private readonly FrameworkLogger _logger;
 
         internal PauseProductBindingSceneLifecycleParticipant(
             IPauseProductBindingPort port)
-            : this(
-                port,
-                port as IPauseProductRequestPort)
+            : this(port, port as IPauseProductRequestPort)
         {
         }
 
@@ -28,11 +29,11 @@ namespace Immersive.Framework.Pause
             IPauseProductBindingPort bindingPort,
             IPauseProductRequestPort requestPort)
         {
-            _bindingPort = bindingPort ??
+            _ = bindingPort ??
                 throw new ArgumentNullException(nameof(bindingPort));
             _requestPort = requestPort ??
                 throw new ArgumentException(
-                    "Pause Scene Lifecycle composition requires explicit binding and request ports.",
+                    "Pause Scene Lifecycle composition requires an explicit request port.",
                     nameof(requestPort));
             _logger =
                 FrameworkLogger.Create<
@@ -44,106 +45,53 @@ namespace Immersive.Framework.Pause
             IReadOnlyList<GameObject> roots,
             out string diagnostic)
         {
-            List<PlayerPauseInput> playerBindings =
-                Collect<PlayerPauseInput>(roots);
-            List<PauseRequestTrigger> requestTriggers =
+            List<PauseRequestTrigger> triggers =
                 Collect<PauseRequestTrigger>(roots);
-            var newlyBoundPlayers =
-                new List<PlayerPauseInput>();
-            var newlyBoundTriggers =
-                new List<PauseRequestTrigger>();
+            var newlyBound = new List<PauseRequestTrigger>();
 
-            for (int index = 0;
-                 index < playerBindings.Count;
-                 index++)
+            for (int index = 0; index < triggers.Count; index++)
             {
-                PlayerPauseInput binding =
-                    playerBindings[index];
-                bool wasBound = binding.HasActiveBinding;
-                if (!binding.TryInjectBindingPort(
-                        _bindingPort,
-                        out string issue))
-                {
-                    string rollback = RollbackAvailable(
-                        newlyBoundTriggers,
-                        newlyBoundPlayers,
-                        "scene-available-player-binding-failed");
-                    diagnostic = BuildFailureDiagnostic(
-                        scene,
-                        "PlayerInput binding",
-                        binding,
-                        issue,
-                        rollback);
-                    LogCompositionFailure(
-                        scene,
-                        "PlayerInputBinding",
-                        binding,
-                        issue,
-                        rollback,
-                        playerBindings.Count,
-                        requestTriggers.Count);
-                    return false;
-                }
-
-                if (!wasBound)
-                {
-                    newlyBoundPlayers.Add(binding);
-                }
-            }
-
-            for (int index = 0;
-                 index < requestTriggers.Count;
-                 index++)
-            {
-                PauseRequestTrigger trigger =
-                    requestTriggers[index];
-                bool wasBound =
-                    trigger.HasPauseProductRequestBinding;
+                PauseRequestTrigger trigger = triggers[index];
+                bool wasBound = trigger.HasPauseProductRequestBinding;
                 if (!trigger.TryBindPauseProductRequest(
                         _requestPort,
                         out string issue))
                 {
-                    string rollback = RollbackAvailable(
-                        newlyBoundTriggers,
-                        newlyBoundPlayers,
-                        "scene-available-request-trigger-failed");
-                    diagnostic = BuildFailureDiagnostic(
+                    string rollback =
+                        RollbackAvailable(newlyBound);
+                    diagnostic =
+                        $"Pause Scene Lifecycle rejected request trigger. " +
+                        $"scene='{SceneLabel(scene)}' " +
+                        $"component='{ObjectLabel(trigger)}' " +
+                        $"issue='{issue.NormalizeTextOrFallback("unknown")}' " +
+                        rollback;
+                    LogFailure(
                         scene,
-                        "request trigger",
-                        trigger,
-                        issue,
-                        rollback);
-                    LogCompositionFailure(
-                        scene,
-                        "PauseRequestTrigger",
+                        "SceneAvailable",
                         trigger,
                         issue,
                         rollback,
-                        playerBindings.Count,
-                        requestTriggers.Count);
+                        triggers.Count);
                     return false;
                 }
 
                 if (!wasBound)
                 {
-                    newlyBoundTriggers.Add(trigger);
+                    newlyBound.Add(trigger);
                 }
             }
 
             diagnostic =
                 $"Pause Scene Lifecycle composition completed. " +
                 $"scene='{SceneLabel(scene)}' " +
-                $"playerBindings='{playerBindings.Count}' " +
-                $"requestTriggers='{requestTriggers.Count}' " +
-                $"newPlayerBindings='{newlyBoundPlayers.Count}' " +
-                $"newRequestTriggers='{newlyBoundTriggers.Count}'.";
-
-            LogCompositionSuccess(
+                $"requestTriggers='{triggers.Count}' " +
+                $"newRequestTriggers='{newlyBound.Count}'.";
+            LogSuccess(
                 scene,
-                playerBindings.Count,
-                requestTriggers.Count,
-                newlyBoundPlayers.Count,
-                newlyBoundTriggers.Count);
+                "SceneAvailable",
+                triggers.Count,
+                newlyBound.Count,
+                string.Empty);
             return true;
         }
 
@@ -153,18 +101,13 @@ namespace Immersive.Framework.Pause
             string reason,
             out string diagnostic)
         {
-            List<PauseRequestTrigger> requestTriggers =
+            List<PauseRequestTrigger> triggers =
                 Collect<PauseRequestTrigger>(roots);
-            List<PlayerPauseInput> playerBindings =
-                Collect<PlayerPauseInput>(roots);
             var issues = new List<string>();
 
-            for (int index = 0;
-                 index < requestTriggers.Count;
-                 index++)
+            for (int index = 0; index < triggers.Count; index++)
             {
-                PauseRequestTrigger trigger =
-                    requestTriggers[index];
+                PauseRequestTrigger trigger = triggers[index];
                 if (!trigger.TryReleasePauseProductRequest(
                         _requestPort,
                         out string issue))
@@ -175,63 +118,44 @@ namespace Immersive.Framework.Pause
                 }
             }
 
-            for (int index = playerBindings.Count - 1;
-                 index >= 0;
-                 index--)
-            {
-                PlayerPauseInput binding =
-                    playerBindings[index];
-                if (!binding.ReleaseForSceneLifecycle(
-                        reason,
-                        out string issue))
-                {
-                    issues.Add(
-                        $"playerBinding='{ObjectLabel(binding)}' " +
-                        $"issue='{issue.NormalizeTextOrFallback("unknown")}'");
-                }
-            }
-
             if (issues.Count > 0)
             {
                 diagnostic =
                     $"Pause Scene Lifecycle release failed. " +
                     $"scene='{SceneLabel(scene)}' " +
-                    $"requestTriggers='{requestTriggers.Count}' " +
-                    $"playerBindings='{playerBindings.Count}'. " +
+                    $"requestTriggers='{triggers.Count}'. " +
                     string.Join(" ", issues);
-                LogReleaseFailure(
-                    scene,
-                    reason,
-                    playerBindings.Count,
-                    requestTriggers.Count,
-                    issues);
+                _logger.Error(
+                    "Pause Scene Lifecycle release failed.",
+                    LogFields.Of(
+                        LogFields.Field("operation", "SceneReleasing"),
+                        LogFields.Field("scene", SceneLabel(scene)),
+                        LogFields.Field(
+                            "reason",
+                            reason.NormalizeTextOrFallback("scene-release")),
+                        LogFields.Field("requestTriggers", triggers.Count),
+                        LogFields.Field("issues", string.Join(" ", issues))));
                 return false;
             }
 
             diagnostic =
                 $"Pause Scene Lifecycle release completed. " +
                 $"scene='{SceneLabel(scene)}' " +
-                $"requestTriggers='{requestTriggers.Count}' " +
-                $"playerBindings='{playerBindings.Count}'.";
-
-            LogReleaseSuccess(
+                $"requestTriggers='{triggers.Count}'.";
+            LogSuccess(
                 scene,
-                reason,
-                playerBindings.Count,
-                requestTriggers.Count);
+                "SceneReleasing",
+                triggers.Count,
+                0,
+                reason);
             return true;
         }
 
         private string RollbackAvailable(
-            IReadOnlyList<PauseRequestTrigger> triggers,
-            IReadOnlyList<PlayerPauseInput> players,
-            string reason)
+            IReadOnlyList<PauseRequestTrigger> triggers)
         {
             var issues = new List<string>();
-
-            for (int index = triggers.Count - 1;
-                 index >= 0;
-                 index--)
+            for (int index = triggers.Count - 1; index >= 0; index--)
             {
                 if (!triggers[index].TryReleasePauseProductRequest(
                         _requestPort,
@@ -243,34 +167,19 @@ namespace Immersive.Framework.Pause
                 }
             }
 
-            for (int index = players.Count - 1;
-                 index >= 0;
-                 index--)
-            {
-                if (!players[index].ReleaseForSceneLifecycle(
-                        reason,
-                        out string issue))
-                {
-                    issues.Add(
-                        $"playerBindingRollback='{ObjectLabel(players[index])}' " +
-                        $"issue='{issue.NormalizeTextOrFallback("unknown")}'");
-                }
-            }
-
             return issues.Count == 0
                 ? "rollback='Succeeded'"
                 : $"rollback='Failed' {string.Join(" ", issues)}";
         }
 
-        private void LogCompositionSuccess(
+        private void LogSuccess(
             Scene scene,
-            int playerBindingCount,
-            int requestTriggerCount,
-            int newPlayerBindingCount,
-            int newRequestTriggerCount)
+            string operation,
+            int triggerCount,
+            int newTriggerCount,
+            string reason)
         {
-            if (playerBindingCount == 0 &&
-                requestTriggerCount == 0)
+            if (triggerCount == 0)
             {
                 return;
             }
@@ -278,147 +187,36 @@ namespace Immersive.Framework.Pause
             _logger.Info(
                 "Pause Scene Lifecycle composition completed.",
                 LogFields.Of(
+                    LogFields.Field("operation", operation),
+                    LogFields.Field("scene", SceneLabel(scene)),
+                    LogFields.Field("requestTriggers", triggerCount),
+                    LogFields.Field("newRequestTriggers", newTriggerCount),
                     LogFields.Field(
-                        "operation",
-                        "SceneAvailable"),
-                    LogFields.Field(
-                        "scene",
-                        SceneLabel(scene)),
-                    LogFields.Field(
-                        "playerBindings",
-                        playerBindingCount),
-                    LogFields.Field(
-                        "requestTriggers",
-                        requestTriggerCount),
-                    LogFields.Field(
-                        "newPlayerBindings",
-                        newPlayerBindingCount),
-                    LogFields.Field(
-                        "newRequestTriggers",
-                        newRequestTriggerCount)));
+                        "reason",
+                        reason.NormalizeText())));
         }
 
-        private void LogCompositionFailure(
+        private void LogFailure(
             Scene scene,
-            string kind,
+            string operation,
             Component component,
             string issue,
             string rollback,
-            int playerBindingCount,
-            int requestTriggerCount)
+            int triggerCount)
         {
             _logger.Error(
                 "Pause Scene Lifecycle composition failed.",
                 LogFields.Of(
-                    LogFields.Field(
-                        "operation",
-                        "SceneAvailable"),
-                    LogFields.Field(
-                        "scene",
-                        SceneLabel(scene)),
-                    LogFields.Field(
-                        "bindingKind",
-                        kind.NormalizeTextOrFallback("Unknown")),
-                    LogFields.Field(
-                        "component",
-                        ObjectLabel(component)),
-                    LogFields.Field(
-                        "playerBindings",
-                        playerBindingCount),
-                    LogFields.Field(
-                        "requestTriggers",
-                        requestTriggerCount),
+                    LogFields.Field("operation", operation),
+                    LogFields.Field("scene", SceneLabel(scene)),
+                    LogFields.Field("component", ObjectLabel(component)),
+                    LogFields.Field("requestTriggers", triggerCount),
                     LogFields.Field(
                         "issue",
                         issue.NormalizeTextOrFallback("unknown")),
                     LogFields.Field(
                         "rollback",
                         rollback.NormalizeTextOrFallback("unknown"))));
-        }
-
-        private void LogReleaseSuccess(
-            Scene scene,
-            string reason,
-            int playerBindingCount,
-            int requestTriggerCount)
-        {
-            if (playerBindingCount == 0 &&
-                requestTriggerCount == 0)
-            {
-                return;
-            }
-
-            _logger.Info(
-                "Pause Scene Lifecycle release completed.",
-                LogFields.Of(
-                    LogFields.Field(
-                        "operation",
-                        "SceneReleasing"),
-                    LogFields.Field(
-                        "scene",
-                        SceneLabel(scene)),
-                    LogFields.Field(
-                        "reason",
-                        reason.NormalizeTextOrFallback(
-                            "scene-release")),
-                    LogFields.Field(
-                        "playerBindings",
-                        playerBindingCount),
-                    LogFields.Field(
-                        "requestTriggers",
-                        requestTriggerCount)));
-        }
-
-        private void LogReleaseFailure(
-            Scene scene,
-            string reason,
-            int playerBindingCount,
-            int requestTriggerCount,
-            IReadOnlyList<string> issues)
-        {
-            _logger.Error(
-                "Pause Scene Lifecycle release failed.",
-                LogFields.Of(
-                    LogFields.Field(
-                        "operation",
-                        "SceneReleasing"),
-                    LogFields.Field(
-                        "scene",
-                        SceneLabel(scene)),
-                    LogFields.Field(
-                        "reason",
-                        reason.NormalizeTextOrFallback(
-                            "scene-release")),
-                    LogFields.Field(
-                        "playerBindings",
-                        playerBindingCount),
-                    LogFields.Field(
-                        "requestTriggers",
-                        requestTriggerCount),
-                    LogFields.Field(
-                        "issueCount",
-                        issues?.Count ?? 0),
-                    LogFields.Field(
-                        "issues",
-                        issues == null ||
-                        issues.Count == 0
-                            ? "none"
-                            : string.Join(" ", issues))));
-        }
-
-        private static string BuildFailureDiagnostic(
-            Scene scene,
-            string kind,
-            Component component,
-            string issue,
-            string rollback)
-        {
-            return
-                $"Pause Scene Lifecycle rejected {kind}. " +
-                $"scene='{SceneLabel(scene)}' " +
-                $"component='{ObjectLabel(component)}' " +
-                $"issue='{issue.NormalizeTextOrFallback("unknown")}' " +
-                rollback;
         }
 
         private static List<T> Collect<T>(
@@ -449,8 +247,7 @@ namespace Immersive.Framework.Pause
                      candidateIndex++)
                 {
                     T candidate = candidates[candidateIndex];
-                    if (candidate != null &&
-                        seen.Add(candidate))
+                    if (candidate != null && seen.Add(candidate))
                     {
                         result.Add(candidate);
                     }

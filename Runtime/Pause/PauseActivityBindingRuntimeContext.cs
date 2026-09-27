@@ -19,6 +19,7 @@ namespace Immersive.Framework.Pause
         private LocalPlayerHostAuthoring _activeHost;
         private PlayerPauseInput _active;
         private IPauseProductBindingPort _activePort;
+        private bool _ownsRegistration;
         private string _lastDiagnostic = "Pause Activity binding is inactive.";
 
         internal PauseActivityBindingRuntimeState State => _state;
@@ -146,6 +147,7 @@ namespace Immersive.Framework.Pause
             }
 
             _state = PauseActivityBindingRuntimeState.Activating;
+            bool wasAlreadyBound = binding.HasActiveBinding;
             if (!binding.TryInjectBindingPort(bindingPort, out string registrationDiagnostic))
             {
                 _state = PauseActivityBindingRuntimeState.Inactive;
@@ -181,6 +183,7 @@ namespace Immersive.Framework.Pause
             _activeHost = host;
             _active = binding;
             _activePort = bindingPort;
+            _ownsRegistration = !wasAlreadyBound;
             _state = PauseActivityBindingRuntimeState.Active;
             return Complete(
                 PauseActivityBindingOperationStatus.Activated,
@@ -251,7 +254,8 @@ namespace Immersive.Framework.Pause
             }
 
             _state = PauseActivityBindingRuntimeState.Releasing;
-            if (!_active.TryReleaseBinding(resolvedReason, out string releaseDiagnostic))
+            if (_ownsRegistration &&
+                !_active.TryReleaseBinding(resolvedReason, out string releaseDiagnostic))
             {
                 _state = PauseActivityBindingRuntimeState.Failed;
                 return Complete(
@@ -428,6 +432,7 @@ namespace Immersive.Framework.Pause
             _activeHost = null;
             _active = null;
             _activePort = null;
+            _ownsRegistration = false;
         }
 
         private PauseActivityBindingRuntimeSnapshot CreateSnapshot()

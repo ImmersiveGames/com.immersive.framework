@@ -19,7 +19,7 @@ namespace Immersive.Framework.Pause
         private PauseProductBindingToken _token;
         private string _bindingStatus = "Unbound";
         private string _bindingDiagnostic =
-            "Pause binding has not been composed by Scene Lifecycle.";
+            "Pause binding has not been composed from the Session Local Player Host lifetime.";
 
         public PlayerInput PlayerInput =>
             TryResolveGateAdapter(
@@ -91,7 +91,7 @@ namespace Immersive.Framework.Pause
             if (port == null)
             {
                 diagnostic =
-                    "Pause PlayerInput Binding requires a non-null lifecycle binding port.";
+                    "Pause PlayerInput Binding requires a non-null runtime binding port.";
                 _bindingDiagnostic = diagnostic;
                 return false;
             }
@@ -109,7 +109,7 @@ namespace Immersive.Framework.Pause
                 }
 
                 diagnostic =
-                    "Pause PlayerInput Binding rejected a different binding port for its current scene lifetime.";
+                    "Pause PlayerInput Binding rejected a different binding port for its current Session Host lifetime.";
                 _bindingDiagnostic = diagnostic;
                 return false;
             }

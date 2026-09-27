@@ -24,6 +24,9 @@ UnityPauseSurfaceAdapter
 
 SceneLifecycleRuntime
   injects and releases scene-scoped request bindings
+
+PauseSessionPlayerInputBindingRuntimeHostModule
+  projects Session Local Player Host lifetime into physical Pause binding
 ```
 
 No authored component searches for `FrameworkRuntimeHost`. Actor replacement,
@@ -153,14 +156,16 @@ map is always derived from the assigned Pause Action.
 
 ## Runtime ownership
 
-Scene Lifecycle provides the binding port for exactly the scene being composed.
-The binding registers one `PlayerInput`, receives an opaque token, applies
+The Session Local Player Host occurrence provides the lifetime for physical
+Pause input. The Pause-side runtime observes canonical Session Host evidence,
+binds the co-located `PlayerPauseInput`, receives an opaque token, applies
 `Global + gameplay`, and resolves the action by GUID in `PlayerInput.actions`.
 
-On scene release, the lifecycle releases the exact token before unload. The
-runtime restores the original PlayerInput posture and releases the InputMode
-context. A normal request rollback restores the previous Pause snapshot; only
-lifecycle teardown has the explicit Running policy.
+Route/Activity scene release does not release that physical binding while the
+Session Host remains current. Session Host release/Leave releases the exact
+token and restores the original PlayerInput posture. A normal request rollback
+restores the previous Pause snapshot; Activity lifecycle cleanup retains its
+explicit Running policy.
 
 ## Trigger locations
 
