@@ -60,28 +60,15 @@ namespace Immersive.Framework.PlayerParticipation
             if (!Validate(contextualOwner, occupancy, input, out string issue))
                 return Reject(PlayerGameplayAdmissionStatus.RejectedInvalidRequest, operation, slot, previous, issue);
             if (previous.IsAdmitted && previous.Owner == contextualOwner && previous.OccupancyToken == occupancy.Token && previous.InputBindingToken == input.Token)
-                return Refresh(operation, previous, input, source, reason, PlayerGameplayAdmissionStatus.SucceededAlreadyAdmitted, "Gameplay admission is already current.");
+                return RestateReady(operation, previous, source, reason, PlayerGameplayAdmissionStatus.SucceededAlreadyAdmitted, "Gameplay admission is already current.");
             if (previous.IsAdmitted)
                 return Reject(PlayerGameplayAdmissionStatus.RejectedSlotAlreadyAdmitted, operation, slot, previous, "Player Slot already has another current gameplay admission.");
 
             var token = new PlayerGameplayAdmissionToken(_sessionContextId, contextualOwner, slot, occupancy.ActorProfileId, occupancy.ActorId, occupancy.RuntimeContentIdentity, occupancy.Token.MaterializationRevision, occupancy.OccupancyRevision, input.BindingRevision, ++_sequence);
-            PlayerGameplayAdmissionState state = input.IsAllowed ? PlayerGameplayAdmissionState.Ready : PlayerGameplayAdmissionState.BlockedByInputGate;
-            var current = new PlayerGameplayAdmissionSummary(_sessionContextId, slot, state, occupancy.ActorProfileId, occupancy.ActorId, contextualOwner, occupancy.RuntimeContentIdentity, occupancy.PreparationToken, occupancy.Token, input.Token, token, token.AdmissionRevision, source, reason, state == PlayerGameplayAdmissionState.Ready ? "Gameplay admission aggregated current occupancy and input capabilities." : "Gameplay admission is blocked by the current Input Gate.");
+            var current = new PlayerGameplayAdmissionSummary(_sessionContextId, slot, PlayerGameplayAdmissionState.Ready, occupancy.ActorProfileId, occupancy.ActorId, contextualOwner, occupancy.RuntimeContentIdentity, occupancy.PreparationToken, occupancy.Token, input.Token, token, token.AdmissionRevision, source, reason, "Gameplay admission aggregated current occupancy and input capabilities.");
             _slots[slot] = current;
             _revision++;
-            return Result(state == PlayerGameplayAdmissionState.Ready ? PlayerGameplayAdmissionStatus.SucceededReady : PlayerGameplayAdmissionStatus.SucceededBlockedByInputGate, operation, slot, previous, current, false, false, string.Empty, current.Message);
-        }
-
-        internal PlayerGameplayAdmissionResult TryRefreshReadiness(PlayerSlotId slot, PlayerGameplayAdmissionToken expected, string source, string reason)
-        {
-            PlayerGameplayAdmissionSummary previous = Get(slot);
-            if (!previous.IsAdmitted || previous.Token != expected)
-                return Reject(PlayerGameplayAdmissionStatus.RejectedForeignOrStaleAdmission, "RefreshGameplayReadiness", slot, previous, "Refresh requires the current admission token.");
-            if (!_inputContext.TryGetCurrentInputBinding(slot, out var input, out _))
-                return Reject(PlayerGameplayAdmissionStatus.RejectedForeignOrStaleInputBinding, "RefreshGameplayReadiness", slot, previous, "Current Input capability is unavailable.");
-            if (input.Owner != previous.Owner || input.Token.Owner != previous.Owner)
-                return Reject(PlayerGameplayAdmissionStatus.RejectedForeignOrStaleInputBinding, "RefreshGameplayReadiness", slot, previous, "Current Input capability belongs to another Activity occurrence.");
-            return Refresh("RefreshGameplayReadiness", previous, input, source, reason, PlayerGameplayAdmissionStatus.SucceededReadinessRefreshed, "Gameplay readiness refreshed.");
+            return Result(PlayerGameplayAdmissionStatus.SucceededReady, operation, slot, previous, current, false, false, string.Empty, current.Message);
         }
 
         internal PlayerGameplayAdmissionResult TryRelease(PlayerSlotId slot, PlayerGameplayAdmissionToken expected, string source, string reason)
@@ -132,10 +119,9 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        private PlayerGameplayAdmissionResult Refresh(string operation, PlayerGameplayAdmissionSummary previous, PlayerGameplayInputBindingSummary input, string source, string reason, PlayerGameplayAdmissionStatus status, string message)
+        private PlayerGameplayAdmissionResult RestateReady(string operation, PlayerGameplayAdmissionSummary previous, string source, string reason, PlayerGameplayAdmissionStatus status, string message)
         {
-            PlayerGameplayAdmissionState state = input.IsAllowed ? PlayerGameplayAdmissionState.Ready : PlayerGameplayAdmissionState.BlockedByInputGate;
-            var current = new PlayerGameplayAdmissionSummary(previous.SessionContextId, previous.PlayerSlotId, state, previous.ActorProfileId, previous.ActorId, previous.Owner, previous.RuntimeContentIdentity, previous.PreparationToken, previous.OccupancyToken, previous.InputBindingToken, previous.Token, previous.AdmissionRevision, source, reason, message);
+            var current = new PlayerGameplayAdmissionSummary(previous.SessionContextId, previous.PlayerSlotId, PlayerGameplayAdmissionState.Ready, previous.ActorProfileId, previous.ActorId, previous.Owner, previous.RuntimeContentIdentity, previous.PreparationToken, previous.OccupancyToken, previous.InputBindingToken, previous.Token, previous.AdmissionRevision, source, reason, message);
             _slots[previous.PlayerSlotId] = current;
             return Result(status, operation, previous.PlayerSlotId, previous, current, false, false, string.Empty, message);
         }

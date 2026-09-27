@@ -33,7 +33,6 @@ namespace Immersive.Framework.PlayerParticipation
         PreparationIdentityMismatch = 220,
         GameplayAdmissionMissing = 230,
         GameplayAdmissionPending = 240,
-        GameplayAdmissionBlockedByInputGate = 250,
         GameplayAdmissionReleaseFailed = 260,
         GameplayAdmissionIdentityMismatch = 270
     }

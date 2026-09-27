@@ -324,6 +324,7 @@ namespace Immersive.Framework.PlayerParticipation
                     gameplayActionMap,
                     input.Token,
                     IsGameplayInputReady,
+                    ResolveRuntimeGameplayAvailability,
                     out issue))
                 return false;
 
@@ -343,6 +344,12 @@ namespace Immersive.Framework.PlayerParticipation
                     out PlayerGameplayAdmissionSummary admission) &&
                 admission.GameplayReady &&
                 admission.InputBindingToken == bindingToken;
+        }
+
+        private PlayerGameplayInputAvailability ResolveRuntimeGameplayAvailability(
+            PlayerGameplayInputBindingToken bindingToken)
+        {
+            return _inputContext.ResolveRuntimeAvailability(bindingToken);
         }
 
         private void ReleaseInputConsumer(PlayerSlotId playerSlotId, string reason)

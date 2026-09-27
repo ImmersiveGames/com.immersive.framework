@@ -61,9 +61,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         public bool IsNotAdmitted => State == PlayerGameplayAdmissionState.NotAdmitted;
         public bool IsReady => State == PlayerGameplayAdmissionState.Ready;
-        public bool IsBlockedByInputGate => State == PlayerGameplayAdmissionState.BlockedByInputGate;
         public bool IsReleaseFailed => State == PlayerGameplayAdmissionState.ReleaseFailed;
-        public bool IsAdmitted => IsReady || IsBlockedByInputGate || IsReleaseFailed;
+        public bool IsAdmitted => IsReady || IsReleaseFailed;
         public bool GameplayReady => IsReady;
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&

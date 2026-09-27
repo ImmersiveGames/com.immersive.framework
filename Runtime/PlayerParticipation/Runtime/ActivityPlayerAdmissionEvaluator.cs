@@ -546,23 +546,6 @@ namespace Immersive.Framework.PlayerParticipation
                     "Gameplay admission is retained in ReleaseFailed state.");
             }
 
-            if (admission.IsBlockedByInputGate)
-            {
-                return Result(
-                    projected,
-                    level,
-                    ActivityPlayerAdmissionSlotStatus.PendingResolution,
-                    ActivityPlayerAdmissionMissingRequirement.GameplayReady,
-                    ActivityPlayerAdmissionEvaluationCode.GameplayAdmissionBlockedByInputGate,
-                    slot.SelectedActorProfileId,
-                    preparation.Materialization.ActorId,
-                    true,
-                    true,
-                    true,
-                    false,
-                    "Gameplay admission remains current but input is temporarily blocked by Gate.");
-            }
-
             if (!admission.GameplayReady)
             {
                 return Result(

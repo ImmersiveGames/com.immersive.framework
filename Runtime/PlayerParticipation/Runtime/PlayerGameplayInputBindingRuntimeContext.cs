@@ -858,6 +858,28 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
+        internal PlayerGameplayInputAvailability ResolveRuntimeAvailability(
+            PlayerGameplayInputBindingToken expectedBinding)
+        {
+            if (!expectedBinding.IsValid ||
+                !_slots.TryGetValue(
+                    expectedBinding.PlayerSlotId,
+                    out PlayerGameplayInputBindingSummary retained) ||
+                !retained.IsBound ||
+                retained.Token != expectedBinding ||
+                !_records.TryGetValue(
+                    expectedBinding.PlayerSlotId,
+                    out BindingRecord record))
+            {
+                return PlayerGameplayInputAvailability.Unknown;
+            }
+
+            return ResolveAvailability(
+                record.playerInput,
+                record.gateAdapter,
+                retained.DesiredActionMapName);
+        }
+
         internal PlayerGameplayInputBindingResult ConfirmCurrentInputBinding(
             PlayerSlotId playerSlotId,
             PlayerGameplayInputBindingToken expectedBinding,

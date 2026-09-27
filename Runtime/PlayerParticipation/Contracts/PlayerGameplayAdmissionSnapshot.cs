@@ -34,7 +34,6 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 PlayerGameplayAdmissionSummary summary = this._slots[index];
                 if (summary.IsReady) ReadyCount++;
-                else if (summary.IsBlockedByInputGate) BlockedByInputGateCount++;
                 else if (summary.IsReleaseFailed) ReleaseFailedCount++;
                 else if (summary.IsNotAdmitted) NotAdmittedCount++;
             }
@@ -45,7 +44,6 @@ namespace Immersive.Framework.PlayerParticipation
         public IReadOnlyList<PlayerGameplayAdmissionSummary> Slots => _slots;
         public int ConfiguredSlotCount => _slots.Length;
         public int ReadyCount { get; }
-        public int BlockedByInputGateCount { get; }
         public int ReleaseFailedCount { get; }
         public int NotAdmittedCount { get; }
         public PlayerGameplayAdmissionStatus LastOperationStatus { get; }

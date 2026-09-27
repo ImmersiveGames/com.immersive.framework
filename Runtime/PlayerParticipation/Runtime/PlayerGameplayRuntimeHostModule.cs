@@ -283,20 +283,12 @@ namespace Immersive.Framework.PlayerParticipation
             bool alreadyAdmitted = previous.IsAdmitted &&
                 previous.Owner == contextualOwner;
             PlayerGameplayRuntimeOperationStatus successStatus =
-                current.GameplayReady
-                    ? alreadyAdmitted
-                        ? PlayerGameplayRuntimeOperationStatus.SucceededAlreadyReady
-                        : PlayerGameplayRuntimeOperationStatus.SucceededReady
-                    : alreadyAdmitted
-                        ? PlayerGameplayRuntimeOperationStatus.SucceededAlreadyBlockedByInputGate
-                        : PlayerGameplayRuntimeOperationStatus.SucceededBlockedByInputGate;
-            string successMessage = current.GameplayReady
-                ? alreadyAdmitted
-                    ? "Current Player gameplay chain is already authoritative and GameplayReady."
-                    : "Current Player gameplay chain became authoritative and GameplayReady."
-                : alreadyAdmitted
-                    ? "Current Player gameplay chain is already authoritative but blocked by the input Gate."
-                    : "Current Player gameplay chain became authoritative but is blocked by the input Gate.";
+                alreadyAdmitted
+                    ? PlayerGameplayRuntimeOperationStatus.SucceededAlreadyReady
+                    : PlayerGameplayRuntimeOperationStatus.SucceededReady;
+            string successMessage = alreadyAdmitted
+                ? "Current Player gameplay chain is already authoritative and GameplayReady."
+                : "Current Player gameplay chain became authoritative and GameplayReady.";
 
             return Result(
                 successStatus,
@@ -617,8 +609,8 @@ namespace Immersive.Framework.PlayerParticipation
                 message);
         }
 
-        // Adapter.Update applies the physical gate release. This module reacts
-        // afterwards, while it still owns binding availability and admission readiness.
+        // Adapter.Update applies the physical gate release. This module then asks
+        // the input boundary to restore the contracted physical gameplay posture.
         private void LateUpdate()
         {
             if (_shuttingDown || !IsReady)
@@ -626,101 +618,40 @@ namespace Immersive.Framework.PlayerParticipation
                 return;
             }
 
-            RefreshGameplayReadinessAfterGateRelease();
+            RestoreContractedGameplayInputPosture();
         }
 
-        private void RefreshGameplayReadinessAfterGateRelease()
+        private void RestoreContractedGameplayInputPosture()
         {
-            PlayerGameplayAdmissionSnapshot admissions =
-                _admissionContext.CreateSnapshot();
-            if (admissions == null ||
-                !admissions.IsInitialized)
+            PlayerGameplayInputBindingSnapshot bindings =
+                _inputContext.CreateSnapshot();
+            if (bindings == null || !bindings.IsInitialized)
             {
                 return;
             }
 
             const string source = nameof(PlayerGameplayRuntimeHostModule);
-            for (int index = 0; index < admissions.Slots.Count; index++)
+            for (int index = 0; index < bindings.Slots.Count; index++)
             {
-                PlayerGameplayAdmissionSummary admission = admissions.Slots[index];
-                if ((!admission.IsBlockedByInputGate && !admission.IsReady) ||
-                    !admission.Token.IsValid ||
-                    !admission.InputBindingToken.IsValid)
+                PlayerGameplayInputBindingSummary binding = bindings.Slots[index];
+                if (!binding.IsBound || !binding.Token.IsValid)
                 {
-                    continue;
-                }
-
-                if (admission.IsBlockedByInputGate)
-                {
-                    PlayerGameplayInputBindingResult availability =
-                        ObserveUngatedContractedGameplayMap(
-                            admission,
-                            source,
-                            "observe-input-gate-while-gameplay-admission-blocked");
-                    if (availability == null ||
-                        !availability.Succeeded ||
-                        !availability.CurrentSummary.IsAllowed)
-                    {
-                        continue;
-                    }
-
-                    _admissionContext.TryRefreshReadiness(
-                        admission.PlayerSlotId,
-                        admission.Token,
-                        source,
-                        "input-gate-released");
                     continue;
                 }
 
                 if (_inputContext.TryReassertUngatedContractedGameplayMap(
-                        admission.PlayerSlotId,
-                        admission.InputBindingToken,
+                        binding.PlayerSlotId,
+                        binding.Token,
                         source,
-                        "reassert-contracted-gameplay-map-while-admission-ready"))
+                        "restore-contracted-gameplay-input-posture"))
                 {
                     RefreshInputAvailability(
-                        admission.PlayerSlotId,
-                        admission.InputBindingToken,
+                        binding.PlayerSlotId,
+                        binding.Token,
                         source,
-                        "contracted-gameplay-map-reasserted");
+                        "contracted-gameplay-input-posture-restored");
                 }
             }
-        }
-
-        private PlayerGameplayInputBindingResult ObserveUngatedContractedGameplayMap(
-            PlayerGameplayAdmissionSummary admission,
-            string source,
-            string reason)
-        {
-            PlayerGameplayInputBindingResult availability =
-                RefreshInputAvailability(
-                    admission.PlayerSlotId,
-                    admission.InputBindingToken,
-                    source,
-                    reason);
-            if (availability == null ||
-                !availability.Succeeded ||
-                availability.CurrentSummary.IsAllowed ||
-                availability.CurrentSummary.Availability !=
-                    PlayerGameplayInputAvailability.ActionsUnavailable)
-            {
-                return availability;
-            }
-
-            if (!_inputContext.TryReassertUngatedContractedGameplayMap(
-                    admission.PlayerSlotId,
-                    admission.InputBindingToken,
-                    source,
-                    "reassert-contracted-gameplay-map-after-gate-release"))
-            {
-                return availability;
-            }
-
-            return RefreshInputAvailability(
-                admission.PlayerSlotId,
-                admission.InputBindingToken,
-                source,
-                "contracted-gameplay-map-reasserted");
         }
 
         private void OnDestroy()

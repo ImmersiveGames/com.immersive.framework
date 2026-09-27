@@ -11,8 +11,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         SucceededReady = 10,
         SucceededAlreadyReady = 20,
-        SucceededBlockedByInputGate = 25,
-        SucceededAlreadyBlockedByInputGate = 26,
         SucceededReleased = 30,
         SucceededAlreadyReleased = 40,
 

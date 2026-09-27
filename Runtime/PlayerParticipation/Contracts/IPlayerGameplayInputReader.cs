@@ -16,6 +16,8 @@ namespace Immersive.Framework.PlayerParticipation
     {
         bool HasCurrentGameplayBinding { get; }
         bool GameplayReady { get; }
+        PlayerGameplayInputAvailability RuntimeGameplayAvailability { get; }
+        bool RuntimeGameplayAvailable { get; }
         int BindingRevision { get; }
         PlayerGameplayInputBindingToken CurrentBindingToken { get; }
         string Diagnostic { get; }

@@ -30,6 +30,7 @@ namespace Immersive.Framework.PlayerParticipation
         [NonSerialized] private InputActionMap _gameplayActionMap;
         [NonSerialized] private PlayerGameplayInputBindingToken _bindingToken;
         [NonSerialized] private Func<PlayerGameplayInputBindingToken, bool> _readinessEvaluator;
+        [NonSerialized] private Func<PlayerGameplayInputBindingToken, PlayerGameplayInputAvailability> _availabilityEvaluator;
         [NonSerialized] private int _bindingRevision;
         [NonSerialized] private string _diagnostic = UnboundDiagnostic;
 
@@ -42,15 +43,22 @@ namespace Immersive.Framework.PlayerParticipation
             _playerInput != null &&
             _runtimeActions != null &&
             _gameplayActionMap != null &&
-            _readinessEvaluator != null;
+            _readinessEvaluator != null &&
+            _availabilityEvaluator != null;
 
         public bool GameplayReady =>
-            HasCurrentGameplayBinding &&
-            isActiveAndEnabled &&
-            _playerInput.enabled &&
-            _playerInput.inputIsActive &&
-            _gameplayActionMap.enabled &&
+            _bindingToken.IsValid &&
+            _readinessEvaluator != null &&
             _readinessEvaluator(_bindingToken);
+
+        public PlayerGameplayInputAvailability RuntimeGameplayAvailability =>
+            ResolveRuntimeGameplayAvailability();
+
+        public bool RuntimeGameplayAvailable =>
+            GameplayReady &&
+            isActiveAndEnabled &&
+            RuntimeGameplayAvailability ==
+                PlayerGameplayInputAvailability.Allowed;
 
         public int BindingRevision => _bindingRevision;
         public PlayerGameplayInputBindingToken CurrentBindingToken => _bindingToken;
@@ -121,6 +129,7 @@ namespace Immersive.Framework.PlayerParticipation
             InputActionMap resolvedGameplayActionMap,
             PlayerGameplayInputBindingToken resolvedBindingToken,
             Func<PlayerGameplayInputBindingToken, bool> resolvedReadinessEvaluator,
+            Func<PlayerGameplayInputBindingToken, PlayerGameplayInputAvailability> resolvedAvailabilityEvaluator,
             out string issue)
         {
             issue = string.Empty;
@@ -141,10 +150,12 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!resolvedBindingToken.IsValid || resolvedReadinessEvaluator == null)
+            if (!resolvedBindingToken.IsValid ||
+                resolvedReadinessEvaluator == null ||
+                resolvedAvailabilityEvaluator == null)
             {
                 issue =
-                    "Player gameplay input reader requires a valid current gameplay input token and readiness evaluator.";
+                    "Player gameplay input reader requires a valid current gameplay input token, readiness evaluator and runtime availability evaluator.";
                 return false;
             }
 
@@ -165,6 +176,7 @@ namespace Immersive.Framework.PlayerParticipation
                 ReferenceEquals(_gameplayActionMap, resolvedGameplayActionMap))
             {
                 _readinessEvaluator = resolvedReadinessEvaluator;
+                _availabilityEvaluator = resolvedAvailabilityEvaluator;
                 _diagnostic = "Player gameplay input reader is already current.";
                 return true;
             }
@@ -176,6 +188,7 @@ namespace Immersive.Framework.PlayerParticipation
             _gameplayActionMap = resolvedGameplayActionMap;
             _bindingToken = resolvedBindingToken;
             _readinessEvaluator = resolvedReadinessEvaluator;
+            _availabilityEvaluator = resolvedAvailabilityEvaluator;
             _resolvedActions.Clear();
             _bindingRevision++;
             _diagnostic = "Player gameplay input reader is current for the Activity gameplay occurrence.";
@@ -192,11 +205,23 @@ namespace Immersive.Framework.PlayerParticipation
             out InputAction runtimeAction)
         {
             runtimeAction = null;
-            if (!GameplayReady)
+            if (!RuntimeGameplayAvailable)
             {
-                _diagnostic = HasCurrentGameplayBinding
-                    ? "Player gameplay input reader is bound but current gameplay is not Ready."
-                    : UnboundDiagnostic;
+                if (!HasCurrentGameplayBinding)
+                {
+                    _diagnostic = UnboundDiagnostic;
+                }
+                else if (!GameplayReady)
+                {
+                    _diagnostic =
+                        "Player gameplay input reader is bound but structural GameplayReady is false.";
+                }
+                else
+                {
+                    _diagnostic =
+                        $"Player gameplay input is not currently available for consumption. availability='{RuntimeGameplayAvailability}' readerActive='{isActiveAndEnabled}'.";
+                }
+
                 return false;
             }
 
@@ -281,6 +306,23 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        private PlayerGameplayInputAvailability ResolveRuntimeGameplayAvailability()
+        {
+            if (!HasCurrentGameplayBinding)
+                return PlayerGameplayInputAvailability.Unknown;
+
+            PlayerGameplayInputAvailability availability =
+                _availabilityEvaluator(_bindingToken);
+            if (availability != PlayerGameplayInputAvailability.Allowed)
+                return availability;
+            if (!_playerInput.enabled)
+                return PlayerGameplayInputAvailability.PlayerInputDisabled;
+            if (!_playerInput.inputIsActive || !_gameplayActionMap.enabled)
+                return PlayerGameplayInputAvailability.ActionsUnavailable;
+
+            return PlayerGameplayInputAvailability.Allowed;
+        }
+
         private void ClearRuntimeState(bool incrementRevision, string reason)
         {
             bool hadBinding = HasCurrentGameplayBinding || _bindingToken.IsValid;
@@ -290,6 +332,7 @@ namespace Immersive.Framework.PlayerParticipation
             _gameplayActionMap = null;
             _bindingToken = default;
             _readinessEvaluator = null;
+            _availabilityEvaluator = null;
             _resolvedActions.Clear();
 
             if (incrementRevision && hadBinding)

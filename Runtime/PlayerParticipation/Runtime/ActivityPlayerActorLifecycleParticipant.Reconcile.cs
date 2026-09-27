@@ -270,7 +270,6 @@ namespace Immersive.Framework.PlayerParticipation
                 _participationContext.CreateSnapshot();
             var slots = new List<PlayerReadinessSlotRecord>(
                 projectedSlots.Count);
-            bool gameplayReadyFollowsBlockedAdmission = false;
             bool requiresGameplayReady =
                 (int)requirementLevel >=
                     (int)PlayerParticipationRequirementLevel.GameplayReady;
@@ -283,11 +282,6 @@ namespace Immersive.Framework.PlayerParticipation
                     FindGameplayAdmissionToken(slot.PlayerSlotId);
                 bool gameplayReady = !requiresGameplayReady ||
                     IsCurrentAdmissionGameplayReady(slot.PlayerSlotId);
-                if (requiresGameplayReady && !gameplayReady)
-                {
-                    gameplayReadyFollowsBlockedAdmission = true;
-                }
-
                 slots.Add(new PlayerReadinessSlotRecord
                 {
                     playerSlotId = slot.PlayerSlotId,
@@ -333,9 +327,8 @@ namespace Immersive.Framework.PlayerParticipation
                 released = false,
                 readinessReason =
                     ActivityPlayerActorReadinessReason.RequirementSatisfied,
-                message = gameplayReadyFollowsBlockedAdmission
-                    ? "Activity Player contribution completed while gameplay admission is blocked by the entry gate. gameplayReady follows admission.GameplayReady."
-                    : "Activity Player lifecycle requirement was satisfied during Activity enter."
+                message =
+                    "Activity Player lifecycle requirement was satisfied during Activity enter."
             };
             SynchronizePlayerReadinessContributionAfterRecordCreated();
             _preparationModule.RequestActiveActivityReconciliation();
@@ -781,14 +774,10 @@ namespace Immersive.Framework.PlayerParticipation
                     "Activity Player admission evaluator returned no result.");
             }
 
-            if (evaluation.CanActivate ||
-                IsOnlyBlockedByCurrentEntryGate(evaluation))
+            if (evaluation.CanActivate)
             {
-                string completionMessage = evaluation.CanActivate
-                    ? "All projected Player requirements are satisfied."
-                    : "All Player gameplay chains are authoritative and are " +
-                      "blocked only by the current Activity entry gate; " +
-                      "readiness may release that gate.";
+                const string completionMessage =
+                    "All projected Player requirements are satisfied.";
                 MarkAllReadinessSlotsSatisfied(completionMessage);
                 bool completionReadinessStateChanged =
                     CompletePlayerReadinessContribution(completionMessage);
@@ -1072,36 +1061,6 @@ namespace Immersive.Framework.PlayerParticipation
                 session,
                 preparation,
                 gameplay);
-        }
-
-        private static bool IsOnlyBlockedByCurrentEntryGate(
-            ActivityPlayerAdmissionEvaluationResult evaluation)
-        {
-            if (evaluation == null ||
-                !evaluation.IsPendingResolution ||
-                evaluation.ProjectedSlotCount == 0)
-            {
-                return false;
-            }
-
-            for (int index = 0; index < evaluation.Slots.Count; index++)
-            {
-                ActivityPlayerAdmissionSlotResult slot =
-                    evaluation.Slots[index];
-                if (slot.IsSatisfied)
-                {
-                    continue;
-                }
-
-                if (!slot.IsPendingResolution ||
-                    slot.Code != ActivityPlayerAdmissionEvaluationCode
-                        .GameplayAdmissionBlockedByInputGate)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         private void MarkAllReadinessSlotsSatisfied(string message)

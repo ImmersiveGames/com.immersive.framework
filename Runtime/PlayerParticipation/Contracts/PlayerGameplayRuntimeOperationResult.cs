@@ -51,8 +51,6 @@ namespace Immersive.Framework.PlayerParticipation
         public bool Succeeded =>
             Status == PlayerGameplayRuntimeOperationStatus.SucceededReady ||
             Status == PlayerGameplayRuntimeOperationStatus.SucceededAlreadyReady ||
-            Status == PlayerGameplayRuntimeOperationStatus.SucceededBlockedByInputGate ||
-            Status == PlayerGameplayRuntimeOperationStatus.SucceededAlreadyBlockedByInputGate ||
             Status == PlayerGameplayRuntimeOperationStatus.SucceededReleased ||
             Status == PlayerGameplayRuntimeOperationStatus.SucceededAlreadyReleased;
 

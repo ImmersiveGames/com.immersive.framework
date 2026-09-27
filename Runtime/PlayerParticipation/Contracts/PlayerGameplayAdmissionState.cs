@@ -10,7 +10,6 @@ namespace Immersive.Framework.PlayerParticipation
         None = 0,
         NotAdmitted = 10,
         Ready = 20,
-        BlockedByInputGate = 30,
         ReleaseFailed = 40
     }
 }
