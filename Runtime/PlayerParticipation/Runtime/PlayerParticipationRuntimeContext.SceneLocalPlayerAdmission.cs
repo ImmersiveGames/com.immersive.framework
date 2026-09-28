@@ -363,6 +363,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
             record.AllocationState = PlayerSlotAllocationState.Available;
             record.ReservationToken = default;
+            record.PlayerOccurrenceId = default;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;

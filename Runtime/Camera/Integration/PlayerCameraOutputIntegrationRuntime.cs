@@ -438,11 +438,7 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
-            UnityEngine.Camera camera = output.UnityCamera;
-            if (camera != null && camera.enabled != participating)
-            {
-                camera.enabled = participating;
-            }
+            output.SetPlayerPhysicalParticipation(participating);
         }
 
         private void ReleaseApplied(PlayerSlotId playerSlotId)

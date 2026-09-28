@@ -384,6 +384,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             record.AllocationState = PlayerSlotAllocationState.Available;
             record.ReservationToken = default;
+            record.PlayerOccurrenceId = default;
             record.Revision++;
             record.Source = resolvedSource;
             record.Reason = resolvedReason;

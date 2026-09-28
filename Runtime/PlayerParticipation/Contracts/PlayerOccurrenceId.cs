@@ -1,6 +1,7 @@
 using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
+using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -9,6 +10,13 @@ namespace Immersive.Framework.PlayerParticipation
     public readonly struct PlayerOccurrenceId : IEquatable<PlayerOccurrenceId>
     {
         public PlayerOccurrenceId(string value) { Value = value.NormalizeText(); }
+        internal static PlayerOccurrenceId Create(
+            string sessionContextId,
+            int sequence,
+            PlayerSlotId playerSlotId) =>
+            !string.IsNullOrWhiteSpace(sessionContextId) && sequence > 0 && playerSlotId.IsValid
+                ? new PlayerOccurrenceId($"player-occurrence:{sessionContextId}:{sequence}:{playerSlotId.StableText}")
+                : default;
         public string Value { get; }
         public bool IsValid => !string.IsNullOrWhiteSpace(Value);
         public bool Equals(PlayerOccurrenceId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);

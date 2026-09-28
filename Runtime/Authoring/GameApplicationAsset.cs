@@ -64,6 +64,12 @@ namespace Immersive.Framework.Authoring
         private CameraPresentationDefinition[] sessionCameraPresentations =
             Array.Empty<CameraPresentationDefinition>();
 
+        [Header("Session Camera Assignments")]
+        [SerializeField]
+        [Tooltip("New Session-scoped Camera Assignments. This cut supports targetless Fixed Definitions with no Player membership; these occurrences start with the Session and remain unchanged by Join.")]
+        private List<SessionCameraAssignmentAuthoring> sessionCameraAssignments =
+            new List<SessionCameraAssignmentAuthoring>();
+
         [SerializeField]
         [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
         private PersistentContentComposition persistentContent =
@@ -130,6 +136,10 @@ namespace Immersive.Framework.Authoring
         public bool HasSessionCameraPresentations =>
             sessionCameraPresentations != null &&
             sessionCameraPresentations.Length > 0;
+
+        public IReadOnlyList<SessionCameraAssignmentAuthoring> SessionCameraAssignments =>
+            sessionCameraAssignments ?? (IReadOnlyList<SessionCameraAssignmentAuthoring>)
+                Array.Empty<SessionCameraAssignmentAuthoring>();
 
         public PersistentContentComposition PersistentContent =>
             persistentContent;

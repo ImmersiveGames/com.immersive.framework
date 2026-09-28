@@ -29,6 +29,7 @@ namespace Immersive.Framework.PlayerParticipation
                 DefaultActorProfile = defaultActorProfile;
                 HostProvisioningMode = hostProvisioningMode;
                 AllocationState = PlayerSlotAllocationState.Available;
+                PlayerOccurrenceId = default;
                 Revision = 0;
                 Source = "PlayerParticipationRuntimeContext";
                 Reason = "initialization";
@@ -45,6 +46,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerHostProvisioningMode HostProvisioningMode { get; }
             internal PlayerSlotAllocationState AllocationState { get; set; }
             internal PlayerSlotReservationToken ReservationToken { get; set; }
+            internal PlayerOccurrenceId PlayerOccurrenceId { get; set; }
             internal int Revision { get; set; }
             internal string Source { get; set; }
             internal string Reason { get; set; }
@@ -60,6 +62,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerActorResolutionPolicy _actorResolutionPolicy;
         private int _revision;
         private int _reservationSequence;
+        private int _playerOccurrenceSequence;
         private bool _joiningOpen;
         private PlayerParticipationOperationStatus _lastOperationStatus;
         private string _lastOperationMessage;
@@ -1018,7 +1021,12 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
+            PlayerOccurrenceId playerOccurrenceId =
+                targetState == PlayerSlotAllocationState.Joined
+                    ? CreatePlayerOccurrenceId(record.PlayerSlotId)
+                    : default;
             record.AllocationState = targetState;
+            record.PlayerOccurrenceId = playerOccurrenceId;
             record.ReservationToken = default;
             record.Revision++;
             record.Source = resolvedSource;
@@ -1138,6 +1146,7 @@ namespace Immersive.Framework.PlayerParticipation
                 record.PlayerSlotId,
                 record.AllocationState,
                 record.ReservationToken,
+                record.PlayerOccurrenceId,
                 record.Revision,
                 record.Source,
                 record.Reason,
@@ -1145,6 +1154,12 @@ namespace Immersive.Framework.PlayerParticipation
                 record.SelectionRevision,
                 record.SelectionSource,
                 record.SelectionReason);
+        }
+
+        private PlayerOccurrenceId CreatePlayerOccurrenceId(PlayerSlotId playerSlotId)
+        {
+            _playerOccurrenceSequence = checked(_playerOccurrenceSequence + 1);
+            return PlayerOccurrenceId.Create(_contextId, _playerOccurrenceSequence, playerSlotId);
         }
 
         private static bool TryCreateSlotRecords(

@@ -43,7 +43,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
             if (!(definition is CameraOutputDefinition) &&
-                !(definition is CameraPresentationDefinition))
+                !(definition is CameraPresentationDefinition) &&
+                !(definition is CameraDefinition))
             {
                 throw new ArgumentException(
                     "Expected a supported Camera definition.",
@@ -59,6 +60,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 CameraOutputDefinition output => output.HasValidId,
                 CameraPresentationDefinition presentation => presentation.HasValidId,
+                CameraDefinition camera => camera.HasValidId,
                 _ => false
             };
         }

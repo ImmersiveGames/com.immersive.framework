@@ -17,6 +17,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId playerSlotId,
             PlayerSlotAllocationState allocationState,
             PlayerSlotReservationToken reservationToken,
+            PlayerOccurrenceId playerOccurrenceId,
             int revision,
             string source,
             string reason,
@@ -30,6 +31,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSlotId = playerSlotId;
             AllocationState = allocationState;
             ReservationToken = reservationToken;
+            this.playerOccurrenceId = playerOccurrenceId;
             Revision = revision;
             Source = source ?? string.Empty;
             Reason = reason ?? string.Empty;
@@ -48,6 +50,14 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerSlotAllocationState AllocationState { get; }
 
         public PlayerSlotReservationToken ReservationToken { get; }
+
+        /// <summary>Exact Player lifetime identity carried by its allocation reservation.</summary>
+        public PlayerOccurrenceId PlayerOccurrenceId =>
+            IsJoined || AllocationState == PlayerSlotAllocationState.Leaving
+                ? playerOccurrenceId
+                : default;
+
+        private readonly PlayerOccurrenceId playerOccurrenceId;
 
         /// <summary>
         /// General Slot state revision. Actor selection also increments this revision.

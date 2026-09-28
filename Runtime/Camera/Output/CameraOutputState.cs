@@ -81,6 +81,21 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
+        internal bool TryClearActiveAssignment(out string issue)
+        {
+            if (!_activeAssignmentId.IsValid || !IsFallbackAvailable || !IsFallbackCovering)
+            {
+                issue = "An active Assignment can be ended only while valid Fallback coverage is applied.";
+                return false;
+            }
+
+            _activeAssignmentId = default;
+            _activeOccurrenceMode = CameraOccurrenceMode.Undefined;
+            _normalOccurrence = default;
+            issue = string.Empty;
+            return true;
+        }
+
         public bool TryPresentNormalOccurrence(CameraOccurrenceIdentity occurrence, out string issue)
         {
             if (!CanPresentNormalOccurrence(occurrence, out issue)) return false;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.ApiStatus;
 
@@ -18,7 +19,7 @@ namespace Immersive.Framework.Camera
         private readonly CameraRigReference _fallbackRig;
         private readonly HashSet<CameraOutputFallbackCoverageOwnerId> _fallbackCoverageOwners =
             new HashSet<CameraOutputFallbackCoverageOwnerId>();
-        private readonly CameraOutputState _presentationState;
+        private readonly CameraOutputState _outputState;
         private CameraRigReference _presentedNormalRig;
 
         public CameraOutputSession(
@@ -65,7 +66,7 @@ namespace Immersive.Framework.Camera
             }
 
             _fallbackRig = fallbackRig;
-            _presentationState = new CameraOutputState(context.OutputId);
+            _outputState = new CameraOutputState(context.OutputId);
         }
 
         public CameraOutputContext Context => _context;
@@ -76,7 +77,7 @@ namespace Immersive.Framework.Camera
 
         public CameraRigReference FallbackRig => _fallbackRig;
 
-        public CameraOutputState OutputState => _presentationState;
+        public CameraOutputState OutputState => _outputState;
 
         public bool IsFallbackCoverageActive => _fallbackCoverageOwners.Count > 0;
 
@@ -163,7 +164,7 @@ namespace Immersive.Framework.Camera
 
         public bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
         {
-            return _presentationState.TrySetActiveAssignment(assignment, out issue);
+            return _outputState.TrySetActiveAssignment(assignment, out issue);
         }
 
         public CameraOutputApplyResult PresentNormalOccurrence(
@@ -176,7 +177,7 @@ namespace Immersive.Framework.Camera
                     "A normal occurrence cannot be presented while explicit Fallback coverage is active.");
             }
 
-            if (!_presentationState.CanPresentNormalOccurrence(occurrence, out string issue))
+            if (!_outputState.CanPresentNormalOccurrence(occurrence, out string issue))
             {
                 return BlockedFallbackCoverage("camera.output-session.occurrence.invalid", issue);
             }
@@ -187,13 +188,85 @@ namespace Immersive.Framework.Camera
                     "Normal Camera Occurrence application requires the concrete Output applicator.");
             if (!applyResult.Succeeded) return applyResult;
 
-            if (!_presentationState.TryPresentNormalOccurrence(occurrence, out issue))
+            if (!_outputState.TryPresentNormalOccurrence(occurrence, out issue))
             {
                 _applicator.ApplyFallbackRig(_fallbackRig);
                 return BlockedFallbackCoverage("camera.output-session.occurrence.commit-failed", issue);
             }
             _presentedNormalRig = occurrenceRig;
             return applyResult;
+        }
+
+        internal CameraOccurrenceOutputResult PresentNormalOccurrence(
+            CameraOccurrenceIdentity occurrence,
+            CameraRigComposer occurrenceComposer)
+        {
+            if (_fallbackCoverageOwners.Count > 0)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    "A normal Session Camera Occurrence cannot be applied while temporary Fallback coverage is owned.");
+            }
+
+            if (!_outputState.CanPresentNormalOccurrence(occurrence, out string issue))
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    issue);
+            }
+
+            if (_applicator == null)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    "Session Camera Occurrence application requires the concrete Output applicator.");
+            }
+
+            CameraOccurrenceOutputResult applyResult =
+                _applicator.ApplySessionOccurrence(occurrenceComposer);
+            if (!applyResult.Succeeded) return applyResult;
+
+            if (!_outputState.TryPresentNormalOccurrence(occurrence, out issue))
+            {
+                _applicator.ApplyFallbackCoverage(_fallbackRig.Composer);
+                return CameraOccurrenceOutputResult.Rejected(
+                    applyResult.PreviousCamera,
+                    "Session Camera Occurrence could not be committed to Output state. " + issue);
+            }
+
+            _presentedNormalRig = CameraRigReference.FromComposer(occurrenceComposer);
+            return applyResult;
+        }
+
+        internal bool ResetSessionAssignmentToFallback(out string issue)
+        {
+            CameraOccurrenceOutputResult applyResult = _applicator != null
+                ? _applicator.ApplyFallbackCoverage(_fallbackRig.Composer)
+                : CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    "Session Assignment teardown requires the concrete Output applicator.");
+            if (!applyResult.Succeeded)
+            {
+                issue = applyResult.Diagnostic;
+                return false;
+            }
+
+            if (!_outputState.IsFallbackAvailable &&
+                !_outputState.TryMakeFallbackAvailable(out issue))
+            {
+                return false;
+            }
+
+            _outputState.TryCoverWithFallback(out _);
+            if (_outputState.HasActiveAssignment &&
+                !_outputState.TryClearActiveAssignment(out issue))
+            {
+                return false;
+            }
+
+            _presentedNormalRig = default;
+            issue = string.Empty;
+            return true;
         }
 
         public CameraOutputApplyResult CoverWithFallback(CameraOutputFallbackCoverageOwnerId ownerId)
@@ -204,7 +277,7 @@ namespace Immersive.Framework.Camera
                     "Fallback coverage requires an explicit owner.");
             }
 
-            if (!_presentationState.IsFallbackAvailable)
+            if (!_outputState.IsFallbackAvailable)
             {
                 return BlockedFallbackCoverage("camera.output-session.fallback.unavailable",
                     "Fallback Camera must be available before it can cover this Output.");
@@ -219,7 +292,7 @@ namespace Immersive.Framework.Camera
                 if (added) _fallbackCoverageOwners.Remove(ownerId);
                 return applyResult;
             }
-            _presentationState.TryCoverWithFallback(out _);
+            _outputState.TryCoverWithFallback(out _);
             return applyResult;
         }
 
@@ -236,14 +309,14 @@ namespace Immersive.Framework.Camera
                     : _application.Apply(_context, _fallbackRig, true);
 
             CameraOutputApplyResult applyResult;
-            if (_presentationState.HasRetainedNormalOccurrence && _presentedNormalRig.IsValid &&
-                _presentationState.CanRestoreNormalOccurrence(out _))
+            if (_outputState.HasRetainedNormalOccurrence && _presentedNormalRig.IsValid &&
+                _outputState.CanRestoreNormalOccurrence(out _))
             {
                 applyResult = _applicator != null
                     ? _applicator.ApplyNormalOccurrence(_presentedNormalRig)
                     : BlockedFallbackCoverage("camera.output-session.applicator.missing",
                         "Restoring a normal occurrence requires the concrete Output applicator.");
-                if (applyResult.Succeeded) _presentationState.TryRestoreNormalOccurrence(out _);
+                if (applyResult.Succeeded) _outputState.TryRestoreNormalOccurrence(out _);
             }
             else
             {
@@ -263,7 +336,7 @@ namespace Immersive.Framework.Camera
             {
                 if (_applicator != null && _applicator.HasAppliedFallback)
                 {
-                    _presentationState.TryMakeFallbackAvailable(out _);
+                    _outputState.TryMakeFallbackAvailable(out _);
                 }
                 return new CameraOutputSessionResult(
                     CameraOutputSessionOperationKind.Succeeded,
@@ -306,10 +379,10 @@ namespace Immersive.Framework.Camera
                     : _application.Apply(_context, _fallbackRig, true);
             }
 
-            if (_presentationState.HasActiveAssignment)
+            if (_outputState.HasActiveAssignment)
             {
-                if (_presentationState.HasPresentedNormalOccurrence &&
-                    !_presentationState.IsFallbackCovering && _presentedNormalRig.IsValid)
+                if (_outputState.HasPresentedNormalOccurrence &&
+                    !_outputState.IsFallbackCovering && _presentedNormalRig.IsValid)
                 {
                     return _applicator != null
                         ? _applicator.ApplyNormalOccurrence(_presentedNormalRig)

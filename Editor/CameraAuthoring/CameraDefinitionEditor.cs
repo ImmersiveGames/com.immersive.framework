@@ -36,6 +36,24 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
     }
 
+    [CustomEditor(typeof(CameraDefinition))]
+    internal sealed class SessionCameraDefinitionEditor : CameraDefinitionEditor
+    {
+        protected override void DrawDefinitionFields()
+        {
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("rigPrefab"),
+                new GUIContent(
+                    "Fixed Rig Prefab",
+                    "Reusable, already materialized Fixed Camera Rig. Session Assignments create independent runtime instances."));
+        }
+
+        protected override string ValidateDefinitionConfiguration() =>
+            ((CameraDefinition)target).TryValidateSessionTargetless(out string issue)
+                ? null
+                : issue;
+    }
+
     internal abstract class CameraDefinitionEditor : UnityEditor.Editor
     {
         private bool _advanced;

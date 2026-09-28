@@ -329,6 +329,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             slot.AllocationState = PlayerSlotAllocationState.Available;
             slot.ReservationToken = default;
+            slot.PlayerOccurrenceId = default;
             slot.Revision++;
             slot.Source = resolvedSource;
             slot.Reason = resolvedReason;

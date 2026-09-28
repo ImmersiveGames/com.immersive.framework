@@ -76,6 +76,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _progressionSaveEnabled;
         private SerializedProperty _defaultProgressionSaveProfile;
         private SerializedProperty _cameraSession;
+        private SerializedProperty _sessionCameraAssignments;
         private SerializedProperty _sessionCameraPresentations;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
@@ -110,6 +111,8 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("defaultProgressionSaveProfile");
             _cameraSession =
                 serializedObject.FindProperty("cameraSession");
+            _sessionCameraAssignments =
+                serializedObject.FindProperty("sessionCameraAssignments");
             _sessionCameraPresentations =
                 serializedObject.FindProperty("sessionCameraPresentations");
             _persistentContent =
@@ -450,6 +453,15 @@ namespace Immersive.Framework.Editor.Authoring
         private void DrawCamera()
         {
             DrawSection("Camera");
+
+            EditorGUILayout.PropertyField(
+                _sessionCameraAssignments,
+                new GUIContent(
+                    "Session Camera Assignments",
+                    "New Session-scoped targetless Fixed camera configuration. Each mapped Output receives one independent runtime Occurrence at Session startup."),
+                true);
+
+            EditorGUILayout.Space(4f);
 
             EditorGUILayout.HelpBox(
                 "Legacy CAMERA-032-D/E authoring: GameApplication stores Output prefabs and Player Slot -> Output/Presentation bindings consumed by the old runtime. CAMERA-038-D/J will replace these fields with Camera Assignments. Persistent Content no longer supplies Camera Outputs.",

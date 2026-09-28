@@ -219,6 +219,74 @@ namespace Immersive.Framework.Camera
                 $"Camera output applied normal occurrence rig. camera='{targetCamera.name}' output='{_binding.OutputId}'.");
         }
 
+        internal CameraOccurrenceOutputResult ApplySessionOccurrence(CameraRigComposer composer)
+        {
+            if (composer == null || composer.CinemachineCamera == null)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _appliedCamera,
+                    "A Session Camera Occurrence requires a materialized CameraRigComposer and CinemachineCamera.");
+            }
+
+            CinemachineCamera targetCamera = composer.CinemachineCamera;
+            if (!targetCamera.gameObject.scene.IsValid() ||
+                targetCamera.OutputChannel != _binding.Brain.ChannelMask)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _appliedCamera,
+                    $"Session Camera Occurrence '{targetCamera.name}' must be in a loaded Scene and use Output channel '{_binding.Brain.ChannelMask}'.");
+            }
+
+            if (HasAppliedNormalOccurrence && _appliedCamera == targetCamera && targetCamera.enabled)
+            {
+                return CameraOccurrenceOutputResult.Preserved(targetCamera);
+            }
+
+            CinemachineCamera previous = _appliedCamera;
+            RestoreOutputBlendPolicy();
+            if (previous != null && previous != targetCamera) previous.enabled = false;
+            targetCamera.enabled = true;
+            _hasAppliedRequest = false;
+            _hasAppliedFallback = false;
+            _appliedRequestId = default;
+            _appliedCamera = targetCamera;
+            return CameraOccurrenceOutputResult.Applied(previous, targetCamera);
+        }
+
+        internal CameraOccurrenceOutputResult ApplyFallbackCoverage(CameraRigComposer composer)
+        {
+            if (composer == null || composer.CinemachineCamera == null)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _appliedCamera,
+                    "Fallback coverage requires a materialized Fallback Camera Composer and CinemachineCamera.");
+            }
+
+            CinemachineCamera targetCamera = composer.CinemachineCamera;
+            if (!targetCamera.gameObject.scene.IsValid() ||
+                targetCamera.OutputChannel != _binding.Brain.ChannelMask)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _appliedCamera,
+                    $"Fallback Camera '{targetCamera.name}' must be in a loaded Scene and use Output channel '{_binding.Brain.ChannelMask}'.");
+            }
+
+            if (_hasAppliedFallback && _appliedCamera == targetCamera && targetCamera.enabled)
+            {
+                return CameraOccurrenceOutputResult.Preserved(targetCamera);
+            }
+
+            CinemachineCamera previous = _appliedCamera;
+            RestoreOutputBlendPolicy();
+            if (previous != null && previous != targetCamera) previous.enabled = false;
+            targetCamera.enabled = true;
+            _hasAppliedRequest = false;
+            _hasAppliedFallback = true;
+            _appliedRequestId = default;
+            _appliedCamera = targetCamera;
+            return CameraOccurrenceOutputResult.Applied(previous, targetCamera);
+        }
+
         private CameraOutputApplyResult ApplyWinner(CameraRequest winner)
         {
             if (!winner.IsValid)

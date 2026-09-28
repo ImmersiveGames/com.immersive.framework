@@ -66,6 +66,17 @@ namespace Immersive.Framework.Camera
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;
 
+        internal void SetPlayerPhysicalParticipation(bool participating)
+        {
+            if (unityCamera == null ||
+                (_session != null && _session.OutputState.HasActiveAssignment))
+            {
+                return;
+            }
+
+            unityCamera.enabled = participating;
+        }
+
         private void Awake()
         {
             if (initializeOnAwake)
