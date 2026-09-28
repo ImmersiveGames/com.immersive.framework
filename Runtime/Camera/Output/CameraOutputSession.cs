@@ -238,6 +238,50 @@ namespace Immersive.Framework.Camera
             return applyResult;
         }
 
+        internal CameraOccurrenceOutputResult RemoveIndividualOccurrence(
+            CameraOccurrenceIdentity occurrence)
+        {
+            if (!_outputState.HasRetainedNormalOccurrence ||
+                _outputState.RetainedNormalOccurrence != occurrence)
+            {
+                return CameraOccurrenceOutputResult.Preserved(
+                    _application.AppliedCamera);
+            }
+
+            if (!occurrence.IsIndividual ||
+                occurrence.AssignmentId != _outputState.ActiveAssignmentId ||
+                occurrence.OutputId != OutputId)
+            {
+                return CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    "Only the exact active Individual occurrence can be removed from this Output.");
+            }
+
+            CameraOccurrenceOutputResult applyResult = _applicator != null
+                ? _applicator.ApplyFallbackCoverage(_fallbackRig.Composer)
+                : CameraOccurrenceOutputResult.Rejected(
+                    _application.AppliedCamera,
+                    "Removing an Individual occurrence requires the concrete Output applicator.");
+            if (!applyResult.Succeeded)
+            {
+                return applyResult;
+            }
+
+            if (!_outputState.TryRemoveIndividualOccurrence(occurrence, out string issue))
+            {
+                if (_presentedNormalRig.IsValid)
+                {
+                    _applicator.ApplyNormalOccurrence(_presentedNormalRig);
+                }
+                return CameraOccurrenceOutputResult.Rejected(
+                    applyResult.PreviousCamera,
+                    issue);
+            }
+
+            _presentedNormalRig = default;
+            return applyResult;
+        }
+
         internal bool ResetSessionAssignmentToFallback(out string issue)
         {
             CameraOccurrenceOutputResult applyResult = _applicator != null
@@ -317,6 +361,16 @@ namespace Immersive.Framework.Camera
                     : BlockedFallbackCoverage("camera.output-session.applicator.missing",
                         "Restoring a normal occurrence requires the concrete Output applicator.");
                 if (applyResult.Succeeded) _outputState.TryRestoreNormalOccurrence(out _);
+            }
+            else if (_outputState.HasActiveAssignment)
+            {
+                applyResult = _applicator != null
+                    ? _applicator.ApplyFallbackRig(_fallbackRig)
+                    : _application.Apply(_context, _fallbackRig, true);
+                if (applyResult.Succeeded)
+                {
+                    _outputState.TryCoverWithFallback(out _);
+                }
             }
             else
             {

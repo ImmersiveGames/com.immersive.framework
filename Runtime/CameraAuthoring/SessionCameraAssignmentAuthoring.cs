@@ -7,7 +7,25 @@ using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
-    /// <summary>Authoring for a Session-scoped Camera Assignment.</summary>
+    [Serializable]
+    public sealed class SessionCameraMemberOutputAuthoring
+    {
+        [SerializeField] private PlayerSlotProfile playerSlotProfile;
+        [SerializeField] private CameraOutputDefinition outputDefinition;
+
+        public PlayerSlotProfile PlayerSlotProfile => playerSlotProfile;
+        public CameraOutputDefinition OutputDefinition => outputDefinition;
+
+        public void Configure(
+            PlayerSlotProfile slotProfile,
+            CameraOutputDefinition cameraOutput)
+        {
+            playerSlotProfile = slotProfile;
+            outputDefinition = cameraOutput;
+        }
+    }
+
+    /// <summary>Authoring for a Session Camera Assignment.</summary>
     [Serializable]
     public sealed class SessionCameraAssignmentAuthoring
     {
@@ -18,6 +36,7 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private CameraTargetPolicy targetPolicy = CameraTargetPolicy.NoSubject;
         [SerializeField] private List<PlayerSlotProfile> memberSlots = new List<PlayerSlotProfile>();
         [SerializeField] private List<CameraOutputDefinition> outputDefinitions = new List<CameraOutputDefinition>();
+        [SerializeField] private List<SessionCameraMemberOutputAuthoring> individualMemberOutputMappings = new List<SessionCameraMemberOutputAuthoring>();
 
         public SessionCameraAssignmentId AssignmentId => new SessionCameraAssignmentId(assignmentId);
         public CameraDefinition Definition => definition;
@@ -40,13 +59,14 @@ namespace Immersive.Framework.CameraAuthoring
             }
 
             if ((occurrenceMode != CameraOccurrenceMode.SessionScoped &&
-                 occurrenceMode != CameraOccurrenceMode.SharedGroup) ||
+                 occurrenceMode != CameraOccurrenceMode.SharedGroup &&
+                 occurrenceMode != CameraOccurrenceMode.IndividualPerPlayer) ||
                 (membershipPolicy != CameraMembershipPolicy.None &&
                  membershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots) ||
                 (targetPolicy != CameraTargetPolicy.NoSubject &&
                  targetPolicy != CameraTargetPolicy.MemberActorTargets))
             {
-                issue = "This Session Camera cut supports Session or Shared Assignments with no membership or explicit Player Slot membership, and no-Subject or member-Actor targets.";
+                issue = "This Session Camera cut supports Session, Shared or Individual Assignments with no membership or explicit Player Slot membership, and no-Subject or member-Actor targets.";
                 return false;
             }
 
@@ -90,6 +110,57 @@ namespace Immersive.Framework.CameraAuthoring
                 mappings[index] = new CameraOutputMapping(output.OutputId);
             }
 
+            var authoredMemberOutputs = new List<CameraPlayerOutputMapping>(
+                individualMemberOutputMappings != null
+                    ? individualMemberOutputMappings.Count
+                    : 0);
+            if (individualMemberOutputMappings != null)
+            {
+                for (int index = 0; index < individualMemberOutputMappings.Count; index++)
+                {
+                    SessionCameraMemberOutputAuthoring memberOutput =
+                        individualMemberOutputMappings[index];
+                    if (memberOutput == null || memberOutput.PlayerSlotProfile == null ||
+                        memberOutput.OutputDefinition == null ||
+                        !memberOutput.OutputDefinition.HasValidId)
+                    {
+                        issue = $"Individual Session Camera Assignment '{AssignmentId}' has an incomplete Player Slot to Output mapping at index '{index}'.";
+                        return false;
+                    }
+
+                    if (!memberOutput.PlayerSlotProfile.TryGetPlayerSlotId(
+                            out PlayerSlotId playerSlotId,
+                            out issue))
+                    {
+                        issue = $"Individual Session Camera Assignment '{AssignmentId}' has an invalid Player Slot at mapping index '{index}'. {issue}";
+                        return false;
+                    }
+
+                    bool outputBelongsToAssignment = false;
+                    for (int outputIndex = 0;
+                         outputIndex < authoredOutputs.Count;
+                         outputIndex++)
+                    {
+                        if (ReferenceEquals(
+                                authoredOutputs[outputIndex],
+                                memberOutput.OutputDefinition))
+                        {
+                            outputBelongsToAssignment = true;
+                            break;
+                        }
+                    }
+                    if (!outputBelongsToAssignment)
+                    {
+                        issue = $"Individual Session Camera Assignment '{AssignmentId}' maps Player Slot '{playerSlotId.StableText}' to an Output that is not explicitly listed by the Assignment.";
+                        return false;
+                    }
+
+                    authoredMemberOutputs.Add(new CameraPlayerOutputMapping(
+                        playerSlotId,
+                        memberOutput.OutputDefinition.OutputId));
+                }
+            }
+
             assignment = new SessionCameraAssignment(
                 AssignmentId,
                 definition.DefinitionId,
@@ -97,7 +168,8 @@ namespace Immersive.Framework.CameraAuthoring
                 membershipPolicy,
                 targetPolicy,
                 mappings,
-                authoredMemberSlots);
+                authoredMemberSlots,
+                authoredMemberOutputs);
             if (!assignment.TryValidate(out issue))
             {
                 assignment = null;

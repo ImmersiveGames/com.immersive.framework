@@ -153,6 +153,26 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
+        internal bool TryRemoveIndividualOccurrence(
+            CameraOccurrenceIdentity occurrence,
+            out string issue)
+        {
+            if (_activeOccurrenceMode != CameraOccurrenceMode.IndividualPerPlayer ||
+                !_normalOccurrence.IsIndividual ||
+                _normalOccurrence != occurrence ||
+                occurrence.AssignmentId != _activeAssignmentId ||
+                occurrence.OutputId != _outputId)
+            {
+                issue = "Only the exact currently retained Individual occurrence can be removed from this Output.";
+                return false;
+            }
+
+            _normalOccurrence = default;
+            IsFallbackCovering = true;
+            issue = string.Empty;
+            return true;
+        }
+
         private bool TryValidateMode(CameraOccurrenceIdentity occurrence, out string issue)
         {
             bool requiresPlayerOccurrence = _activeOccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer;

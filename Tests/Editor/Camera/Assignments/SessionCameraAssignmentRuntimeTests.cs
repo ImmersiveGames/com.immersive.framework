@@ -233,6 +233,190 @@ namespace Immersive.Framework.Camera.Tests
 
             Assert.That(sceneProvided, Is.EqualTo(managerProvisioned));
             Assert.That(rejoined, Is.Not.EqualTo(sceneProvided));
+
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                sceneProvided,
+                PlayerSlotId.Player1,
+                default,
+                out string issue), Is.True, issue);
+            Assert.That(runtime.Occurrences.Single().Identity.PlayerOccurrenceId,
+                Is.EqualTo(managerProvisioned));
+        }
+
+        [Test]
+        public void IndividualPlayerJoinCreatesOnlyItsMappedOccurrence()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            PlayerOccurrenceId playerOne = PlayerOccurrenceId.Create(
+                "session.individual",
+                1,
+                PlayerSlotId.Player1);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                playerOne,
+                PlayerSlotId.Player1,
+                default,
+                out string issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0].Identity, Is.EqualTo(
+                CameraOccurrenceIdentity.ForIndividual(
+                    fixture.AssignmentId,
+                    playerOne,
+                    fixture.OutputDefinitions[0].OutputId)));
+            Assert.That(fixture.Outputs[0].Session.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(runtime.Occurrences[0].Identity));
+            Assert.That(fixture.Outputs[1].Session.OutputState.IsFallbackCovering, Is.True);
+        }
+
+        [Test]
+        public void IndividualPlayersHaveIndependentOccurrencesAndDefinitionState()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            PlayerOccurrenceId playerOne = PlayerOccurrenceId.Create(
+                "session.individual",
+                1,
+                PlayerSlotId.Player1);
+            PlayerOccurrenceId playerTwo = PlayerOccurrenceId.Create(
+                "session.individual",
+                2,
+                PlayerSlotId.Player2);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                playerOne, PlayerSlotId.Player1, default, out string firstIssue), Is.True, firstIssue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                playerTwo, PlayerSlotId.Player2, default, out string secondIssue), Is.True, secondIssue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            SessionCameraOccurrence first = runtime.Occurrences.Single(item =>
+                item.Identity.PlayerOccurrenceId == playerOne);
+            SessionCameraOccurrence second = runtime.Occurrences.Single(item =>
+                item.Identity.PlayerOccurrenceId == playerTwo);
+            Assert.That(first.Identity, Is.Not.EqualTo(second.Identity));
+            Assert.That(first.Definition, Is.SameAs(second.Definition));
+            Assert.That(first.Composer, Is.Not.SameAs(second.Composer));
+            Assert.That(first.Root, Is.Not.SameAs(second.Root));
+
+            first.Composer.CinemachineCamera.enabled = false;
+            Assert.That(second.Composer.CinemachineCamera.enabled, Is.True);
+        }
+
+        [Test]
+        public void IndividualLeaveAndRejoinAffectOnlyExactPlayerOccurrence()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            PlayerOccurrenceId playerOne = PlayerOccurrenceId.Create(
+                "session.individual",
+                1,
+                PlayerSlotId.Player1);
+            PlayerOccurrenceId playerTwo = PlayerOccurrenceId.Create(
+                "session.individual",
+                2,
+                PlayerSlotId.Player2);
+            runtime.ReconcilePlayerOccurrence(playerOne, PlayerSlotId.Player1, default, out _);
+            runtime.ReconcilePlayerOccurrence(playerTwo, PlayerSlotId.Player2, default, out _);
+            SessionCameraOccurrence playerTwoOccurrence = runtime.Occurrences.Single(item =>
+                item.Identity.PlayerOccurrenceId == playerTwo);
+
+            Assert.That(runtime.RemovePlayerOccurrence(playerOne, out string leaveIssue), Is.True, leaveIssue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(playerTwoOccurrence));
+            Assert.That(fixture.Outputs[0].Session.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(fixture.Outputs[0].Session.OutputState.HasActiveAssignment, Is.True);
+            Assert.That(fixture.Outputs[1].Session.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(playerTwoOccurrence.Identity));
+
+            PlayerOccurrenceId rejoinedPlayerOne = PlayerOccurrenceId.Create(
+                "session.individual",
+                3,
+                PlayerSlotId.Player1);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                rejoinedPlayerOne, PlayerSlotId.Player1, default, out string joinIssue), Is.True, joinIssue);
+            SessionCameraOccurrence rejoinedOccurrence = runtime.Occurrences.Single(item =>
+                item.Identity.PlayerOccurrenceId == rejoinedPlayerOne);
+            Assert.That(rejoinedOccurrence.Identity, Is.Not.EqualTo(playerTwoOccurrence.Identity));
+            Assert.That(rejoinedOccurrence.Identity.PlayerOccurrenceId, Is.EqualTo(rejoinedPlayerOne));
+        }
+
+        [Test]
+        public void IndividualActorReplacementAndMissingActorPreserveOccurrenceLifetime()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.MemberActorTargets);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            PlayerOccurrenceId player = PlayerOccurrenceId.Create(
+                "session.individual",
+                1,
+                PlayerSlotId.Player1);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, default, out string initialIssue), Is.True, initialIssue);
+            SessionCameraOccurrence occurrence = runtime.Occurrences.Single();
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+            Assert.That(occurrence.IsReadyForOutput, Is.False);
+            Assert.That(fixture.Outputs[0].Session.OutputState.IsFallbackCovering, Is.True);
+
+            var firstActor = new GameObject("First Current Actor");
+            var replacementActor = new GameObject("Replacement Current Actor");
+            _created.Add(firstActor);
+            _created.Add(replacementActor);
+            var firstSubject = new CameraSubject(
+                new CameraSubjectId("subject.individual.first"),
+                firstActor.transform,
+                "first actor");
+            var replacementSubject = new CameraSubject(
+                new CameraSubjectId("subject.individual.replacement"),
+                replacementActor.transform,
+                "replacement actor");
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, firstSubject, out string actorIssue), Is.True, actorIssue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, replacementSubject, out string replaceIssue), Is.True, replaceIssue);
+
+            Assert.That(runtime.Occurrences.Single(), Is.SameAs(occurrence));
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
+            Assert.That(occurrence.Members.Single().Subject.SubjectId,
+                Is.EqualTo(replacementSubject.SubjectId));
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow,
+                Is.EqualTo(replacementActor.transform));
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, default, out string missingActorIssue),
+                Is.True, missingActorIssue);
+            Assert.That(runtime.Occurrences.Single(), Is.SameAs(occurrence));
+            Assert.That(occurrence.Members.Single().HasSubject, Is.False);
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
+        }
+
+        [Test]
+        public void FailedIndividualMaterializationLeavesNoOccurrenceOrOutputStatePartial()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            CameraRigComposer prefabComposer = fixture.Definition.RigPrefab
+                .GetComponentInChildren<CameraRigComposer>(true);
+            Object.DestroyImmediate(prefabComposer);
+            PlayerOccurrenceId player = PlayerOccurrenceId.Create(
+                "session.individual",
+                1,
+                PlayerSlotId.Player1);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player,
+                PlayerSlotId.Player1,
+                default,
+                out string issue), Is.False);
+
+            Assert.That(runtime.Occurrences, Is.Empty);
+            Assert.That(fixture.Outputs[0].Session.OutputState.HasActiveAssignment, Is.True);
+            Assert.That(fixture.Outputs[0].Session.OutputState.HasRetainedNormalOccurrence, Is.False);
+            Assert.That(fixture.Outputs[0].Session.OutputState.IsFallbackCovering, Is.True);
         }
 
         private SessionCameraOccurrence CreateMembershipOccurrence(
@@ -260,6 +444,69 @@ namespace Immersive.Framework.Camera.Tests
                 root,
                 null,
                 null);
+        }
+
+        private SessionCameraAssignmentRuntime CreateIndividualRuntime(Fixture fixture)
+        {
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments,
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.True, issue);
+            _runtimes.Add(runtime);
+            Assert.That(runtime.Occurrences, Is.Empty);
+            for (int index = 0; index < fixture.Outputs.Length; index++)
+            {
+                Assert.That(fixture.Outputs[index].Session.OutputState.HasActiveAssignment, Is.True);
+                Assert.That(fixture.Outputs[index].Session.OutputState.HasRetainedNormalOccurrence, Is.False);
+                Assert.That(fixture.Outputs[index].Session.OutputState.IsFallbackCovering, Is.True);
+            }
+            return runtime;
+        }
+
+        private Fixture CreateIndividualFixture(CameraTargetPolicy targetPolicy)
+        {
+            Fixture fixture = CreateFixture(2, targetPolicy);
+            SessionCameraAssignmentAuthoring assignment = fixture.Assignments[0];
+            SetField(assignment, "occurrenceMode", CameraOccurrenceMode.IndividualPerPlayer);
+            SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
+            SetField(assignment, "outputDefinitions",
+                new List<CameraOutputDefinition>(fixture.OutputDefinitions));
+            SetField(assignment, "memberSlots", new List<PlayerSlotProfile>
+            {
+                CreatePlayerSlotProfile("player.1", "Player One"),
+                CreatePlayerSlotProfile("player.2", "Player Two")
+            });
+            if (targetPolicy == CameraTargetPolicy.MemberActorTargets)
+            {
+                var followBehavior = ScriptableObject.CreateInstance<FollowCameraRigBehaviorDefinition>();
+                _created.Add(followBehavior);
+                SetField(fixture.Definition.RigPrefab.GetComponent<CameraRigComposer>(),
+                    "behaviorDefinition", followBehavior);
+            }
+
+            var mappings = new List<SessionCameraMemberOutputAuthoring>();
+            for (int index = 0; index < 2; index++)
+            {
+                PlayerSlotProfile profile = CreatePlayerSlotProfile(
+                    index == 0 ? "player.1" : "player.2",
+                    index == 0 ? "Player One Mapping" : "Player Two Mapping");
+                var mapping = new SessionCameraMemberOutputAuthoring();
+                mapping.Configure(profile, fixture.OutputDefinitions[index]);
+                mappings.Add(mapping);
+            }
+            SetField(assignment, "individualMemberOutputMappings", mappings);
+            return fixture;
+        }
+
+        private PlayerSlotProfile CreatePlayerSlotProfile(string slotId, string name)
+        {
+            var profile = ScriptableObject.CreateInstance<PlayerSlotProfile>();
+            profile.name = name;
+            _created.Add(profile);
+            SetField(profile, "playerSlotId", slotId);
+            return profile;
         }
 
         private Fixture CreateFixture(int outputCount, CameraTargetPolicy targetPolicy, bool twoAssignments = false)
@@ -318,7 +565,7 @@ namespace Immersive.Framework.Camera.Tests
                 assignments.Add(assignment);
             }
 
-            return new Fixture(root, topology, outputs, outputDefinitions, assignments,
+            return new Fixture(root, topology, outputs, outputDefinitions, definition, assignments,
                 new SessionCameraAssignmentId("assignment.0"));
         }
 
@@ -344,12 +591,14 @@ namespace Immersive.Framework.Camera.Tests
         {
             internal Fixture(GameObject root, CameraOutputSessionTopology topology,
                 CameraOutputAuthoring[] outputs, CameraOutputDefinition[] outputDefinitions,
-                List<SessionCameraAssignmentAuthoring> assignments, SessionCameraAssignmentId assignmentId)
+                CameraDefinition definition, List<SessionCameraAssignmentAuthoring> assignments,
+                SessionCameraAssignmentId assignmentId)
             {
                 Root = root;
                 Topology = topology;
                 Outputs = outputs;
                 OutputDefinitions = outputDefinitions;
+                Definition = definition;
                 Assignments = assignments;
                 AssignmentId = assignmentId;
             }
@@ -358,6 +607,7 @@ namespace Immersive.Framework.Camera.Tests
             internal CameraOutputSessionTopology Topology { get; }
             internal CameraOutputAuthoring[] Outputs { get; }
             internal CameraOutputDefinition[] OutputDefinitions { get; }
+            internal CameraDefinition Definition { get; }
             internal List<SessionCameraAssignmentAuthoring> Assignments { get; }
             internal SessionCameraAssignmentId AssignmentId { get; }
         }

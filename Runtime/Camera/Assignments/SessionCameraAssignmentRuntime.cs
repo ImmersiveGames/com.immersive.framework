@@ -42,6 +42,21 @@ namespace Immersive.Framework.Camera
         internal CameraRigComposer Composer { get; }
         internal CameraOutputAuthoring Output { get; }
         internal string SubjectDiagnostic { get; private set; } = string.Empty;
+        internal bool IsReadyForOutput
+        {
+            get
+            {
+                if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets)
+                {
+                    return true;
+                }
+
+                bool targetRequired =
+                    Composer?.EffectiveFollowRequirement == CameraTargetRequirement.Required ||
+                    Composer?.EffectiveLookAtRequirement == CameraTargetRequirement.Required;
+                return !targetRequired || ResolvedSubjects.Count == 1;
+            }
+        }
         internal IReadOnlyList<SessionCameraMemberState> Members =>
             new List<SessionCameraMemberState>(_members.Values).AsReadOnly();
         internal IReadOnlyList<SessionCameraMemberState> ResolvedSubjects
@@ -198,20 +213,84 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Session-scoped Session Camera Assignment materialization, membership and teardown.")]
     internal sealed class SessionCameraAssignmentRuntime : IDisposable
     {
-        private readonly SessionCameraOccurrence[] _occurrences;
-        private bool _disposed;
-
-        private SessionCameraAssignmentRuntime(SessionCameraOccurrence[] occurrences)
+        private sealed class IndividualAssignmentRuntime
         {
-            _occurrences = occurrences ?? Array.Empty<SessionCameraOccurrence>();
+            internal IndividualAssignmentRuntime(
+                SessionCameraAssignment assignment,
+                CameraDefinition definition,
+                Dictionary<PlayerSlotId, CameraOutputAuthoring> outputsBySlot)
+            {
+                Assignment = assignment;
+                Definition = definition;
+                OutputsBySlot = outputsBySlot;
+            }
+
+            internal SessionCameraAssignment Assignment { get; }
+            internal CameraDefinition Definition { get; }
+            internal Dictionary<PlayerSlotId, CameraOutputAuthoring> OutputsBySlot { get; }
         }
 
-        internal IReadOnlyList<SessionCameraOccurrence> Occurrences => Array.AsReadOnly(_occurrences);
+        private readonly List<SessionCameraOccurrence> _occurrences;
+        private readonly List<CameraOutputAuthoring> _activeOutputs;
+        private readonly List<IndividualAssignmentRuntime> _individualAssignments;
+        private readonly Transform _sessionParent;
+        private bool _disposed;
+
+        private SessionCameraAssignmentRuntime(
+            IReadOnlyList<SessionCameraOccurrence> occurrences,
+            IReadOnlyList<CameraOutputAuthoring> activeOutputs,
+            IReadOnlyList<IndividualAssignmentRuntime> individualAssignments,
+            Transform sessionParent)
+        {
+            _occurrences = occurrences != null
+                ? new List<SessionCameraOccurrence>(occurrences)
+                : new List<SessionCameraOccurrence>();
+            _activeOutputs = activeOutputs != null
+                ? new List<CameraOutputAuthoring>(activeOutputs)
+                : new List<CameraOutputAuthoring>();
+            _individualAssignments = individualAssignments != null
+                ? new List<IndividualAssignmentRuntime>(individualAssignments)
+                : new List<IndividualAssignmentRuntime>();
+            _sessionParent = sessionParent;
+        }
+
+        internal IReadOnlyList<SessionCameraOccurrence> Occurrences => _occurrences.AsReadOnly();
+        internal IReadOnlyList<SessionCameraAssignment> MembershipAssignments
+        {
+            get
+            {
+                var assignments = new List<SessionCameraAssignment>();
+                var seen = new HashSet<SessionCameraAssignmentId>();
+                for (int index = 0; index < _occurrences.Count; index++)
+                {
+                    SessionCameraAssignment assignment = _occurrences[index].Assignment;
+                    if (assignment.MembershipPolicy == CameraMembershipPolicy.ExplicitPlayerSlots &&
+                        seen.Add(assignment.Id))
+                    {
+                        assignments.Add(assignment);
+                    }
+                }
+                for (int index = 0; index < _individualAssignments.Count; index++)
+                {
+                    SessionCameraAssignment assignment = _individualAssignments[index].Assignment;
+                    if (seen.Add(assignment.Id))
+                    {
+                        assignments.Add(assignment);
+                    }
+                }
+                return assignments.AsReadOnly();
+            }
+        }
         internal bool RequiresPlayerMembership
         {
             get
             {
-                for (int index = 0; index < _occurrences.Length; index++)
+                if (_individualAssignments.Count > 0)
+                {
+                    return true;
+                }
+
+                for (int index = 0; index < _occurrences.Count; index++)
                 {
                     if (_occurrences[index].Assignment.MembershipPolicy ==
                             CameraMembershipPolicy.ExplicitPlayerSlots &&
@@ -222,6 +301,338 @@ namespace Immersive.Framework.Camera
                 }
                 return false;
             }
+        }
+
+        internal bool ReconcilePlayerOccurrence(
+            PlayerOccurrenceId playerOccurrenceId,
+            PlayerSlotId playerSlotId,
+            CameraSubject subject,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_disposed || !playerOccurrenceId.IsValid || !playerSlotId.IsValid)
+            {
+                issue = "Individual Camera membership requires an active Assignment runtime and exact current Player occurrence and Slot identities.";
+                return false;
+            }
+
+            var candidates = new List<SessionCameraOccurrence>();
+            var presentedCandidates = new List<SessionCameraOccurrence>();
+            GameObject stagingRoot = null;
+            try
+            {
+                for (int index = 0; index < _individualAssignments.Count; index++)
+                {
+                    IndividualAssignmentRuntime individual = _individualAssignments[index];
+                    if (!individual.OutputsBySlot.TryGetValue(
+                            playerSlotId,
+                            out CameraOutputAuthoring output))
+                    {
+                        continue;
+                    }
+
+                    CameraOccurrenceIdentity identity = CameraOccurrenceIdentity.ForIndividual(
+                        individual.Assignment.Id,
+                        playerOccurrenceId,
+                        output.OutputDefinition.OutputId);
+                    if (FindOccurrence(identity) != null)
+                    {
+                        continue;
+                    }
+
+                    if (stagingRoot == null)
+                    {
+                        stagingRoot = new GameObject("[Individual Camera Occurrence] Staging");
+                        stagingRoot.SetActive(false);
+                        stagingRoot.transform.SetParent(_sessionParent, false);
+                    }
+
+                    if (!TryMaterializeIndividualOccurrence(
+                            individual,
+                            output,
+                            identity,
+                            stagingRoot.transform,
+                            out SessionCameraOccurrence candidate,
+                            out issue))
+                    {
+                        DestroyOccurrences(candidates);
+                        return false;
+                    }
+                    candidates.Add(candidate);
+                }
+
+                for (int index = 0; index < candidates.Count; index++)
+                {
+                    SessionCameraOccurrence candidate = candidates[index];
+                    if (!candidate.ReconcileMember(
+                            playerOccurrenceId,
+                            playerSlotId,
+                            subject))
+                    {
+                        issue = $"Individual Camera Occurrence '{candidate.Identity}' rejected its exact Player membership.";
+                        ReleaseCandidateCoverage(candidates);
+                        DestroyOccurrences(candidates);
+                        return false;
+                    }
+                }
+
+                for (int index = 0; index < candidates.Count; index++)
+                {
+                    SessionCameraOccurrence candidate = candidates[index];
+                    candidate.Root.transform.SetParent(_sessionParent, false);
+                    candidate.Root.SetActive(true);
+                    if (!candidate.IsReadyForOutput)
+                    {
+                        continue;
+                    }
+
+                    CameraOccurrenceOutputResult presentation =
+                        candidate.Output.Session.PresentNormalOccurrence(
+                            candidate.Identity,
+                            candidate.Composer);
+                    if (!presentation.Succeeded)
+                    {
+                        issue = $"Individual Camera Occurrence '{candidate.Identity}' could not be applied. {presentation.Diagnostic}";
+                        for (int presentedIndex = presentedCandidates.Count - 1;
+                             presentedIndex >= 0;
+                             presentedIndex--)
+                        {
+                            SessionCameraOccurrence presented = presentedCandidates[presentedIndex];
+                            presented.Output.Session.RemoveIndividualOccurrence(presented.Identity);
+                        }
+                        ReleaseCandidateCoverage(candidates);
+                        DestroyOccurrences(candidates);
+                        return false;
+                    }
+                    presentedCandidates.Add(candidate);
+                }
+
+                if (stagingRoot != null)
+                {
+                    DestroyObject(stagingRoot);
+                    stagingRoot = null;
+                }
+                for (int index = 0; index < _occurrences.Count; index++)
+                {
+                    SessionCameraOccurrence occurrence = _occurrences[index];
+                    if (occurrence.Identity.IsIndividual &&
+                        occurrence.Identity.PlayerOccurrenceId != playerOccurrenceId)
+                    {
+                        continue;
+                    }
+                    if (!occurrence.Identity.IsIndividual &&
+                        (occurrence.Assignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer ||
+                         occurrence.Assignment.MembershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots))
+                    {
+                        continue;
+                    }
+                    if (!IsConfiguredMember(occurrence.Assignment, playerSlotId))
+                    {
+                        continue;
+                    }
+                    if (candidates.Contains(occurrence))
+                    {
+                        continue;
+                    }
+
+                    if (!occurrence.ReconcileMember(
+                            playerOccurrenceId,
+                            playerSlotId,
+                            subject))
+                    {
+                        issue = $"Session Camera Assignment '{occurrence.Assignment.Id}' rejected current Player membership '{playerOccurrenceId}'.";
+                        RollbackPlayerCandidates(candidates, presentedCandidates);
+                        return false;
+                    }
+
+                    if (occurrence.IsReadyForOutput &&
+                        (!occurrence.Output.Session.OutputState.HasRetainedNormalOccurrence ||
+                         occurrence.Output.Session.OutputState.RetainedNormalOccurrence != occurrence.Identity))
+                    {
+                        CameraOccurrenceOutputResult presentation =
+                            occurrence.Output.Session.PresentNormalOccurrence(
+                                occurrence.Identity,
+                                occurrence.Composer);
+                        if (!presentation.Succeeded)
+                        {
+                            issue = $"Camera Occurrence '{occurrence.Identity}' could not be applied after membership reconciliation. {presentation.Diagnostic}";
+                            RollbackPlayerCandidates(candidates, presentedCandidates);
+                            return false;
+                        }
+                    }
+                }
+
+                _occurrences.AddRange(candidates);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                RollbackPlayerCandidates(candidates, presentedCandidates);
+                issue = $"Individual Camera membership reconciliation failed. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+            finally
+            {
+                if (stagingRoot != null)
+                {
+                    DestroyObject(stagingRoot);
+                }
+            }
+        }
+
+        internal bool RemovePlayerOccurrence(
+            PlayerOccurrenceId playerOccurrenceId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!playerOccurrenceId.IsValid)
+            {
+                issue = "Camera membership removal requires an exact Player occurrence identity.";
+                return false;
+            }
+
+            for (int index = _occurrences.Count - 1; index >= 0; index--)
+            {
+                SessionCameraOccurrence occurrence = _occurrences[index];
+                if (!occurrence.Identity.IsIndividual ||
+                    occurrence.Identity.PlayerOccurrenceId != playerOccurrenceId)
+                {
+                    occurrence.RemoveMember(playerOccurrenceId);
+                    continue;
+                }
+
+                occurrence.ReleaseSubjectFallbackCoverage();
+                CameraOccurrenceOutputResult removal =
+                    occurrence.Output.Session.RemoveIndividualOccurrence(occurrence.Identity);
+                if (!removal.Succeeded)
+                {
+                    issue = $"Individual Camera Occurrence '{occurrence.Identity}' could not be removed. {removal.Diagnostic}";
+                    return false;
+                }
+
+                DestroyObject(occurrence.Root);
+                _occurrences.RemoveAt(index);
+            }
+
+            return true;
+        }
+
+        private SessionCameraOccurrence FindOccurrence(CameraOccurrenceIdentity identity)
+        {
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                if (_occurrences[index].Identity == identity)
+                {
+                    return _occurrences[index];
+                }
+            }
+            return null;
+        }
+
+        private static bool IsConfiguredMember(
+            SessionCameraAssignment assignment,
+            PlayerSlotId playerSlotId)
+        {
+            for (int index = 0; index < assignment.MemberSlots.Count; index++)
+            {
+                if (assignment.MemberSlots[index] == playerSlotId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool TryMaterializeIndividualOccurrence(
+            IndividualAssignmentRuntime individual,
+            CameraOutputAuthoring output,
+            CameraOccurrenceIdentity identity,
+            Transform stagingParent,
+            out SessionCameraOccurrence occurrence,
+            out string issue)
+        {
+            occurrence = null;
+            GameObject instance = null;
+            try
+            {
+                instance = Object.Instantiate(
+                    individual.Definition.RigPrefab,
+                    stagingParent,
+                    false);
+                if (instance == null)
+                {
+                    issue = $"Camera Definition '{individual.Definition.name}' Rig Prefab instantiation returned null.";
+                    return false;
+                }
+                instance.SetActive(false);
+                instance.name = $"Individual Camera Occurrence [{identity}]";
+
+                CameraRigComposer[] composers =
+                    instance.GetComponentsInChildren<CameraRigComposer>(true);
+                if (composers.Length != 1 || composers[0] == null)
+                {
+                    issue = $"Materialized Individual Camera Occurrence '{instance.name}' must contain exactly one CameraRigComposer.";
+                    DestroyObject(instance);
+                    return false;
+                }
+
+                CameraRigComposer composer = composers[0];
+                if (!composer.TryValidateForApply(out issue) ||
+                    composer.CinemachineCamera == null)
+                {
+                    issue = $"Materialized Individual Camera Occurrence '{instance.name}' is invalid. {issue}";
+                    DestroyObject(instance);
+                    return false;
+                }
+
+                OutputChannels outputChannel = output.CinemachineBrain.ChannelMask;
+                int channelMask = (int)outputChannel;
+                if (channelMask <= 0 || (channelMask & (channelMask - 1)) != 0)
+                {
+                    issue = $"Camera Output '{identity.OutputId}' must have one isolated Cinemachine channel before its Individual occurrence is materialized.";
+                    DestroyObject(instance);
+                    return false;
+                }
+                composer.CinemachineCamera.OutputChannel = outputChannel;
+                composer.CinemachineCamera.enabled = false;
+                occurrence = new SessionCameraOccurrence(
+                    individual.Assignment,
+                    individual.Definition,
+                    identity,
+                    instance,
+                    composer,
+                    output);
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                DestroyObject(instance);
+                issue = $"Individual Camera Occurrence '{identity}' materialization failed. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private static void ReleaseCandidateCoverage(
+            IReadOnlyList<SessionCameraOccurrence> candidates)
+        {
+            for (int index = candidates.Count - 1; index >= 0; index--)
+            {
+                candidates[index].ReleaseSubjectFallbackCoverage();
+            }
+        }
+
+        private static void RollbackPlayerCandidates(
+            IReadOnlyList<SessionCameraOccurrence> candidates,
+            IReadOnlyList<SessionCameraOccurrence> presentedCandidates)
+        {
+            for (int index = presentedCandidates.Count - 1; index >= 0; index--)
+            {
+                SessionCameraOccurrence presented = presentedCandidates[index];
+                presented.Output.Session.RemoveIndividualOccurrence(presented.Identity);
+            }
+            ReleaseCandidateCoverage(candidates);
+            DestroyOccurrences(candidates);
         }
 
         internal static bool TryCreate(
@@ -241,7 +652,11 @@ namespace Immersive.Framework.Camera
             authoredAssignments ??= Array.Empty<SessionCameraAssignmentAuthoring>();
             if (authoredAssignments.Count == 0)
             {
-                runtime = new SessionCameraAssignmentRuntime(Array.Empty<SessionCameraOccurrence>());
+                runtime = new SessionCameraAssignmentRuntime(
+                    Array.Empty<SessionCameraOccurrence>(),
+                    Array.Empty<CameraOutputAuthoring>(),
+                    Array.Empty<IndividualAssignmentRuntime>(),
+                    sessionParent);
                 issue = string.Empty;
                 return true;
             }
@@ -250,6 +665,7 @@ namespace Immersive.Framework.Camera
             var definitionsById = new Dictionary<CameraDefinitionId, CameraDefinition>();
             var assignmentIds = new HashSet<SessionCameraAssignmentId>();
             var usedOutputIds = new HashSet<CameraOutputId>();
+            var individualAssignments = new List<IndividualAssignmentRuntime>();
             int occurrenceCount = 0;
 
             for (int index = 0; index < authoredAssignments.Count; index++)
@@ -267,13 +683,14 @@ namespace Immersive.Framework.Camera
                 }
 
                 if ((assignment.OccurrenceMode != CameraOccurrenceMode.SessionScoped &&
-                     assignment.OccurrenceMode != CameraOccurrenceMode.SharedGroup) ||
+                     assignment.OccurrenceMode != CameraOccurrenceMode.SharedGroup &&
+                     assignment.OccurrenceMode != CameraOccurrenceMode.IndividualPerPlayer) ||
                     (assignment.MembershipPolicy != CameraMembershipPolicy.None &&
                      assignment.MembershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots) ||
                     (assignment.TargetPolicy != CameraTargetPolicy.NoSubject &&
                      assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets))
                 {
-                    issue = $"Session Camera Assignment '{assignment.Id}' is outside this cut's Session/Shared membership and target contract.";
+                    issue = $"Session Camera Assignment '{assignment.Id}' is outside this cut's Session/Shared/Individual membership and target contract.";
                     return false;
                 }
 
@@ -300,6 +717,7 @@ namespace Immersive.Framework.Camera
                 definitionsById[definitionId] = definition;
 
                 IReadOnlyList<CameraOutputDefinition> mappings = authored.OutputDefinitions;
+                var outputsBySlot = new Dictionary<PlayerSlotId, CameraOutputAuthoring>();
                 for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
                 {
                     CameraOutputDefinition outputDefinition = mappings[mappingIndex];
@@ -325,10 +743,35 @@ namespace Immersive.Framework.Camera
                     occurrenceCount++;
                 }
 
+                if (assignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+                {
+                    for (int memberOutputIndex = 0;
+                         memberOutputIndex < assignment.MemberOutputs.Count;
+                         memberOutputIndex++)
+                    {
+                        CameraPlayerOutputMapping memberOutput =
+                            assignment.MemberOutputs[memberOutputIndex];
+                        if (!outputs.TryGetOutput(
+                                memberOutput.OutputId,
+                                out CameraOutputAuthoring mappedOutput,
+                                out issue))
+                        {
+                            issue = $"Individual Camera Assignment '{assignment.Id}' has no exact configured Output for Player Slot '{memberOutput.PlayerSlotId.StableText}'. {issue}";
+                            return false;
+                        }
+                        outputsBySlot.Add(memberOutput.PlayerSlotId, mappedOutput);
+                    }
+                    individualAssignments.Add(new IndividualAssignmentRuntime(
+                        assignment,
+                        definition,
+                        outputsBySlot));
+                }
+
                 assignments.Add(assignment);
             }
 
             var candidates = new List<SessionCameraOccurrence>(occurrenceCount);
+            var activeOutputs = new List<CameraOutputAuthoring>(occurrenceCount);
             GameObject stagingRoot = null;
             try
             {
@@ -340,6 +783,10 @@ namespace Immersive.Framework.Camera
                 {
                     SessionCameraAssignmentAuthoring authored = authoredAssignments[index];
                     SessionCameraAssignment assignment = assignments[index];
+                    if (assignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+                    {
+                        continue;
+                    }
                     CameraDefinition definition = authored.Definition;
                     IReadOnlyList<CameraOutputDefinition> mappings = authored.OutputDefinitions;
                     for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
@@ -412,10 +859,11 @@ namespace Immersive.Framework.Camera
                     if (!occurrence.Output.Session.TrySetActiveAssignment(occurrence.Assignment, out issue))
                     {
                         issue = $"Session Camera Assignment '{occurrence.Assignment.Id}' could not become active on Output '{occurrence.Identity.OutputId}'. {issue}";
-                        Rollback(candidates);
+                        Rollback(activeOutputs);
                         DestroyOccurrences(candidates);
                         return false;
                     }
+                    activeOutputs.Add(occurrence.Output);
 
                     CameraOccurrenceOutputResult applyResult = occurrence.Output.Session.PresentNormalOccurrence(
                         occurrence.Identity,
@@ -423,21 +871,54 @@ namespace Immersive.Framework.Camera
                     if (!applyResult.Succeeded)
                     {
                         issue = $"Session Camera Occurrence '{occurrence.Identity}' could not be applied. {applyResult.Diagnostic}";
-                        Rollback(candidates);
+                        Rollback(activeOutputs);
                         DestroyOccurrences(candidates);
                         return false;
                     }
                 }
 
+                for (int assignmentIndex = 0;
+                     assignmentIndex < individualAssignments.Count;
+                     assignmentIndex++)
+                {
+                    IndividualAssignmentRuntime individual =
+                        individualAssignments[assignmentIndex];
+                    for (int outputIndex = 0;
+                         outputIndex < individual.Assignment.Outputs.Count;
+                         outputIndex++)
+                    {
+                        CameraOutputId outputId =
+                            individual.Assignment.Outputs[outputIndex].OutputId;
+                        if (!outputs.TryGetOutput(
+                                outputId,
+                                out CameraOutputAuthoring output,
+                                out issue) ||
+                            !output.Session.TrySetActiveAssignment(
+                                individual.Assignment,
+                                out issue))
+                        {
+                            issue = $"Individual Session Camera Assignment '{individual.Assignment.Id}' could not reserve Output '{outputId}'. {issue}";
+                            Rollback(activeOutputs);
+                            DestroyOccurrences(candidates);
+                            return false;
+                        }
+                        activeOutputs.Add(output);
+                    }
+                }
+
                 DestroyObject(stagingRoot);
                 stagingRoot = null;
-                runtime = new SessionCameraAssignmentRuntime(candidates.ToArray());
+                runtime = new SessionCameraAssignmentRuntime(
+                    candidates,
+                    activeOutputs,
+                    individualAssignments,
+                    sessionParent);
                 issue = string.Empty;
                 return true;
             }
             catch (Exception exception)
             {
-                Rollback(candidates);
+                Rollback(activeOutputs);
                 DestroyOccurrences(candidates);
                 issue = $"Session Camera Assignment startup failed. exception='{exception.GetType().Name}' message='{exception.Message}'.";
                 return false;
@@ -452,28 +933,35 @@ namespace Immersive.Framework.Camera
         {
             if (_disposed) return;
             _disposed = true;
-            for (int index = _occurrences.Length - 1; index >= 0; index--)
+            for (int index = _occurrences.Count - 1; index >= 0; index--)
             {
                 SessionCameraOccurrence occurrence = _occurrences[index];
-                if (occurrence.Output != null && occurrence.Output.Session != null)
+                occurrence.ReleaseSubjectFallbackCoverage();
+            }
+
+            for (int index = _activeOutputs.Count - 1; index >= 0; index--)
+            {
+                CameraOutputAuthoring output = _activeOutputs[index];
+                if (output != null && output.Session != null)
                 {
-                    occurrence.ReleaseSubjectFallbackCoverage();
-                    occurrence.Output.Session.ResetSessionAssignmentToFallback(out _);
+                    output.Session.ResetSessionAssignmentToFallback(out _);
                 }
-                DestroyObject(occurrence.Root);
+            }
+
+            for (int index = _occurrences.Count - 1; index >= 0; index--)
+            {
+                DestroyObject(_occurrences[index].Root);
             }
         }
 
-        private static void Rollback(IReadOnlyList<SessionCameraOccurrence> candidates)
+        private static void Rollback(IReadOnlyList<CameraOutputAuthoring> activeOutputs)
         {
-            for (int index = candidates.Count - 1; index >= 0; index--)
+            for (int index = activeOutputs.Count - 1; index >= 0; index--)
             {
-                SessionCameraOccurrence occurrence = candidates[index];
-                CameraOutputState state = occurrence.Output.Session.OutputState;
-                if (state.HasActiveAssignment &&
-                    state.ActiveAssignmentId == occurrence.Assignment.Id)
+                CameraOutputAuthoring output = activeOutputs[index];
+                if (output?.Session?.OutputState.HasActiveAssignment == true)
                 {
-                    occurrence.Output.Session.ResetSessionAssignmentToFallback(out _);
+                    output.Session.ResetSessionAssignmentToFallback(out _);
                 }
             }
         }
@@ -523,12 +1011,14 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
+            IReadOnlyList<SessionCameraAssignment> membershipAssignments =
+                assignments.MembershipAssignments;
             for (int occurrenceIndex = 0;
-                 occurrenceIndex < assignments.Occurrences.Count;
+                 occurrenceIndex < membershipAssignments.Count;
                  occurrenceIndex++)
             {
                 SessionCameraAssignment assignment =
-                    assignments.Occurrences[occurrenceIndex].Assignment;
+                    membershipAssignments[occurrenceIndex];
                 for (int memberIndex = 0;
                      memberIndex < assignment.MemberSlots.Count;
                      memberIndex++)
@@ -643,7 +1133,12 @@ namespace Immersive.Framework.Camera
             if (previousPlayerId.IsValid &&
                 (!currentSlot.IsJoined || currentSlot.PlayerOccurrenceId != previousPlayerId))
             {
-                RemoveMember(previousPlayerId);
+                if (!RemoveMember(previousPlayerId, out string removalIssue))
+                {
+                    LastReconciliationSucceeded = false;
+                    Diagnostic = removalIssue;
+                    return;
+                }
             }
 
             if (!currentSlot.IsJoined || !currentSlot.PlayerOccurrenceId.IsValid)
@@ -653,73 +1148,35 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
-            bool succeeded = true;
+            CameraSubject subject = default;
             string diagnostic = string.Empty;
-            for (int index = 0; index < _assignments.Occurrences.Count; index++)
+            bool actorEvidenceValid =
+                !_actors.TryGetCurrentActorOccurrence(
+                    playerSlotId,
+                    out PlayerPreparedActorOccurrence actor) ||
+                TryResolveSubject(actor, out subject, out diagnostic);
+            bool membershipSucceeded = _assignments.ReconcilePlayerOccurrence(
+                currentSlot.PlayerOccurrenceId,
+                playerSlotId,
+                subject,
+                out string membershipDiagnostic);
+            LastReconciliationSucceeded = actorEvidenceValid && membershipSucceeded;
+            Diagnostic = !actorEvidenceValid ? diagnostic : membershipDiagnostic;
+            if (!LastReconciliationSucceeded && string.IsNullOrEmpty(Diagnostic))
             {
-                SessionCameraOccurrence occurrence = _assignments.Occurrences[index];
-                if (occurrence.Assignment.MembershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots ||
-                    !IsConfiguredMember(occurrence.Assignment, playerSlotId))
-                {
-                    continue;
-                }
-
-                CameraSubject subject = default;
-                if (occurrence.Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
-                    _actors.TryGetCurrentActorOccurrence(playerSlotId, out PlayerPreparedActorOccurrence actor))
-                {
-                    if (!TryResolveSubject(actor, out subject, out string issue))
-                    {
-                        succeeded = false;
-                        diagnostic = issue;
-                    }
-                }
-
-                if (!occurrence.ReconcileMember(
-                        currentSlot.PlayerOccurrenceId,
-                        playerSlotId,
-                        subject))
-                {
-                    succeeded = false;
-                    diagnostic = $"Session Camera Assignment '{occurrence.Assignment.Id}' rejected current Player membership '{currentSlot.PlayerOccurrenceId}'.";
-                }
-                else if (!string.IsNullOrEmpty(occurrence.SubjectDiagnostic))
-                {
-                    succeeded = false;
-                    diagnostic = occurrence.SubjectDiagnostic;
-                }
+                Diagnostic = "Current Player Camera membership or Actor Subject reconciliation failed.";
             }
-
-            LastReconciliationSucceeded = succeeded;
-            Diagnostic = diagnostic;
         }
 
-        private void RemoveMember(PlayerOccurrenceId playerOccurrenceId)
+        private bool RemoveMember(PlayerOccurrenceId playerOccurrenceId, out string issue)
         {
-            for (int index = 0; index < _assignments.Occurrences.Count; index++)
-            {
-                _assignments.Occurrences[index].RemoveMember(playerOccurrenceId);
-            }
+            return _assignments.RemovePlayerOccurrence(playerOccurrenceId, out issue);
         }
 
         private void RecordFailure(PlayerSlotId playerSlotId, Exception exception)
         {
             LastReconciliationSucceeded = false;
             Diagnostic = $"Session Camera membership reconciliation failed for '{playerSlotId.StableText}'. {exception.GetType().Name}: {exception.Message}";
-        }
-
-        private static bool IsConfiguredMember(
-            SessionCameraAssignment assignment,
-            PlayerSlotId playerSlotId)
-        {
-            for (int index = 0; index < assignment.MemberSlots.Count; index++)
-            {
-                if (assignment.MemberSlots[index] == playerSlotId)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private static bool TryResolveSubject(
