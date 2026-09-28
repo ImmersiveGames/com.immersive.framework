@@ -18,7 +18,7 @@ namespace Immersive.Framework.Camera
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "CAMERA-032-C Route/Activity Camera Presentation lifecycle bridge. CAMERA-037-B/C/D persistent Route/Activity selection continuity and replacement.")]
+        "CAMERA-032-C Route/Activity Camera Presentation lifecycle bridge. CAMERA-037-B/C/D/E persistent Route/Activity selection continuity and replacement.")]
     internal sealed class CameraPresentationLifecycleRuntime : IDisposable
     {
         private readonly CameraPresentationMaterializationRuntime _materializer;
@@ -41,7 +41,7 @@ namespace Immersive.Framework.Camera
         // independent owners can each have a pending persistent selection at
         // the same time, e.g. a Route and its own Startup Activity, as long as
         // they do not target the same Output (see _pendingOutputOwners below).
-        // CAMERA-037-B/C/D reuse the exact same mechanism for both owner
+        // CAMERA-037-B/C/D/E reuse the exact same mechanism for both owner
         // kinds; there is no second winner/selection authority.
         private readonly Dictionary<Object, PendingSelectionEntry>
             _pendingSelectionsByOwner =
@@ -50,12 +50,9 @@ namespace Immersive.Framework.Camera
         // Tracks which owner currently has a pending (uncommitted) candidate
         // for a given Output, so a second owner targeting the SAME Output
         // while the first owner's candidate is still pending is rejected
-        // with a precise diagnostic. Resolving which of two owners should
-        // prevail when both declare a persistent selection for the very same
-        // Output in the same transition (e.g. a Route and its own Startup
-        // Activity both selecting the same Output) is not specified by
-        // IF-ADR-037 and is intentionally left unresolved here rather than
-        // guessed; it is a candidate for a future ADR/cut.
+        // with a precise diagnostic. IF-ADR-037 defines two different owners
+        // targeting the same Output while both selections are pending as an
+        // invalid composition; no precedence is inferred between them.
         private readonly Dictionary<CameraOutputId, Object> _pendingOutputOwners =
             new Dictionary<CameraOutputId, Object>();
 
@@ -382,8 +379,12 @@ namespace Immersive.Framework.Camera
                         out Object pendingOwner) &&
                     !ReferenceEquals(pendingOwner, owner))
                 {
+                    ResolvePersistentSelectionOwnerDiagnostic(
+                        pendingOwner,
+                        out string pendingOwnerKind,
+                        out string pendingOwnerName);
                     issue =
-                        $"Output '{outputId}' already has a pending Camera Presentation selection from another owner. Concurrent persistent selections for the same Output from two different owners (for example a Route and its own Startup Activity) in the same transition are not supported yet.";
+                        $"Output '{outputId}' has conflicting pending Camera Presentation selections from {pendingOwnerKind} '{pendingOwnerName}' and {ownerKind} '{ownerName}'. Two different owners cannot select the same Output while both selections are pending.";
                     return false;
                 }
 
@@ -576,6 +577,29 @@ namespace Immersive.Framework.Camera
 
             _pendingSelectionsByOwner[owner] = entry;
             return true;
+        }
+
+        private static void ResolvePersistentSelectionOwnerDiagnostic(
+            Object owner,
+            out string ownerKind,
+            out string ownerName)
+        {
+            if (owner is RouteAsset route)
+            {
+                ownerKind = "Route";
+                ownerName = route.RouteName;
+                return;
+            }
+
+            if (owner is ActivityAsset activity)
+            {
+                ownerKind = "Activity";
+                ownerName = activity.ActivityName;
+                return;
+            }
+
+            ownerKind = owner != null ? owner.GetType().Name : "Owner";
+            ownerName = owner != null ? owner.name : "<missing>";
         }
 
         private bool TryEnter(

@@ -1,6 +1,7 @@
 # IF-ADR-037 — Camera Presentation Selection Continuity Across Game Flow Scopes
 
-Status: **Proposed**  
+Status: **Accepted**
+Accepted: **2026-09-27**
 Date: **2026-09-27**  
 Type: architecture / Camera / Game Flow / lifecycle / ownership  
 Amends: **IF-ADR-032**
@@ -81,6 +82,25 @@ These intents are distinct:
 
 This ADR does not require a new public Explicit Default authoring API until a concrete consumer requires it. It only establishes that absence of declaration must not be interpreted as that intent.
 
+### 5.1 Nested pending selections
+
+A Route and its Startup Activity may each declare persistent Camera Presentation
+selections during the same Route transition.
+
+- selections for different `CameraOutputId` values may remain pending concurrently;
+- selections from two different owners for the same `CameraOutputId` while both
+  are pending are an invalid composition and must be rejected before either
+  lifecycle commit becomes irreversible;
+- rejection must preserve the first owner's pending candidate and ownership so
+  its caller can still commit or roll it back normally;
+- the rejected owner must leave no materialized candidate or admitted request;
+- `CameraOutputContext` does not resolve this authoring conflict through request
+  precedence. It remains the normal winner authority only for valid admitted
+  requests.
+
+This rule does not establish Route-over-Activity or Activity-over-Route
+precedence. No such precedence exists for same-Output nested pending selections.
+
 ## 6. Scoped Presentations remain valid
 
 IF-ADR-032 Session-, Route-, and Activity-owned Presentations remain valid.
@@ -129,6 +149,26 @@ Tests must prove identity and ownership, not only visual continuity:
 - replacement failure preserves the last valid effective Presentation.
 - explicit scope-owned contextual Presentations still release with their owner.
 - Output Default remains available when no normal effective Presentation exists or when explicitly selected by supported policy.
+
+## 10. CAMERA-037 implementation and closure
+
+The implementation uses one shared `CameraPresentationLifecycleRuntime`
+selection transaction for Route and Activity owners. Persistent selections are
+materialized in the active Session scope; contextual `cameraPresentations`
+remain owned by and released with their declaring Route or Activity scope.
+
+| Cut | Contract | Evidence |
+|---|---|---|
+| B | Route empty continuity | `EmptyIncomingRoutePreservesSameSessionOwnedSelectionOccurrence` |
+| C | Route replacement and rollback | `DifferentSelectionReplacesCurrentOnlyAfterIncomingBecomesWinner`; `FailedReplacementRestoresTheSameCurrentSelection` |
+| D | Activity entry and empty continuity | `ActivityEntersPersistentSelectionAndBecomesSessionOwnedWinner`; `EmptyIncomingActivityPreservesSameSessionOwnedSelectionOccurrence` |
+| E | Activity replacement and rollback | `DifferentActivitySelectionReplacesCurrentOnlyAfterIncomingBecomesWinner`; `FailedActivityReplacementRestoresTheSameCurrentSelection` |
+| F | nested pending composition rule | `StartupActivitySelectionForSamePendingRouteOutputIsRejectedWithoutResidualCandidate`; `StartupActivitySelectionForDifferentPendingRouteOutputIsAllowedAndRollsBackIndependently` |
+| B-E public integration | Route/Activity lifecycle, teardown and no normal-winner gap | `QA-NEW-004` |
+| IF-ADR-032 retained contracts | contextual scope ownership/release, Default and Session shutdown | accepted CAMERA-032 focused and aggregate validation records |
+
+CAMERA-037 is closed by cuts B-F. The closure does not add Explicit Default,
+nested same-Output precedence or multi-Output atomicity.
 
 ## 10. Nested Route and Startup Activity selection conflict
 

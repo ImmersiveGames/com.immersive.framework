@@ -363,6 +363,193 @@ namespace Immersive.Framework.Camera.Tests
                 Is.False);
         }
 
+        [Test]
+        public void StartupActivitySelectionForSamePendingRouteOutputIsRejectedWithoutResidualCandidate()
+        {
+            using var fixture = new Fixture();
+            const string test =
+                nameof(StartupActivitySelectionForSamePendingRouteOutputIsRejectedWithoutResidualCandidate);
+
+            CameraPresentationDefinition activityPresentation =
+                fixture.CreatePresentation(
+                    "Startup Activity Presentation",
+                    fixture.OutputDefinition,
+                    1000);
+            ActivityAsset startupActivity = fixture.CreateActivity(
+                "startup-activity-s",
+                activityPresentation);
+            RuntimeScopeContext activityContext =
+                fixture.CreateActivityContext(
+                    startupActivity,
+                    "startup-activity-s");
+
+            Assert.That(
+                fixture.Lifecycle.TryEnterRoute(
+                    fixture.RouteA,
+                    fixture.RouteAContext,
+                    test,
+                    "route-r-enter",
+                    out string routeIssue),
+                Is.True,
+                routeIssue);
+
+            CameraPresentationMaterializationHandle routeCandidate =
+                fixture.GetPendingHandle(fixture.RouteA);
+            RuntimeContentIdentity routeIdentity =
+                routeCandidate.RuntimeContentIdentity;
+            CameraRequestId routeRequestId =
+                routeCandidate.PresentationRuntime.RequestId;
+            RuntimeContentIdentity rejectedActivityIdentity =
+                fixture.SessionContext.CreateIdentity(
+                    CameraPresentationMaterializationRuntime.CreateContentId(
+                        activityPresentation));
+
+            Assert.That(
+                fixture.Lifecycle.TryEnterActivity(
+                    startupActivity,
+                    activityContext,
+                    test,
+                    "startup-activity-s-enter",
+                    out string activityIssue),
+                Is.False);
+            Assert.That(
+                activityIssue,
+                Does.Contain(fixture.OutputDefinition.OutputId.ToString()));
+            Assert.That(activityIssue, Does.Contain("Route 'route-a'"));
+            Assert.That(
+                activityIssue,
+                Does.Contain("Activity 'startup-activity-s'"));
+
+            Assert.That(fixture.PendingOwnerCount, Is.EqualTo(1));
+            Assert.That(
+                fixture.GetPendingHandle(fixture.RouteA),
+                Is.SameAs(routeCandidate));
+            Assert.That(
+                fixture.GetSelectedHandle(),
+                Is.SameAs(routeCandidate));
+            Assert.That(routeCandidate.IsReleased, Is.False);
+            Assert.That(
+                routeCandidate.ScopeContext.Owner,
+                Is.EqualTo(fixture.SessionContext.Owner));
+            Assert.That(fixture.Output.Context.AdmittedRequestCount, Is.EqualTo(1));
+            Assert.That(fixture.Output.Context.HasWinner, Is.True);
+            Assert.That(
+                fixture.Output.Context.Winner.RequestId,
+                Is.EqualTo(routeRequestId));
+            Assert.That(
+                fixture.RuntimeContent.TryGetHandle(
+                    fixture.SessionContext,
+                    rejectedActivityIdentity,
+                    out _),
+                Is.False);
+
+            Assert.That(
+                fixture.Lifecycle.TryRollbackSelection(
+                    fixture.RouteA,
+                    test,
+                    "route-r-rollback",
+                    out string rollbackIssue),
+                Is.True,
+                rollbackIssue);
+            Assert.That(routeCandidate.IsReleased, Is.True);
+            Assert.That(fixture.PendingOwnerCount, Is.Zero);
+            Assert.That(fixture.Output.Context.AdmittedRequestCount, Is.Zero);
+            Assert.That(fixture.Output.Context.HasWinner, Is.False);
+            Assert.That(
+                fixture.RuntimeContent.TryGetHandle(
+                    fixture.SessionContext,
+                    routeIdentity,
+                    out _),
+                Is.False);
+        }
+
+        [Test]
+        public void StartupActivitySelectionForDifferentPendingRouteOutputIsAllowedAndRollsBackIndependently()
+        {
+            using var fixture = new Fixture();
+            const string test =
+                nameof(StartupActivitySelectionForDifferentPendingRouteOutputIsAllowedAndRollsBackIndependently);
+
+            CameraPresentationDefinition activityPresentation =
+                fixture.CreatePresentation(
+                    "Startup Activity Presentation Output B",
+                    fixture.OutputDefinitionB);
+            ActivityAsset startupActivity = fixture.CreateActivity(
+                "startup-activity-output-b",
+                activityPresentation);
+            RuntimeScopeContext activityContext =
+                fixture.CreateActivityContext(
+                    startupActivity,
+                    "startup-activity-output-b");
+
+            Assert.That(
+                fixture.Lifecycle.TryEnterRoute(
+                    fixture.RouteA,
+                    fixture.RouteAContext,
+                    test,
+                    "route-output-a-enter",
+                    out string routeIssue),
+                Is.True,
+                routeIssue);
+            CameraPresentationMaterializationHandle routeCandidate =
+                fixture.GetPendingHandle(fixture.RouteA);
+
+            Assert.That(
+                fixture.Lifecycle.TryEnterActivity(
+                    startupActivity,
+                    activityContext,
+                    test,
+                    "activity-output-b-enter",
+                    out string activityIssue),
+                Is.True,
+                activityIssue);
+            CameraPresentationMaterializationHandle activityCandidate =
+                fixture.GetPendingHandle(startupActivity);
+
+            Assert.That(fixture.PendingOwnerCount, Is.EqualTo(2));
+            Assert.That(
+                fixture.GetSelectedHandle(fixture.OutputDefinition),
+                Is.SameAs(routeCandidate));
+            Assert.That(
+                fixture.GetSelectedHandle(fixture.OutputDefinitionB),
+                Is.SameAs(activityCandidate));
+            Assert.That(
+                routeCandidate.ScopeContext.Owner,
+                Is.EqualTo(fixture.SessionContext.Owner));
+            Assert.That(
+                activityCandidate.ScopeContext.Owner,
+                Is.EqualTo(fixture.SessionContext.Owner));
+            Assert.That(fixture.Output.Context.AdmittedRequestCount, Is.EqualTo(1));
+            Assert.That(fixture.OutputB.Context.AdmittedRequestCount, Is.EqualTo(1));
+
+            Assert.That(
+                fixture.Lifecycle.TryRollbackSelection(
+                    startupActivity,
+                    test,
+                    "activity-output-b-rollback",
+                    out string activityRollbackIssue),
+                Is.True,
+                activityRollbackIssue);
+            Assert.That(activityCandidate.IsReleased, Is.True);
+            Assert.That(routeCandidate.IsReleased, Is.False);
+            Assert.That(fixture.PendingOwnerCount, Is.EqualTo(1));
+            Assert.That(fixture.Output.Context.HasWinner, Is.True);
+            Assert.That(fixture.OutputB.Context.HasWinner, Is.False);
+            Assert.That(fixture.OutputB.Context.AdmittedRequestCount, Is.Zero);
+
+            Assert.That(
+                fixture.Lifecycle.TryRollbackSelection(
+                    fixture.RouteA,
+                    test,
+                    "route-output-a-rollback",
+                    out string routeRollbackIssue),
+                Is.True,
+                routeRollbackIssue);
+            Assert.That(routeCandidate.IsReleased, Is.True);
+            Assert.That(fixture.PendingOwnerCount, Is.Zero);
+            Assert.That(fixture.Output.Context.AdmittedRequestCount, Is.Zero);
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly List<UnityEngine.Object> _created =
@@ -379,6 +566,7 @@ namespace Immersive.Framework.Camera.Tests
                         "Camera Selection Test Session"));
 
                 OutputDefinition = CreateOutputDefinition();
+                OutputDefinitionB = CreateOutputDefinition();
                 FixedBehavior =
                     ScriptableObject.CreateInstance<
                         FixedCameraRigBehaviorDefinition>();
@@ -403,6 +591,14 @@ namespace Immersive.Framework.Camera.Tests
                     Is.True,
                     lookupIssue);
                 Output = output;
+                Assert.That(
+                    _outputMaterialization.Topology.TryGetOutput(
+                        OutputDefinitionB.OutputId,
+                        out CameraOutputAuthoring outputB,
+                        out string lookupIssueB),
+                    Is.True,
+                    lookupIssueB);
+                OutputB = outputB;
 
                 PresentationA = CreatePresentation("Presentation A");
                 RouteA = CreateRoute("route-a", PresentationA);
@@ -432,14 +628,22 @@ namespace Immersive.Framework.Camera.Tests
             internal RuntimeScopeContext RouteAContext { get; }
             internal RuntimeScopeContext RouteBContext { get; }
             internal CameraOutputDefinition OutputDefinition { get; }
+            internal CameraOutputDefinition OutputDefinitionB { get; }
             internal FixedCameraRigBehaviorDefinition FixedBehavior { get; }
             internal CameraOutputAuthoring Output { get; }
+            internal CameraOutputAuthoring OutputB { get; }
             internal CameraPresentationDefinition PresentationA { get; }
             internal RouteAsset RouteA { get; }
             internal RouteAsset RouteB { get; }
             internal CameraPresentationLifecycleRuntime Lifecycle { get; }
 
             internal CameraPresentationMaterializationHandle GetSelectedHandle()
+            {
+                return GetSelectedHandle(OutputDefinition);
+            }
+
+            internal CameraPresentationMaterializationHandle GetSelectedHandle(
+                CameraOutputDefinition outputDefinition)
             {
                 FieldInfo field =
                     typeof(CameraPresentationLifecycleRuntime).GetField(
@@ -452,22 +656,41 @@ namespace Immersive.Framework.Camera.Tests
                     field.GetValue(Lifecycle);
                 Assert.That(
                     selected.TryGetValue(
-                        OutputDefinition.OutputId,
+                        outputDefinition.OutputId,
                         out CameraPresentationMaterializationHandle handle),
                     Is.True);
                 return handle;
             }
 
+            internal int PendingOwnerCount
+            {
+                get
+                {
+                    return GetPendingSelectionsByOwner().Count;
+                }
+            }
+
+            internal CameraPresentationMaterializationHandle GetPendingHandle(
+                UnityEngine.Object owner)
+            {
+                IDictionary pendingByOwner = GetPendingSelectionsByOwner();
+                object entry = pendingByOwner[owner];
+                Assert.That(entry, Is.Not.Null);
+                FieldInfo handlesField = entry.GetType().GetField(
+                    "Handles",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(handlesField, Is.Not.Null);
+                var handles =
+                    (List<CameraPresentationMaterializationHandle>)
+                    handlesField.GetValue(entry);
+                Assert.That(handles, Is.Not.Null);
+                Assert.That(handles.Count, Is.EqualTo(1));
+                return handles[0];
+            }
+
             internal CameraPresentationMaterializationHandle GetOnlyPendingHandle()
             {
-                FieldInfo dictField =
-                    typeof(CameraPresentationLifecycleRuntime).GetField(
-                        "_pendingSelectionsByOwner",
-                        BindingFlags.Instance | BindingFlags.NonPublic);
-                Assert.That(dictField, Is.Not.Null);
-                var pendingByOwner =
-                    (IDictionary)dictField.GetValue(Lifecycle);
-                Assert.That(pendingByOwner, Is.Not.Null);
+                IDictionary pendingByOwner = GetPendingSelectionsByOwner();
                 Assert.That(pendingByOwner.Count, Is.EqualTo(1));
 
                 object entry = null;
@@ -487,6 +710,19 @@ namespace Immersive.Framework.Camera.Tests
                 Assert.That(handles, Is.Not.Null);
                 Assert.That(handles.Count, Is.EqualTo(1));
                 return handles[0];
+            }
+
+            private IDictionary GetPendingSelectionsByOwner()
+            {
+                FieldInfo dictField =
+                    typeof(CameraPresentationLifecycleRuntime).GetField(
+                        "_pendingSelectionsByOwner",
+                        BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(dictField, Is.Not.Null);
+                var pendingByOwner =
+                    (IDictionary)dictField.GetValue(Lifecycle);
+                Assert.That(pendingByOwner, Is.Not.Null);
+                return pendingByOwner;
             }
 
             internal RouteAsset CreateRoute(
@@ -518,8 +754,47 @@ namespace Immersive.Framework.Camera.Tests
                         RuntimeDefinitionToken.FromUnityObject(route)));
             }
 
+            internal ActivityAsset CreateActivity(
+                string activityId,
+                params CameraPresentationDefinition[] selections)
+            {
+                ActivityAsset activity =
+                    ScriptableObject.CreateInstance<ActivityAsset>();
+                _created.Add(activity);
+                activity.name = activityId;
+                SetField(activity, "activityId", activityId);
+                SetField(activity, "activityName", activityId);
+                SetField(
+                    activity,
+                    "cameraPresentationSelections",
+                    selections ??
+                    Array.Empty<CameraPresentationDefinition>());
+                return activity;
+            }
+
+            internal RuntimeScopeContext CreateActivityContext(
+                ActivityAsset activity,
+                string ownerId)
+            {
+                return CreateContext(
+                    RuntimeContentOwner.Activity(
+                        ownerId,
+                        activity.name,
+                        RuntimeDefinitionToken.FromUnityObject(activity)));
+            }
+
             internal CameraPresentationDefinition CreatePresentation(
                 string presentationName)
+            {
+                return CreatePresentation(
+                    presentationName,
+                    OutputDefinition);
+            }
+
+            internal CameraPresentationDefinition CreatePresentation(
+                string presentationName,
+                CameraOutputDefinition outputDefinition,
+                int requestPrecedence = 100)
             {
                 GameObject rigRoot =
                     CreateRoot($"{presentationName} Rig");
@@ -546,7 +821,7 @@ namespace Immersive.Framework.Camera.Tests
                 SetField(
                     definition,
                     "outputDefinition",
-                    OutputDefinition);
+                    outputDefinition);
                 SetField(definition, "rigPrefab", rigRoot);
                 SetField(
                     definition,
@@ -557,7 +832,10 @@ namespace Immersive.Framework.Camera.Tests
                     definition,
                     "transitionMode",
                     CameraPresentationTransitionMode.Cut);
-                SetField(definition, "requestPrecedence", 100);
+                SetField(
+                    definition,
+                    "requestPrecedence",
+                    requestPrecedence);
                 return definition;
             }
 
@@ -598,8 +876,27 @@ namespace Immersive.Framework.Camera.Tests
 
             private CameraSessionConfiguration CreateOutputConfiguration()
             {
-                GameObject outputPrefab =
-                    CreateRoot("Camera Output Prefab");
+                GameObject outputPrefab = CreateOutputPrefab(
+                    "Camera Output Prefab A",
+                    OutputDefinition);
+                GameObject outputPrefabB = CreateOutputPrefab(
+                    "Camera Output Prefab B",
+                    OutputDefinitionB);
+
+                var configuration =
+                    new CameraSessionConfiguration();
+                SetField(
+                    configuration,
+                    "outputPrefabs",
+                    new List<GameObject> { outputPrefab, outputPrefabB });
+                return configuration;
+            }
+
+            private GameObject CreateOutputPrefab(
+                string prefabName,
+                CameraOutputDefinition outputDefinition)
+            {
+                GameObject outputPrefab = CreateRoot(prefabName);
                 outputPrefab.SetActive(false);
                 UnityEngine.Camera unityCamera =
                     outputPrefab.AddComponent<UnityEngine.Camera>();
@@ -627,19 +924,13 @@ namespace Immersive.Framework.Camera.Tests
                 SetField(
                     output,
                     "outputDefinition",
-                    OutputDefinition);
+                    outputDefinition);
                 SetField(output, "unityCamera", unityCamera);
                 SetField(output, "cinemachineBrain", brain);
                 SetField(output, "defaultCameraRig", defaultRig);
                 SetField(output, "initializeOnAwake", false);
 
-                var configuration =
-                    new CameraSessionConfiguration();
-                SetField(
-                    configuration,
-                    "outputPrefabs",
-                    new List<GameObject> { outputPrefab });
-                return configuration;
+                return outputPrefab;
             }
 
             private CameraOutputDefinition CreateOutputDefinition()
