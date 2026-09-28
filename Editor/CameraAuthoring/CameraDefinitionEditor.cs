@@ -49,7 +49,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
 
         protected override string ValidateDefinitionConfiguration() =>
-            ((CameraDefinition)target).TryValidateSessionTargetless(out string issue)
+            ((CameraDefinition)target).TryValidateSessionCamera(out string issue)
                 ? null
                 : issue;
     }

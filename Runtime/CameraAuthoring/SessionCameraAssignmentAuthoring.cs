@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
@@ -56,7 +57,13 @@ namespace Immersive.Framework.CameraAuthoring
                 for (int index = 0; index < memberSlots.Count; index++)
                 {
                     PlayerSlotProfile profile = memberSlots[index];
-                    if (profile == null || !profile.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out issue))
+                    if (profile == null)
+                    {
+                        issue = $"Session Camera Assignment '{AssignmentId}' has a missing member Player Slot at index '{index}'.";
+                        return false;
+                    }
+
+                    if (!profile.TryGetPlayerSlotId(out PlayerSlotId playerSlotId, out issue))
                     {
                         issue = $"Session Camera Assignment '{AssignmentId}' has invalid member Player Slot at index '{index}'. {issue}";
                         return false;

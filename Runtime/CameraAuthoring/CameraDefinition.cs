@@ -26,6 +26,34 @@ namespace Immersive.Framework.CameraAuthoring
             CameraTargetPolicy targetPolicy,
             out string issue)
         {
+            if (!TryValidateSessionCamera(out issue))
+            {
+                return false;
+            }
+
+            CameraRigComposer composer =
+                rigPrefab.GetComponentInChildren<CameraRigComposer>(true);
+            if (targetPolicy == CameraTargetPolicy.NoSubject &&
+                (composer.EffectiveFollowRequirement != CameraTargetRequirement.NotUsed ||
+                 composer.EffectiveLookAtRequirement != CameraTargetRequirement.NotUsed))
+            {
+                issue = $"Camera Definition Rig Prefab '{rigPrefab.name}' requires a Subject but its Assignment target policy is NoSubject.";
+                return false;
+            }
+            if (targetPolicy == CameraTargetPolicy.MemberActorTargets &&
+                composer.EffectiveFollowRequirement == CameraTargetRequirement.NotUsed &&
+                composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed)
+            {
+                issue = $"Camera Definition Rig Prefab '{rigPrefab.name}' does not consume the Assignment's member Actor Subjects.";
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        public bool TryValidateSessionCamera(out string issue)
+        {
             if (!HasValidId)
             {
                 issue = "Camera Definition requires an explicitly generated stable ID.";
@@ -55,20 +83,6 @@ namespace Immersive.Framework.CameraAuthoring
             if (composer.BehaviorDefinition is GroupCameraRigBehaviorDefinition)
             {
                 issue = $"Camera Definition Rig Prefab '{rigPrefab.name}' cannot use Group behavior in the Session membership cut; shared Group projection is deferred.";
-                return false;
-            }
-            if (targetPolicy == CameraTargetPolicy.NoSubject &&
-                (composer.EffectiveFollowRequirement != CameraTargetRequirement.NotUsed ||
-                 composer.EffectiveLookAtRequirement != CameraTargetRequirement.NotUsed))
-            {
-                issue = $"Camera Definition Rig Prefab '{rigPrefab.name}' requires a Subject but its Assignment target policy is NoSubject.";
-                return false;
-            }
-            if (targetPolicy == CameraTargetPolicy.MemberActorTargets &&
-                composer.EffectiveFollowRequirement == CameraTargetRequirement.NotUsed &&
-                composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed)
-            {
-                issue = $"Camera Definition Rig Prefab '{rigPrefab.name}' does not consume the Assignment's member Actor Subjects.";
                 return false;
             }
 

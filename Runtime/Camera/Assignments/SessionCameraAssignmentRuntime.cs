@@ -44,6 +44,21 @@ namespace Immersive.Framework.Camera
         internal string SubjectDiagnostic { get; private set; } = string.Empty;
         internal IReadOnlyList<SessionCameraMemberState> Members =>
             new List<SessionCameraMemberState>(_members.Values).AsReadOnly();
+        internal IReadOnlyList<SessionCameraMemberState> ResolvedSubjects
+        {
+            get
+            {
+                var subjects = new List<SessionCameraMemberState>();
+                foreach (SessionCameraMemberState member in _members.Values)
+                {
+                    if (member.HasSubject)
+                    {
+                        subjects.Add(member);
+                    }
+                }
+                return subjects.AsReadOnly();
+            }
+        }
 
         internal bool ReconcileMember(
             PlayerOccurrenceId playerOccurrenceId,
@@ -110,20 +125,10 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
-            CameraSubject resolvedSubject = default;
-            int subjectCount = 0;
-            foreach (SessionCameraMemberState member in _members.Values)
-            {
-                if (!member.HasSubject)
-                {
-                    continue;
-                }
-                resolvedSubject = member.Subject;
-                subjectCount++;
-            }
+            IReadOnlyList<SessionCameraMemberState> resolvedSubjects = ResolvedSubjects;
 
-            // Multi-subject group projection is a later cut. Never choose an arbitrary member.
-            if (subjectCount != 1)
+            // Group framing is a later cut. Keep all evidence and never choose an arbitrary member.
+            if (resolvedSubjects.Count != 1)
             {
                 Composer.CinemachineCamera.Follow = null;
                 Composer.CinemachineCamera.LookAt = null;
@@ -141,6 +146,7 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
+            CameraSubject resolvedSubject = resolvedSubjects[0].Subject;
             Composer.CinemachineCamera.Follow =
                 Composer.EffectiveFollowRequirement == CameraTargetRequirement.NotUsed
                     ? null
@@ -730,31 +736,11 @@ namespace Immersive.Framework.Camera
             }
 
             Transform observation = actor.ActorDeclaration.transform;
-            float framingRadius = 0f;
-            ActorCameraSubjectAuthoring[] authorings =
-                actor.Presentation.GetComponentsInChildren<ActorCameraSubjectAuthoring>(true);
-            if (authorings.Length > 1)
-            {
-                issue = $"Current Player Actor Presentation contains multiple Camera Subject declarations ('{authorings.Length}').";
-                return false;
-            }
-            if (authorings.Length == 1 &&
-                !authorings[0].TryResolveSubject(
-                    actor.Presentation.transform,
-                    out observation,
-                    out framingRadius,
-                    out issue))
-            {
-                issue = "Current Player Actor Camera Subject is invalid. " + issue;
-                return false;
-            }
-
             subject = new CameraSubject(
                 new CameraSubjectId(
                     $"camera.subject.player-actor:{actor.PreparationToken.StableText}"),
                 observation,
-                $"Current Session Player Actor for {actor.PlayerSlotId.StableText}",
-                framingRadius);
+                $"Current Session Player Actor for {actor.PlayerSlotId.StableText}");
             if (!subject.IsValid)
             {
                 issue = "Current Player Actor did not resolve a valid Camera Subject.";

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
@@ -123,8 +124,10 @@ namespace Immersive.Framework.Camera.Tests
             var secondPlayer = new PlayerOccurrenceId("player-occurrence:second");
 
             Assert.That(occurrence.Members, Is.Empty);
+            Assert.That(occurrence.ResolvedSubjects, Is.Empty);
             Assert.That(occurrence.ReconcileMember(firstPlayer, firstSlot, default), Is.True);
             Assert.That(occurrence.Members, Has.Count.EqualTo(1));
+            Assert.That(occurrence.ResolvedSubjects, Is.Empty);
             Assert.That(occurrence.ReconcileMember(secondPlayer, secondSlot, default), Is.True);
             Assert.That(occurrence.Members, Has.Count.EqualTo(2));
 
@@ -134,6 +137,48 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(occurrence.Members[0].PlayerOccurrenceId, Is.EqualTo(secondPlayer));
             Assert.That(occurrence.Identity, Is.EqualTo(identity));
             Assert.That(occurrence, Is.SameAs(originalOccurrence));
+        }
+
+        [Test]
+        public void SessionOccurrenceResolvesCurrentSubjectsByDistinctPlayerOccurrence()
+        {
+            SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
+                out PlayerSlotId firstSlot,
+                out PlayerSlotId secondSlot);
+            var firstPlayer = new PlayerOccurrenceId("player-occurrence:subject-first");
+            var secondPlayer = new PlayerOccurrenceId("player-occurrence:subject-second");
+            var firstSubjectRoot = new GameObject("First Member Subject");
+            var secondSubjectRoot = new GameObject("Second Member Subject");
+            _created.Add(firstSubjectRoot);
+            _created.Add(secondSubjectRoot);
+            var firstSubject = new CameraSubject(
+                new CameraSubjectId("subject.actor.first-member"),
+                firstSubjectRoot.transform,
+                "first member");
+            var secondSubject = new CameraSubject(
+                new CameraSubjectId("subject.actor.second-member"),
+                secondSubjectRoot.transform,
+                "second member");
+
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+            Assert.That(occurrence.ReconcileMember(firstPlayer, firstSlot, firstSubject), Is.True);
+            Assert.That(occurrence.ReconcileMember(secondPlayer, secondSlot, secondSubject), Is.True);
+            Assert.That(occurrence.ResolvedSubjects, Has.Count.EqualTo(2));
+            CollectionAssert.AreEquivalent(
+                new[] { firstPlayer, secondPlayer },
+                occurrence.ResolvedSubjects.Select(member => member.PlayerOccurrenceId));
+            Assert.That(occurrence.ResolvedSubjects.Single(member =>
+                member.PlayerOccurrenceId == firstPlayer).Subject.SubjectId,
+                Is.EqualTo(firstSubject.SubjectId));
+            Assert.That(occurrence.ResolvedSubjects.Single(member =>
+                member.PlayerOccurrenceId == secondPlayer).Subject.SubjectId,
+                Is.EqualTo(secondSubject.SubjectId));
+
+            occurrence.RemoveMember(firstPlayer);
+
+            Assert.That(occurrence.ResolvedSubjects, Has.Count.EqualTo(1));
+            Assert.That(occurrence.ResolvedSubjects[0].PlayerOccurrenceId, Is.EqualTo(secondPlayer));
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
         }
 
         [Test]
