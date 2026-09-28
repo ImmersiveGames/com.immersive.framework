@@ -28,7 +28,6 @@ namespace Immersive.Framework.Camera
         [SerializeField] private string lastStatus = "NotInitialized";
         [SerializeField] private string lastDiagnostic;
 
-        private CameraOutputContext _context;
         private CameraOutputRigApplicator _applicator;
         private CameraOutputSession _session;
         private CameraOutputDefinition _initializedDefinition;
@@ -60,7 +59,6 @@ namespace Immersive.Framework.Camera
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
         public CameraRigComposer FallbackCameraRig => fallbackCameraRig;
         public bool IsInitialized => _session != null;
-        public CameraOutputContext Context => _context;
         public CameraOutputRigApplicator Applicator => _applicator;
         public CameraOutputSession Session => _session;
         public string LastStatus => lastStatus ?? string.Empty;
@@ -141,18 +139,16 @@ namespace Immersive.Framework.Camera
 
             try
             {
-                var resolvedContext = new CameraOutputContext(resolvedOutputId);
                 var resolvedApplicator = new CameraOutputRigApplicator(
                     new CameraOutputBinding(
                         resolvedOutputId,
                         unityCamera,
                         cinemachineBrain));
                 var resolvedSession = new CameraOutputSession(
-                    resolvedContext,
                     resolvedApplicator,
                     resolvedFallbackRig);
 
-                CameraOutputSessionResult synchronizeResult =
+                CameraOutputApplyResult synchronizeResult =
                     resolvedSession.Synchronize();
                 if (!synchronizeResult.Succeeded)
                 {
@@ -163,14 +159,12 @@ namespace Immersive.Framework.Camera
                     return false;
                 }
 
-                _context = resolvedContext;
                 _applicator = resolvedApplicator;
                 _session = resolvedSession;
                 _initializedDefinition = outputDefinition;
             }
             catch (Exception exception)
             {
-                _context = null;
                 _applicator = null;
                 _session = null;
                 diagnostic =
@@ -208,7 +202,6 @@ namespace Immersive.Framework.Camera
             _session = null;
             _initializedDefinition = null;
             _applicator = null;
-            _context = null;
             SetDiagnostic(
                 "TornDown",
                 $"Camera output session torn down. output='{OutputIdText}' reason='{reason.NormalizeTextOrFallback("Unspecified")}'.",

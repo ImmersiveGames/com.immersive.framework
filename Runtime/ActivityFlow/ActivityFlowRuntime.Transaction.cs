@@ -159,24 +159,6 @@ namespace Immersive.Framework.ActivityFlow
                         activityOperationResult);
                 }
 
-                if (_cameraPresentationLifecycle != null &&
-                    !_cameraPresentationLifecycle.TryEnterActivity(
-                        nextActivity,
-                        runtimeEnterResult.Context,
-                        resolvedSource,
-                        resolvedReason,
-                        out string activityCameraPresentationIssue))
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        activityCameraPresentationIssue,
-                        activityOperationResult);
-                }
-
                 ActivityOperationResult operationForProgress =
                     ResolveActivityOperationForProgress(
                         activityOperationResult,
@@ -351,34 +333,6 @@ namespace Immersive.Framework.ActivityFlow
 
                 transaction.MarkReadyToCommit(
                     "Target Activity scenes, runtime scope and activation requirements are prepared.");
-
-                // CAMERA-037-D: the persistent Camera Presentation selection
-                // candidate admitted by TryEnterActivity (via
-                // CameraPresentationLifecycleRuntime.TryEnterActivity) must be
-                // confirmed BEFORE the Activity's own irreversible commit,
-                // exactly mirroring how RouteLifecycleRuntime.StartRouteAsync
-                // confirms the Route's persistent selection before mutating
-                // its own "current Route" bookkeeping. This must run while the
-                // transaction is still revertible through FailBeforeCommitAsync:
-                // ActivityTransitionRuntimeTransaction.FailBeforeCommit throws
-                // once transaction.Commit() has run, so a commit failure here
-                // cannot be reported as a post-commit exception.
-                if (_cameraPresentationLifecycle != null &&
-                    !_cameraPresentationLifecycle.TryCommitSelection(
-                        nextActivity,
-                        out string activityCameraSelectionCommitIssue))
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        "Activity Camera Presentation selection commit failed. " +
-                        activityCameraSelectionCommitIssue,
-                        activityOperationResult,
-                        contentTransition);
-                }
 
                 _currentActivityState = ActivityRuntimeState.ActiveWith(
                     nextActivity,
@@ -942,28 +896,6 @@ namespace Immersive.Framework.ActivityFlow
             {
                 compensationDiagnostic +=
                     $" Resettable registration compensation threw '{rollbackException.GetType().Name}': " +
-                    rollbackException.Message;
-            }
-
-            try
-            {
-                if (_cameraPresentationLifecycle != null &&
-                    targetActivity != null &&
-                    !_cameraPresentationLifecycle.TryRollbackSelection(
-                        targetActivity,
-                        source,
-                        "activity-transition-failed-before-commit",
-                        out string cameraSelectionRollbackDiagnostic))
-                {
-                    compensationDiagnostic +=
-                        " Camera Presentation selection rollback failed. " +
-                        cameraSelectionRollbackDiagnostic;
-                }
-            }
-            catch (Exception rollbackException)
-            {
-                compensationDiagnostic +=
-                    $" Camera Presentation selection rollback threw '{rollbackException.GetType().Name}': " +
                     rollbackException.Message;
             }
 

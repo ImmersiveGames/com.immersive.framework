@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Transition;
 using Immersive.Framework.PlayerParticipation;
 
@@ -48,16 +47,6 @@ namespace Immersive.Framework.Authoring
         [Tooltip("Baseline spatial entry applied to every Session Player for each Route occurrence. Apply Explicit Placement requires one exact Route-owned Slot binding.")]
         private RoutePlayerSpatialEntryPolicy playerSpatialEntryPolicy =
             RoutePlayerSpatialEntryPolicy.PreserveCurrentPose;
-
-        [SerializeField]
-        [Tooltip("Optional Camera Presentations owned by this Route occurrence. They materialize with the Route RuntimeContent scope and release before that scope is removed.")]
-        private CameraPresentationDefinition[] cameraPresentations =
-            Array.Empty<CameraPresentationDefinition>();
-
-        [SerializeField]
-        [Tooltip("Optional persistent Camera Presentation selections declared by this Route. Selected occurrences are Session-owned and remain effective when a later Route declares no selections.")]
-        private CameraPresentationDefinition[] cameraPresentationSelections =
-            Array.Empty<CameraPresentationDefinition>();
 
         [SerializeField]
         [Tooltip("Controls which requests/capabilities are blocked while this Route transition is running. Route transitions should normally block input, interaction and gameplay.")]
@@ -149,21 +138,6 @@ namespace Immersive.Framework.Authoring
         public ActivityAsset StartupActivity => startupActivity;
 
         public bool HasStartupActivity => startupActivity != null;
-
-        public IReadOnlyList<CameraPresentationDefinition> CameraPresentations =>
-            cameraPresentations ?? Array.Empty<CameraPresentationDefinition>();
-
-        public bool HasCameraPresentations =>
-            cameraPresentations != null && cameraPresentations.Length > 0;
-
-        public IReadOnlyList<CameraPresentationDefinition>
-            CameraPresentationSelections =>
-                cameraPresentationSelections ??
-                Array.Empty<CameraPresentationDefinition>();
-
-        public bool HasCameraPresentationSelections =>
-            cameraPresentationSelections != null &&
-            cameraPresentationSelections.Length > 0;
 
         public RoutePlayerSpatialEntryPolicy PlayerSpatialEntryPolicy
         {

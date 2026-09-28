@@ -10,10 +10,10 @@ namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Runtime-only Cinemachine channel isolation for one Session's explicit
-    /// physical Camera Outputs and the Presentation occurrences that target them.
+    /// physical Camera Outputs and their Fallback cameras.
     ///
     /// Channel identity is occurrence-local routing state. It is not serialized
-    /// into CameraOutputDefinition or CameraPresentationDefinition.
+    /// into CameraOutputDefinition or CameraDefinition.
     /// </summary>
     internal static class CameraCinemachineOutputChannelIsolation
     {
@@ -78,40 +78,6 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        internal static bool TryConfigurePresentation(
-            CameraOutputAuthoring output,
-            CameraRigComposer presentationRig,
-            out string issue)
-        {
-            if (output == null || output.CinemachineBrain == null)
-            {
-                issue =
-                    "Camera Presentation Output channel isolation requires an exact Session Output with CinemachineBrain.";
-                return false;
-            }
-
-            OutputChannels channel =
-                output.CinemachineBrain.ChannelMask;
-            if (!IsSingleChannel(channel))
-            {
-                issue =
-                    $"Camera Output '{output.OutputIdText}' must expose exactly one Session-assigned Cinemachine Output channel. channelMask='{channel}'.";
-                return false;
-            }
-
-            if (presentationRig == null ||
-                presentationRig.CinemachineCamera == null)
-            {
-                issue =
-                    "Camera Presentation Output channel isolation requires a materialized Rig CinemachineCamera.";
-                return false;
-            }
-
-            presentationRig.CinemachineCamera.OutputChannel = channel;
-            issue = string.Empty;
-            return true;
-        }
-
         private static bool IsSingleChannel(
             OutputChannels channel)
         {
@@ -127,12 +93,12 @@ namespace Immersive.Framework.Camera
     /// Camera Output prefabs.
     ///
     /// It owns only the prefab occurrences and their CameraOutputSessionTopology.
-    /// Request arbitration and physical Rig application remain
-    /// in the existing Camera Output runtime.
+    /// Assignment Occurrences use the same Output topology and physical rig
+    /// application boundary.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "CAMERA-032-D Session-owned physical Camera Output prefab materialization.")]
+        "CAMERA-038 Session-owned physical Camera Output prefab materialization.")]
     internal sealed class CameraSessionOutputMaterializationRuntime :
         IDisposable
     {

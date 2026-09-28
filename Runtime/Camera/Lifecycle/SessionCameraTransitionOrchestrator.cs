@@ -10,7 +10,7 @@ namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Covers each Output with its Fallback Camera while the visual transition curtain is closed.
-    /// Normal camera-request arbitration remains untouched.
+    /// The active normal Assignment remains untouched.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class SessionCameraTransitionOrchestrator : ITransitionOrchestrator
@@ -88,8 +88,7 @@ namespace Immersive.Framework.Camera
                  index++)
             {
                 CameraOutputSession session = applied[index];
-                CameraOutputContextSnapshot context =
-                    session.Context.CaptureSnapshot();
+                CameraOutputState state = session.OutputState;
                 _logger.Debug(
                     coverWithFallback
                         ? "Camera transition Fallback coverage applied."
@@ -107,12 +106,14 @@ namespace Immersive.Framework.Camera
                         "fallbackCoverageOwnerCount",
                         session.FallbackCoverageOwnerCount),
                     LogFields.Field(
-                        "normalRequestCount",
-                        context.AdmittedRequestCount),
+                        "activeAssignment",
+                        state.HasActiveAssignment
+                            ? state.ActiveAssignmentId.Value
+                            : "<none>"),
                     LogFields.Field(
-                        "normalWinner",
-                        context.HasWinner
-                            ? context.Winner.RequestId.Value
+                        "normalOccurrence",
+                        state.HasRetainedNormalOccurrence
+                            ? state.RetainedNormalOccurrence.ToString()
                             : "<none>"));
             }
 

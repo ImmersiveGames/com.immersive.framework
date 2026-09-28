@@ -17,7 +17,6 @@ using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.GameFlow.Diagnostics;
 using Immersive.Framework.Pause;
 using Immersive.Framework.SceneLifecycle;
-using Immersive.Framework.Camera;
 using UnityEngine;
 
 namespace Immersive.Framework.GameFlow
@@ -131,12 +130,6 @@ namespace Immersive.Framework.GameFlow
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _routeLifecycleRuntime.SetActivityContentExecutionParticipantSource(participantSource);
-        }
-
-        internal void SetCameraPresentationLifecycle(
-            CameraPresentationLifecycleRuntime lifecycle)
-        {
-            _routeLifecycleRuntime.SetCameraPresentationLifecycle(lifecycle);
         }
 
         internal void AttachActivityEntryCompletionReceiver(

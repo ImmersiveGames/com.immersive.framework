@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ActivityFlow;
-using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
@@ -72,16 +71,6 @@ namespace Immersive.Framework.Authoring
         [SerializeField]
         [Tooltip("Defines whether Activity operations use the session TransitionSurface and, for scene side-effects, the canonical LoadingSurface. Seamless/Fade/FadeWithLoading are all valid with Activity-owned scene load/release; they select presentation.")]
         private ActivityVisualTransitionMode visualTransitionMode = ActivityVisualTransitionMode.Seamless;
-
-        [SerializeField]
-        [Tooltip("Optional Camera Presentations owned by this Activity occurrence. They override lower-precedence requests through normal Camera arbitration and release with the Activity scope.")]
-        private CameraPresentationDefinition[] cameraPresentations =
-            Array.Empty<CameraPresentationDefinition>();
-
-        [SerializeField]
-        [Tooltip("Optional persistent Camera Presentation selections declared by this Activity. Selected occurrences are Session-owned and remain effective when a later Activity declares no selections.")]
-        private CameraPresentationDefinition[] cameraPresentationSelections =
-            Array.Empty<CameraPresentationDefinition>();
 
         [SerializeField]
         [Tooltip("Controls which requests/capabilities are blocked while this Activity transition is running. For Fade/FadeWithLoading, InputInteractionAndGameplay is recommended.")]
@@ -280,21 +269,6 @@ namespace Immersive.Framework.Authoring
                 ActivityEntryReadinessPolicy.WaitCovered ||
             activityEntryReadinessPolicy ==
                 ActivityEntryReadinessPolicy.WaitVisible;
-
-        public IReadOnlyList<CameraPresentationDefinition> CameraPresentations =>
-            cameraPresentations ?? Array.Empty<CameraPresentationDefinition>();
-
-        public bool HasCameraPresentations =>
-            cameraPresentations != null && cameraPresentations.Length > 0;
-
-        public IReadOnlyList<CameraPresentationDefinition>
-            CameraPresentationSelections =>
-                cameraPresentationSelections ??
-                Array.Empty<CameraPresentationDefinition>();
-
-        public bool HasCameraPresentationSelections =>
-            cameraPresentationSelections != null &&
-            cameraPresentationSelections.Length > 0;
 
         public ActivityVisualTransitionMode VisualTransitionMode
         {

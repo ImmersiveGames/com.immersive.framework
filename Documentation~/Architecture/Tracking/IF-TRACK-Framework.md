@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — OpenUPM distribution published; Unity consumer import/compile validation pending; IF-ADR-032 aggregate Unity recertification pending**
+Status: **Active — OpenUPM distribution published; IF-ADR-038 implementation static validation only; Unity import/compile validation pending; CAMERA-038-J sample migration pending**
 
 Last updated: **2026-09-24**
 
@@ -162,7 +162,8 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 023 | ACCEPTED / authored composition implementation complete; ADR-023A occurrence identity boundary current | Manager functional 14/14 + Pause/Input/Gate 8/8 + FIRSTGAME Scene-Provided readiness PASS | Physical Scene-Provided validation/resolution/adoption is canonical; derived evidence, runtime evidence validation, Player Apply/Rebuild and obsolete evidence type removed |
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
-| 032 | ACCEPTED TARGET ARCHITECTURE / IMPLEMENTATION MIGRATION PENDING | prior Camera QA/certifications remain historical only | single current Camera authority; CAMERA-032-A..F pending |
+| 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
+| 038 | ACCEPTED / CURRENT CAMERA AUTHORITY | B–I implemented in source; no Unity/test execution in this cut | CAMERA-038-J sample/asset migration pending |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -311,70 +312,28 @@ Certification and reconciliation records:
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 
-## Current Camera architecture — IF-ADR-032 — 2026-09-21
-
-Current normative target:
+## Current Camera architecture — IF-ADR-038 — 2026-09-28
 
 ~~~text
-Session
-  -> explicit physical Camera Outputs + Defaults
-
-Session / Route / Activity
-  -> Camera Presentation definitions
-  -> runtime Presentation occurrences
-  -> CameraRequest
-  -> CameraOutputSession
-  -> Camera Output
+CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+Fallback is separate.
 ~~~
 
-IF-ADR-032 consolidates the former Camera ADR chain into one authority.
+Session Camera authority explicitly activates Assignments. Route and Activity have
+no Camera selection/ownership; Join/Leave changes membership only. Individual
+Occurrence identity includes the exact PlayerOccurrence. Shared membership and
+Actor replacement preserve Occurrence lifetime. Output/Brain/rig materialization,
+Fallback coverage, and PlayerInputManager physical split-layout ownership remain.
 
-Target changes:
+CAMERA-038-B..H implement Assignment, membership/Subject resolution, Individual,
+Shared Group and transactional Assignment replacement. CAMERA-038-I removes the
+Presentation/Request selector and Route/Activity ownership. Static validation only:
+Unity import, compile, and runtime recertification have not been run. Scene/prefab/
+sample migration is deferred to CAMERA-038-J. Cinemachine group framing policy is
+also deferred to a later integration decision.
 
-~~~text
-CameraSharedComposition MonoBehaviour authority
-  -> CameraPresentationRuntime occurrence
-
-scene Rig reference
-  -> reusable materialized Rig prefab
-
-persistent-root Output topology
-  -> Session Camera configuration from GameApplication
-
-Route/Activity CameraOverride authoring
-  -> Presentation intent on the owning Game Flow asset
-
-Player -> scene Composition reference
-  -> Player adapter -> live Presentation occurrence
-~~~
-
-Preserved invariants:
-
-~~~text
-request arbitration
-output transaction/rollback
-Default / force-default
-CameraRigComposer behavior/materialization
-Subject occurrence/stale protection
-Subject framing
-AllAvailableSubjects / ExplicitSelection
-PlayerInputManager Camera.rect ownership
-~~~
-
-Implementation status:
-
-~~~text
-IF-ADR-032          ACCEPTED / CURRENT ARCHITECTURE
-CAMERA-032-A        TECHNICALLY VALIDATED / 31/31 FOCUSED QA PASS
-CAMERA-032-B        IMPLEMENTED / CONSUMER PROVEN
-CAMERA-032-C        FOCUSED QA 16/16 PASS
-CAMERA-032-D/E      FOCUSED QA 14/14 + SPLIT-SCREEN CONSUMER
-SUBJECT/TRANSACTION FOCUSED QA 17/17 PASS
-CAMERA-032-F        IMPLEMENTED / AGGREGATE UNITY RECERTIFICATION PENDING
-IF-ADR-032 aggregate Unity PASS  NO — not executed in the F cleanup
-~~~
-
-The previous IF-ADR-029/030 Structural 10/10, Shared 10/10, Generic 11/11 and LocalMultiplayer consumer results remain historical evidence for the former CameraSharedComposition boundary. IF-ADR-031 A/B remain useful experimental evidence for explicit selection and Player adaptation, but CAMERA-031-C is superseded by the IF-ADR-032 migration plan and must not be implemented against the former architecture.
+Previous IF-ADR-032 and IF-ADR-029/030 certifications remain historical evidence
+for the exact former boundaries; they do not certify IF-ADR-038.
 
 Historical records:
 
@@ -386,7 +345,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle is proven through `GameplayReady`; Player Provisioning and Character Selection are proven. Manager-Provisioned prepared Actor replacement is technically certified in QA. Local Multiplayer has a functional two-Player consumer path with dedicated Group Presentations and movement; remaining sample work is limited to the still-open Join-control/input scenarios, not a missing Framework Slot/device boundary.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-032 is the current architecture. CAMERA-032-A..E focused evidence stands. CAMERA-032-F removed the legacy scene adapter, overrides, persistent policies and persistent-root Camera discovery. The aggregate Unity menu is migrated. Its Play Mode recertification is still pending. CAMERA-031-C stays superseded.
+3. **Camera** — IF-ADR-038 is current. CAMERA-038-B..I source work is present; Unity import/compile/runtime validation and CAMERA-038-J sample/asset migration remain pending. Group framing policy remains deferred.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
@@ -409,7 +368,7 @@ Historical records:
 
 ## Current architecture / reconciliation records
 
-- [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](../ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
+- [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 - [IF-ADR-009 — Activity Local Visibility Rules](../ADRs/IF-ADR-009-Activity-Local-Visibility-Rules.md)
 - [IF-ADR-015 — Player Provisioning Commands and Consumer Observation Surface](../ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md)

@@ -265,10 +265,6 @@ namespace Immersive.Framework.Editor.Validation
                 report,
                 gameApplication);
 
-            ValidateSessionCameraPresentations(
-                report,
-                gameApplication);
-
             ValidatePersistentContentComposition(
                 report,
                 gameApplication,
@@ -324,116 +320,6 @@ namespace Immersive.Framework.Editor.Validation
                     gameApplication);
             }
 
-            if (!gameApplication.PlayerSessionEnabled &&
-                configuration.PlayerPresentationBindings.Count > 0)
-            {
-                report.AddError(
-                    "Game Application Camera Session Player Slot -> Presentation bindings require an enabled Player Session.",
-                    gameApplication);
-            }
-        }
-
-        private static void ValidateSessionCameraPresentations(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset gameApplication)
-        {
-            ValidateOwnedCameraPresentations(
-                report,
-                gameApplication,
-                "Session",
-                gameApplication.SessionCameraPresentations);
-        }
-
-        private static void ValidateOwnedCameraPresentations(
-            FrameworkAuthoringValidationReport report,
-            Object owner,
-            string ownerLabel,
-            IReadOnlyList<CameraPresentationDefinition> presentations)
-        {
-            if (presentations == null || presentations.Count == 0)
-            {
-                return;
-            }
-
-            var definitionOwners =
-                new HashSet<CameraPresentationDefinition>();
-            var identityOwners =
-                new HashSet<CameraPresentationId>();
-
-            for (int index = 0; index < presentations.Count; index++)
-            {
-                CameraPresentationDefinition definition =
-                    presentations[index];
-                if (definition == null)
-                {
-                    report.AddError(
-                        $"{ownerLabel} Camera Presentations[{index}] is missing.",
-                        owner);
-                    continue;
-                }
-
-                if (!definitionOwners.Add(definition))
-                {
-                    report.AddError(
-                        $"{ownerLabel} Camera Presentations repeats definition '{definition.name}' at index '{index}'. One definition may materialize only once for one {ownerLabel} owner.",
-                        owner);
-                    continue;
-                }
-
-                if (!definition.TryValidate(out string issue))
-                {
-                    report.AddError(
-                        $"{ownerLabel} Camera Presentation '{definition.name}' is invalid. {issue}",
-                        definition);
-                    continue;
-                }
-
-                if (!identityOwners.Add(definition.PresentationId))
-                {
-                    report.AddError(
-                        $"{ownerLabel} Camera Presentations contains duplicate CameraPresentationId '{definition.PresentationId}' at '{definition.name}'.",
-                        definition);
-                }
-            }
-        }
-
-        private static void ValidateCameraPresentationSelections(
-            FrameworkAuthoringValidationReport report,
-            Object owner,
-            string ownerLabel,
-            IReadOnlyList<CameraPresentationDefinition> selections)
-        {
-            ValidateOwnedCameraPresentations(
-                report,
-                owner,
-                $"{ownerLabel} Selected",
-                selections);
-
-            if (selections == null || selections.Count == 0)
-            {
-                return;
-            }
-
-            var outputs = new HashSet<CameraOutputId>();
-            for (int index = 0; index < selections.Count; index++)
-            {
-                CameraPresentationDefinition definition =
-                    selections[index];
-                if (definition == null ||
-                    definition.OutputDefinition == null)
-                {
-                    continue;
-                }
-
-                CameraOutputId outputId =
-                    definition.OutputDefinition.OutputId;
-                if (!outputs.Add(outputId))
-                {
-                    report.AddError(
-                        $"{ownerLabel} Camera Presentation Selections contains more than one selection for Output '{outputId}'. CAMERA-037-B permits at most one selected Presentation per Output.",
-                        definition);
-                }
-            }
         }
 
         private static void ValidatePersistentContentComposition(
@@ -610,7 +496,7 @@ namespace Immersive.Framework.Editor.Validation
                  index++)
             {
                 report.AddError(
-                    "Persistent Content must not contain CameraOutputAuthoring under CAMERA-032-D. Move the physical Output hierarchy into a Camera Session Output prefab and configure it on GameApplication.",
+                    "Persistent Content must not contain CameraOutputAuthoring under IF-ADR-038. Move the physical Output hierarchy into a Camera Session Output prefab and configure it on GameApplication.",
                     legacyOutputs[index]);
             }
 
@@ -1175,18 +1061,6 @@ namespace Immersive.Framework.Editor.Validation
                     route);
             }
 
-            ValidateOwnedCameraPresentations(
-                report,
-                route,
-                "Route",
-                route.CameraPresentations);
-
-            ValidateCameraPresentationSelections(
-                report,
-                route,
-                "Route",
-                route.CameraPresentationSelections);
-
             if (route.StartupActivity == null)
             {
                 report.AddInfo(
@@ -1280,12 +1154,6 @@ namespace Immersive.Framework.Editor.Validation
             ValidateActivityEntryReadinessPolicy(
                 report,
                 activity);
-
-            ValidateOwnedCameraPresentations(
-                report,
-                activity,
-                "Activity",
-                activity.CameraPresentations);
 
             if (!activity.HasDefinedPlayerRelocationPolicy)
             {

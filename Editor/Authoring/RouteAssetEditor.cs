@@ -50,8 +50,6 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _primarySceneName;
         private SerializedProperty _routeContentProfile;
         private SerializedProperty _startupActivity;
-        private SerializedProperty _cameraPresentations;
-        private SerializedProperty _cameraPresentationSelections;
         private SerializedProperty _transitionGateMode;
         private SerializedProperty _description;
 
@@ -82,11 +80,6 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("routeContentProfile");
             _startupActivity =
                 serializedObject.FindProperty("startupActivity");
-            _cameraPresentations =
-                serializedObject.FindProperty("cameraPresentations");
-            _cameraPresentationSelections =
-                serializedObject.FindProperty(
-                    "cameraPresentationSelections");
             _transitionGateMode =
                 serializedObject.FindProperty("transitionGateMode");
             _description =
@@ -117,7 +110,6 @@ namespace Immersive.Framework.Editor.Authoring
             DrawPrimaryScene();
             DrawFirstActivity();
             DrawAdditionalContent();
-            DrawCamera();
             DrawSceneList();
             DrawTransition();
             DrawValidation();
@@ -311,25 +303,6 @@ namespace Immersive.Framework.Editor.Authoring
                     _sceneActionMessage,
                     EditorStyles.wordWrappedMiniLabel);
             }
-        }
-
-        private void DrawCamera()
-        {
-            DrawSection("Camera");
-
-            EditorGUILayout.PropertyField(
-                _cameraPresentationSelections,
-                new GUIContent(
-                    "Selected Presentations",
-                    "Optional persistent Camera selections declared by this Route. An empty list preserves the current selection. Selected occurrences are owned by the Session, not by this Route."),
-                true);
-
-            EditorGUILayout.PropertyField(
-                _cameraPresentations,
-                new GUIContent(
-                    "Contextual Presentations",
-                    "Optional Camera Presentations owned by this Route occurrence. They release when this Route exits."),
-                true);
         }
 
         private void DrawSceneList()

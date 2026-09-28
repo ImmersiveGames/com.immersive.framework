@@ -60,7 +60,7 @@ default.
 ## Expected Console shape
 
 With the normal profile, a successful Menu to Gameplay to Menu sequence should
-show concise boot and Route/Activity completion milestones. Camera arbitration,
+show concise boot and Route/Activity completion milestones. Assignment replacement,
 BGM set/clear operations, optional surface resolution and complete validation
 issue payloads should appear only when `Debug` or `Trace` is enabled.
 

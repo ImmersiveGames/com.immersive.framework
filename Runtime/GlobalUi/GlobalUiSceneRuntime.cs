@@ -302,7 +302,7 @@ namespace Immersive.Framework.GlobalUi
             if (legacyOutputs.Count > 0)
             {
                 diagnostic =
-                    $"Persistent Content contains '{legacyOutputs.Count}' CameraOutputAuthoring component(s). CAMERA-032-D requires physical Camera Outputs to be configured as GameApplication Camera Session Output prefabs.";
+                    $"Persistent Content contains '{legacyOutputs.Count}' CameraOutputAuthoring component(s). IF-ADR-038 requires physical Camera Outputs to be configured as GameApplication Camera Session Output prefabs.";
                 return false;
             }
 

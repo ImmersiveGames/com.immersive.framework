@@ -6,8 +6,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
     /// Editor-only request for creating or repairing one supported Cinemachine rig.
-    /// Structural presentation configuration only; this request never authorizes
-    /// scene/global lookup or Camera output arbitration.
+    /// Structural rig configuration only; this request never authorizes
+    /// scene/global lookup or Output selection.
     /// </summary>
     public sealed class CinemachineRigMaterializationRequest
     {

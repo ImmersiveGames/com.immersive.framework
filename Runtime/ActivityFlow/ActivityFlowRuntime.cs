@@ -15,7 +15,6 @@ using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.RouteLifecycle;
-using Immersive.Framework.Camera;
 using Immersive.Logging.Records;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -40,7 +39,6 @@ namespace Immersive.Framework.ActivityFlow
         private IActivityContentExecutionParticipantSource _activityContentExecutionParticipantSource;
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingLifecycle;
         private IPauseActivityLifecyclePort _pauseActivityLifecyclePort;
-        private CameraPresentationLifecycleRuntime _cameraPresentationLifecycle;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
         private readonly IActivityRuntimePort _activityRuntime;
         private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
@@ -130,12 +128,6 @@ namespace Immersive.Framework.ActivityFlow
             scope = _activitySceneCompositionRuntime
                 .CreateActivityContentDiscoveryScope(activity);
             return true;
-        }
-
-        internal void SetCameraPresentationLifecycle(
-            CameraPresentationLifecycleRuntime lifecycle)
-        {
-            _cameraPresentationLifecycle = lifecycle;
         }
 
         internal bool TryGetCurrentActivityReadiness(out ActivityReadinessState readiness)
@@ -1100,12 +1092,6 @@ namespace Immersive.Framework.ActivityFlow
             {
                 return null;
             }
-
-            _cameraPresentationLifecycle?.TryExitActivity(
-                previousActivity,
-                source,
-                reason,
-                out _);
 
             return _runtimeContentRuntime.RemoveScopeRoot(owner, source, reason);
         }

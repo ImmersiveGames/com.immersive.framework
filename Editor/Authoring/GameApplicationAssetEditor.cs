@@ -46,12 +46,7 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent CameraSessionLabel =
             new GUIContent(
                 "Session Configuration",
-                "Legacy Session-owned physical Camera Outputs and Player Slot bindings. CAMERA-038-D/J will replace this authoring with Camera Assignments.");
-
-        private static readonly GUIContent SessionCameraPresentationsLabel =
-            new GUIContent(
-                "Legacy Session Presentations",
-                "Legacy Camera Presentations currently consumed by Session runtime. CAMERA-038-D/J will replace them with Camera Assignments.");
+                "Physical Camera Outputs and optional Player Slot -> Output bindings for local-player routing.");
 
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
@@ -77,7 +72,6 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _defaultProgressionSaveProfile;
         private SerializedProperty _cameraSession;
         private SerializedProperty _sessionCameraAssignments;
-        private SerializedProperty _sessionCameraPresentations;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
@@ -113,8 +107,6 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("cameraSession");
             _sessionCameraAssignments =
                 serializedObject.FindProperty("sessionCameraAssignments");
-            _sessionCameraPresentations =
-                serializedObject.FindProperty("sessionCameraPresentations");
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
@@ -464,7 +456,7 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.Space(4f);
 
             EditorGUILayout.HelpBox(
-                "Legacy CAMERA-032-D/E authoring: GameApplication stores Output prefabs and Player Slot -> Output/Presentation bindings consumed by the old runtime. CAMERA-038-D/J will replace these fields with Camera Assignments. Persistent Content no longer supplies Camera Outputs.",
+                "Assignments choose normal cameras and map their Occurrences to these physical Outputs. Each Output retains its independent Fallback Camera. Persistent Content does not supply Camera Outputs.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
@@ -476,9 +468,6 @@ namespace Immersive.Framework.Editor.Authoring
                 _cameraSession?.FindPropertyRelative("outputPrefabs");
             SerializedProperty playerOutputBindings =
                 _cameraSession?.FindPropertyRelative("playerOutputBindings");
-            SerializedProperty playerPresentationBindings =
-                _cameraSession?.FindPropertyRelative(
-                    "playerPresentationBindings");
 
             int outputCount =
                 outputPrefabs != null &&
@@ -489,11 +478,6 @@ namespace Immersive.Framework.Editor.Authoring
                 playerOutputBindings != null &&
                 playerOutputBindings.isArray
                     ? playerOutputBindings.arraySize
-                    : 0;
-            int playerPresentationBindingCount =
-                playerPresentationBindings != null &&
-                playerPresentationBindings.isArray
-                    ? playerPresentationBindings.arraySize
                     : 0;
 
             if (outputCount == 0)
@@ -515,46 +499,6 @@ namespace Immersive.Framework.Editor.Authoring
                     ? "Optional — no Player Slot -> Output bindings configured."
                     : $"{playerBindingCount} explicit binding(s).");
 
-            DrawStatusRow(
-                "Legacy Player Presentation Bindings",
-                playerPresentationBindingCount == 0
-                    ? "Optional — no Player Slot -> Presentation bindings configured."
-                    : $"{playerPresentationBindingCount} explicit selection binding(s).");
-
-            EditorGUILayout.Space(4f);
-
-            EditorGUILayout.PropertyField(
-                _sessionCameraPresentations,
-                SessionCameraPresentationsLabel,
-                true);
-
-            if (_sessionCameraPresentations == null ||
-                !_sessionCameraPresentations.isArray ||
-                _sessionCameraPresentations.arraySize == 0)
-            {
-                DrawStatusRow(
-                    "Legacy Session Presentations",
-                    "Optional — none configured.");
-                return;
-            }
-
-            int configured = 0;
-            for (int index = 0;
-                 index < _sessionCameraPresentations.arraySize;
-                 index++)
-            {
-                SerializedProperty element =
-                    _sessionCameraPresentations
-                        .GetArrayElementAtIndex(index);
-                if (element.objectReferenceValue != null)
-                {
-                    configured++;
-                }
-            }
-
-            DrawStatusRow(
-                "Legacy Session Presentations",
-                $"{configured}/{_sessionCameraPresentations.arraySize} Presentation reference(s) assigned.");
         }
 
         private void DrawPersistentContent()

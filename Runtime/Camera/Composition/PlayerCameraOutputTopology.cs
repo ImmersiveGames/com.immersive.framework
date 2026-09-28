@@ -25,7 +25,7 @@ namespace Immersive.Framework.Camera
 
     /// <summary>
     /// Immutable Session projection of explicit Player Slot to Camera Output identity.
-    /// It owns no Player, Output, Camera request or presentation-layout authority.
+    /// It owns no Player, Output, Camera selection or physical layout authority.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,

@@ -12,13 +12,10 @@ namespace Immersive.Framework.CameraAuthoring
     /// Designer-facing authoring surface that owns one concrete Camera rig
     /// configuration and materializes one local Cinemachine Camera.
     ///
-    /// The assigned Behavior definition owns reusable presentation intent and tuning.
+    /// The assigned Behavior definition owns reusable camera behavior and tuning.
     /// The Composer validates and materializes that intent on this concrete local rig.
-    /// The explicit presentation-input seam receives resolved Subject evidence.
-    ///
     /// It does not create or own a Unity Camera, CinemachineBrain, AudioListener
-    /// or runtime Camera Output. It does not select an active camera or arbitrate
-    /// Camera requests.
+    /// or runtime Camera Output. It does not select an active camera.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Camera Rig Composer")]
@@ -60,8 +57,6 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField, HideInInspector]
         [FormerlySerializedAs("frameworkOwnedSharedFollowGroupFraming")]
         private CinemachineGroupFraming frameworkOwnedGroupFraming;
-
-        private CameraRigPresentationAdapter _presentation;
 
         [SerializeField, HideInInspector]
         private int materializationRevision;
@@ -154,34 +149,6 @@ namespace Immersive.Framework.CameraAuthoring
         public string LastMaterializationSummary =>
             lastMaterializationSummary.NormalizeText();
 
-        public CameraRigPresentationApplyResult ApplyCompositionPresentation(
-            CameraCompositionPresentationInput input,
-            CameraCompositionMembershipSnapshot currentSnapshot)
-        {
-            _presentation ??= new CameraRigPresentationAdapter(this);
-            return _presentation.ApplyCompositionPresentation(input, currentSnapshot);
-        }
-
-        public CameraRigPresentationApplyResult ClearPresentation()
-        {
-            _presentation ??= new CameraRigPresentationAdapter(this);
-            return _presentation.ClearPresentation();
-        }
-
-        internal CameraRigPresentationState CapturePresentationState()
-        {
-            _presentation ??= new CameraRigPresentationAdapter(this);
-            return _presentation.CaptureState();
-        }
-
-        internal CameraRigPresentationRestoreResult RestorePresentationState(
-            CameraRigPresentationState previous,
-            CameraRigPresentationState expectedCurrent)
-        {
-            _presentation ??= new CameraRigPresentationAdapter(this);
-            return _presentation.RestoreState(previous, expectedCurrent);
-        }
-
         public bool TryValidateForApply(
             out string issue)
         {
@@ -209,19 +176,6 @@ namespace Immersive.Framework.CameraAuthoring
             }
 
             return behaviorDefinition.TryValidate(out issue);
-        }
-
-        /// <summary>
-        /// Projects resolved Composition input according to this rig's presentation policy.
-        /// </summary>
-        public CameraRigTargetProjectionResult ResolvePresentationTargets(
-            CameraCompositionPresentationInput input)
-        {
-            return CameraRigTargetProjector.Project(
-                input,
-                PresentationIntent,
-                EffectiveFollowRequirement,
-                EffectiveLookAtRequirement);
         }
 
         private FollowCameraRigBehaviorDefinition RequireFollowBehavior() =>

@@ -13,29 +13,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
     }
 
-    [CustomEditor(typeof(CameraPresentationDefinition))]
-    internal sealed class CameraPresentationDefinitionEditor : CameraDefinitionEditor
-    {
-        protected override void DrawDefinitionFields()
-        {
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("description"));
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("outputDefinition"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("rigPrefab"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("transitionMode"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("subjectPolicy"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("requestPrecedence"));
-        }
-
-        protected override string ValidateDefinitionConfiguration()
-        {
-            return ((CameraPresentationDefinition)target).TryValidate(
-                out string issue)
-                ? null
-                : issue;
-        }
-    }
-
     [CustomEditor(typeof(CameraDefinition))]
     internal sealed class SessionCameraDefinitionEditor : CameraDefinitionEditor
     {
@@ -63,9 +40,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             serializedObject.Update();
 
             EditorGUILayout.HelpBox(
-                target is CameraPresentationDefinition
-                    ? "Camera Presentation is reusable authoring intent. Its Rig Prefab must already be Apply/Rebuild materialized. Runtime occurrence state never lives in this asset."
-                    : "Share this exact definition asset through typed references. Its description is intent; its stable ID is technical evidence.",
+                "Share this exact definition asset through typed references. Its description is intent; its stable ID is technical evidence.",
                 MessageType.Info);
 
             DrawDefinitionFields();

@@ -10,14 +10,12 @@ namespace Immersive.Framework.Camera
     {
         internal CameraOutputApplyResult(
             CameraOutputApplyKind kind,
-            CameraRequest request,
             CinemachineCamera previousCamera,
             CinemachineCamera currentCamera,
             CameraIssue[] issues,
             string diagnosticSummary)
         {
             Kind = kind;
-            Request = request;
             PreviousCamera = previousCamera;
             CurrentCamera = currentCamera;
             Issues = issues ?? Array.Empty<CameraIssue>();
@@ -25,7 +23,6 @@ namespace Immersive.Framework.Camera
         }
 
         public CameraOutputApplyKind Kind { get; }
-        public CameraRequest Request { get; }
         public CinemachineCamera PreviousCamera { get; }
         public CinemachineCamera CurrentCamera { get; }
         public CameraIssue[] Issues { get; }

@@ -145,9 +145,6 @@ namespace Immersive.Framework.Camera
                 entries[index] = new CameraOutputTopologyEntrySnapshot(
                     new CameraOutputId(output.OutputIdText),
                     output.IsInitialized,
-                    output.Context != null
-                        ? output.Context.CaptureSnapshot()
-                        : default,
                     output.LastStatus,
                     output.LastDiagnostic);
             }
@@ -181,20 +178,17 @@ namespace Immersive.Framework.Camera
         public CameraOutputTopologyEntrySnapshot(
             CameraOutputId outputId,
             bool initialized,
-            CameraOutputContextSnapshot context,
             string status,
             string diagnostic)
         {
             OutputId = outputId;
             Initialized = initialized;
-            Context = context;
             Status = status ?? string.Empty;
             Diagnostic = diagnostic ?? string.Empty;
         }
 
         public CameraOutputId OutputId { get; }
         public bool Initialized { get; }
-        public CameraOutputContextSnapshot Context { get; }
         public string Status { get; }
         public string Diagnostic { get; }
     }

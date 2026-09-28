@@ -3,6 +3,36 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Camera
 {
+    internal readonly struct CameraOutputStateSnapshot
+    {
+        internal CameraOutputStateSnapshot(
+            SessionCameraAssignmentId assignmentId,
+            CameraOccurrenceMode occurrenceMode,
+            CameraOccurrenceIdentity occurrence,
+            bool fallbackAvailable,
+            bool fallbackCovering)
+        {
+            AssignmentId = assignmentId;
+            OccurrenceMode = occurrenceMode;
+            Occurrence = occurrence;
+            FallbackAvailable = fallbackAvailable;
+            FallbackCovering = fallbackCovering;
+        }
+
+        internal SessionCameraAssignmentId AssignmentId { get; }
+        internal CameraOccurrenceMode OccurrenceMode { get; }
+        internal CameraOccurrenceIdentity Occurrence { get; }
+        internal bool FallbackAvailable { get; }
+        internal bool FallbackCovering { get; }
+
+        internal bool Matches(CameraOutputStateSnapshot other) =>
+            AssignmentId == other.AssignmentId &&
+            OccurrenceMode == other.OccurrenceMode &&
+            Occurrence == other.Occurrence &&
+            FallbackAvailable == other.FallbackAvailable &&
+            FallbackCovering == other.FallbackCovering;
+    }
+
     /// <summary>
     /// Runtime-only logical state for the normal assignment, normal occurrence and fallback coverage of one Output.
     /// </summary>
@@ -29,6 +59,111 @@ namespace Immersive.Framework.Camera
         public CameraOccurrenceIdentity PresentedNormalOccurrence => HasPresentedNormalOccurrence ? _normalOccurrence : default;
         public bool HasRetainedNormalOccurrence => _normalOccurrence.IsValid;
         public CameraOccurrenceIdentity RetainedNormalOccurrence => _normalOccurrence;
+
+        internal CameraOutputStateSnapshot CaptureSnapshot() => new CameraOutputStateSnapshot(
+            _activeAssignmentId,
+            _activeOccurrenceMode,
+            _normalOccurrence,
+            IsFallbackAvailable,
+            IsFallbackCovering);
+
+        internal bool CanCommitReplacement(
+            CameraOutputStateSnapshot expected,
+            SessionCameraAssignment assignment,
+            CameraOccurrenceIdentity occurrence,
+            bool fallbackCovering,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!CaptureSnapshot().Matches(expected))
+            {
+                issue = $"Camera Output '{_outputId}' changed while the Assignment candidate was being prepared.";
+                return false;
+            }
+
+            if (fallbackCovering && !IsFallbackAvailable)
+            {
+                issue = $"Camera Output '{_outputId}' has no valid Fallback Camera for the candidate state.";
+                return false;
+            }
+
+            if (assignment == null)
+            {
+                if (occurrence.IsValid || !fallbackCovering)
+                {
+                    issue = "Clearing an Output Assignment requires no occurrence and explicit Fallback coverage.";
+                    return false;
+                }
+                return true;
+            }
+
+            if (!assignment.TryValidate(out issue))
+            {
+                return false;
+            }
+            bool outputMapped = false;
+            for (int index = 0; index < assignment.Outputs.Count; index++)
+            {
+                if (assignment.Outputs[index].OutputId == _outputId)
+                {
+                    outputMapped = true;
+                    break;
+                }
+            }
+            if (!outputMapped)
+            {
+                issue = $"Assignment '{assignment.Id}' does not map Output '{_outputId}'.";
+                return false;
+            }
+
+            if (occurrence.IsValid &&
+                (occurrence.AssignmentId != assignment.Id ||
+                 occurrence.OutputId != _outputId ||
+                 occurrence.IsIndividual !=
+                    (assignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)))
+            {
+                issue = $"Candidate occurrence '{occurrence}' does not match Assignment '{assignment.Id}' and Output '{_outputId}'.";
+                return false;
+            }
+
+            if (!occurrence.IsValid && !fallbackCovering)
+            {
+                issue = "An Assignment without a current candidate occurrence requires Fallback coverage.";
+                return false;
+            }
+            return true;
+        }
+
+        internal bool TryCommitReplacement(
+            CameraOutputStateSnapshot expected,
+            SessionCameraAssignment assignment,
+            CameraOccurrenceIdentity occurrence,
+            bool fallbackCovering,
+            out string issue)
+        {
+            if (!CanCommitReplacement(expected, assignment, occurrence, fallbackCovering, out issue))
+            {
+                return false;
+            }
+
+            _activeAssignmentId = assignment != null ? assignment.Id : default;
+            _activeOccurrenceMode = assignment != null
+                ? assignment.OccurrenceMode
+                : CameraOccurrenceMode.Undefined;
+            _normalOccurrence = occurrence;
+            IsFallbackCovering = fallbackCovering;
+            issue = string.Empty;
+            return true;
+        }
+
+        internal void RestoreSnapshot(CameraOutputStateSnapshot snapshot)
+        {
+            _activeAssignmentId = snapshot.AssignmentId;
+            _activeOccurrenceMode = snapshot.OccurrenceMode;
+            _normalOccurrence = snapshot.Occurrence;
+            IsFallbackAvailable = snapshot.FallbackAvailable;
+            IsFallbackCovering = snapshot.FallbackCovering;
+        }
 
         public bool TryMakeFallbackAvailable(out string issue)
         {

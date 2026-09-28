@@ -13,7 +13,7 @@ namespace Immersive.Framework.Camera
     [Serializable]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-032-D GameApplication Camera Session Player Slot to Output binding.")]
+        "CAMERA-038 GameApplication Camera Session Player Slot to Output binding.")]
     public sealed class PlayerCameraOutputBindingAuthoring
     {
         [SerializeField]

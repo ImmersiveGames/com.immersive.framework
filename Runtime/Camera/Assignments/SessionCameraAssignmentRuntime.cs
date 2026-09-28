@@ -46,7 +46,8 @@ namespace Immersive.Framework.Camera
         {
             get
             {
-                if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets)
+                if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets ||
+                    Assignment.OccurrenceMode == CameraOccurrenceMode.SharedGroup)
                 {
                     return true;
                 }
@@ -78,7 +79,8 @@ namespace Immersive.Framework.Camera
         internal bool ReconcileMember(
             PlayerOccurrenceId playerOccurrenceId,
             PlayerSlotId playerSlotId,
-            CameraSubject subject)
+            CameraSubject subject,
+            bool updateFallbackCoverage = true)
         {
             bool isConfiguredMemberSlot = false;
             for (int index = 0; index < Assignment.MemberSlots.Count; index++)
@@ -100,7 +102,7 @@ namespace Immersive.Framework.Camera
                 playerOccurrenceId,
                 playerSlotId,
                 subject.IsValid ? subject : default);
-            ApplyResolvedSubjects();
+            ApplyResolvedSubjects(updateFallbackCoverage);
             return true;
         }
 
@@ -108,8 +110,64 @@ namespace Immersive.Framework.Camera
         {
             if (_members.Remove(playerOccurrenceId))
             {
-                ApplyResolvedSubjects();
+                ApplyResolvedSubjects(true);
             }
+        }
+
+        internal void RelinquishSubjectFallbackCoverageAfterReplacement()
+        {
+            if (!_ownsSubjectFallbackCoverage)
+            {
+                return;
+            }
+
+            if (Output?.Session?.ReleaseFallbackCoverageOwnershipWithoutRouting(
+                    _subjectCoverageOwnerId) == true)
+            {
+                _ownsSubjectFallbackCoverage = false;
+                SubjectDiagnostic = string.Empty;
+            }
+        }
+
+        internal bool AdoptSubjectFallbackCoverageAfterReplacement()
+        {
+            if (_ownsSubjectFallbackCoverage)
+            {
+                return true;
+            }
+            if (Output?.Session?.RegisterFallbackCoverageOwnershipAfterAssignmentCommit(
+                    _subjectCoverageOwnerId) != true)
+            {
+                SubjectDiagnostic = "The committed Assignment requires Fallback coverage, but the Output could not register target coverage ownership.";
+                return false;
+            }
+
+            _ownsSubjectFallbackCoverage = true;
+            SubjectDiagnostic = string.Empty;
+            return true;
+        }
+
+        internal bool TryGetMember(
+            PlayerOccurrenceId playerOccurrenceId,
+            out SessionCameraMemberState member)
+        {
+            return _members.TryGetValue(playerOccurrenceId, out member);
+        }
+
+        internal void RestoreMember(
+            PlayerOccurrenceId playerOccurrenceId,
+            bool hadPreviousMember,
+            SessionCameraMemberState previousMember)
+        {
+            if (hadPreviousMember)
+            {
+                _members[playerOccurrenceId] = previousMember;
+            }
+            else
+            {
+                _members.Remove(playerOccurrenceId);
+            }
+            ApplyResolvedSubjects(true);
         }
 
         internal void ReleaseSubjectFallbackCoverage()
@@ -132,7 +190,7 @@ namespace Immersive.Framework.Camera
             }
         }
 
-        private void ApplyResolvedSubjects()
+        private void ApplyResolvedSubjects(bool updateFallbackCoverage)
         {
             if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets ||
                 Composer == null || Composer.CinemachineCamera == null)
@@ -150,11 +208,12 @@ namespace Immersive.Framework.Camera
                 bool targetRequired =
                     Composer.EffectiveFollowRequirement == CameraTargetRequirement.Required ||
                     Composer.EffectiveLookAtRequirement == CameraTargetRequirement.Required;
-                if (targetRequired)
+                if (updateFallbackCoverage && targetRequired &&
+                    Assignment.OccurrenceMode != CameraOccurrenceMode.SharedGroup)
                 {
                     CoverForMissingRequiredSubject();
                 }
-                else
+                else if (updateFallbackCoverage)
                 {
                     ReleaseSubjectFallbackCoverage();
                 }
@@ -170,7 +229,10 @@ namespace Immersive.Framework.Camera
                 Composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed
                     ? null
                     : resolvedSubject.Observation;
-            ReleaseSubjectFallbackCoverage();
+            if (updateFallbackCoverage)
+            {
+                ReleaseSubjectFallbackCoverage();
+            }
         }
 
         private void CoverForMissingRequiredSubject()
@@ -213,6 +275,26 @@ namespace Immersive.Framework.Camera
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Session-scoped Session Camera Assignment materialization, membership and teardown.")]
     internal sealed class SessionCameraAssignmentRuntime : IDisposable
     {
+        private readonly struct MemberMutation
+        {
+            internal MemberMutation(
+                SessionCameraOccurrence occurrence,
+                PlayerOccurrenceId playerOccurrenceId,
+                bool hadPreviousMember,
+                SessionCameraMemberState previousMember)
+            {
+                Occurrence = occurrence;
+                PlayerOccurrenceId = playerOccurrenceId;
+                HadPreviousMember = hadPreviousMember;
+                PreviousMember = previousMember;
+            }
+
+            internal SessionCameraOccurrence Occurrence { get; }
+            internal PlayerOccurrenceId PlayerOccurrenceId { get; }
+            internal bool HadPreviousMember { get; }
+            internal SessionCameraMemberState PreviousMember { get; }
+        }
+
         private sealed class IndividualAssignmentRuntime
         {
             internal IndividualAssignmentRuntime(
@@ -230,9 +312,26 @@ namespace Immersive.Framework.Camera
             internal Dictionary<PlayerSlotId, CameraOutputAuthoring> OutputsBySlot { get; }
         }
 
+        private sealed class ReplacementOutput
+        {
+            internal ReplacementOutput(CameraOutputAuthoring output, SessionCameraOccurrence occurrence)
+            {
+                Output = output;
+                Occurrence = occurrence;
+            }
+
+            internal CameraOutputAuthoring Output { get; }
+            internal SessionCameraOccurrence Occurrence { get; }
+            internal CameraOccurrenceIdentity Identity => Occurrence != null
+                ? Occurrence.Identity
+                : default;
+            internal bool RequiresFallback => Occurrence == null || !Occurrence.IsReadyForOutput;
+        }
+
         private readonly List<SessionCameraOccurrence> _occurrences;
         private readonly List<CameraOutputAuthoring> _activeOutputs;
         private readonly List<IndividualAssignmentRuntime> _individualAssignments;
+        private readonly CameraOutputSessionTopology _outputTopology;
         private readonly Transform _sessionParent;
         private bool _disposed;
 
@@ -240,6 +339,7 @@ namespace Immersive.Framework.Camera
             IReadOnlyList<SessionCameraOccurrence> occurrences,
             IReadOnlyList<CameraOutputAuthoring> activeOutputs,
             IReadOnlyList<IndividualAssignmentRuntime> individualAssignments,
+            CameraOutputSessionTopology outputTopology,
             Transform sessionParent)
         {
             _occurrences = occurrences != null
@@ -251,6 +351,7 @@ namespace Immersive.Framework.Camera
             _individualAssignments = individualAssignments != null
                 ? new List<IndividualAssignmentRuntime>(individualAssignments)
                 : new List<IndividualAssignmentRuntime>();
+            _outputTopology = outputTopology ?? throw new ArgumentNullException(nameof(outputTopology));
             _sessionParent = sessionParent;
         }
 
@@ -303,6 +404,463 @@ namespace Immersive.Framework.Camera
             }
         }
 
+        internal bool TryReplaceAssignment(
+            SessionCameraAssignmentId previousAssignmentId,
+            SessionCameraAssignmentAuthoring candidateAuthoring,
+            IReadOnlyList<SessionCameraMemberState> currentMembers,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_disposed)
+            {
+                issue = "A disposed Session Camera Assignment runtime cannot replace an Assignment.";
+                return false;
+            }
+
+            SessionCameraAssignment previousAssignment = FindAssignment(previousAssignmentId);
+            if (previousAssignment == null)
+            {
+                issue = $"Active Session Camera Assignment '{previousAssignmentId}' was not found.";
+                return false;
+            }
+
+            if (candidateAuthoring == null)
+            {
+                issue = "Session Camera Assignment replacement requires an explicit candidate.";
+                return false;
+            }
+
+            if (candidateAuthoring.AssignmentId == previousAssignmentId)
+            {
+                return true;
+            }
+
+            if (!candidateAuthoring.TryBuild(out SessionCameraAssignment candidateAssignment, out issue))
+            {
+                issue = $"Session Camera Assignment candidate is invalid. {issue}";
+                return false;
+            }
+            if (FindAssignment(candidateAssignment.Id) != null)
+            {
+                issue = $"Candidate Assignment identity '{candidateAssignment.Id}' is already active.";
+                return false;
+            }
+
+            CameraDefinition candidateDefinition = candidateAuthoring.Definition;
+            if (!candidateDefinition.TryValidateSessionCamera(candidateAssignment.TargetPolicy, out issue))
+            {
+                issue = $"Candidate Camera Definition '{candidateDefinition.name}' is invalid. {issue}";
+                return false;
+            }
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                CameraDefinition activeDefinition = _occurrences[index].Definition;
+                if (activeDefinition != null &&
+                    activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
+                    !ReferenceEquals(activeDefinition, candidateDefinition))
+                {
+                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
+                    return false;
+                }
+            }
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                CameraDefinition activeDefinition = _individualAssignments[index].Definition;
+                if (activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
+                    !ReferenceEquals(activeDefinition, candidateDefinition))
+                {
+                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
+                    return false;
+                }
+            }
+
+            var previousOutputs = new Dictionary<CameraOutputId, CameraOutputAuthoring>();
+            for (int index = 0; index < previousAssignment.Outputs.Count; index++)
+            {
+                CameraOutputId outputId = previousAssignment.Outputs[index].OutputId;
+                if (!_outputTopology.TryGetOutput(
+                        outputId,
+                        out CameraOutputAuthoring output,
+                        out issue))
+                {
+                    issue = $"Active Assignment '{previousAssignment.Id}' lost its mapped Output. {issue}";
+                    return false;
+                }
+                if (output.Session == null ||
+                    output.Session.OutputState.ActiveAssignmentId != previousAssignment.Id)
+                {
+                    issue = $"Output '{outputId}' no longer has the expected active Assignment '{previousAssignment.Id}'.";
+                    return false;
+                }
+                previousOutputs.Add(outputId, output);
+            }
+
+            var candidateOutputs = new Dictionary<CameraOutputId, CameraOutputAuthoring>();
+            IReadOnlyList<CameraOutputDefinition> authoredOutputs = candidateAuthoring.OutputDefinitions;
+            for (int index = 0; index < authoredOutputs.Count; index++)
+            {
+                CameraOutputDefinition outputDefinition = authoredOutputs[index];
+                if (!_outputTopology.TryGetOutput(
+                        outputDefinition.OutputId,
+                        out CameraOutputAuthoring output,
+                        out issue) ||
+                    !ReferenceEquals(output.OutputDefinition, outputDefinition))
+                {
+                    issue = $"Candidate Assignment '{candidateAssignment.Id}' must map exact configured Outputs. {issue}";
+                    return false;
+                }
+                if (output.Session == null)
+                {
+                    issue = $"Candidate Output '{outputDefinition.OutputId}' has no active Camera Output session.";
+                    return false;
+                }
+                SessionCameraAssignmentId activeAssignmentId =
+                    output.Session.OutputState.ActiveAssignmentId;
+                if (activeAssignmentId.IsValid && activeAssignmentId != previousAssignmentId)
+                {
+                    issue = $"Candidate Output '{outputDefinition.OutputId}' is owned by another active Assignment '{activeAssignmentId}'.";
+                    return false;
+                }
+                candidateOutputs.Add(outputDefinition.OutputId, output);
+            }
+
+            if (candidateAssignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+            {
+                for (int index = 0; index < candidateAssignment.MemberOutputs.Count; index++)
+                {
+                    CameraPlayerOutputMapping mapping = candidateAssignment.MemberOutputs[index];
+                    if (!candidateOutputs.ContainsKey(mapping.OutputId))
+                    {
+                        issue = $"Candidate Individual Assignment '{candidateAssignment.Id}' maps Player Slot '{mapping.PlayerSlotId}' to an Output outside its explicit Output mapping.";
+                        return false;
+                    }
+                }
+            }
+
+            var candidateMembersById = new Dictionary<PlayerOccurrenceId, SessionCameraMemberState>();
+            var candidateMemberSlots = new HashSet<PlayerSlotId>();
+            if (currentMembers != null)
+            {
+                for (int index = 0; index < currentMembers.Count; index++)
+                {
+                    SessionCameraMemberState member = currentMembers[index];
+                    if (!member.PlayerOccurrenceId.IsValid || !member.PlayerSlotId.IsValid ||
+                        !IsConfiguredMember(candidateAssignment, member.PlayerSlotId) ||
+                        !candidateMemberSlots.Add(member.PlayerSlotId) ||
+                        !candidateMembersById.TryAdd(member.PlayerOccurrenceId, member))
+                    {
+                        issue = "Candidate membership must contain valid, unique current Player occurrences in configured member Slots.";
+                        return false;
+                    }
+                }
+            }
+
+            if (candidateAssignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer &&
+                candidateAssignment.MembershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots)
+            {
+                issue = "Individual Assignment replacement requires explicit Player membership.";
+                return false;
+            }
+
+            var previousOccurrencesByOutput = new Dictionary<CameraOutputId, SessionCameraOccurrence>();
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                SessionCameraOccurrence occurrence = _occurrences[index];
+                if (occurrence.Assignment.Id == previousAssignmentId &&
+                    !previousOccurrencesByOutput.TryAdd(occurrence.Identity.OutputId, occurrence))
+                {
+                    issue = $"Active Assignment '{previousAssignmentId}' has more than one retained occurrence on Output '{occurrence.Identity.OutputId}'.";
+                    return false;
+                }
+            }
+
+            var replacementOutputs = new Dictionary<CameraOutputId, ReplacementOutput>();
+            var candidateOccurrences = new List<SessionCameraOccurrence>();
+            var affectedOutputIds = new List<CameraOutputId>();
+            var snapshots = new Dictionary<CameraOutputId, CameraOutputSessionAssignmentSnapshot>();
+            var attemptedOutputIds = new List<CameraOutputId>();
+            IndividualAssignmentRuntime candidateIndividualRuntime = null;
+            bool assignmentStateCommitted = false;
+            GameObject stagingRoot = null;
+            try
+            {
+                stagingRoot = new GameObject("[Camera Assignment Replacement] Staging");
+                stagingRoot.SetActive(false);
+                stagingRoot.transform.SetParent(_sessionParent, false);
+
+                if (candidateAssignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+                {
+                    var outputsBySlot = new Dictionary<PlayerSlotId, CameraOutputAuthoring>();
+                    for (int index = 0; index < candidateAssignment.MemberOutputs.Count; index++)
+                    {
+                        CameraPlayerOutputMapping mapping = candidateAssignment.MemberOutputs[index];
+                        outputsBySlot.Add(mapping.PlayerSlotId, candidateOutputs[mapping.OutputId]);
+                        replacementOutputs.Add(mapping.OutputId,
+                            new ReplacementOutput(candidateOutputs[mapping.OutputId], null));
+                    }
+
+                    var individual = new IndividualAssignmentRuntime(
+                        candidateAssignment,
+                        candidateDefinition,
+                        outputsBySlot);
+                    candidateIndividualRuntime = individual;
+                    foreach (SessionCameraMemberState member in candidateMembersById.Values)
+                    {
+                        if (!outputsBySlot.TryGetValue(member.PlayerSlotId, out CameraOutputAuthoring output))
+                        {
+                            continue;
+                        }
+                        CameraOccurrenceIdentity identity = CameraOccurrenceIdentity.ForIndividual(
+                            candidateAssignment.Id,
+                            member.PlayerOccurrenceId,
+                            output.OutputId);
+                        if (!TryMaterializeIndividualOccurrence(
+                                individual,
+                                output,
+                                identity,
+                                stagingRoot.transform,
+                                out SessionCameraOccurrence occurrence,
+                                out issue))
+                        {
+                            DestroyOccurrences(candidateOccurrences);
+                            return false;
+                        }
+                        CameraSubject subject = candidateAssignment.TargetPolicy ==
+                            CameraTargetPolicy.MemberActorTargets
+                            ? member.Subject
+                            : default;
+                        if (!occurrence.ReconcileMember(
+                                member.PlayerOccurrenceId,
+                                member.PlayerSlotId,
+                                subject,
+                                false))
+                        {
+                            DestroyObject(occurrence.Root);
+                            DestroyOccurrences(candidateOccurrences);
+                            issue = $"Candidate Individual occurrence '{identity}' rejected its exact current Player membership.";
+                            return false;
+                        }
+                        candidateOccurrences.Add(occurrence);
+                        replacementOutputs[output.OutputId] =
+                            new ReplacementOutput(output, occurrence);
+                    }
+                }
+                else
+                {
+                    foreach (KeyValuePair<CameraOutputId, CameraOutputAuthoring> mapping in candidateOutputs)
+                    {
+                        CameraOccurrenceIdentity identity = CameraOccurrenceIdentity.ForSessionOrShared(
+                            candidateAssignment.Id,
+                            mapping.Key);
+                        if (!TryMaterializeReplacementOccurrence(
+                                candidateAssignment,
+                                candidateDefinition,
+                                mapping.Value,
+                                identity,
+                                stagingRoot.transform,
+                                out SessionCameraOccurrence occurrence,
+                                out issue))
+                        {
+                            DestroyOccurrences(candidateOccurrences);
+                            return false;
+                        }
+                        foreach (SessionCameraMemberState member in candidateMembersById.Values)
+                        {
+                            if (!occurrence.ReconcileMember(
+                                    member.PlayerOccurrenceId,
+                                    member.PlayerSlotId,
+                                    candidateAssignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets
+                                        ? member.Subject
+                                        : default,
+                                    false))
+                            {
+                                DestroyObject(occurrence.Root);
+                                DestroyOccurrences(candidateOccurrences);
+                                issue = $"Candidate occurrence '{identity}' rejected current Player membership '{member.PlayerOccurrenceId}'.";
+                                return false;
+                            }
+                        }
+                        candidateOccurrences.Add(occurrence);
+                        replacementOutputs.Add(mapping.Key,
+                            new ReplacementOutput(mapping.Value, occurrence));
+                    }
+                }
+
+                foreach (KeyValuePair<CameraOutputId, CameraOutputAuthoring> mapping in previousOutputs)
+                {
+                    if (!replacementOutputs.ContainsKey(mapping.Key))
+                    {
+                        replacementOutputs.Add(mapping.Key,
+                            new ReplacementOutput(mapping.Value, null));
+                    }
+                }
+
+                foreach (KeyValuePair<CameraOutputId, ReplacementOutput> mapping in replacementOutputs)
+                {
+                    CameraOutputAuthoring output = mapping.Value.Output;
+                    CameraOutputSessionAssignmentSnapshot snapshot =
+                        output.Session.CaptureAssignmentSnapshot();
+                    SessionCameraAssignment stateAssignment = candidateOutputs.ContainsKey(mapping.Key)
+                        ? candidateAssignment
+                        : null;
+                    if (!output.Session.CanCommitAssignmentReplacement(
+                            snapshot,
+                            stateAssignment,
+                            mapping.Value.Identity,
+                            mapping.Value.RequiresFallback,
+                            out issue))
+                    {
+                        DestroyOccurrences(candidateOccurrences);
+                        return false;
+                    }
+                    snapshots.Add(mapping.Key, snapshot);
+                    affectedOutputIds.Add(mapping.Key);
+                }
+
+                int removedOccurrenceCount = 0;
+                for (int index = 0; index < _occurrences.Count; index++)
+                {
+                    if (_occurrences[index].Assignment.Id == previousAssignmentId)
+                    {
+                        removedOccurrenceCount++;
+                    }
+                }
+                _occurrences.Capacity = Math.Max(
+                    _occurrences.Capacity,
+                    _occurrences.Count - removedOccurrenceCount + candidateOccurrences.Count);
+                _individualAssignments.Capacity = Math.Max(
+                    _individualAssignments.Capacity,
+                    _individualAssignments.Count + 1);
+                _activeOutputs.Capacity = Math.Max(
+                    _activeOutputs.Capacity,
+                    _activeOutputs.Count + candidateOutputs.Count);
+
+                for (int index = 0; index < candidateOccurrences.Count; index++)
+                {
+                    SessionCameraOccurrence occurrence = candidateOccurrences[index];
+                    occurrence.Root.transform.SetParent(_sessionParent, false);
+                    occurrence.Root.SetActive(true);
+                }
+
+                // Aplica todos os Outputs antes de publicar qualquer estado de Assignment.
+                for (int index = 0; index < affectedOutputIds.Count; index++)
+                {
+                    CameraOutputId outputId = affectedOutputIds[index];
+                    ReplacementOutput replacement = replacementOutputs[outputId];
+                    attemptedOutputIds.Add(outputId);
+                    CameraOccurrenceOutputResult applied = replacement.Output.Session.ApplyAssignmentCandidate(
+                        replacement.Occurrence?.Composer,
+                        replacement.RequiresFallback);
+                    if (!applied.Succeeded)
+                    {
+                        issue = $"Candidate Assignment '{candidateAssignment.Id}' failed on Output '{outputId}'. {applied.Diagnostic}";
+                        RollbackReplacementOutputs(attemptedOutputIds, replacementOutputs, snapshots, out string applyRollbackIssue);
+                        if (!string.IsNullOrEmpty(applyRollbackIssue)) issue += " Rollback: " + applyRollbackIssue;
+                        DestroyOccurrences(candidateOccurrences);
+                        return false;
+                    }
+                }
+
+                for (int index = 0; index < affectedOutputIds.Count; index++)
+                {
+                    CameraOutputId outputId = affectedOutputIds[index];
+                    ReplacementOutput replacement = replacementOutputs[outputId];
+                    SessionCameraAssignment stateAssignment = candidateOutputs.ContainsKey(outputId)
+                        ? candidateAssignment
+                        : null;
+                    if (!replacement.Output.Session.TryCommitAssignmentReplacement(
+                            snapshots[outputId],
+                            stateAssignment,
+                            replacement.Identity,
+                            replacement.Occurrence?.Composer,
+                            replacement.RequiresFallback,
+                            out issue))
+                    {
+                        issue = $"Candidate Assignment '{candidateAssignment.Id}' could not commit on Output '{outputId}'. {issue}";
+                        RollbackReplacementOutputs(attemptedOutputIds, replacementOutputs, snapshots, out string commitRollbackIssue);
+                        if (!string.IsNullOrEmpty(commitRollbackIssue)) issue += " Rollback: " + commitRollbackIssue;
+                        DestroyOccurrences(candidateOccurrences);
+                        return false;
+                    }
+                }
+
+                assignmentStateCommitted = true;
+                _occurrences.RemoveAll(occurrence => occurrence.Assignment.Id == previousAssignmentId);
+                _occurrences.AddRange(candidateOccurrences);
+                _individualAssignments.RemoveAll(item => item.Assignment.Id == previousAssignmentId);
+                if (candidateIndividualRuntime != null)
+                {
+                    _individualAssignments.Add(candidateIndividualRuntime);
+                }
+
+                for (int index = 0; index < candidateOccurrences.Count; index++)
+                {
+                    SessionCameraOccurrence occurrence = candidateOccurrences[index];
+                    if (!occurrence.IsReadyForOutput &&
+                        occurrence.Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
+                        occurrence.Assignment.OccurrenceMode != CameraOccurrenceMode.SharedGroup)
+                    {
+                        occurrence.AdoptSubjectFallbackCoverageAfterReplacement();
+                    }
+                }
+
+                _activeOutputs.RemoveAll(output => previousOutputs.ContainsKey(output.OutputId));
+                foreach (CameraOutputAuthoring output in candidateOutputs.Values)
+                {
+                    if (!_activeOutputs.Contains(output))
+                    {
+                        _activeOutputs.Add(output);
+                    }
+                }
+
+                string cleanupIssue = string.Empty;
+                foreach (SessionCameraOccurrence previousOccurrence in previousOccurrencesByOutput.Values)
+                {
+                    try
+                    {
+                        previousOccurrence.RelinquishSubjectFallbackCoverageAfterReplacement();
+                    }
+                    catch (Exception releaseException)
+                    {
+                        cleanupIssue += $" Previous occurrence '{previousOccurrence.Identity}' coverage cleanup failed. {releaseException.GetType().Name}: {releaseException.Message}";
+                    }
+                    try
+                    {
+                        DestroyObject(previousOccurrence.Root);
+                    }
+                    catch (Exception cleanupException)
+                    {
+                        cleanupIssue += $" Previous occurrence '{previousOccurrence.Identity}' destruction failed. {cleanupException.GetType().Name}: {cleanupException.Message}";
+                    }
+                }
+
+                issue = string.IsNullOrEmpty(cleanupIssue)
+                    ? string.Empty
+                    : "Assignment committed with previous-resource cleanup diagnostics." + cleanupIssue;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                if (assignmentStateCommitted)
+                {
+                    issue = $"Assignment replacement committed, but post-commit cleanup failed. {exception.GetType().Name}: {exception.Message}";
+                    return true;
+                }
+                RollbackReplacementOutputs(attemptedOutputIds, replacementOutputs, snapshots, out string exceptionRollbackIssue);
+                DestroyOccurrences(candidateOccurrences);
+                issue = $"Session Camera Assignment replacement failed. {exception.GetType().Name}: {exception.Message}";
+                if (!string.IsNullOrEmpty(exceptionRollbackIssue)) issue += " Rollback: " + exceptionRollbackIssue;
+                return false;
+            }
+            finally
+            {
+                if (stagingRoot != null)
+                {
+                    DestroyObject(stagingRoot);
+                }
+            }
+        }
+
         internal bool ReconcilePlayerOccurrence(
             PlayerOccurrenceId playerOccurrenceId,
             PlayerSlotId playerSlotId,
@@ -312,12 +870,13 @@ namespace Immersive.Framework.Camera
             issue = string.Empty;
             if (_disposed || !playerOccurrenceId.IsValid || !playerSlotId.IsValid)
             {
-                issue = "Individual Camera membership requires an active Assignment runtime and exact current Player occurrence and Slot identities.";
+                issue = "Session Camera membership requires an active Assignment runtime and exact current Player occurrence and Slot identities.";
                 return false;
             }
 
             var candidates = new List<SessionCameraOccurrence>();
             var presentedCandidates = new List<SessionCameraOccurrence>();
+            var memberMutations = new List<MemberMutation>();
             GameObject stagingRoot = null;
             try
             {
@@ -435,15 +994,24 @@ namespace Immersive.Framework.Camera
                         continue;
                     }
 
+                    bool hadPreviousMember = occurrence.TryGetMember(
+                        playerOccurrenceId,
+                        out SessionCameraMemberState previousMember);
                     if (!occurrence.ReconcileMember(
                             playerOccurrenceId,
                             playerSlotId,
                             subject))
                     {
                         issue = $"Session Camera Assignment '{occurrence.Assignment.Id}' rejected current Player membership '{playerOccurrenceId}'.";
+                        RollbackMemberMutations(memberMutations);
                         RollbackPlayerCandidates(candidates, presentedCandidates);
                         return false;
                     }
+                    memberMutations.Add(new MemberMutation(
+                        occurrence,
+                        playerOccurrenceId,
+                        hadPreviousMember,
+                        previousMember));
 
                     if (occurrence.IsReadyForOutput &&
                         (!occurrence.Output.Session.OutputState.HasRetainedNormalOccurrence ||
@@ -456,6 +1024,7 @@ namespace Immersive.Framework.Camera
                         if (!presentation.Succeeded)
                         {
                             issue = $"Camera Occurrence '{occurrence.Identity}' could not be applied after membership reconciliation. {presentation.Diagnostic}";
+                            RollbackMemberMutations(memberMutations);
                             RollbackPlayerCandidates(candidates, presentedCandidates);
                             return false;
                         }
@@ -467,8 +1036,9 @@ namespace Immersive.Framework.Camera
             }
             catch (Exception exception)
             {
+                RollbackMemberMutations(memberMutations);
                 RollbackPlayerCandidates(candidates, presentedCandidates);
-                issue = $"Individual Camera membership reconciliation failed. {exception.GetType().Name}: {exception.Message}";
+                issue = $"Session Camera membership reconciliation failed. {exception.GetType().Name}: {exception.Message}";
                 return false;
             }
             finally
@@ -541,6 +1111,136 @@ namespace Immersive.Framework.Camera
                 }
             }
             return false;
+        }
+
+        private SessionCameraAssignment FindAssignment(SessionCameraAssignmentId assignmentId)
+        {
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                if (_occurrences[index].Assignment.Id == assignmentId)
+                {
+                    return _occurrences[index].Assignment;
+                }
+            }
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                if (_individualAssignments[index].Assignment.Id == assignmentId)
+                {
+                    return _individualAssignments[index].Assignment;
+                }
+            }
+            return null;
+        }
+
+        private static bool TryMaterializeReplacementOccurrence(
+            SessionCameraAssignment assignment,
+            CameraDefinition definition,
+            CameraOutputAuthoring output,
+            CameraOccurrenceIdentity identity,
+            Transform stagingParent,
+            out SessionCameraOccurrence occurrence,
+            out string issue)
+        {
+            occurrence = null;
+            GameObject instance = null;
+            try
+            {
+                instance = Object.Instantiate(definition.RigPrefab, stagingParent, false);
+                if (instance == null)
+                {
+                    issue = $"Camera Definition '{definition.name}' Rig Prefab instantiation returned null.";
+                    return false;
+                }
+                instance.SetActive(false);
+                instance.name = $"Camera Occurrence Candidate [{identity}]";
+
+                CameraRigComposer[] composers = instance.GetComponentsInChildren<CameraRigComposer>(true);
+                if (composers.Length != 1 || composers[0] == null)
+                {
+                    issue = $"Candidate Camera Occurrence '{instance.name}' must contain exactly one CameraRigComposer.";
+                    DestroyObject(instance);
+                    return false;
+                }
+
+                CameraRigComposer composer = composers[0];
+                if (!composer.TryValidateForApply(out issue) || composer.CinemachineCamera == null)
+                {
+                    issue = $"Candidate Camera Occurrence '{instance.name}' is invalid. {issue}";
+                    DestroyObject(instance);
+                    return false;
+                }
+
+                OutputChannels outputChannel = output.CinemachineBrain.ChannelMask;
+                int channelMask = (int)outputChannel;
+                if (channelMask <= 0 || (channelMask & (channelMask - 1)) != 0)
+                {
+                    issue = $"Camera Output '{identity.OutputId}' must have one isolated Cinemachine channel before its candidate occurrence is materialized.";
+                    DestroyObject(instance);
+                    return false;
+                }
+
+                composer.CinemachineCamera.OutputChannel = outputChannel;
+                composer.CinemachineCamera.enabled = false;
+                occurrence = new SessionCameraOccurrence(
+                    assignment,
+                    definition,
+                    identity,
+                    instance,
+                    composer,
+                    output);
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                DestroyObject(instance);
+                issue = $"Candidate Camera Occurrence '{identity}' materialization failed. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private void RollbackReplacementOutputs(
+            IReadOnlyList<CameraOutputId> outputIds,
+            IReadOnlyDictionary<CameraOutputId, ReplacementOutput> replacementOutputs,
+            IReadOnlyDictionary<CameraOutputId, CameraOutputSessionAssignmentSnapshot> snapshots,
+            out string issue)
+        {
+            var failures = new List<string>();
+            var restored = new HashSet<CameraOutputId>();
+            for (int index = outputIds.Count - 1; index >= 0; index--)
+            {
+                CameraOutputId outputId = outputIds[index];
+                if (!restored.Add(outputId) || !snapshots.TryGetValue(outputId, out var snapshot))
+                {
+                    continue;
+                }
+                CameraOutputAuthoring output = replacementOutputs[outputId].Output;
+                try
+                {
+                    CameraOccurrenceOutputResult result = output.Session.RestoreAssignmentSnapshot(snapshot);
+                    if (!result.Succeeded)
+                    {
+                        failures.Add($"Output '{outputId}': {result.Diagnostic}");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    failures.Add($"Output '{outputId}': {exception.GetType().Name}: {exception.Message}");
+                }
+            }
+            issue = failures.Count == 0 ? string.Empty : string.Join(" | ", failures);
+        }
+
+        private static void RollbackMemberMutations(List<MemberMutation> mutations)
+        {
+            for (int index = mutations.Count - 1; index >= 0; index--)
+            {
+                MemberMutation mutation = mutations[index];
+                mutation.Occurrence.RestoreMember(
+                    mutation.PlayerOccurrenceId,
+                    mutation.HadPreviousMember,
+                    mutation.PreviousMember);
+            }
         }
 
         private static bool TryMaterializeIndividualOccurrence(
@@ -656,6 +1356,7 @@ namespace Immersive.Framework.Camera
                     Array.Empty<SessionCameraOccurrence>(),
                     Array.Empty<CameraOutputAuthoring>(),
                     Array.Empty<IndividualAssignmentRuntime>(),
+                    outputs,
                     sessionParent);
                 issue = string.Empty;
                 return true;
@@ -912,6 +1613,7 @@ namespace Immersive.Framework.Camera
                     candidates,
                     activeOutputs,
                     individualAssignments,
+                    outputs,
                     sessionParent);
                 issue = string.Empty;
                 return true;
@@ -1060,6 +1762,88 @@ namespace Immersive.Framework.Camera
             _players.Changed += OnPlayerChanged;
             _actors.CurrentActorInvalidated += OnActorInvalidated;
             ReconcileAll();
+        }
+
+        internal bool TryReplaceAssignment(
+            SessionCameraAssignmentId previousAssignmentId,
+            SessionCameraAssignmentAuthoring candidateAuthoring,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!_disposed && candidateAuthoring != null &&
+                candidateAuthoring.AssignmentId == previousAssignmentId)
+            {
+                return _assignments.TryReplaceAssignment(
+                    previousAssignmentId,
+                    candidateAuthoring,
+                    Array.Empty<SessionCameraMemberState>(),
+                    out issue);
+            }
+
+            if (_disposed || candidateAuthoring == null ||
+                !candidateAuthoring.TryBuild(out SessionCameraAssignment candidate, out issue))
+            {
+                if (string.IsNullOrEmpty(issue))
+                {
+                    issue = "An active Session Camera membership runtime and valid candidate Assignment are required.";
+                }
+                return false;
+            }
+
+            if (candidate.Id == previousAssignmentId)
+            {
+                return _assignments.TryReplaceAssignment(
+                    previousAssignmentId,
+                    candidateAuthoring,
+                    Array.Empty<SessionCameraMemberState>(),
+                    out issue);
+            }
+
+            var members = new List<SessionCameraMemberState>();
+            if (candidate.MembershipPolicy == CameraMembershipPolicy.ExplicitPlayerSlots)
+            {
+                for (int index = 0; index < candidate.MemberSlots.Count; index++)
+                {
+                    PlayerSlotId slotId = candidate.MemberSlots[index];
+                    if (!_players.TryGetSlotSnapshot(slotId, out PlayerSlotRuntimeSnapshot slot))
+                    {
+                        issue = $"Candidate Assignment '{candidate.Id}' member Slot '{slotId}' is not configured by this Player Session.";
+                        return false;
+                    }
+                    if (!slot.IsJoined || !slot.PlayerOccurrenceId.IsValid)
+                    {
+                        continue;
+                    }
+
+                    CameraSubject subject = default;
+                    if (candidate.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
+                        _actors.TryGetCurrentActorOccurrence(
+                            slotId,
+                            out PlayerPreparedActorOccurrence actor) &&
+                        !TryResolveSubject(actor, out subject, out issue))
+                    {
+                        issue = $"Candidate Assignment '{candidate.Id}' could not resolve current Actor Subject for Slot '{slotId}'. {issue}";
+                        return false;
+                    }
+                    members.Add(new SessionCameraMemberState(
+                        slot.PlayerOccurrenceId,
+                        slotId,
+                        subject));
+                }
+            }
+
+            if (!_assignments.TryReplaceAssignment(
+                    previousAssignmentId,
+                    candidateAuthoring,
+                    members,
+                    out issue))
+            {
+                return false;
+            }
+
+            LastReconciliationSucceeded = true;
+            Diagnostic = string.Empty;
+            return true;
         }
 
         internal bool LastReconciliationSucceeded { get; private set; } = true;

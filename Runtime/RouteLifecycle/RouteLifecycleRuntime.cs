@@ -15,7 +15,6 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.Pause;
-using Immersive.Framework.Camera;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -51,8 +50,6 @@ namespace Immersive.Framework.RouteLifecycle
         private int _routeOccurrenceSequence;
         private IRoutePlayerSpatialEntryLifecycleParticipant
             _playerSpatialEntryParticipant;
-        private CameraPresentationLifecycleRuntime
-            _cameraPresentationLifecycle;
         private ICycleResetParticipantSource _cycleResetParticipantSource = EmptyCycleResetParticipantSource.Instance;
 
         internal RouteLifecycleRuntime(
@@ -158,13 +155,6 @@ namespace Immersive.Framework.RouteLifecycle
         internal void SetActivityContentExecutionParticipantSource(IActivityContentExecutionParticipantSource participantSource)
         {
             _activityFlowRuntime.SetActivityContentExecutionParticipantSource(participantSource);
-        }
-
-        internal void SetCameraPresentationLifecycle(
-            CameraPresentationLifecycleRuntime lifecycle)
-        {
-            _cameraPresentationLifecycle = lifecycle;
-            _activityFlowRuntime.SetCameraPresentationLifecycle(lifecycle);
         }
 
         internal bool SetPlayerSpatialEntryParticipant(
@@ -346,7 +336,7 @@ namespace Immersive.Framework.RouteLifecycle
             }
 
             // Activity lifecycle must exit while the previous Route scene is still loaded.
-            // Scene-authored Activity receivers can then release scoped camera, audio and input
+            // Scene-authored Activity receivers can then release scoped audio and input
             // state before their targets and rigs are destroyed by Route scene replacement.
             var routeContentExitResult = _routeContentRuntime.ExitRouteContent(_currentRouteContentDiscoveryScope, route, source, reason);
             ExitCurrentPlayerSpatialEntry();
@@ -450,42 +440,6 @@ namespace Immersive.Framework.RouteLifecycle
             }
 
             var runtimeRouteEnterResult = CreateRouteScopeRoot(route, source, reason);
-            if (_cameraPresentationLifecycle != null)
-            {
-                if (!runtimeRouteEnterResult.HasContext)
-                {
-                    _runtimeContentRuntime.RemoveScopeRoot(
-                        runtimeRouteEnterResult.Owner,
-                        source,
-                        "camera-route-presentation-context-missing");
-                    RollbackRouteResettableRegistration(
-                        route,
-                        source,
-                        "camera-route-presentation-context-missing");
-                    return RouteLifecycleStartResult.Failed(
-                        "Route Camera Presentation lifecycle requires an active Route RuntimeContent context.");
-                }
-
-                if (!_cameraPresentationLifecycle.TryEnterRoute(
-                        route,
-                        runtimeRouteEnterResult.Context,
-                        source,
-                        reason,
-                        out string routeCameraPresentationIssue))
-                {
-                    _runtimeContentRuntime.RemoveScopeRoot(
-                        runtimeRouteEnterResult.Owner,
-                        source,
-                        "camera-route-presentation-enter-rollback");
-                    RollbackRouteResettableRegistration(
-                        route,
-                        source,
-                        "camera-route-presentation-enter-rollback");
-                    return RouteLifecycleStartResult.Failed(
-                        routeCameraPresentationIssue);
-                }
-            }
-
             var sceneLifecycleResult = routeSceneCompositionResult.PrimarySceneLoadResult;
             var routeContentSet = RouteContentSet.FromSceneCompositionResult(
                 route,
@@ -503,24 +457,6 @@ namespace Immersive.Framework.RouteLifecycle
                 routeContentDiscoveryScope);
             if (!TryEnterPlayerSpatialEntry(playerSpatialEntryContext, out string playerSpatialEntryIssue))
             {
-                string cameraSelectionRollbackIssue = string.Empty;
-                if (_cameraPresentationLifecycle != null &&
-                    !_cameraPresentationLifecycle.TryRollbackSelection(
-                        route,
-                        source,
-                        "camera-route-selection-player-spatial-entry-rollback",
-                        out cameraSelectionRollbackIssue))
-                {
-                    cameraSelectionRollbackIssue =
-                        " Camera selection rollback failed. " +
-                        cameraSelectionRollbackIssue;
-                }
-
-                _cameraPresentationLifecycle?.TryExitRoute(
-                    route,
-                    source,
-                    "camera-route-presentation-player-spatial-entry-rollback",
-                    out _);
                 _runtimeContentRuntime.RemoveScopeRoot(
                     runtimeRouteEnterResult.Owner,
                     source,
@@ -529,9 +465,7 @@ namespace Immersive.Framework.RouteLifecycle
                     route,
                     source,
                     "route-player-spatial-entry-rollback");
-                return RouteLifecycleStartResult.Failed(
-                    playerSpatialEntryIssue +
-                    cameraSelectionRollbackIssue);
+                return RouteLifecycleStartResult.Failed(playerSpatialEntryIssue);
             }
 
             var startupActivityProgressReporter = FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
@@ -563,24 +497,6 @@ namespace Immersive.Framework.RouteLifecycle
             if (!startupActivityFlowResult.Completed)
             {
                 ExitCurrentPlayerSpatialEntry();
-                string cameraSelectionRollbackIssue = string.Empty;
-                if (_cameraPresentationLifecycle != null &&
-                    !_cameraPresentationLifecycle.TryRollbackSelection(
-                        route,
-                        source,
-                        "camera-route-selection-startup-activity-rollback",
-                        out cameraSelectionRollbackIssue))
-                {
-                    cameraSelectionRollbackIssue =
-                        " Camera selection rollback failed. " +
-                        cameraSelectionRollbackIssue;
-                }
-
-                _cameraPresentationLifecycle?.TryExitRoute(
-                    route,
-                    source,
-                    "camera-route-presentation-startup-activity-rollback",
-                    out _);
                 _runtimeContentRuntime.RemoveScopeRoot(
                     runtimeRouteEnterResult.Owner,
                     source,
@@ -589,19 +505,7 @@ namespace Immersive.Framework.RouteLifecycle
                     route,
                     source,
                     "route-startup-activity-rollback");
-                return RouteLifecycleStartResult.Failed(
-                    startupActivityFlowResult.Message +
-                    cameraSelectionRollbackIssue);
-            }
-
-            if (_cameraPresentationLifecycle != null &&
-                !_cameraPresentationLifecycle.TryCommitSelection(
-                    route,
-                    out string cameraSelectionCommitIssue))
-            {
-                return RouteLifecycleStartResult.Failed(
-                    "Route Camera Presentation selection commit failed. " +
-                    cameraSelectionCommitIssue);
+                return RouteLifecycleStartResult.Failed(startupActivityFlowResult.Message);
             }
 
             ActivityFlowStartResult routeStartupActivityFlowResult =
@@ -1031,12 +935,6 @@ namespace Immersive.Framework.RouteLifecycle
                 throw new InvalidOperationException(
                     "Route scope root removal is only valid when previous and next Routes resolve to different operational owners.");
             }
-
-            _cameraPresentationLifecycle?.TryExitRoute(
-                previousRoute,
-                source,
-                reason,
-                out _);
 
             return _runtimeContentRuntime.RemoveScopeRoot(owner, source, reason);
         }

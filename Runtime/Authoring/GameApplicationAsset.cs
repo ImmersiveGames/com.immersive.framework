@@ -11,9 +11,9 @@ namespace Immersive.Framework.Authoring
     /// <summary>
     /// API status: Stable. Public authoring root for one Immersive game/application.
     ///
-    /// The asset owns application-level intent only. Its Camera Session fields currently
-    /// retain legacy Output and Presentation authoring until CAMERA-038-D/J, while
-    /// every mutable Session, Player, Route, Activity, Camera occurrence, Progression
+    /// The asset owns application-level intent only. Camera assignments and Outputs
+    /// are explicit application-level Session configuration, while mutable Session,
+    /// Player, Route, Activity, Camera occurrence, Progression
     /// Save and scene runtime state remains outside this asset.
     /// Project-level frame pacing is owned by Project Settings > Immersive Framework.
     /// </summary>
@@ -55,14 +55,9 @@ namespace Immersive.Framework.Authoring
 
         [Header("Camera")]
         [SerializeField]
-        [Tooltip("Legacy Camera Session capacity: 1..N physical Output prefabs plus optional Player Slot -> Output bindings. Outputs are materialized once for the Session and are not discovered from Persistent Content. CAMERA-038-D/J will replace these with Assignments.")]
+        [Tooltip("Camera Session capacity: 1..N physical Output prefabs plus optional Player Slot -> Output bindings. Outputs are materialized once for the Session and are not discovered from Persistent Content.")]
         private CameraSessionConfiguration cameraSession =
             new CameraSessionConfiguration();
-
-        [SerializeField]
-        [Tooltip("Legacy Session-owned Camera Presentations consumed by the current Presentation runtime. CAMERA-038-D/J will replace these with Assignments.")]
-        private CameraPresentationDefinition[] sessionCameraPresentations =
-            Array.Empty<CameraPresentationDefinition>();
 
         [Header("Session Camera Assignments")]
         [SerializeField]
@@ -127,15 +122,6 @@ namespace Immersive.Framework.Authoring
         public bool HasCameraSessionConfiguration =>
             cameraSession != null &&
             cameraSession.HasOutputs;
-
-        public IReadOnlyList<CameraPresentationDefinition>
-            SessionCameraPresentations =>
-            sessionCameraPresentations ??
-            Array.Empty<CameraPresentationDefinition>();
-
-        public bool HasSessionCameraPresentations =>
-            sessionCameraPresentations != null &&
-            sessionCameraPresentations.Length > 0;
 
         public IReadOnlyList<SessionCameraAssignmentAuthoring> SessionCameraAssignments =>
             sessionCameraAssignments ?? (IReadOnlyList<SessionCameraAssignmentAuthoring>)

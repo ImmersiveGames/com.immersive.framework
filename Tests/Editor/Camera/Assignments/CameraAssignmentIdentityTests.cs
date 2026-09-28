@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Immersive.Framework.Authoring;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
@@ -91,6 +94,42 @@ namespace Immersive.Framework.Camera.Tests
                 new SessionCameraAssignmentId("assignment.a"), default, new CameraOutputId("output.a")));
             Assert.Throws<ArgumentException>(() => CameraOccurrenceIdentity.ForSessionOrShared(
                 default, new CameraOutputId("output.a")));
+        }
+
+        [Test]
+        public void RouteAndActivityHaveNoCameraSelectionAuthority()
+        {
+            Assert.That(DeclaresCameraSelection(typeof(RouteAsset)), Is.False);
+            Assert.That(DeclaresCameraSelection(typeof(ActivityAsset)), Is.False);
+        }
+
+        [Test]
+        public void AssignmentOutputHasNoPresentationOrRequestSelectionSeam()
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            Assert.That(typeof(CameraOutputAuthoring).GetProperty("Context", flags), Is.Null);
+            Assert.That(typeof(CameraOutputSession).GetMethod("Admit", flags), Is.Null);
+            Assert.That(typeof(CameraOutputSession).GetMethod("Release", flags), Is.Null);
+
+            string[] legacySelectionTypes = typeof(CameraOutputSession).Assembly
+                .GetTypes()
+                .Select(type => type.Name)
+                .Where(name => name.StartsWith("CameraPresentation", StringComparison.Ordinal) ||
+                               name.StartsWith("CameraRequest", StringComparison.Ordinal) ||
+                               name == "CameraOutputContext")
+                .ToArray();
+            Assert.That(legacySelectionTypes, Is.Empty);
+        }
+
+        private static bool DeclaresCameraSelection(Type owner)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            return owner.GetFields(flags).Any(field =>
+                       field.Name.IndexOf("camera", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       field.FieldType.Name.StartsWith("CameraPresentation", StringComparison.Ordinal)) ||
+                   owner.GetProperties(flags).Any(property =>
+                       property.Name.IndexOf("camera", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       property.PropertyType.Name.StartsWith("CameraPresentation", StringComparison.Ordinal));
         }
     }
 }

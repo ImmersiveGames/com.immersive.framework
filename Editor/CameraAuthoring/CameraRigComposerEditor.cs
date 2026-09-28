@@ -99,7 +99,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.LabelField(
                 new GUIContent(
                     "Camera Rig Composer",
-                    "Authors one local gameplay Camera rig. Apply / Rebuild materializes the local Cinemachine Camera and Framework-owned pipeline controls. Camera Output selection and request arbitration are separate runtime authorities."),
+                    "Authors one reusable Camera rig. Apply / Rebuild materializes the local Cinemachine Camera and Framework-owned pipeline controls. Session Camera Assignments own normal camera selection."),
                 EditorStyles.boldLabel);
         }
 

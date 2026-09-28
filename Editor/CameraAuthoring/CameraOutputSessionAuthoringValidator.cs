@@ -62,7 +62,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (binding.FallbackCameraRig == null)
             {
                 issues.Add(
-                    "Assign the Output's explicit Fallback Camera, which must be available before normal camera presentation.");
+                    "Assign the Output's explicit Fallback Camera, which must be available before a normal Camera Occurrence can be applied.");
             }
 
             if (binding.UnityCamera != null &&

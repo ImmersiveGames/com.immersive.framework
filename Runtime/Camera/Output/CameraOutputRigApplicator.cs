@@ -6,16 +6,39 @@ using Unity.Cinemachine;
 
 namespace Immersive.Framework.Camera
 {
+    internal readonly struct CameraOutputRigApplicatorSnapshot
+    {
+        internal CameraOutputRigApplicatorSnapshot(
+            CinemachineCamera appliedCamera,
+            bool appliedCameraEnabled,
+            bool hasAppliedFallback,
+            CinemachineBlendDefinition defaultBlend,
+            CinemachineBlenderSettings customBlends)
+        {
+            AppliedCamera = appliedCamera;
+            HasAppliedCamera = !ReferenceEquals(appliedCamera, null);
+            AppliedCameraEnabled = appliedCameraEnabled;
+            HasAppliedFallback = hasAppliedFallback;
+            DefaultBlend = defaultBlend;
+            CustomBlends = customBlends;
+        }
+
+        internal CinemachineCamera AppliedCamera { get; }
+        internal bool HasAppliedCamera { get; }
+        internal bool AppliedCameraEnabled { get; }
+        internal bool HasAppliedFallback { get; }
+        internal CinemachineBlendDefinition DefaultBlend { get; }
+        internal CinemachineBlenderSettings CustomBlends { get; }
+    }
+
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    public sealed class CameraOutputRigApplicator : ICameraOutputApplication
+    public sealed class CameraOutputRigApplicator
     {
         private readonly CameraOutputBinding _binding;
         private readonly CinemachineBlendDefinition _baselineDefaultBlend;
         private readonly CinemachineBlenderSettings _baselineCustomBlends;
 
-        private bool _hasAppliedRequest;
         private bool _hasAppliedFallback;
-        private CameraRequestId _appliedRequestId;
         private CinemachineCamera _appliedCamera;
 
         public CameraOutputRigApplicator(CameraOutputBinding binding)
@@ -33,47 +56,50 @@ namespace Immersive.Framework.Camera
         }
 
         public CameraOutputBinding Binding => _binding;
-        public bool HasAppliedRequest => _hasAppliedRequest;
         public bool HasAppliedFallback => _hasAppliedFallback;
-        public bool HasAppliedNormalOccurrence => !_hasAppliedRequest && !_hasAppliedFallback && _appliedCamera != null;
-        public CameraRequestId AppliedRequestId => _appliedRequestId;
+        public bool HasAppliedNormalOccurrence => !_hasAppliedFallback && _appliedCamera != null;
         public CinemachineCamera AppliedCamera => _appliedCamera;
 
-        public CameraOutputApplyResult Apply(
-            CameraOutputContext context,
-            CameraRigReference fallbackRig,
-            bool coverWithFallback)
+        internal CameraOutputRigApplicatorSnapshot CaptureSnapshot() =>
+            new CameraOutputRigApplicatorSnapshot(
+                _appliedCamera,
+                _appliedCamera != null && _appliedCamera.enabled,
+                _hasAppliedFallback,
+                _binding.Brain.DefaultBlend,
+                _binding.Brain.CustomBlends);
+
+        internal CameraOccurrenceOutputResult RestoreSnapshot(
+            CameraOutputRigApplicatorSnapshot snapshot)
         {
-            if (context == null)
+            if (snapshot.HasAppliedCamera && snapshot.AppliedCamera == null)
             {
-                return Blocked(
-                    default,
-                    "camera.output-apply.context.missing",
-                    "Camera output application requires a CameraOutputContext.");
+                return CameraOccurrenceOutputResult.Rejected(
+                    _appliedCamera,
+                    "The previously applied Camera was destroyed before rollback and cannot be restored.");
             }
 
-            if (context.OutputId != _binding.OutputId)
+            CinemachineCamera previous = _appliedCamera;
+            if (previous != null && previous != snapshot.AppliedCamera)
             {
-                return Blocked(
-                    default,
-                    "camera.output-apply.output-mismatch",
-                    $"Camera output context '{context.OutputId}' does not match binding '{_binding.OutputId}'.");
+                previous.enabled = false;
             }
 
-            if (!fallbackRig.IsValid)
+            if (snapshot.AppliedCamera != null)
             {
-                return Blocked(
-                    default,
-                    "camera.output-apply.fallback-rig.invalid",
-                    $"Camera output '{_binding.OutputId}' requires an explicit valid Fallback Camera Rig.");
+                if (!snapshot.AppliedCamera.gameObject.scene.IsValid())
+                {
+                    return CameraOccurrenceOutputResult.Rejected(
+                        previous,
+                        "The previously applied Camera no longer belongs to a loaded Scene and cannot be restored.");
+                }
+                snapshot.AppliedCamera.enabled = snapshot.AppliedCameraEnabled;
             }
 
-            if (coverWithFallback || !context.HasWinner)
-            {
-                return ApplyFallbackRig(fallbackRig);
-            }
-
-            return ApplyWinner(context.Winner);
+            _binding.Brain.DefaultBlend = snapshot.DefaultBlend;
+            _binding.Brain.CustomBlends = snapshot.CustomBlends;
+            _hasAppliedFallback = snapshot.HasAppliedFallback;
+            _appliedCamera = snapshot.AppliedCamera;
+            return CameraOccurrenceOutputResult.Applied(previous, _appliedCamera);
         }
 
         public CameraOutputApplyResult Clear()
@@ -87,14 +113,11 @@ namespace Immersive.Framework.Camera
 
             RestoreOutputBlendPolicy();
 
-            _hasAppliedRequest = false;
             _hasAppliedFallback = false;
-            _appliedRequestId = default;
             _appliedCamera = null;
 
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Cleared,
-                default,
                 previous,
                 null,
                 Array.Empty<CameraIssue>(),
@@ -110,7 +133,6 @@ namespace Immersive.Framework.Camera
             if (composer == null)
             {
                 return Blocked(
-                    default,
                     "camera.output-apply.fallback-composer.missing",
                     "Fallback Camera Rig requires a materialized CameraRigComposer before it can be applied.");
             }
@@ -120,7 +142,6 @@ namespace Immersive.Framework.Camera
             if (targetCamera == null)
             {
                 return Blocked(
-                    default,
                     "camera.output-apply.fallback-cinemachine-camera.missing",
                     $"Fallback CameraRigComposer '{composer.name}' has no materialized CinemachineCamera.");
             }
@@ -128,14 +149,13 @@ namespace Immersive.Framework.Camera
             if (!targetCamera.gameObject.scene.IsValid())
             {
                 return Blocked(
-                    default,
                     "camera.output-apply.fallback-cinemachine-camera.scene-invalid",
                     $"Fallback CinemachineCamera '{targetCamera.name}' is not part of a valid loaded scene.");
             }
 
             if (targetCamera.OutputChannel != _binding.Brain.ChannelMask)
             {
-                return Blocked(default, "camera.output-apply.fallback-channel.mismatch",
+                return Blocked("camera.output-apply.fallback-channel.mismatch",
                     $"Fallback Camera '{targetCamera.name}' must use Output channel '{_binding.Brain.ChannelMask}'.");
             }
 
@@ -145,7 +165,6 @@ namespace Immersive.Framework.Camera
             {
                 return new CameraOutputApplyResult(
                     CameraOutputApplyKind.Preserved,
-                    default,
                     targetCamera,
                     targetCamera,
                     Array.Empty<CameraIssue>(),
@@ -163,14 +182,11 @@ namespace Immersive.Framework.Camera
 
             targetCamera.enabled = true;
 
-            _hasAppliedRequest = false;
             _hasAppliedFallback = true;
-            _appliedRequestId = default;
             _appliedCamera = targetCamera;
 
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Applied,
-                default,
                 previous,
                 targetCamera,
                 Array.Empty<CameraIssue>(),
@@ -182,26 +198,26 @@ namespace Immersive.Framework.Camera
             CameraRigComposer composer = occurrenceRig.Composer;
             if (composer == null)
             {
-                return Blocked(default, "camera.output-apply.occurrence-composer.missing",
+                return Blocked("camera.output-apply.occurrence-composer.missing",
                     "Normal Camera Occurrence requires a materialized CameraRigComposer.");
             }
 
             CinemachineCamera targetCamera = composer.CinemachineCamera;
             if (targetCamera == null || !targetCamera.gameObject.scene.IsValid())
             {
-                return Blocked(default, "camera.output-apply.occurrence-camera.invalid",
+                return Blocked("camera.output-apply.occurrence-camera.invalid",
                     $"Normal Camera Occurrence '{composer.name}' requires a materialized CinemachineCamera in a valid loaded scene.");
             }
 
             if (targetCamera.OutputChannel != _binding.Brain.ChannelMask)
             {
-                return Blocked(default, "camera.output-apply.occurrence-channel.mismatch",
+                return Blocked("camera.output-apply.occurrence-channel.mismatch",
                     $"Normal Camera Occurrence '{targetCamera.name}' must use Output channel '{_binding.Brain.ChannelMask}'.");
             }
 
             if (HasAppliedNormalOccurrence && _appliedCamera == targetCamera && targetCamera.enabled)
             {
-                return new CameraOutputApplyResult(CameraOutputApplyKind.Preserved, default,
+                return new CameraOutputApplyResult(CameraOutputApplyKind.Preserved,
                     targetCamera, targetCamera, Array.Empty<CameraIssue>(),
                     $"Camera output preserved normal occurrence rig. camera='{targetCamera.name}' output='{_binding.OutputId}'.");
             }
@@ -210,11 +226,9 @@ namespace Immersive.Framework.Camera
             RestoreOutputBlendPolicy();
             if (previous != null && previous != targetCamera) previous.enabled = false;
             targetCamera.enabled = true;
-            _hasAppliedRequest = false;
             _hasAppliedFallback = false;
-            _appliedRequestId = default;
             _appliedCamera = targetCamera;
-            return new CameraOutputApplyResult(CameraOutputApplyKind.Applied, default,
+            return new CameraOutputApplyResult(CameraOutputApplyKind.Applied,
                 previous, targetCamera, Array.Empty<CameraIssue>(),
                 $"Camera output applied normal occurrence rig. camera='{targetCamera.name}' output='{_binding.OutputId}'.");
         }
@@ -246,9 +260,7 @@ namespace Immersive.Framework.Camera
             RestoreOutputBlendPolicy();
             if (previous != null && previous != targetCamera) previous.enabled = false;
             targetCamera.enabled = true;
-            _hasAppliedRequest = false;
             _hasAppliedFallback = false;
-            _appliedRequestId = default;
             _appliedCamera = targetCamera;
             return CameraOccurrenceOutputResult.Applied(previous, targetCamera);
         }
@@ -280,119 +292,9 @@ namespace Immersive.Framework.Camera
             RestoreOutputBlendPolicy();
             if (previous != null && previous != targetCamera) previous.enabled = false;
             targetCamera.enabled = true;
-            _hasAppliedRequest = false;
             _hasAppliedFallback = true;
-            _appliedRequestId = default;
             _appliedCamera = targetCamera;
             return CameraOccurrenceOutputResult.Applied(previous, targetCamera);
-        }
-
-        private CameraOutputApplyResult ApplyWinner(CameraRequest winner)
-        {
-            if (!winner.IsValid)
-            {
-                return Blocked(
-                    winner,
-                    "camera.output-apply.winner.invalid",
-                    "Camera output application rejected an invalid winner.");
-            }
-
-            if (winner.OutputId != _binding.OutputId)
-            {
-                return Blocked(
-                    winner,
-                    "camera.output-apply.winner-output-mismatch",
-                    $"Winning request output '{winner.OutputId}' does not match binding '{_binding.OutputId}'.");
-            }
-
-            CameraRigComposer composer = winner.Rig.Composer;
-
-            if (composer == null)
-            {
-                return Blocked(
-                    winner,
-                    "camera.output-apply.composer.missing",
-                    "Winning camera request requires a materialized CameraRigComposer before it can be applied.");
-            }
-
-            CinemachineCamera targetCamera = composer.CinemachineCamera;
-
-            if (targetCamera == null)
-            {
-                return Blocked(
-                    winner,
-                    "camera.output-apply.cinemachine-camera.missing",
-                    $"CameraRigComposer '{composer.name}' has no materialized CinemachineCamera.");
-            }
-
-            if (!targetCamera.gameObject.scene.IsValid())
-            {
-                return Blocked(
-                    winner,
-                    "camera.output-apply.cinemachine-camera.scene-invalid",
-                    $"CinemachineCamera '{targetCamera.name}' is not part of a valid loaded scene.");
-            }
-
-            if (_hasAppliedRequest &&
-                _appliedRequestId == winner.RequestId &&
-                _appliedCamera == targetCamera &&
-                targetCamera.enabled)
-            {
-                return new CameraOutputApplyResult(
-                    CameraOutputApplyKind.Preserved,
-                    winner,
-                    targetCamera,
-                    targetCamera,
-                    Array.Empty<CameraIssue>(),
-                    $"Camera output preserved current winner. request='{winner.RequestId}' camera='{targetCamera.name}'.");
-            }
-
-            CinemachineCamera previous = _appliedCamera;
-
-            ApplyPresentationTransitionPolicy(
-                winner.PresentationTransitionMode);
-
-            if (previous != null && previous != targetCamera)
-            {
-                previous.enabled = false;
-            }
-
-            targetCamera.enabled = true;
-
-            if (winner.PresentationTransitionMode ==
-                    CameraPresentationTransitionMode.Cut)
-            {
-                _binding.Brain.ActiveBlend = null;
-            }
-
-            _hasAppliedRequest = true;
-            _hasAppliedFallback = false;
-            _appliedRequestId = winner.RequestId;
-            _appliedCamera = targetCamera;
-
-            return new CameraOutputApplyResult(
-                CameraOutputApplyKind.Applied,
-                winner,
-                previous,
-                targetCamera,
-                Array.Empty<CameraIssue>(),
-                $"Camera output applied winner. request='{winner.RequestId}' camera='{targetCamera.name}' output='{_binding.OutputId}' transition='{winner.PresentationTransitionMode}'.");
-        }
-
-        private void ApplyPresentationTransitionPolicy(
-            CameraPresentationTransitionMode transitionMode)
-        {
-            if (transitionMode == CameraPresentationTransitionMode.Cut)
-            {
-                _binding.Brain.CustomBlends = null;
-                _binding.Brain.DefaultBlend =
-                    new CinemachineBlendDefinition(
-                        CinemachineBlendDefinition.Styles.Cut,
-                        0f);
-                return;
-            }
-
-            RestoreOutputBlendPolicy();
         }
 
         private void RestoreOutputBlendPolicy()
@@ -402,7 +304,6 @@ namespace Immersive.Framework.Camera
         }
 
         private CameraOutputApplyResult Blocked(
-            CameraRequest request,
             string code,
             string message)
         {
@@ -412,7 +313,6 @@ namespace Immersive.Framework.Camera
 
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Blocked,
-                request,
                 _appliedCamera,
                 _appliedCamera,
                 new[]

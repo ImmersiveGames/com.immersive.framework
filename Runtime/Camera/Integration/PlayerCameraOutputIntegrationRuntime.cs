@@ -10,7 +10,7 @@ namespace Immersive.Framework.Camera
     /// <summary>
     /// Narrow Session integration that publishes an explicitly bound Framework Camera
     /// to the exact PlayerInput owned by current physical Player Host evidence.
-    /// It owns no Player Session, Camera Output, Subject, arbitration or layout geometry.
+    /// It owns no Player Session, Camera Assignment, Subject or layout geometry.
     /// For automatic split-screen it brackets Manager-Provisioned joins so the
     /// PlayerInputManager performs its own recomposition only after the exact Camera
     /// association exists.
@@ -378,10 +378,10 @@ namespace Immersive.Framework.Camera
             bool hasAssociatedPlayerOutput =
                 _applied.Count > 0;
 
-            // Session Output capacity and Default continuity exist independently
+            // Session Output capacity and configured Assignments exist independently
             // from Player count. Before any Player Output association exists, all
             // configured Player-bound Outputs remain physically available so their
-            // Default/Route/Session presentation can render. Once at least one exact
+            // active normal Occurrence or Fallback can render. Once an exact
             // Player association exists, only currently associated Player-bound
             // Outputs participate physically. Unbound Session Outputs are untouched.
             for (int index = 0;

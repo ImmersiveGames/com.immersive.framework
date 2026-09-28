@@ -78,7 +78,7 @@ workflow.
 | Game Flow | `RouteAsset`, `ActivityAsset`, request triggers and content profiles | Route/Activity transitions, content contribution, visibility and lifecycle |
 | Readiness and Loading | readiness participants, loading policies and loading surface adapters | commit/readiness gates, progress, interruption and terminal failure evidence |
 | Player | `PlayerSessionProfile`, Slot/Actor profiles, Local Player and Scene-Provided authoring | Join/Leave, Actor selection, physical preparation, relocation and scoped observation |
-| Camera | Session Outputs, Camera Presentations, `CameraRigComposer` and Camera Subjects | request arbitration, output transactions, presentation lifecycle and subject framing |
+| Camera | Session Camera Assignments, Camera Definitions, Outputs and `CameraRigComposer` | Assignment/Occurrence lifetime, membership and Subject resolution, transactional replacement and Output/Fallback application |
 | Input and Pause | input-mode policy, `PlayerPauseInput`, pause triggers and presentation adapters | transactional input state, pause ownership and resident/activity presentation |
 | Transition | transition policies and explicit effect adapters | transition planning, gating, effects and continuity |
 | Reset | reset subjects/participants, Object Reset, Cycle Reset and Activity Restart triggers | scoped reset registration and explicit execution |
@@ -136,29 +136,22 @@ See [Player Usage](Documentation~/Guides/Player-Usage.md) and
 
 ### Camera
 
-IF-ADR-032 is the current Camera architecture:
+IF-ADR-038 is the current Camera architecture:
 
 ```text
-Session
-  -> physical Camera Outputs + Defaults
-
-Session / Route / Activity
-  -> Camera Presentation definitions
-  -> runtime Presentation occurrences
-  -> CameraRequest
-  -> CameraOutputSession
-  -> Camera Output
+CameraDefinition
+  -> Session Camera Assignment
+  -> Assignment/Output or Assignment/PlayerOccurrence/Output Occurrence
+  -> membership and current Actor Subjects
+  -> exact Camera Output
+  -> separate Fallback coverage
 ```
 
-Camera capacity belongs to the Session. Presentation intent belongs to Session,
-Route or Activity. `CameraRigComposer` materializes reusable rigs explicitly;
-Camera Subjects provide live observable evidence. Player count does not create
-Outputs implicitly, and `PlayerInputManager` remains the physical split-layout
-writer.
-
-The legacy shared-composition surface has been removed. Aggregate Unity
-recertification after that removal is still pending; focused IF-ADR-032 evidence
-is recorded in the tracker.
+Session Camera authority explicitly activates Assignments by Output. Route and
+Activity do not select Camera. Join/Leave changes Assignment membership; it does
+not create or destroy Session/Shared Occurrences. `PlayerInputManager` remains
+the physical split-layout writer. Legacy Camera Presentation/Request code has
+been removed; legacy consumer assets are scheduled for migration in CAMERA-038-J.
 
 See [Camera Usage](Documentation~/Guides/Camera-Usage.md).
 
@@ -187,7 +180,7 @@ File
 
 The template is an Editor authoring aid, not runtime authority. The package does
 not silently create, repair, save, assign or add consumer scenes to a build.
-Under IF-ADR-032, Persistent Content does not own gameplay Camera topology.
+Under IF-ADR-038, Persistent Content does not own gameplay Camera topology.
 
 See [Persistent Content Scene Template](Documentation~/Guides/Persistent-Content-Scene-Template.md).
 
@@ -216,7 +209,7 @@ is scoped and dated: an older passing matrix is not evidence for later cuts.
 At this release boundary:
 
 - Player, Game Flow, Pause/Input, Activity content/visibility and the focused
-  IF-ADR-032 Camera cuts have recorded technical or consumer evidence;
+  IF-ADR-038 Camera cuts have source coverage; Unity validation is pending;
 - the Camera legacy-removal aggregate Unity recertification remains pending;
 - Experimental Reset surfaces retain their declared Experimental API status;
 - real-consumer proof remains required where listed by the current tracker.

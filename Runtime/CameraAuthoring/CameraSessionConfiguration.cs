@@ -11,14 +11,13 @@ namespace Immersive.Framework.CameraAuthoring
     /// Explicit application-authored physical Camera capacity for one Session.
     ///
     /// The configuration owns only stable Session authoring: 1..N Output prefabs,
-    /// optional Player Slot -> Output bindings. Player Slot -> Presentation bindings
-    /// are retained temporarily for the legacy runtime path until CAMERA-038-D/J.
+    /// optional Player Slot -> Output bindings used for physical local-player routing.
     /// Materialized occurrences and Player runtime state remain outside this object.
     /// </summary>
     [Serializable]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-032-D/E explicit Session Camera capacity and Player integration configuration on GameApplication.")]
+        "CAMERA-038 explicit Session Camera capacity and Player Output integration configuration on GameApplication.")]
     public sealed class CameraSessionConfiguration
     {
         [SerializeField]
@@ -30,12 +29,6 @@ namespace Immersive.Framework.CameraAuthoring
         [Tooltip("Legacy Player Slot -> Camera Output bindings. These will be replaced by Assignment Output mappings in CAMERA-038-D/J.")]
         private List<PlayerCameraOutputBindingAuthoring> playerOutputBindings =
             new List<PlayerCameraOutputBindingAuthoring>();
-
-        [SerializeField]
-        [Tooltip("Legacy Player Slot -> Camera Presentation bindings consumed by the current Presentation runtime. This field will be replaced by Camera Assignments in CAMERA-038-D/J.")]
-        private List<PlayerCameraPresentationBindingAuthoring>
-            playerPresentationBindings =
-                new List<PlayerCameraPresentationBindingAuthoring>();
 
         public IReadOnlyList<GameObject> OutputPrefabs
         {
@@ -61,20 +54,6 @@ namespace Immersive.Framework.CameraAuthoring
                 }
 
                 return Array.Empty<PlayerCameraOutputBindingAuthoring>();
-            }
-        }
-
-        public IReadOnlyList<PlayerCameraPresentationBindingAuthoring>
-            PlayerPresentationBindings
-        {
-            get
-            {
-                if (playerPresentationBindings != null)
-                {
-                    return playerPresentationBindings;
-                }
-
-                return Array.Empty<PlayerCameraPresentationBindingAuthoring>();
             }
         }
 
@@ -211,10 +190,6 @@ namespace Immersive.Framework.CameraAuthoring
             IReadOnlyList<PlayerCameraOutputBindingAuthoring> bindings =
                 PlayerOutputBindings;
             var seenSlots = new HashSet<PlayerSlotId>();
-            var outputBySlot =
-                new Dictionary<
-                    PlayerSlotId,
-                    CameraOutputDefinition>();
             for (int index = 0; index < bindings.Count; index++)
             {
                 PlayerCameraOutputBindingAuthoring binding =
@@ -282,49 +257,6 @@ namespace Immersive.Framework.CameraAuthoring
                     return false;
                 }
 
-                outputBySlot.Add(
-                    playerSlotId,
-                    outputDefinition);
-            }
-
-            if (!PlayerCameraPresentationTopology.TryCreate(
-                    PlayerPresentationBindings,
-                    out PlayerCameraPresentationTopology
-                        presentationTopology,
-                    out issue))
-            {
-                return false;
-            }
-
-            IReadOnlyList<PlayerCameraPresentationBinding>
-                presentationBindings =
-                    presentationTopology.Bindings;
-            for (int index = 0;
-                 index < presentationBindings.Count;
-                 index++)
-            {
-                PlayerCameraPresentationBinding binding =
-                    presentationBindings[index];
-
-                if (!outputBySlot.TryGetValue(
-                        binding.PlayerSlotId,
-                        out CameraOutputDefinition playerOutput))
-                {
-                    issue =
-                        $"Camera Session Player Presentation binding for Slot '{binding.PlayerSlotId.StableText}' requires an explicit Player Slot -> Output binding.";
-                    return false;
-                }
-
-                CameraOutputDefinition presentationOutput =
-                    binding.PresentationDefinition.OutputDefinition;
-                if (!ReferenceEquals(
-                        playerOutput,
-                        presentationOutput))
-                {
-                    issue =
-                        $"Camera Session Player Presentation binding for Slot '{binding.PlayerSlotId.StableText}' is incoherent. Player Output is '{playerOutput.name}', but Presentation '{binding.PresentationDefinition.name}' targets '{presentationOutput?.name ?? "<missing>"}'.";
-                    return false;
-                }
             }
 
             issue = string.Empty;

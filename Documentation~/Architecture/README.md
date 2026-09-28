@@ -263,33 +263,27 @@ Activity-owned discovery model only.
 
 Route spatial entry does not require a Player Actor occurrence `ActorId` to resolve or apply baseline pose; it uses Route/Slot spatial intent and the physical Transform. This keeps spatial authoring outside the pre-preparation occurrence identity boundary.
 
-### Camera — unified authority
+### Camera — Assignment authority
 
 Current normative Camera authority:
 
-[IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
-
-IF-ADR-032 consolidates and replaces the former normative Camera ADR chain.
-
-Target authority:
+[IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ~~~text
-Session
-  -> explicit physical Camera Outputs + Default per Output
-
-Session / Route / Activity
-  -> reusable Camera Presentation intent
-  -> runtime Presentation occurrence
-  -> CameraRequest
-  -> CameraOutputSession
-  -> Camera Output
+CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+Fallback is separate.
 ~~~
 
-Preserved contracts include deterministic request arbitration, transactional output synchronization, Output-owned Default/force-default, CameraRigComposer + behavior definitions, typed Camera Subjects with stale-occurrence protection, Subject framing evidence, ExplicitSelection and external PlayerInputManager split layout.
+Session Camera authority explicitly activates Assignments. Route and Activity do
+not own or select Camera. Join/Leave changes membership only. Individual identity
+includes exact PlayerOccurrence; Shared uses Assignment + Output identity. Physical
+Output/Brain/rig materialization, Fallback coverage, and external PlayerInputManager
+split layout remain infrastructure. CAMERA-038-I removes Presentation/Request
+selection. Sample/asset migration remains deferred to CAMERA-038-J; Unity validation
+has not been run for this cut.
 
-Changed target authoring/lifecycle includes reusable CameraPresentationDefinition, CameraPresentationRuntime outside a scene-owned CameraSharedComposition authority, Session-owned Output configuration, Route/Activity-owned Presentation intent and RuntimeContent-backed materialization/release.
-
-Implementation migration is pending through CAMERA-032-A..F.
+IF-ADR-032 is superseded. The dated Camera certifications below remain evidence for
+their previous implementation boundaries only.
 
 Historical Camera certification remains dated evidence only:
 
@@ -299,7 +293,7 @@ Historical Camera certification remains dated evidence only:
 - [Camera Full Technical Certification — 2026-09-12](Reconciliation/IF-CAMERA-FULL-TECHNICAL-CERTIFICATION-2026-09-12.md)
 - [IF-ADR-026 Shared Camera Technical Certification — 2026-09-09](Reconciliation/IF-ADR-026-SHARED-CAMERA-TECHNICAL-CERTIFICATION-2026-09-09.md)
 
-Those records certify their former implementation boundaries. They do not certify IF-ADR-032.
+Those records certify their former implementation boundaries. They do not certify IF-ADR-038.
 
 ## Current product-authoring decisions
 
@@ -406,11 +400,11 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 
 ### Camera
 
-- IF-ADR-032 — **Accepted current architecture**. CAMERA-032-F removed the legacy product surface. Aggregate Unity recertification is pending.
+- IF-ADR-038 — **Current Camera authority**. CAMERA-038-B..I Assignment, Occurrence, membership, replacement, and selector removal are present in source; Unity validation is pending.
 - Former Camera ADRs 004, 004C, 022 and 026–031 are removed from the active ADR set after consolidation.
-- Proven request/output transaction, Default/force-default, Rig behavior/materialization, Subject occurrence/framing and explicit-selection contracts are preserved by IF-ADR-032.
-- Scene `CameraSharedComposition`, Session/Route/Activity Camera overrides, persistent Player Camera policies and persistent-root Output discovery are removed. They are not current architecture.
-- Historical Camera certification remains valid only for the dated boundaries it executed and must not be relabeled as IF-ADR-032 proof.
+- Assignment replacement is transactional; physical Output/Brain/rig materialization, Fallback coverage, Subject identity, and PlayerInputManager split layout remain.
+- Scene `CameraSharedComposition`, Presentation/Request selection, Route/Activity Camera overrides, and continuity runtimes are removed. Existing sample assets remain migration input for CAMERA-038-J.
+- Historical Camera certification remains valid only for the dated boundaries it executed and must not be relabeled as IF-ADR-038 proof.
 
 ## Historical certification records
 

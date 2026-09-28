@@ -1,7 +1,7 @@
 # Persistent Content Scene Template
 
-Status: **IF-ADR-032 current contract / Persistent Content template has no gameplay Camera topology**
-Last updated: **2026-09-22**
+Status: **IF-ADR-038 current contract / Persistent Content template has no gameplay Camera topology**
+Last updated: **2026-09-28**
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The Scene Template is authoring convenience. The concrete consumer .unity scene 
 
 Current Camera authority:
 
-- [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](../Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
+- [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [Camera Usage](Camera-Usage.md)
 
 ## Authority
@@ -40,29 +40,22 @@ Assets do not silently create other assets.
 
 Inspectors may edit/open references, run explicit validation and expose diagnostics. They must not silently create sibling assets, scenes or derived gameplay intent.
 
-## Camera under IF-ADR-032
+## Camera under IF-ADR-038
 
-Persistent Content is no longer the target authority for Camera topology or normal gameplay Camera presentation.
+Persistent Content is not the authority for Camera topology or normal gameplay Camera assignment.
 
 Target Camera ownership is:
 
 ~~~text
-GameApplication / Session Camera configuration
-  -> physical Camera Outputs + Defaults
-
-Session / Route / Activity
-  -> reusable Camera Presentations
+CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+Fallback remains separate.
 ~~~
 
 Therefore the target minimal Persistent Content scene does not require:
 
 ~~~text
-CameraOutputAuthoring
-CameraSharedComposition
-SessionCameraOverride
-PlayerCameraOutputPolicyAuthoring
-PlayerCameraCompositionPolicyAuthoring
-gameplay Camera Rigs
+Camera Output or Assignment runtime components
+legacy Camera selection components (migration input for CAMERA-038-J)
 ~~~
 
 A game may still contain Camera-related scene evidence such as Camera Subjects/anchors when those objects genuinely belong to that scene, but the scene is not the normal Game Flow Camera configuration authority.
@@ -94,24 +87,23 @@ Optional modules do not become mandatory merely because the Framework supports t
 
 ## Camera continuity no longer depends on Persistent Content
 
-IF-ADR-032 keeps a Default Rig on every physical Camera Output.
+IF-ADR-038 keeps an explicit Fallback Rig on every physical Camera Output.
 
-Outputs are Session-owned capacity and are materialized before normal Route/Activity presentations participate.
+Outputs are Session-owned physical capacity. Assignment changes use explicit authority; Route/Activity transitions do not select Camera.
 
 Therefore scene replacement can remain visible through:
 
 ~~~text
 Session Output
-  -> Default Rig
+  -> Fallback Rig
 
 covered transition
-  -> force-default
+  -> Fallback coverage
 
-old Route/Activity presentation release
-new Route/Activity presentation materialization
+Assignment candidate preparation and commit
 
 release force-default
-  -> current request winner or Default
+  -> active Assignment occurrence or Fallback Rig
 ~~~
 
 A Persistent gameplay Camera is not required merely to bridge scene unload/load.
@@ -149,7 +141,7 @@ The pipeline must never silently:
 6. Run owning validation.
 7. Run Play Mode consumer proof.
 
-Camera Session configuration and Game Flow Camera Presentations are authored through their IF-ADR-032 surfaces, not by extending the Persistent scene.
+Camera Session configuration and Assignments use their explicit authoring surfaces, not the Persistent scene. Existing consumer samples await CAMERA-038-J migration.
 
 ## Persistent Content Camera rule
 
@@ -176,10 +168,10 @@ Persistent Content
   = persistent scene content
 
 Camera Session
-  = physical Camera capacity and Defaults
+  = physical Camera capacity and Fallback Rigs
 
-Session / Route / Activity
-  = Camera Presentation intent
+Session
+  = Session Camera Assignment authority
 
 Scenes
   = world content and optional Camera Subject/anchor evidence

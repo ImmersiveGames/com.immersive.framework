@@ -43,12 +43,12 @@ ADRs decide architecture. Reconciliation records preserve what was actually impl
 
 ### Camera — current normative baseline
 
-- [IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md)
+- [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [Camera Usage](Guides/Camera-Usage.md)
 
-IF-ADR-032 is the single current Camera architecture authority. The former Camera ADR chain (004, 004C, 022, 026–031) has been removed from the active ADR set after consolidation.
+IF-ADR-038 is the current Camera architecture authority. IF-ADR-032 and IF-ADR-037, plus older Camera ADRs, remain historical evidence only.
 
-Historical Camera reconciliation/certification records remain dated evidence for the implementation boundaries they executed; they are not normative IF-ADR-032 architecture and do not certify the pending migration.
+Historical Camera reconciliation/certification records remain dated evidence for the implementation boundaries they executed; they do not describe the active runtime or certify this cut.
 
 Historical Camera evidence includes:
 
@@ -112,26 +112,22 @@ Scene-Provided prepared physical Actor replacement remains outside the current A
 
 ### Camera
 
-The current normative Camera architecture is IF-ADR-032.
+The current normative Camera architecture is IF-ADR-038.
 
 ~~~text
-GameApplication / Session
-  -> explicit physical Outputs + Defaults
-
-Session / Route / Activity
-  -> CameraPresentationDefinition
-  -> CameraPresentationRuntime
-  -> materialized CameraRigComposer
-  -> CameraRequest
-  -> CameraOutputSession
-  -> Camera Output
+CameraDefinition
+  -> Assignment
+  -> Occurrence
+  -> Membership / Subject
+  -> explicit Output
+Fallback remains separate.
 ~~~
 
-Session owns physical Camera capacity. Session / Route / Activity own Presentation intent. Camera Subjects provide current observable evidence. CameraOutputContext remains the only normal winner authority. PlayerInputManager remains the physical split-layout writer.
+Session Camera authority explicitly activates Assignment. Route and Activity have no Camera selection authority. Join/Leave changes membership only. PlayerInputManager remains the physical split-layout writer.
 
-IF-ADR-032 is the current Camera architecture. CAMERA-032-F removed the legacy product surface. Aggregate Unity recertification is still pending.
+CAMERA-038-I removed the Presentation/Request selection pipeline and Route/Activity Camera ownership. Scene/prefab/sample migration remains deferred to CAMERA-038-J. Unity import/compile and runtime recertification remain pending.
 
-The 2026-09-21 IF-ADR-029/030 certification remains historical evidence for the former CameraSharedComposition implementation and must not be represented as IF-ADR-032 certification.
+The 2026-09-21 IF-ADR-029/030 certification remains historical evidence for the former CameraSharedComposition implementation and must not be represented as IF-ADR-038 certification.
 
 ### Activity content / visibility
 
@@ -172,7 +168,8 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
-| [032](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md) | Camera unified authority, Session Outputs, Presentations, Subjects and lifecycle | Accepted target architecture / implementation migration pending |
+| [032](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md) | Camera unified authority, Session Outputs, Presentations, Subjects and lifecycle | Historical / superseded by IF-ADR-038 |
+| [038](Architecture/ADRs/IF-ADR-038-SESSION-PLAYER-CAMERA-AUTHORITY.md) | Session Player Camera authority | Current normative architecture / implementation static validation only |
 
 ## Current reconciliation / certification records
 

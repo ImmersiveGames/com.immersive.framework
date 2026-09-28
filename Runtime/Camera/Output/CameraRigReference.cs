@@ -8,7 +8,7 @@ namespace Immersive.Framework.Camera
     ///
     /// CameraRigComposer is the sole framework authority for rig targets,
     /// requirements, framing and Cinemachine materialization. Reusable authoring
-    /// values belong to Unity Presets and do not participate in runtime requests.
+    /// values belong to Unity Presets; this reference is runtime occurrence evidence.
     ///
     /// This reference carries evidence only and does not activate the rig.
     /// </summary>

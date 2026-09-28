@@ -7,8 +7,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
     /// <summary>
     /// Editor-only utility that creates or repairs one supported Cinemachine
-    /// presentation pipeline. Target resolution and Camera output arbitration are
-    /// owned elsewhere; this materializer operates only on the supplied local rig.
+    /// rig behavior pipeline. This materializer operates only on the supplied local rig.
     /// </summary>
     public static class CinemachineRigMaterializer
     {

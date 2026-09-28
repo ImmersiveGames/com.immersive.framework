@@ -140,6 +140,414 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void SharedAssignmentKeepsOneOccurrencePerOutputFromZeroMembersThroughLastLeave()
+        {
+            Fixture fixture = CreateSharedFixture();
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments,
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.True, issue);
+            _runtimes.Add(runtime);
+
+            SessionCameraOccurrence[] originalOccurrences = runtime.Occurrences.ToArray();
+            Assert.That(originalOccurrences, Has.Length.EqualTo(2));
+            Assert.That(originalOccurrences.Select(occurrence => occurrence.Identity.OutputId),
+                Is.EquivalentTo(fixture.OutputDefinitions.Select(output => output.OutputId)));
+            Assert.That(originalOccurrences.All(occurrence =>
+                !occurrence.Identity.IsIndividual), Is.True);
+            Assert.That(originalOccurrences.All(occurrence => occurrence.Members.Count == 0), Is.True);
+            Assert.That(fixture.Outputs.All(output =>
+                !output.Session.OutputState.IsFallbackCovering), Is.True);
+            Assert.That(originalOccurrences[0].Composer, Is.Not.SameAs(originalOccurrences[1].Composer));
+            Assert.That(originalOccurrences[0].Definition, Is.SameAs(originalOccurrences[1].Definition));
+
+            PlayerOccurrenceId firstPlayer = PlayerOccurrenceId.Create(
+                "session.shared", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId secondPlayer = PlayerOccurrenceId.Create(
+                "session.shared", 1, PlayerSlotId.Player2);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                firstPlayer, PlayerSlotId.Player1, default, out issue), Is.True, issue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                secondPlayer, PlayerSlotId.Player2, default, out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            Assert.That(runtime.Occurrences.All(occurrence => occurrence.Members.Count == 2), Is.True);
+            Assert.That(fixture.Outputs.All(output =>
+                !output.Session.OutputState.IsFallbackCovering), Is.True);
+
+            Assert.That(runtime.RemovePlayerOccurrence(firstPlayer, out issue), Is.True, issue);
+            Assert.That(runtime.Occurrences.All(occurrence =>
+                occurrence.Members.Count == 1 &&
+                occurrence.Members[0].PlayerOccurrenceId == secondPlayer), Is.True);
+            Assert.That(runtime.RemovePlayerOccurrence(secondPlayer, out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(originalOccurrences[0]));
+            Assert.That(runtime.Occurrences[1], Is.SameAs(originalOccurrences[1]));
+            Assert.That(runtime.Occurrences.All(occurrence => occurrence.Members.Count == 0), Is.True);
+            Assert.That(fixture.Outputs.All(output =>
+                !output.Session.OutputState.IsFallbackCovering), Is.True);
+        }
+
+        [Test]
+        public void SharedAssignmentKeepsMemberSubjectsDistinctAndUpdatesOnlyReplacedActor()
+        {
+            Fixture fixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+            PlayerOccurrenceId firstPlayer = PlayerOccurrenceId.Create(
+                "session.shared-subjects", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId secondPlayer = PlayerOccurrenceId.Create(
+                "session.shared-subjects", 1, PlayerSlotId.Player2);
+            CameraSubject firstSubject = CreateSubject("Shared First Actor");
+            CameraSubject secondSubject = CreateSubject("Shared Second Actor");
+            CameraSubject replacementSubject = CreateSubject("Shared Replacement Actor");
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                firstPlayer, PlayerSlotId.Player1, firstSubject, out string issue), Is.True, issue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                secondPlayer, PlayerSlotId.Player2, secondSubject, out issue), Is.True, issue);
+            Assert.That(occurrence.ResolvedSubjects, Has.Count.EqualTo(2));
+            Assert.That(occurrence.ResolvedSubjects.Select(member => member.Subject.SubjectId),
+                Is.EquivalentTo(new[] { firstSubject.SubjectId, secondSubject.SubjectId }));
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow, Is.Null);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                firstPlayer, PlayerSlotId.Player1, replacementSubject, out issue), Is.True, issue);
+
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
+            Assert.That(occurrence.ResolvedSubjects.Single(member =>
+                member.PlayerOccurrenceId == firstPlayer).Subject.SubjectId,
+                Is.EqualTo(replacementSubject.SubjectId));
+            Assert.That(occurrence.ResolvedSubjects.Single(member =>
+                member.PlayerOccurrenceId == secondPlayer).Subject.SubjectId,
+                Is.EqualTo(secondSubject.SubjectId));
+            Assert.That(runtime.Occurrences[1].ResolvedSubjects.Single(member =>
+                member.PlayerOccurrenceId == firstPlayer).Subject.SubjectId,
+                Is.EqualTo(replacementSubject.SubjectId));
+        }
+
+        [Test]
+        public void SharedRejoinUsesNewPlayerOccurrenceAndProviderOriginIsIrrelevant()
+        {
+            Fixture fixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+            PlayerOccurrenceId providerA = PlayerOccurrenceId.Create(
+                "session.shared-rejoin", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId providerB = PlayerOccurrenceId.Create(
+                "session.shared-rejoin", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId rejoinedPlayer = PlayerOccurrenceId.Create(
+                "session.shared-rejoin", 2, PlayerSlotId.Player1);
+            Assert.That(providerA, Is.EqualTo(providerB));
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                providerA, PlayerSlotId.Player1, default, out string issue), Is.True, issue);
+            Assert.That(runtime.RemovePlayerOccurrence(providerA, out issue), Is.True, issue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                rejoinedPlayer, PlayerSlotId.Player1, default, out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(runtime.Occurrences[0].Identity, Is.EqualTo(identity));
+            Assert.That(runtime.Occurrences[0].Identity.PlayerOccurrenceId.IsValid, Is.False);
+            Assert.That(runtime.Occurrences[0].Members, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0].Members[0].PlayerOccurrenceId,
+                Is.EqualTo(rejoinedPlayer));
+        }
+
+        [Test]
+        public void FailedSharedMaterializationLeavesNoAssignmentOrOccurrencePartial()
+        {
+            Fixture fixture = CreateSharedFixture();
+            CinemachineBrain secondBrain = fixture.Outputs[1].GetComponent<CinemachineBrain>();
+            secondBrain.ChannelMask = (OutputChannels)3;
+
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments,
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.False);
+
+            Assert.That(runtime, Is.Null);
+            Assert.That(string.IsNullOrWhiteSpace(issue), Is.False);
+            Assert.That(fixture.Outputs.All(output =>
+                !output.Session.OutputState.HasActiveAssignment &&
+                !output.Session.OutputState.HasRetainedNormalOccurrence &&
+                output.Session.OutputState.IsFallbackCovering), Is.True);
+        }
+
+        [Test]
+        public void FailedSharedMembershipReconciliationRollsBackAllOutputMembers()
+        {
+            Fixture fixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            CameraOutputSession secondSession = fixture.Outputs[1].Session;
+            SetField(fixture.Outputs[1], "_session", null);
+
+            bool succeeded = false;
+            string issue = string.Empty;
+            try
+            {
+                succeeded = runtime.ReconcilePlayerOccurrence(
+                    PlayerOccurrenceId.Create("session.shared-failure", 1, PlayerSlotId.Player1),
+                    PlayerSlotId.Player1,
+                    default,
+                    out issue);
+            }
+            finally
+            {
+                SetField(fixture.Outputs[1], "_session", secondSession);
+            }
+            Assert.That(succeeded, Is.False);
+            Assert.That(string.IsNullOrWhiteSpace(issue), Is.False);
+            Assert.That(runtime.Occurrences.All(occurrence => occurrence.Members.Count == 0), Is.True);
+            Assert.That(runtime.Occurrences.All(occurrence => !occurrence.Identity.IsIndividual), Is.True);
+        }
+
+        [Test]
+        public void SessionAssignmentReplacementIsExplicitNoOpForSameIdAndPreservesCurrentOnInvalidCandidate()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence original = runtime.Occurrences[0];
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            CameraOccurrenceIdentity originalIdentity = original.Identity;
+            CinemachineCamera originalCamera = output.Applicator.AppliedCamera;
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                fixture.Assignments[0],
+                System.Array.Empty<SessionCameraMemberState>(),
+                out string issue), Is.True, issue);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(original));
+
+            SessionCameraAssignmentAuthoring invalid = CreateReplacementAuthoring(
+                fixture,
+                "assignment.invalid-candidate",
+                CameraOccurrenceMode.IndividualPerPlayer,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0 },
+                new[] { "player.1" });
+            SetField(invalid, "memberSlots", new List<PlayerSlotProfile>());
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                invalid,
+                System.Array.Empty<SessionCameraMemberState>(),
+                out issue), Is.False);
+
+            Assert.That(runtime.Occurrences[0], Is.SameAs(original));
+            Assert.That(runtime.Occurrences[0].Identity, Is.EqualTo(originalIdentity));
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(fixture.AssignmentId));
+            Assert.That(output.OutputState.PresentedNormalOccurrence, Is.EqualTo(originalIdentity));
+            Assert.That(output.Applicator.AppliedCamera, Is.SameAs(originalCamera));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+
+            SessionCameraAssignmentAuthoring nextSession = CreateReplacementAuthoring(
+                fixture,
+                "assignment.session-next",
+                CameraOccurrenceMode.SessionScoped,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0 },
+                null);
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                nextSession,
+                System.Array.Empty<SessionCameraMemberState>(),
+                out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0].Assignment.Id,
+                Is.EqualTo(new SessionCameraAssignmentId("assignment.session-next")));
+            Assert.That(original.Root == null, Is.True);
+            Assert.That(output.OutputState.ActiveAssignmentId,
+                Is.EqualTo(new SessionCameraAssignmentId("assignment.session-next")));
+            Assert.That(output.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(runtime.Occurrences[0].Identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.Applicator.HasAppliedFallback, Is.False);
+        }
+
+        [Test]
+        public void SharedToSharedReplacementPreservesCurrentMembersAndSubjects()
+        {
+            Fixture fixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            PlayerOccurrenceId player = PlayerOccurrenceId.Create(
+                "session.shared-swap", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId secondPlayer = PlayerOccurrenceId.Create(
+                "session.shared-swap", 1, PlayerSlotId.Player2);
+            CameraSubject subject = CreateSubject("Shared Swap Actor");
+            CameraSubject secondSubject = CreateSubject("Shared Swap Actor Two");
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, subject, out string issue), Is.True, issue);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                secondPlayer, PlayerSlotId.Player2, secondSubject, out issue), Is.True, issue);
+            SessionCameraMemberState[] currentMembers = runtime.Occurrences[0].Members.ToArray();
+            SessionCameraOccurrence[] previous = runtime.Occurrences.ToArray();
+
+            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+                fixture,
+                "assignment.shared-next",
+                CameraOccurrenceMode.SharedGroup,
+                CameraTargetPolicy.MemberActorTargets,
+                new[] { 0, 1 },
+                new[] { "player.1", "player.2" });
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                candidate,
+                currentMembers,
+                out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            Assert.That(runtime.Occurrences[0], Is.Not.SameAs(previous[0]));
+            Assert.That(previous[0].Root == null, Is.True);
+            Assert.That(runtime.Occurrences.All(occurrence =>
+                occurrence.Identity.AssignmentId == new SessionCameraAssignmentId("assignment.shared-next") &&
+                !occurrence.Identity.IsIndividual &&
+                occurrence.Members.Count == 2 &&
+                occurrence.Members.Single(member => member.PlayerOccurrenceId == player)
+                    .Subject.SubjectId == subject.SubjectId &&
+                occurrence.Members.Single(member => member.PlayerOccurrenceId == secondPlayer)
+                    .Subject.SubjectId == secondSubject.SubjectId), Is.True);
+            Assert.That(fixture.Outputs.All(output =>
+                output.Session.OutputState.ActiveAssignmentId == new SessionCameraAssignmentId("assignment.shared-next") &&
+                !output.Session.OutputState.IsFallbackCovering), Is.True);
+        }
+
+        [Test]
+        public void IndividualReplacementAndModeChangeKeepExactMembershipAndOutputOwnership()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+            PlayerOccurrenceId player = PlayerOccurrenceId.Create(
+                "session.individual-swap", 1, PlayerSlotId.Player1);
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, default, out string issue), Is.True, issue);
+            SessionCameraMemberState member = runtime.Occurrences[0].Members[0];
+            SessionCameraOccurrence previousIndividual = runtime.Occurrences[0];
+
+            SessionCameraAssignmentAuthoring nextIndividual = CreateReplacementAuthoring(
+                fixture,
+                "assignment.individual-next",
+                CameraOccurrenceMode.IndividualPerPlayer,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0 },
+                new[] { "player.1" });
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                nextIndividual,
+                new[] { member },
+                out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0], Is.Not.SameAs(previousIndividual));
+            Assert.That(runtime.Occurrences[0].Identity, Is.EqualTo(
+                CameraOccurrenceIdentity.ForIndividual(
+                    new SessionCameraAssignmentId("assignment.individual-next"),
+                    player,
+                    fixture.OutputDefinitions[0].OutputId)));
+
+            SessionCameraAssignmentAuthoring nextShared = CreateReplacementAuthoring(
+                fixture,
+                "assignment.individual-to-shared",
+                CameraOccurrenceMode.SharedGroup,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0, 1 },
+                new[] { "player.1", "player.2" });
+            Assert.That(runtime.TryReplaceAssignment(
+                new SessionCameraAssignmentId("assignment.individual-next"),
+                nextShared,
+                new[] { member },
+                out issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            Assert.That(runtime.Occurrences.All(occurrence =>
+                !occurrence.Identity.IsIndividual &&
+                occurrence.Assignment.Id == new SessionCameraAssignmentId("assignment.individual-to-shared") &&
+                occurrence.Members.Count == 1 &&
+                occurrence.Members[0].PlayerOccurrenceId == player), Is.True);
+            Assert.That(fixture.Outputs.All(output =>
+                output.Session.OutputState.ActiveAssignmentId ==
+                new SessionCameraAssignmentId("assignment.individual-to-shared") &&
+                !output.Session.OutputState.IsFallbackCovering), Is.True);
+        }
+
+        [Test]
+        public void FailedCandidateOnSecondOutputPreservesEveryCurrentOutputAndOccurrence()
+        {
+            Fixture fixture = CreateFixture(2, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence previous = runtime.Occurrences[0];
+            CameraOutputSession firstOutput = fixture.Outputs[0].Session;
+            CameraOutputSession secondOutput = fixture.Outputs[1].Session;
+            CameraOutputStateSnapshot firstState = firstOutput.OutputState.CaptureSnapshot();
+            CameraOutputStateSnapshot secondState = secondOutput.OutputState.CaptureSnapshot();
+            CinemachineCamera firstCamera = firstOutput.Applicator.AppliedCamera;
+            int existingComposerCount = fixture.Root.GetComponentsInChildren<CameraRigComposer>(true).Length;
+            CinemachineBrain secondBrain = fixture.Outputs[1].GetComponent<CinemachineBrain>();
+            secondBrain.ChannelMask = (OutputChannels)3;
+            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+                fixture,
+                "assignment.two-output-candidate",
+                CameraOccurrenceMode.SessionScoped,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0, 1 },
+                null);
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                candidate,
+                System.Array.Empty<SessionCameraMemberState>(),
+                out string issue), Is.False);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(previous));
+            Assert.That(firstOutput.OutputState.CaptureSnapshot().Matches(firstState), Is.True);
+            Assert.That(secondOutput.OutputState.CaptureSnapshot().Matches(secondState), Is.True);
+            Assert.That(firstOutput.Applicator.AppliedCamera, Is.SameAs(firstCamera));
+            Assert.That(firstOutput.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(secondOutput.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(fixture.Root.GetComponentsInChildren<CameraRigComposer>(true),
+                Has.Length.EqualTo(existingComposerCount));
+        }
+
+        [Test]
+        public void ReplacementReleasesOnlyPreviousOutputsNotMappedByCandidate()
+        {
+            Fixture fixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence previousSecondOutput = runtime.Occurrences[1];
+            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+                fixture,
+                "assignment.shared-to-single-output",
+                CameraOccurrenceMode.SharedGroup,
+                CameraTargetPolicy.MemberActorTargets,
+                new[] { 0 },
+                new[] { "player.1" });
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                candidate,
+                System.Array.Empty<SessionCameraMemberState>(),
+                out string issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(previousSecondOutput.Root == null, Is.True);
+            Assert.That(fixture.Outputs[0].Session.OutputState.ActiveAssignmentId,
+                Is.EqualTo(new SessionCameraAssignmentId("assignment.shared-to-single-output")));
+            Assert.That(fixture.Outputs[0].Session.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(fixture.Outputs[1].Session.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(fixture.Outputs[1].Session.OutputState.IsFallbackCovering, Is.True);
+        }
+
+        [Test]
         public void SessionOccurrenceResolvesCurrentSubjectsByDistinctPlayerOccurrence()
         {
             SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
@@ -444,6 +852,100 @@ namespace Immersive.Framework.Camera.Tests
                 root,
                 null,
                 null);
+        }
+
+        private Fixture CreateSharedFixture()
+        {
+            Fixture fixture = CreateFixture(2, CameraTargetPolicy.MemberActorTargets);
+            SessionCameraAssignmentAuthoring assignment = fixture.Assignments[0];
+            SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SharedGroup);
+            SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
+            SetField(assignment, "outputDefinitions",
+                new List<CameraOutputDefinition>(fixture.OutputDefinitions));
+            SetField(assignment, "memberSlots", new List<PlayerSlotProfile>
+            {
+                CreatePlayerSlotProfile("player.1", "Shared Player One"),
+                CreatePlayerSlotProfile("player.2", "Shared Player Two")
+            });
+
+            var followBehavior = ScriptableObject.CreateInstance<FollowCameraRigBehaviorDefinition>();
+            _created.Add(followBehavior);
+            SetField(fixture.Definition.RigPrefab.GetComponent<CameraRigComposer>(),
+                "behaviorDefinition", followBehavior);
+            return fixture;
+        }
+
+        private SessionCameraAssignmentAuthoring CreateReplacementAuthoring(
+            Fixture fixture,
+            string assignmentId,
+            CameraOccurrenceMode occurrenceMode,
+            CameraTargetPolicy targetPolicy,
+            int[] outputIndexes,
+            string[] memberSlotIds)
+        {
+            var assignment = new SessionCameraAssignmentAuthoring();
+            SetField(assignment, "assignmentId", assignmentId);
+            SetField(assignment, "definition", fixture.Definition);
+            SetField(assignment, "occurrenceMode", occurrenceMode);
+            SetField(assignment, "membershipPolicy", memberSlotIds != null
+                ? CameraMembershipPolicy.ExplicitPlayerSlots
+                : CameraMembershipPolicy.None);
+            SetField(assignment, "targetPolicy", targetPolicy);
+
+            var outputDefinitions = new List<CameraOutputDefinition>();
+            for (int index = 0; index < outputIndexes.Length; index++)
+            {
+                outputDefinitions.Add(fixture.OutputDefinitions[outputIndexes[index]]);
+            }
+            SetField(assignment, "outputDefinitions", outputDefinitions);
+
+            var memberProfiles = new List<PlayerSlotProfile>();
+            if (memberSlotIds != null)
+            {
+                for (int index = 0; index < memberSlotIds.Length; index++)
+                {
+                    memberProfiles.Add(CreatePlayerSlotProfile(
+                        memberSlotIds[index],
+                        assignmentId + " Member " + index));
+                }
+            }
+            SetField(assignment, "memberSlots", memberProfiles);
+
+            var memberMappings = new List<SessionCameraMemberOutputAuthoring>();
+            if (occurrenceMode == CameraOccurrenceMode.IndividualPerPlayer &&
+                memberSlotIds != null)
+            {
+                for (int index = 0; index < memberSlotIds.Length; index++)
+                {
+                    var mapping = new SessionCameraMemberOutputAuthoring();
+                    mapping.Configure(memberProfiles[index], outputDefinitions[index]);
+                    memberMappings.Add(mapping);
+                }
+            }
+            SetField(assignment, "individualMemberOutputMappings", memberMappings);
+            return assignment;
+        }
+
+        private SessionCameraAssignmentRuntime CreateSharedRuntime(Fixture fixture)
+        {
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments,
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.True, issue);
+            _runtimes.Add(runtime);
+            return runtime;
+        }
+
+        private CameraSubject CreateSubject(string name)
+        {
+            var root = new GameObject(name);
+            _created.Add(root);
+            return new CameraSubject(
+                new CameraSubjectId("subject." + name.Replace(' ', '.').ToLowerInvariant()),
+                root.transform,
+                name);
         }
 
         private SessionCameraAssignmentRuntime CreateIndividualRuntime(Fixture fixture)

@@ -88,7 +88,7 @@ package source scene
 The Scene Template pipeline validates the instantiated scene but does not create,
 repair, save or assign consumer assets.
 
-Under IF-ADR-032, the target minimal Persistent Content Scene is no longer required to own Camera Outputs or gameplay Camera Presentations.
+Under IF-ADR-038, the minimal Persistent Content Scene does not own Camera Outputs or normal Camera Assignments.
 
 The target persistent baseline contains only application-persistent scene content that genuinely requires scene authoring, for example:
 
@@ -104,11 +104,11 @@ optional
   Player provisioning
 ~~~
 
-Physical Camera Outputs become Session-owned capacity declared from the GameApplication Camera Session configuration. Session / Route / Activity declare reusable Camera Presentations. Player count never creates Outputs implicitly, and PlayerInputManager remains the external physical split-layout writer.
+Physical Camera Outputs are declared in the GameApplication Camera Session configuration. Session authority activates Camera Assignments; Route and Activity do not select Camera. Player count never creates Outputs implicitly, and PlayerInputManager remains the external physical split-layout writer.
 
 The package Persistent Content template does not own gameplay Camera topology. Validators reject Camera Outputs left in Persistent Content. Do not add them back.
 
-For Camera authoring and migration status, use Camera-Usage.md together with IF-ADR-032.
+For Camera authoring and migration status, use Camera-Usage.md together with IF-ADR-038. Existing samples/assets are pending CAMERA-038-J migration.
 
 ### 4.1 Game Application Inspector workflow
 
