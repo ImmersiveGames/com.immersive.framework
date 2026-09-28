@@ -82,6 +82,7 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _activityContentProfile;
         private SerializedProperty _playerRelocationPolicy;
         private SerializedProperty _activityEntryReadinessPolicy;
+        private SerializedProperty _cameraPresentationSelections;
         private SerializedProperty _cameraPresentations;
         private SerializedProperty _visualTransitionMode;
         private SerializedProperty _transitionGateMode;
@@ -125,6 +126,9 @@ namespace Immersive.Framework.Editor.Authoring
             _activityEntryReadinessPolicy =
                 serializedObject.FindProperty(
                     "activityEntryReadinessPolicy");
+            _cameraPresentationSelections =
+                serializedObject.FindProperty(
+                    "cameraPresentationSelections");
             _cameraPresentations =
                 serializedObject.FindProperty("cameraPresentations");
             _visualTransitionMode =
@@ -274,10 +278,17 @@ namespace Immersive.Framework.Editor.Authoring
             DrawSection("Camera");
 
             EditorGUILayout.PropertyField(
+                _cameraPresentationSelections,
+                new GUIContent(
+                    "Selected Presentations",
+                    "Optional persistent Camera selections declared by this Activity. An empty list preserves the current selection. Selected occurrences are owned by the Session, not by this Activity."),
+                true);
+
+            EditorGUILayout.PropertyField(
                 _cameraPresentations,
                 new GUIContent(
-                    "Presentations",
-                    "Optional Camera Presentations owned by this Activity occurrence. Leave empty to inherit the current Route/Session request or the Output Default Rig."),
+                    "Contextual Presentations",
+                    "Optional Camera Presentations owned by this Activity occurrence. They release when this Activity exits."),
                 true);
         }
 
