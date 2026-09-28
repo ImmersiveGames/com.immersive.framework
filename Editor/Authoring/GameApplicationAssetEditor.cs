@@ -46,12 +46,12 @@ namespace Immersive.Framework.Editor.Authoring
         private static readonly GUIContent CameraSessionLabel =
             new GUIContent(
                 "Session Configuration",
-                "Explicit Session-owned physical Camera capacity plus Player Slot -> Output and optional Player Slot -> Presentation explicit-selection bindings.");
+                "Legacy Session-owned physical Camera Outputs and Player Slot bindings. CAMERA-038-D/J will replace this authoring with Camera Assignments.");
 
         private static readonly GUIContent SessionCameraPresentationsLabel =
             new GUIContent(
-                "Session Presentations",
-                "Optional reusable Camera Presentations materialized for the Session. Their Output references must resolve against the exact configured Session Outputs.");
+                "Legacy Session Presentations",
+                "Legacy Camera Presentations currently consumed by Session runtime. CAMERA-038-D/J will replace them with Camera Assignments.");
 
         private static readonly GUIContent ContentSceneLabel =
             new GUIContent(
@@ -452,7 +452,7 @@ namespace Immersive.Framework.Editor.Authoring
             DrawSection("Camera");
 
             EditorGUILayout.HelpBox(
-                "CAMERA-032-D/E: GameApplication owns explicit Session Camera capacity and Player integration. Configure 1..N Output prefabs, Player Slot -> Output bindings, and optional Player Slot -> Presentation bindings for ExplicitSelection. Persistent Content no longer supplies Camera Outputs or Player Camera composition policies.",
+                "Legacy CAMERA-032-D/E authoring: GameApplication stores Output prefabs and Player Slot -> Output/Presentation bindings consumed by the old runtime. CAMERA-038-D/J will replace these fields with Camera Assignments. Persistent Content no longer supplies Camera Outputs.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
@@ -504,7 +504,7 @@ namespace Immersive.Framework.Editor.Authoring
                     : $"{playerBindingCount} explicit binding(s).");
 
             DrawStatusRow(
-                "Player Presentation Bindings",
+                "Legacy Player Presentation Bindings",
                 playerPresentationBindingCount == 0
                     ? "Optional — no Player Slot -> Presentation bindings configured."
                     : $"{playerPresentationBindingCount} explicit selection binding(s).");
@@ -521,7 +521,7 @@ namespace Immersive.Framework.Editor.Authoring
                 _sessionCameraPresentations.arraySize == 0)
             {
                 DrawStatusRow(
-                    "Session Presentations",
+                    "Legacy Session Presentations",
                     "Optional — none configured.");
                 return;
             }
@@ -541,7 +541,7 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             DrawStatusRow(
-                "Session Presentations",
+                "Legacy Session Presentations",
                 $"{configured}/{_sessionCameraPresentations.arraySize} Presentation reference(s) assigned.");
         }
 

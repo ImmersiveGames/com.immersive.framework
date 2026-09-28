@@ -17,10 +17,10 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 "Cinemachine Brain",
                 "Cinemachine Brain that applies the Camera Rig currently presented by this output. It must be on the same GameObject as the Unity Camera.");
 
-        private static readonly GUIContent DefaultCameraRigLabel =
+        private static readonly GUIContent FallbackCameraRigLabel =
             new GUIContent(
-                "Default Camera Rig",
-                "Explicit persistent Camera Rig presented when no normal Camera request wins or system presentation forces Default. Rig targets and framing are authored on CameraRigComposer, not here.");
+                "Fallback Camera Rig",
+                "Explicit persistent technical coverage for this Output, prepared before any normal occurrence. It does not select or replace the active Assignment. Rig targets and framing are authored on CameraRigComposer, not here.");
 
         private static readonly GUIContent ValidateLabel =
             new GUIContent(
@@ -40,7 +40,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
         private SerializedProperty _outputDefinition;
         private SerializedProperty _unityCamera;
         private SerializedProperty _cinemachineBrain;
-        private SerializedProperty _defaultCameraRig;
+        private SerializedProperty _fallbackCameraRig;
         private SerializedProperty _initializeOnAwake;
         private SerializedProperty _logDiagnostics;
         private SerializedProperty _lastStatus;
@@ -56,7 +56,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
             _outputDefinition = serializedObject.FindProperty("outputDefinition");
             _unityCamera = serializedObject.FindProperty("unityCamera");
             _cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
-            _defaultCameraRig = serializedObject.FindProperty("defaultCameraRig");
+            _fallbackCameraRig = serializedObject.FindProperty("fallbackCameraRig");
             _initializeOnAwake = serializedObject.FindProperty("initializeOnAwake");
             _logDiagnostics = serializedObject.FindProperty("logDiagnostics");
             _lastStatus = serializedObject.FindProperty("lastStatus");
@@ -70,7 +70,7 @@ namespace Immersive.Framework.Editor.Camera.Bindings
             EditorGUILayout.LabelField(
                 new GUIContent(
                     "Camera Output",
-                    "Configures one persistent physical Camera Output. Camera request arbitration and Camera Rig authoring remain separate authorities."),
+                    "Configures one persistent physical Camera Output. Assignment and occurrence state are separate from physical rig authoring."),
                 EditorStyles.boldLabel);
 
             CameraOutputReferenceGUI.DrawDefinitionReference(_outputDefinition, "Output Definition");
@@ -97,8 +97,8 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 _cinemachineBrain,
                 CinemachineBrainLabel);
             EditorGUILayout.PropertyField(
-                _defaultCameraRig,
-                DefaultCameraRigLabel);
+                _fallbackCameraRig,
+                FallbackCameraRigLabel);
         }
 
         private void DrawValidation()

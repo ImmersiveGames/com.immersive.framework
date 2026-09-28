@@ -11,9 +11,9 @@ namespace Immersive.Framework.CameraAuthoring
     /// Explicit application-authored physical Camera capacity for one Session.
     ///
     /// The configuration owns only stable Session authoring: 1..N Output prefabs,
-    /// optional Player Slot -> Output bindings and optional Player Slot -> Presentation
-    /// explicit-selection bindings. Materialized occurrences, Camera requests and
-    /// Player runtime state remain outside this object.
+    /// optional Player Slot -> Output bindings. Player Slot -> Presentation bindings
+    /// are retained temporarily for the legacy runtime path until CAMERA-038-D/J.
+    /// Materialized occurrences and Player runtime state remain outside this object.
     /// </summary>
     [Serializable]
     [FrameworkApiStatus(
@@ -22,17 +22,17 @@ namespace Immersive.Framework.CameraAuthoring
     public sealed class CameraSessionConfiguration
     {
         [SerializeField]
-        [Tooltip("Explicit 1..N physical Camera Output prefabs materialized once for the Session. Each prefab must contain exactly one CameraOutputAuthoring with its Unity Camera, CinemachineBrain and persistent Default Rig.")]
+        [Tooltip("Explicit 1..N physical Camera Output prefabs materialized once for the Session. Each prefab must contain exactly one CameraOutputAuthoring with its Unity Camera, CinemachineBrain and persistent Fallback Camera Rig.")]
         private List<GameObject> outputPrefabs =
             new List<GameObject>();
 
         [SerializeField]
-        [Tooltip("Optional explicit Player Slot -> Camera Output bindings for this Session. Bindings reference configured Output definitions; Player count never creates Outputs.")]
+        [Tooltip("Legacy Player Slot -> Camera Output bindings. These will be replaced by Assignment Output mappings in CAMERA-038-D/J.")]
         private List<PlayerCameraOutputBindingAuthoring> playerOutputBindings =
             new List<PlayerCameraOutputBindingAuthoring>();
 
         [SerializeField]
-        [Tooltip("Optional Player Slot -> Camera Presentation bindings. Each bound Presentation must use ExplicitSelection and target the same exact Output configured for that Player Slot.")]
+        [Tooltip("Legacy Player Slot -> Camera Presentation bindings consumed by the current Presentation runtime. This field will be replaced by Camera Assignments in CAMERA-038-D/J.")]
         private List<PlayerCameraPresentationBindingAuthoring>
             playerPresentationBindings =
                 new List<PlayerCameraPresentationBindingAuthoring>();
@@ -161,27 +161,27 @@ namespace Immersive.Framework.CameraAuthoring
                     return false;
                 }
 
-                if (output.DefaultCameraRig == null)
+                if (output.FallbackCameraRig == null)
                 {
                     issue =
-                        $"Camera Session Output prefab '{prefab.name}' requires an explicit persistent Default Camera Rig.";
+                        $"Camera Session Output prefab '{prefab.name}' requires an explicit persistent Fallback Camera.";
                     return false;
                 }
 
-                if (!output.DefaultCameraRig.TryValidateForApply(
+                if (!output.FallbackCameraRig.TryValidateForApply(
                         out string rigIssue))
                 {
                     issue =
-                        $"Camera Session Output prefab '{prefab.name}' has an invalid Default Camera Rig. {rigIssue}";
+                        $"Camera Session Output prefab '{prefab.name}' has an invalid Fallback Camera. {rigIssue}";
                     return false;
                 }
 
                 if (!IsOwnedByPrefab(prefab, output.UnityCamera.transform) ||
                     !IsOwnedByPrefab(prefab, output.CinemachineBrain.transform) ||
-                    !IsOwnedByPrefab(prefab, output.DefaultCameraRig.transform))
+                    !IsOwnedByPrefab(prefab, output.FallbackCameraRig.transform))
                 {
                     issue =
-                        $"Camera Session Output prefab '{prefab.name}' must own its Unity Camera, CinemachineBrain and Default Camera Rig inside the prefab hierarchy.";
+                        $"Camera Session Output prefab '{prefab.name}' must own its Unity Camera, CinemachineBrain and Fallback Camera inside the prefab hierarchy.";
                     return false;
                 }
 

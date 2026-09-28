@@ -20,7 +20,7 @@ namespace Immersive.Framework.Camera
         [SerializeField] private CameraOutputDefinition outputDefinition;
         [SerializeField] private UnityEngine.Camera unityCamera;
         [SerializeField] private CinemachineBrain cinemachineBrain;
-        [SerializeField] private CameraRigComposer defaultCameraRig;
+        [SerializeField] private CameraRigComposer fallbackCameraRig;
         [SerializeField] private bool initializeOnAwake = true;
         [SerializeField] private bool logDiagnostics = true;
 
@@ -58,7 +58,7 @@ namespace Immersive.Framework.Camera
         }
         public UnityEngine.Camera UnityCamera => unityCamera;
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
-        public CameraRigComposer DefaultCameraRig => defaultCameraRig;
+        public CameraRigComposer FallbackCameraRig => fallbackCameraRig;
         public bool IsInitialized => _session != null;
         public CameraOutputContext Context => _context;
         public CameraOutputRigApplicator Applicator => _applicator;
@@ -118,15 +118,15 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (defaultCameraRig == null)
+            if (FallbackCameraRig == null)
             {
-                diagnostic = "Camera Output Authoring requires an explicit Default Camera Rig.";
+                diagnostic = "Camera Output Authoring requires an explicit Fallback Camera Rig.";
                 SetDiagnostic("Blocked", diagnostic, true);
                 return false;
             }
 
             var resolvedOutputId = new CameraOutputId(normalizedOutputId);
-            var resolvedDefaultRig = CameraRigReference.FromComposer(defaultCameraRig);
+            var resolvedFallbackRig = CameraRigReference.FromComposer(FallbackCameraRig);
 
             try
             {
@@ -139,7 +139,7 @@ namespace Immersive.Framework.Camera
                 var resolvedSession = new CameraOutputSession(
                     resolvedContext,
                     resolvedApplicator,
-                    resolvedDefaultRig);
+                    resolvedFallbackRig);
 
                 CameraOutputSessionResult synchronizeResult =
                     resolvedSession.Synchronize();
@@ -147,7 +147,7 @@ namespace Immersive.Framework.Camera
                 {
                     resolvedSession.Teardown();
                     diagnostic =
-                        $"Camera Output Authoring could not apply the explicit Default Camera Rig. {synchronizeResult.DiagnosticSummary}";
+                        $"Camera Output Authoring could not prepare the explicit Fallback Camera. {synchronizeResult.DiagnosticSummary}";
                     SetDiagnostic("Blocked", diagnostic, true);
                     return false;
                 }
@@ -169,7 +169,7 @@ namespace Immersive.Framework.Camera
             }
 
             diagnostic =
-                $"Camera output session initialized. output='{resolvedOutputId}' camera='{unityCamera.name}' brain='{cinemachineBrain.name}' defaultRig='{defaultCameraRig.name}'.";
+                $"Camera output session initialized. output='{resolvedOutputId}' camera='{unityCamera.name}' brain='{cinemachineBrain.name}' fallbackCamera='{FallbackCameraRig.name}'.";
             SetDiagnostic("Initialized", diagnostic, false);
             return true;
         }

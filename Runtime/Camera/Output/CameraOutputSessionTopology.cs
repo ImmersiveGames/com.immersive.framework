@@ -80,10 +80,10 @@ namespace Immersive.Framework.Camera
                 }
                 if ((output.UnityCamera != null && !physicalBindings.Add(output.UnityCamera)) ||
                     (output.CinemachineBrain != null && !physicalBindings.Add(output.CinemachineBrain)) ||
-                    (output.DefaultCameraRig != null && !physicalBindings.Add(output.DefaultCameraRig)))
+                    (output.FallbackCameraRig != null && !physicalBindings.Add(output.FallbackCameraRig)))
                 {
                     diagnostic =
-                        $"Camera Output '{outputId}' shares a physical Camera, Cinemachine Brain or Default Camera Rig with another Output.";
+                        $"Camera Output '{outputId}' shares a physical Camera, Cinemachine Brain or Fallback Camera with another Output.";
                     return false;
                 }
                 outputs[index] = output;

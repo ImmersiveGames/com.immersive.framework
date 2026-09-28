@@ -288,7 +288,7 @@ namespace Immersive.Framework.Camera
             if (!TryValidateCompositionRig(out string rigDiagnostic))
             {
                 return Record(
-                    ReferenceEquals(_compositionRig, _output?.DefaultCameraRig)
+                    ReferenceEquals(_compositionRig, _output?.FallbackCameraRig)
                         ? CameraSharedCompositionReconcileStatus.BlockedCompositionRigIsDefault
                         : CameraSharedCompositionReconcileStatus.BlockedInvalidComposer,
                     availability,
@@ -694,7 +694,7 @@ namespace Immersive.Framework.Camera
                     _output.OutputDefinition,
                     _outputDefinition) ||
                 _output.OutputId != RequestedOutputId ||
-                _output.DefaultCameraRig == null)
+                _output.FallbackCameraRig == null)
             {
                 Record(
                     CameraSharedCompositionReconcileStatus
@@ -703,7 +703,7 @@ namespace Immersive.Framework.Camera
                     0,
                     0,
                     CameraRigPresentationApplyStatus.None,
-                    "Camera Presentation requires its exact injected Output and an explicit Default Camera Rig.");
+                    "Camera Presentation requires its exact injected Output and an explicit Fallback Camera.");
                 return;
             }
 
@@ -722,7 +722,7 @@ namespace Immersive.Framework.Camera
 
             if (ReferenceEquals(
                     _compositionRig,
-                    _output.DefaultCameraRig))
+                    _output.FallbackCameraRig))
             {
                 Record(
                     CameraSharedCompositionReconcileStatus
@@ -731,7 +731,7 @@ namespace Immersive.Framework.Camera
                     0,
                     0,
                     CameraRigPresentationApplyStatus.None,
-                    "Composition Camera Rig must be distinct from the Output Default Camera Rig.");
+                    "Composition Camera Rig must be distinct from the Output Fallback Camera.");
                 return;
             }
 
@@ -871,19 +871,19 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (_output == null || _output.DefaultCameraRig == null)
+            if (_output == null || _output.FallbackCameraRig == null)
             {
                 diagnostic =
-                    "Camera Presentation requires an injected Output with an explicit Default Camera Rig.";
+                    "Camera Presentation requires an injected Output with an explicit Fallback Camera.";
                 return false;
             }
 
             if (ReferenceEquals(
                     _compositionRig,
-                    _output.DefaultCameraRig))
+                    _output.FallbackCameraRig))
             {
                 diagnostic =
-                    "Composition Camera Rig must be distinct from the Output Default Camera Rig.";
+                    "Composition Camera Rig must be distinct from the Output Fallback Camera.";
                 return false;
             }
 

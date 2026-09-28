@@ -6,9 +6,8 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Scoped orchestration boundary that keeps CameraOutputContext and
-    /// CameraOutputRigApplicator synchronized after every accepted mutation.
-    /// Winner selection remains exclusively inside CameraOutputContext.
+    /// Scoped physical Output boundary. Assignment/Occurrence state is independent from
+    /// the retained legacy CameraOutputContext request path.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     public sealed class CameraOutputSession
@@ -16,30 +15,32 @@ namespace Immersive.Framework.Camera
         private readonly CameraOutputContext _context;
         private readonly CameraOutputRigApplicator _applicator;
         private readonly ICameraOutputApplication _application;
-        private readonly CameraRigReference _defaultRig;
-        private readonly HashSet<CameraOutputForceDefaultOwnerId> _forceDefaultOwners =
-            new HashSet<CameraOutputForceDefaultOwnerId>();
+        private readonly CameraRigReference _fallbackRig;
+        private readonly HashSet<CameraOutputFallbackCoverageOwnerId> _fallbackCoverageOwners =
+            new HashSet<CameraOutputFallbackCoverageOwnerId>();
+        private readonly CameraOutputState _presentationState;
+        private CameraRigReference _presentedNormalRig;
 
         public CameraOutputSession(
             CameraOutputContext context,
             CameraOutputRigApplicator applicator,
-            CameraRigReference defaultRig)
-            : this(context, applicator, defaultRig, applicator)
+            CameraRigReference fallbackRig)
+            : this(context, applicator, fallbackRig, applicator)
         {
         }
 
         internal CameraOutputSession(
             CameraOutputContext context,
             ICameraOutputApplication application,
-            CameraRigReference defaultRig)
-            : this(context, application as CameraOutputRigApplicator, defaultRig, application)
+            CameraRigReference fallbackRig)
+            : this(context, application as CameraOutputRigApplicator, fallbackRig, application)
         {
         }
 
         private CameraOutputSession(
             CameraOutputContext context,
             CameraOutputRigApplicator applicator,
-            CameraRigReference defaultRig,
+            CameraRigReference fallbackRig,
             ICameraOutputApplication application)
         {
             this._context = context ??
@@ -56,14 +57,15 @@ namespace Immersive.Framework.Camera
                     nameof(application));
             }
 
-            if (!defaultRig.IsValid)
+            if (!fallbackRig.IsValid)
             {
                 throw new ArgumentException(
-                    $"Camera output session '{context.OutputId}' requires an explicit valid Default Camera Rig.",
-                    nameof(defaultRig));
+                    $"Camera output session '{context.OutputId}' requires an explicit valid Fallback Camera Rig.",
+                    nameof(fallbackRig));
             }
 
-            this._defaultRig = defaultRig;
+            _fallbackRig = fallbackRig;
+            _presentationState = new CameraOutputState(context.OutputId);
         }
 
         public CameraOutputContext Context => _context;
@@ -72,11 +74,13 @@ namespace Immersive.Framework.Camera
 
         public CameraOutputId OutputId => _context.OutputId;
 
-        public CameraRigReference DefaultRig => _defaultRig;
+        public CameraRigReference FallbackRig => _fallbackRig;
 
-        public bool IsDefaultForced => _forceDefaultOwners.Count > 0;
+        public CameraOutputState OutputState => _presentationState;
 
-        public int ForceDefaultOwnerCount => _forceDefaultOwners.Count;
+        public bool IsFallbackCoverageActive => _fallbackCoverageOwners.Count > 0;
+
+        public int FallbackCoverageOwnerCount => _fallbackCoverageOwners.Count;
 
         public CameraOutputSessionResult Admit(CameraRequest request)
         {
@@ -157,49 +161,96 @@ namespace Immersive.Framework.Camera
                 requestId);
         }
 
-        public CameraOutputApplyResult ForceDefault(CameraOutputForceDefaultOwnerId ownerId)
+        public bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
         {
-            if (!ownerId.IsValid)
+            return _presentationState.TrySetActiveAssignment(assignment, out issue);
+        }
+
+        public CameraOutputApplyResult PresentNormalOccurrence(
+            CameraOccurrenceIdentity occurrence,
+            CameraRigReference occurrenceRig)
+        {
+            if (_fallbackCoverageOwners.Count > 0)
             {
-                return BlockedForceDefaultOwner(
-                    "camera.output-session.force-default.owner-missing",
-                    "Camera output force-default requires an explicit owner.");
+                return BlockedFallbackCoverage("camera.output-session.occurrence.covered",
+                    "A normal occurrence cannot be presented while explicit Fallback coverage is active.");
             }
 
-            bool added = _forceDefaultOwners.Add(ownerId);
-            CameraOutputApplyResult applyResult =
-                ApplyEffectivePresentation();
-
-            if (applyResult.Succeeded || !added)
+            if (!_presentationState.CanPresentNormalOccurrence(occurrence, out string issue))
             {
-                return applyResult;
+                return BlockedFallbackCoverage("camera.output-session.occurrence.invalid", issue);
             }
 
-            _forceDefaultOwners.Remove(ownerId);
-            ApplyEffectivePresentation();
+            CameraOutputApplyResult applyResult = _applicator != null
+                ? _applicator.ApplyNormalOccurrence(occurrenceRig)
+                : BlockedFallbackCoverage("camera.output-session.applicator.missing",
+                    "Normal Camera Occurrence application requires the concrete Output applicator.");
+            if (!applyResult.Succeeded) return applyResult;
+
+            if (!_presentationState.TryPresentNormalOccurrence(occurrence, out issue))
+            {
+                _applicator.ApplyFallbackRig(_fallbackRig);
+                return BlockedFallbackCoverage("camera.output-session.occurrence.commit-failed", issue);
+            }
+            _presentedNormalRig = occurrenceRig;
             return applyResult;
         }
 
-        public CameraOutputApplyResult ReleaseForceDefault(CameraOutputForceDefaultOwnerId ownerId)
+        public CameraOutputApplyResult CoverWithFallback(CameraOutputFallbackCoverageOwnerId ownerId)
         {
             if (!ownerId.IsValid)
             {
-                return BlockedForceDefaultOwner(
-                    "camera.output-session.force-default.owner-missing",
-                    "Camera output force-default release requires an explicit owner.");
+                return BlockedFallbackCoverage("camera.output-session.fallback.owner-missing",
+                    "Fallback coverage requires an explicit owner.");
             }
 
-            bool removed = _forceDefaultOwners.Remove(ownerId);
-            CameraOutputApplyResult applyResult =
-                ApplyEffectivePresentation();
-
-            if (applyResult.Succeeded || !removed)
+            if (!_presentationState.IsFallbackAvailable)
             {
+                return BlockedFallbackCoverage("camera.output-session.fallback.unavailable",
+                    "Fallback Camera must be available before it can cover this Output.");
+            }
+
+            bool added = _fallbackCoverageOwners.Add(ownerId);
+            CameraOutputApplyResult applyResult = _applicator != null
+                ? _applicator.ApplyFallbackRig(_fallbackRig)
+                : _application.Apply(_context, _fallbackRig, true);
+            if (!applyResult.Succeeded)
+            {
+                if (added) _fallbackCoverageOwners.Remove(ownerId);
                 return applyResult;
             }
+            _presentationState.TryCoverWithFallback(out _);
+            return applyResult;
+        }
 
-            _forceDefaultOwners.Add(ownerId);
-            ApplyEffectivePresentation();
+        public CameraOutputApplyResult ReleaseFallbackCoverage(CameraOutputFallbackCoverageOwnerId ownerId)
+        {
+            if (!ownerId.IsValid)
+                return BlockedFallbackCoverage("camera.output-session.fallback.owner-missing",
+                    "Fallback coverage release requires an explicit owner.");
+
+            bool removed = _fallbackCoverageOwners.Remove(ownerId);
+            if (_fallbackCoverageOwners.Count > 0)
+                return _applicator != null
+                    ? _applicator.ApplyFallbackRig(_fallbackRig)
+                    : _application.Apply(_context, _fallbackRig, true);
+
+            CameraOutputApplyResult applyResult;
+            if (_presentationState.HasRetainedNormalOccurrence && _presentedNormalRig.IsValid &&
+                _presentationState.CanRestoreNormalOccurrence(out _))
+            {
+                applyResult = _applicator != null
+                    ? _applicator.ApplyNormalOccurrence(_presentedNormalRig)
+                    : BlockedFallbackCoverage("camera.output-session.applicator.missing",
+                        "Restoring a normal occurrence requires the concrete Output applicator.");
+                if (applyResult.Succeeded) _presentationState.TryRestoreNormalOccurrence(out _);
+            }
+            else
+            {
+                applyResult = ApplyEffectivePresentation();
+            }
+
+            if (!applyResult.Succeeded && removed) _fallbackCoverageOwners.Add(ownerId);
             return applyResult;
         }
 
@@ -210,6 +261,10 @@ namespace Immersive.Framework.Camera
 
             if (applyResult.Succeeded)
             {
+                if (_applicator != null && _applicator.HasAppliedFallback)
+                {
+                    _presentationState.TryMakeFallbackAvailable(out _);
+                }
                 return new CameraOutputSessionResult(
                     CameraOutputSessionOperationKind.Succeeded,
                     default,
@@ -238,25 +293,47 @@ namespace Immersive.Framework.Camera
 
         public CameraOutputApplyResult Teardown()
         {
-            _forceDefaultOwners.Clear();
+            _fallbackCoverageOwners.Clear();
             return _application.Clear();
         }
 
         private CameraOutputApplyResult ApplyEffectivePresentation()
         {
+            if (_fallbackCoverageOwners.Count > 0)
+            {
+                return _applicator != null
+                    ? _applicator.ApplyFallbackRig(_fallbackRig)
+                    : _application.Apply(_context, _fallbackRig, true);
+            }
+
+            if (_presentationState.HasActiveAssignment)
+            {
+                if (_presentationState.HasPresentedNormalOccurrence &&
+                    !_presentationState.IsFallbackCovering && _presentedNormalRig.IsValid)
+                {
+                    return _applicator != null
+                        ? _applicator.ApplyNormalOccurrence(_presentedNormalRig)
+                        : BlockedFallbackCoverage("camera.output-session.applicator.missing",
+                            "Normal occurrence synchronization requires the concrete Output applicator.");
+                }
+                return _applicator != null
+                    ? _applicator.ApplyFallbackRig(_fallbackRig)
+                    : _application.Apply(_context, _fallbackRig, true);
+            }
+
             return _application.Apply(
                 _context,
-                _defaultRig,
-                _forceDefaultOwners.Count > 0);
+                _fallbackRig,
+                false);
         }
 
-        private CameraOutputApplyResult BlockedForceDefaultOwner(
+        private CameraOutputApplyResult BlockedFallbackCoverage(
             string code,
             string message)
         {
             string normalized =
                 message.NormalizeTextOrFallback(
-                    "Camera output force-default mutation was blocked.");
+                    "Camera output Fallback coverage mutation was blocked.");
 
             return new CameraOutputApplyResult(
                 CameraOutputApplyKind.Blocked,

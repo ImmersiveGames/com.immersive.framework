@@ -59,10 +59,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Assign the Cinemachine Brain used by this output.");
             }
 
-            if (binding.DefaultCameraRig == null)
+            if (binding.FallbackCameraRig == null)
             {
                 issues.Add(
-                    "Assign the explicit Default Camera Rig used when no camera request wins or system presentation forces Default.");
+                    "Assign the Output's explicit Fallback Camera, which must be available before normal camera presentation.");
             }
 
             if (binding.UnityCamera != null &&

@@ -607,21 +607,21 @@ namespace Immersive.Framework.Camera.Tests
                 CinemachineBrain brain =
                     outputPrefab.AddComponent<CinemachineBrain>();
 
-                GameObject defaultRigRoot =
-                    CreateRoot("Default Camera Rig");
-                defaultRigRoot.transform.SetParent(
+                GameObject fallbackRigRoot =
+                    CreateRoot("Fallback Camera Rig");
+                fallbackRigRoot.transform.SetParent(
                     outputPrefab.transform,
                     false);
-                CameraRigComposer defaultRig =
-                    defaultRigRoot.AddComponent<CameraRigComposer>();
+                CameraRigComposer fallbackRig =
+                    fallbackRigRoot.AddComponent<CameraRigComposer>();
                 SetField(
-                    defaultRig,
+                    fallbackRig,
                     "behaviorDefinition",
                     FixedBehavior);
                 SetField(
-                    defaultRig,
+                    fallbackRig,
                     "cinemachineCamera",
-                    defaultRigRoot.AddComponent<CinemachineCamera>());
+                    fallbackRigRoot.AddComponent<CinemachineCamera>());
 
                 CameraOutputAuthoring output =
                     outputPrefab.AddComponent<CameraOutputAuthoring>();
@@ -631,7 +631,7 @@ namespace Immersive.Framework.Camera.Tests
                     OutputDefinition);
                 SetField(output, "unityCamera", unityCamera);
                 SetField(output, "cinemachineBrain", brain);
-                SetField(output, "defaultCameraRig", defaultRig);
+                SetField(output, "fallbackCameraRig", fallbackRig);
                 SetField(output, "initializeOnAwake", false);
 
                 var configuration =

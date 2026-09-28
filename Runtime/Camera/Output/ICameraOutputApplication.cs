@@ -5,7 +5,7 @@ namespace Immersive.Framework.Camera
 {
     /// <summary>
     /// Internal physical-application port used by CameraOutputSession.
-    /// Winner/default policy remains owned by the Session and Context.
+    /// Legacy Request and Fallback application is owned by the Session/Context boundary.
     /// </summary>
     internal interface ICameraOutputApplication
     {
@@ -14,8 +14,8 @@ namespace Immersive.Framework.Camera
 
         CameraOutputApplyResult Apply(
             CameraOutputContext context,
-            CameraRigReference defaultRig,
-            bool forceDefault);
+            CameraRigReference fallbackRig,
+            bool coverWithFallback);
 
         CameraOutputApplyResult Clear();
     }

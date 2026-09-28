@@ -9,14 +9,14 @@ using UnityEngine;
 namespace Immersive.Framework.Camera
 {
     /// <summary>
-    /// Wraps the visual transition boundary so the output presents its explicit Default Camera Rig while the curtain is closed.
+    /// Covers each Output with its Fallback Camera while the visual transition curtain is closed.
     /// Normal camera-request arbitration remains untouched.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
     internal sealed class SessionCameraTransitionOrchestrator : ITransitionOrchestrator
     {
-        private static readonly CameraOutputForceDefaultOwnerId ForceDefaultOwnerId =
-            new CameraOutputForceDefaultOwnerId("SessionCameraTransitionOrchestrator");
+        private static readonly CameraOutputFallbackCoverageOwnerId FallbackCoverageOwnerId =
+            new CameraOutputFallbackCoverageOwnerId("SessionCameraTransitionOrchestrator");
 
         private readonly ITransitionOrchestrator _inner;
         private readonly CameraOutputSessionTopology _topology;
@@ -39,7 +39,7 @@ namespace Immersive.Framework.Camera
             {
                 if (!TryApplyAllOutputs(false, out string diagnostic))
                 {
-                    return Blocked(request, "Default camera release blocked transition opening.", diagnostic);
+                    return Blocked(request, "Fallback camera release blocked transition opening.", diagnostic);
                 }
 
                 return await _inner.ExecuteAsync(request);
@@ -53,11 +53,11 @@ namespace Immersive.Framework.Camera
 
             return TryApplyAllOutputs(true, out string outputDiagnostic)
                 ? result
-                : Blocked(request, "Default camera forcing blocked transition after the visual surface closed.", outputDiagnostic);
+                : Blocked(request, "Fallback camera coverage blocked transition after the visual surface closed.", outputDiagnostic);
         }
 
         private bool TryApplyAllOutputs(
-            bool forceDefault,
+            bool coverWithFallback,
             out string diagnostic)
         {
             CameraOutputTopologySnapshot snapshot = _topology.CaptureSnapshot();
@@ -68,16 +68,16 @@ namespace Immersive.Framework.Camera
                 if (!_topology.TryGetOutput(outputId, out CameraOutputAuthoring output, out diagnostic) ||
                     !output.TryGetSession(out CameraOutputSession session, out diagnostic))
                 {
-                    Rollback(applied, forceDefault);
+                    Rollback(applied, coverWithFallback);
                     return false;
                 }
-                CameraOutputApplyResult mutation = forceDefault
-                    ? session.ForceDefault(ForceDefaultOwnerId)
-                    : session.ReleaseForceDefault(ForceDefaultOwnerId);
+                CameraOutputApplyResult mutation = coverWithFallback
+                    ? session.CoverWithFallback(FallbackCoverageOwnerId)
+                    : session.ReleaseFallbackCoverage(FallbackCoverageOwnerId);
                 if (!mutation.Succeeded)
                 {
-                    Rollback(applied, forceDefault);
-                    diagnostic = $"Output '{outputId}' rejected transition default mutation. {mutation.DiagnosticSummary}";
+                    Rollback(applied, coverWithFallback);
+                    diagnostic = $"Output '{outputId}' rejected transition Fallback mutation. {mutation.DiagnosticSummary}";
                     return false;
                 }
                 applied.Add(session);
@@ -91,21 +91,21 @@ namespace Immersive.Framework.Camera
                 CameraOutputContextSnapshot context =
                     session.Context.CaptureSnapshot();
                 _logger.Debug(
-                    forceDefault
-                        ? "Camera transition force-default applied."
-                        : "Camera transition force-default released.",
+                    coverWithFallback
+                        ? "Camera transition Fallback coverage applied."
+                        : "Camera transition Fallback coverage released.",
                     LogFields.Field(
                         "output",
                         session.OutputId.Value),
                     LogFields.Field(
                         "owner",
-                        ForceDefaultOwnerId.Value),
+                        FallbackCoverageOwnerId.Value),
                     LogFields.Field(
-                        "forceDefaultActive",
-                        session.IsDefaultForced),
+                        "fallbackCoverageActive",
+                        session.IsFallbackCoverageActive),
                     LogFields.Field(
-                        "forceDefaultOwnerCount",
-                        session.ForceDefaultOwnerCount),
+                        "fallbackCoverageOwnerCount",
+                        session.FallbackCoverageOwnerCount),
                     LogFields.Field(
                         "normalRequestCount",
                         context.AdmittedRequestCount),
@@ -122,12 +122,12 @@ namespace Immersive.Framework.Camera
 
         private static void Rollback(
             IReadOnlyList<CameraOutputSession> applied,
-            bool forced)
+            bool covered)
         {
             for (int index = applied.Count - 1; index >= 0; index--)
             {
-                if (forced) applied[index].ReleaseForceDefault(ForceDefaultOwnerId);
-                else applied[index].ForceDefault(ForceDefaultOwnerId);
+                if (covered) applied[index].ReleaseFallbackCoverage(FallbackCoverageOwnerId);
+                else applied[index].CoverWithFallback(FallbackCoverageOwnerId);
             }
         }
 

@@ -64,16 +64,16 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            if (output.DefaultCameraRig == null ||
-                output.DefaultCameraRig.CinemachineCamera == null)
+            if (output.FallbackCameraRig == null ||
+                output.FallbackCameraRig.CinemachineCamera == null)
             {
                 issue =
-                    $"Camera Output '{output.OutputIdText}' requires a materialized Default Rig CinemachineCamera for Output channel isolation.";
+                    $"Camera Output '{output.OutputIdText}' requires a materialized Fallback Camera CinemachineCamera for Output channel isolation.";
                 return false;
             }
 
             output.CinemachineBrain.ChannelMask = channel;
-            output.DefaultCameraRig.CinemachineCamera.OutputChannel = channel;
+            output.FallbackCameraRig.CinemachineCamera.OutputChannel = channel;
             issue = string.Empty;
             return true;
         }
@@ -127,7 +127,7 @@ namespace Immersive.Framework.Camera
     /// Camera Output prefabs.
     ///
     /// It owns only the prefab occurrences and their CameraOutputSessionTopology.
-    /// Request arbitration, Default semantics and physical Rig application remain
+    /// Request arbitration and physical Rig application remain
     /// in the existing Camera Output runtime.
     /// </summary>
     [FrameworkApiStatus(
