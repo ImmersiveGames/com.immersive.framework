@@ -3,11 +3,11 @@ using Immersive.Framework.Camera;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
-    internal sealed class CameraOutputSessionAuthoringValidationResult
+    internal sealed class CameraOutputAuthoringValidationResult
     {
         private readonly List<string> _blockingIssues;
 
-        internal CameraOutputSessionAuthoringValidationResult(
+        internal CameraOutputAuthoringValidationResult(
             List<string> blockingIssues)
         {
             this._blockingIssues = blockingIssues ?? new List<string>();
@@ -19,13 +19,12 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     }
 
     /// <summary>
-    /// Explicit, button-driven validation for one persistent Camera Output.
-    /// It does not initialize runtime services, create components, discover
-    /// references or repair the authored scene.
+    /// Explicit, button-driven validation for one Camera Output component.
+    /// Session topology is validated by CameraSessionConfiguration.
     /// </summary>
-    internal static class CameraOutputSessionAuthoringValidator
+    internal static class CameraOutputAuthoringValidator
     {
-        internal static CameraOutputSessionAuthoringValidationResult Validate(
+        internal static CameraOutputAuthoringValidationResult Validate(
             CameraOutputAuthoring binding)
         {
             var issues = new List<string>();
@@ -34,18 +33,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 issues.Add(
                     "Camera Output validation requires a target component.");
-                return new CameraOutputSessionAuthoringValidationResult(issues);
+                return new CameraOutputAuthoringValidationResult(issues);
             }
 
             string identityIssue = binding.OutputDefinition == null
                 ? "Assign an Output Definition asset."
-                : CameraDefinitionIdentityEditorUtility.Validate(binding.OutputDefinition);
+                : CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(binding.OutputDefinition);
             if (identityIssue != null) issues.Add(identityIssue);
-            CameraOutputAuthoringTopology topology = CameraOutputAuthoringResolver.Resolve();
-            if (topology.IsResolved)
-                issues.AddRange(topology.Issues);
-            else
-                issues.Add($"Active Output topology validation unavailable: {topology.Diagnostic}");
 
             if (binding.UnityCamera == null)
             {
@@ -74,7 +68,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "The Unity Camera and Cinemachine Brain must be on the same GameObject.");
             }
 
-            return new CameraOutputSessionAuthoringValidationResult(issues);
+            return new CameraOutputAuthoringValidationResult(issues);
         }
     }
 }

@@ -264,6 +264,7 @@ namespace Immersive.Framework.Editor.Validation
             ValidateCameraSessionConfiguration(
                 report,
                 gameApplication);
+            ValidateSessionCameraAssignments(report, gameApplication);
 
             ValidatePersistentContentComposition(
                 report,
@@ -320,6 +321,61 @@ namespace Immersive.Framework.Editor.Validation
                     gameApplication);
             }
 
+        }
+
+        private static void ValidateSessionCameraAssignments(
+            FrameworkAuthoringValidationReport report,
+            GameApplicationAsset gameApplication)
+        {
+            var identities = new HashSet<SessionCameraAssignmentId>();
+            IReadOnlyList<SessionCameraAssignmentAuthoring> assignments =
+                gameApplication.SessionCameraAssignments;
+            for (int index = 0; index < assignments.Count; index++)
+            {
+                SessionCameraAssignmentAuthoring authored = assignments[index];
+                if (authored == null)
+                {
+                    report.AddError(
+                        $"Game Application Session Camera Assignment at index '{index}' is missing.",
+                        gameApplication);
+                    continue;
+                }
+
+                SessionCameraAssignmentId id = authored.AssignmentId;
+                if (!id.IsValid)
+                {
+                    report.AddError(
+                        $"Session Camera Assignment at index '{index}' requires a non-empty Assignment ID.",
+                        gameApplication);
+                    continue;
+                }
+
+                if (!identities.Add(id))
+                {
+                    report.AddError(
+                        $"Session Camera Assignment ID '{id}' is duplicated in this Game Application.",
+                        gameApplication);
+                    continue;
+                }
+
+                foreach (string guid in AssetDatabase.FindAssets("t:GameApplicationAsset"))
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    GameApplicationAsset other = AssetDatabase.LoadAssetAtPath<GameApplicationAsset>(path);
+                    if (other == null || ReferenceEquals(other, gameApplication))
+                        continue;
+                    foreach (SessionCameraAssignmentAuthoring candidate in other.SessionCameraAssignments)
+                    {
+                        if (candidate == null || !candidate.AssignmentId.IsValid ||
+                            !candidate.AssignmentId.Equals(id))
+                            continue;
+                        report.AddError(
+                            $"Session Camera Assignment ID '{id}' is duplicated by asset '{path}'.",
+                            gameApplication);
+                        break;
+                    }
+                }
+            }
         }
 
         private static void ValidatePersistentContentComposition(

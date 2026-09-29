@@ -14,20 +14,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
     internal sealed class CameraOutputReferenceGUI
     {
-        private CameraOutputAuthoringTopology _topology;
-
-        internal void DrawTopology(SerializedObject serialized)
-        {
-            if (GUILayout.Button("Validate Active Outputs"))
-            {
-                serialized.ApplyModifiedProperties();
-                _topology = CameraOutputAuthoringResolver.Resolve();
-            }
-            if (_topology == null) return;
-            CameraIdentityAuthoringGUI.DrawIssue(_topology.IsResolved ? null : _topology.Diagnostic);
-            foreach (var issue in _topology.Issues) CameraIdentityAuthoringGUI.DrawIssue(issue);
-        }
-
         internal void DrawReference(SerializedProperty property) =>
             DrawDefinitionReference(property, "Output Definition");
 
@@ -37,7 +23,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             var definition = property.objectReferenceValue as ScriptableObject;
             CameraIdentityAuthoringGUI.DrawIssue(definition == null
                 ? "Assign an exact " + label + " asset."
-                : CameraDefinitionIdentityEditorUtility.Validate(definition));
+                : CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition));
         }
     }
 }

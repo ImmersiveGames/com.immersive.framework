@@ -1,29 +1,26 @@
 using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
-namespace Immersive.Framework.CameraAuthoring
+namespace Immersive.Framework.Actors
 {
     /// <summary>
-    /// Actor Presentation evidence that explicitly selects the Transform observed by Camera.
-    /// Subject identity and lifetime remain owned by the prepared Actor occurrence.
+    /// Explicit observation evidence owned by one Actor occurrence.
     /// </summary>
     [DisallowMultipleComponent]
-    [AddComponentMenu("Immersive Framework/Camera/Actor Camera Subject")]
+    [AddComponentMenu("Immersive Framework/Actors/Camera Subject")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "ADR-026 explicit Actor Presentation observation Transform.")]
+        "CAMERA-038 Actor occurrence observation Transform.")]
     public sealed class ActorCameraSubjectAuthoring : MonoBehaviour
     {
         [Header("Camera Subject")]
         [Tooltip(
-            "Required Transform observed by Camera presentation for this Actor Presentation. " +
-            "No Actor-root or hierarchy fallback is used when this component is authored.")]
+            "Required Transform observed for this Actor occurrence. Assign the Actor root explicitly if it is the desired observation point.")]
         [SerializeField]
         private Transform observationTransform;
 
         [Tooltip(
-            "Optional presentation-space radius centered on the Observation Transform. " +
-            "Use 0 to leave the radius unspecified so the consuming presentation can use its fallback.")]
+            "Optional framing radius centered on the Observation Transform. Use 0 when unspecified.")]
         [SerializeField, Min(0f)]
         private float framingRadius;
 
@@ -36,43 +33,40 @@ namespace Immersive.Framework.CameraAuthoring
         public bool HasFramingRadius => framingRadius > 0f;
 
         /// <summary>
-        /// Resolves the exact authored observation Transform for one materialized Actor
-        /// Presentation. The authoring component must be on that Presentation root.
+        /// Resolves the exact authored observation Transform for one Actor occurrence.
+        /// This component must share the Actor declaration's GameObject.
         /// </summary>
         public bool TryResolveObservation(
-            Transform presentationRoot,
+            ActorDeclaration actor,
             out Transform observation,
             out string issue)
         {
             observation = null;
             issue = string.Empty;
 
-            if (presentationRoot == null)
+            if (actor == null || actor.transform == null)
             {
-                issue =
-                    "Actor Camera Subject resolution requires the exact materialized Actor Presentation root.";
+                issue = "Actor Camera Subject resolution requires the exact Actor occurrence declaration.";
                 return false;
             }
 
-            if (transform != presentationRoot)
+            if (transform != actor.transform)
             {
-                issue =
-                    "Actor Camera Subject must be authored on the Actor Presentation root.";
+                issue = "Actor Camera Subject authoring must belong to the exact Actor occurrence declaration.";
                 return false;
             }
 
             if (observationTransform == null)
             {
                 issue =
-                    "Actor Camera Subject requires an explicit Camera Subject Transform. No Actor-root fallback was used.";
+                    "Actor Camera Subject requires an explicit Observation Transform. No Actor-root or hierarchy/name fallback was used.";
                 return false;
             }
 
-            if (observationTransform != presentationRoot &&
-                !observationTransform.IsChildOf(presentationRoot))
+            if (observationTransform != actor.transform &&
+                !observationTransform.IsChildOf(actor.transform))
             {
-                issue =
-                    "Actor Camera Subject Transform must belong to the authored Actor Presentation.";
+                issue = "Actor Camera Subject Observation Transform must belong to the exact Actor occurrence hierarchy.";
                 return false;
             }
 
@@ -81,17 +75,16 @@ namespace Immersive.Framework.CameraAuthoring
         }
 
         /// <summary>
-        /// Resolves the exact authored Subject evidence for one materialized Actor Presentation.
-        /// Framing radius is optional; zero means unspecified.
+        /// Resolves authored observation and optional framing evidence for one Actor occurrence.
         /// </summary>
         public bool TryResolveSubject(
-            Transform presentationRoot,
+            ActorDeclaration actor,
             out Transform observation,
             out float resolvedFramingRadius,
             out string issue)
         {
             resolvedFramingRadius = 0f;
-            if (!TryResolveObservation(presentationRoot, out observation, out issue))
+            if (!TryResolveObservation(actor, out observation, out issue))
             {
                 return false;
             }
@@ -112,7 +105,7 @@ namespace Immersive.Framework.CameraAuthoring
 
         public bool TryValidateConfiguration(out string issue)
         {
-            return TryResolveSubject(transform, out _, out _, out issue);
+            return TryResolveSubject(GetComponent<ActorDeclaration>(), out _, out _, out issue);
         }
     }
 }

@@ -113,6 +113,37 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void StartupRejectsAssignmentWithMissingIdentity()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SetField(fixture.Assignments[0], "assignmentId", string.Empty);
+
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments, fixture.Topology, fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime, out string issue), Is.False);
+
+            Assert.That(runtime, Is.Null);
+            Assert.That(issue, Does.Contain("requires an explicit identity"));
+        }
+
+        [Test]
+        public void StartupRejectsDuplicateAssignmentIdentity()
+        {
+            Fixture fixture = CreateFixture(2, CameraTargetPolicy.NoSubject, twoAssignments: true);
+            SetField(
+                fixture.Assignments[1],
+                "assignmentId",
+                fixture.Assignments[0].AssignmentId.Value);
+
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                fixture.Assignments, fixture.Topology, fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime, out string issue), Is.False);
+
+            Assert.That(runtime, Is.Null);
+            Assert.That(issue, Does.Contain("identity").And.Contain("duplicated"));
+        }
+
+        [Test]
         public void SessionOccurrenceMembershipChangesWithoutReplacingOccurrence()
         {
             SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
@@ -553,6 +584,8 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
                 out PlayerSlotId firstSlot,
                 out PlayerSlotId secondSlot);
+            SessionCameraOccurrence originalOccurrence = occurrence;
+            CameraOccurrenceIdentity originalIdentity = occurrence.Identity;
             var firstPlayer = new PlayerOccurrenceId("player-occurrence:subject-first");
             var secondPlayer = new PlayerOccurrenceId("player-occurrence:subject-second");
             var firstSubjectRoot = new GameObject("First Member Subject");
@@ -612,7 +645,9 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(occurrence.ReconcileMember(player, firstSlot, firstSubject), Is.True);
             Assert.That(occurrence.ReconcileMember(player, firstSlot, replacementSubject), Is.True);
             Assert.That(occurrence.Members, Has.Count.EqualTo(1));
+            Assert.That(occurrence, Is.SameAs(originalOccurrence));
             Assert.That(occurrence.Members[0].Subject.SubjectId, Is.EqualTo(replacementSubject.SubjectId));
+            Assert.That(occurrence.Identity, Is.EqualTo(originalIdentity));
             Assert.That(occurrence.Identity.IsIndividual, Is.False);
 
             Assert.That(occurrence.ReconcileMember(player, firstSlot, default), Is.True);

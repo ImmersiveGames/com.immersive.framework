@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerParticipation;
@@ -1963,7 +1964,7 @@ namespace Immersive.Framework.Camera
             Diagnostic = $"Session Camera membership reconciliation failed for '{playerSlotId.StableText}'. {exception.GetType().Name}: {exception.Message}";
         }
 
-        private static bool TryResolveSubject(
+        internal static bool TryResolveSubject(
             PlayerPreparedActorOccurrence actor,
             out CameraSubject subject,
             out string issue)
@@ -1976,12 +1977,28 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            Transform observation = actor.ActorDeclaration.transform;
+            ActorCameraSubjectAuthoring subjectAuthoring =
+                actor.ActorDeclaration.GetComponent<ActorCameraSubjectAuthoring>();
+            if (subjectAuthoring == null ||
+                !subjectAuthoring.TryResolveSubject(
+                    actor.ActorDeclaration,
+                    out Transform observation,
+                    out float framingRadius,
+                    out issue))
+            {
+                if (string.IsNullOrEmpty(issue))
+                {
+                    issue = "Current Actor occurrence has no Actor Camera Subject authoring with an explicit Observation Transform.";
+                }
+                return false;
+            }
+
             subject = new CameraSubject(
                 new CameraSubjectId(
                     $"camera.subject.player-actor:{actor.PreparationToken.StableText}"),
                 observation,
-                $"Current Session Player Actor for {actor.PlayerSlotId.StableText}");
+                $"Current Session Player Actor for {actor.PlayerSlotId.StableText}",
+                framingRadius);
             if (!subject.IsValid)
             {
                 issue = "Current Player Actor did not resolve a valid Camera Subject.";

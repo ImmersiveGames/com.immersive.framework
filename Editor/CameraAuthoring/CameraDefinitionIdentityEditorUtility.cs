@@ -29,9 +29,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         public static string Validate(ScriptableObject definition)
         {
             SerializedDefinition(definition);
-            bool valid = HasValidId(definition);
-            if (!valid)
-                return "Stable ID is missing or invalid. Generate identity explicitly for a new definition.";
+            string localIssue = ValidateLocalIdentity(definition);
+            if (localIssue != null)
+                return localIssue;
 
             var collision = FindCollision(definition);
             return collision == null ? null :
@@ -39,7 +39,21 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 ". Repair the selected duplicate explicitly.";
         }
 
+        public static string ValidateLocalIdentity(ScriptableObject definition)
+        {
+            EnsureSupportedDefinition(definition);
+            return HasValidId(definition)
+                ? null
+                : "Stable ID is missing or invalid. Generate identity explicitly for a new definition.";
+        }
+
         private static SerializedObject SerializedDefinition(ScriptableObject definition)
+        {
+            EnsureSupportedDefinition(definition);
+            return new SerializedObject(definition);
+        }
+
+        private static void EnsureSupportedDefinition(ScriptableObject definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
             if (!(definition is CameraOutputDefinition) &&
@@ -49,8 +63,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                     "Expected a supported Camera definition.",
                     nameof(definition));
             }
-
-            return new SerializedObject(definition);
         }
 
         private static bool HasValidId(ScriptableObject definition)

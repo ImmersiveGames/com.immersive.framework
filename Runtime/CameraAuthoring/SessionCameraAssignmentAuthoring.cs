@@ -29,7 +29,7 @@ namespace Immersive.Framework.CameraAuthoring
     [Serializable]
     public sealed class SessionCameraAssignmentAuthoring
     {
-        [SerializeField, Tooltip("Unique stable identity for this Session Camera Assignment.")] private string assignmentId = string.Empty;
+        [SerializeField, Tooltip("Unique stable identity for this Session Camera Assignment.")] private string assignmentId;
         [SerializeField] private CameraDefinition definition;
         [SerializeField] private CameraOccurrenceMode occurrenceMode = CameraOccurrenceMode.SessionScoped;
         [SerializeField] private CameraMembershipPolicy membershipPolicy = CameraMembershipPolicy.None;
@@ -37,6 +37,11 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private List<PlayerSlotProfile> memberSlots = new List<PlayerSlotProfile>();
         [SerializeField] private List<CameraOutputDefinition> outputDefinitions = new List<CameraOutputDefinition>();
         [SerializeField] private List<SessionCameraMemberOutputAuthoring> individualMemberOutputMappings = new List<SessionCameraMemberOutputAuthoring>();
+
+        public SessionCameraAssignmentAuthoring()
+        {
+            assignmentId = Guid.NewGuid().ToString("N");
+        }
 
         public SessionCameraAssignmentId AssignmentId => new SessionCameraAssignmentId(assignmentId);
         public CameraDefinition Definition => definition;

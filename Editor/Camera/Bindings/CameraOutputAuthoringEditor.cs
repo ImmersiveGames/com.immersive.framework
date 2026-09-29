@@ -46,26 +46,36 @@ namespace Immersive.Framework.Editor.Camera.Bindings
         private SerializedProperty _lastStatus;
         private SerializedProperty _lastDiagnostic;
 
-        private CameraOutputSessionAuthoringValidationResult
+        private CameraOutputAuthoringValidationResult
             _lastValidationResult;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
 
         private void OnEnable()
         {
-            _outputDefinition = serializedObject.FindProperty("outputDefinition");
-            _unityCamera = serializedObject.FindProperty("unityCamera");
-            _cinemachineBrain = serializedObject.FindProperty("cinemachineBrain");
-            _fallbackCameraRig = serializedObject.FindProperty("fallbackCameraRig");
-            _initializeOnAwake = serializedObject.FindProperty("initializeOnAwake");
-            _logDiagnostics = serializedObject.FindProperty("logDiagnostics");
-            _lastStatus = serializedObject.FindProperty("lastStatus");
-            _lastDiagnostic = serializedObject.FindProperty("lastDiagnostic");
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
+            _outputDefinition = current.FindProperty("outputDefinition");
+            _unityCamera = current.FindProperty("unityCamera");
+            _cinemachineBrain = current.FindProperty("cinemachineBrain");
+            _fallbackCameraRig = current.FindProperty("fallbackCameraRig");
+            _initializeOnAwake = current.FindProperty("initializeOnAwake");
+            _logDiagnostics = current.FindProperty("logDiagnostics");
+            _lastStatus = current.FindProperty("lastStatus");
+            _lastDiagnostic = current.FindProperty("lastDiagnostic");
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.UpdateIfRequiredOrScript();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
+            current.UpdateIfRequiredOrScript();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             EditorGUILayout.LabelField(
                 new GUIContent(
@@ -74,12 +84,22 @@ namespace Immersive.Framework.Editor.Camera.Bindings
                 EditorStyles.boldLabel);
 
             CameraOutputReferenceGUI.DrawDefinitionReference(_outputDefinition, "Output Definition");
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
             DrawConfiguration();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
             DrawValidation();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             DrawAdvancedDebug();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
-            bool modified = serializedObject.ApplyModifiedProperties();
+            bool modified = current.ApplyModifiedProperties();
             if (modified && _lastValidationResult != null)
             {
                 _validationOutdated = true;
@@ -296,14 +316,49 @@ namespace Immersive.Framework.Editor.Camera.Bindings
 
         private void RunValidation()
         {
-            serializedObject.ApplyModifiedProperties();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
 
-            _lastValidationResult =
-                CameraOutputSessionAuthoringValidator.Validate(
-                    (CameraOutputAuthoring)target);
+            current.ApplyModifiedProperties();
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
+
+            var binding = inspectedTarget as CameraOutputAuthoring;
+            if (binding == null)
+                return;
+
+            CameraOutputAuthoringValidationResult result =
+                CameraOutputAuthoringValidator.Validate(
+                    binding);
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
+
+            _lastValidationResult = result;
             _validationOutdated = false;
 
-            serializedObject.UpdateIfRequiredOrScript();
+            current.UpdateIfRequiredOrScript();
+        }
+
+        private bool TryGetValidSerializedObject(
+            UnityEngine.Object inspectedTarget,
+            out SerializedObject current)
+        {
+            current = null;
+            if (this == null || inspectedTarget == null || target != inspectedTarget)
+                return false;
+
+            current = serializedObject;
+            return current != null && current.targetObject == inspectedTarget;
+        }
+
+        private bool IsCurrentTargetValid(
+            UnityEngine.Object inspectedTarget,
+            SerializedObject current)
+        {
+            return current != null && inspectedTarget != null &&
+                   target == inspectedTarget &&
+                   current.targetObject == inspectedTarget;
         }
 
         private static void DrawSection(string title)

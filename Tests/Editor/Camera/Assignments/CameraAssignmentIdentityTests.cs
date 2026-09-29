@@ -21,6 +21,44 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void NewAssignmentAuthoring_GeneratesUniqueStableIdAndKeepsItWhenReordered()
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var first = new SessionCameraAssignmentAuthoring();
+            var second = new SessionCameraAssignmentAuthoring();
+            string firstId = (string)typeof(SessionCameraAssignmentAuthoring)
+                .GetField("assignmentId", flags).GetValue(first);
+            string secondId = (string)typeof(SessionCameraAssignmentAuthoring)
+                .GetField("assignmentId", flags).GetValue(second);
+
+            Assert.That(Guid.TryParseExact(firstId, "N", out _), Is.True);
+            Assert.That(Guid.TryParseExact(secondId, "N", out _), Is.True);
+            Assert.That(firstId, Is.Not.EqualTo(secondId));
+
+            typeof(SessionCameraAssignmentAuthoring)
+                .GetField("targetPolicy", flags)
+                .SetValue(first, CameraTargetPolicy.MemberActorTargets);
+            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+                .GetField("assignmentId", flags).GetValue(first),
+                Is.EqualTo(firstId));
+
+            var assignments = new List<SessionCameraAssignmentAuthoring>
+            {
+                first,
+                second
+            };
+            assignments.Reverse();
+
+            Assert.That(assignments[1], Is.SameAs(first));
+            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+                .GetField("assignmentId", flags).GetValue(assignments[1]),
+                Is.EqualTo(firstId));
+            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+                .GetField("assignmentId", flags).GetValue(assignments[0]),
+                Is.EqualTo(secondId));
+        }
+
+        [Test]
         public void IndividualIdentity_DiffersForExactPlayerOccurrences()
         {
             var assignment = new SessionCameraAssignmentId("assignment.a");

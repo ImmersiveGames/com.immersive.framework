@@ -21,8 +21,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("rigPrefab"),
                 new GUIContent(
-                    "Fixed Rig Prefab",
-                    "Reusable, already materialized Fixed Camera Rig. Session Assignments create independent runtime instances."));
+                    "Rig Prefab",
+                    "Reusable prefab containing the authored Camera Rig. Session Assignments create independent runtime instances."));
         }
 
         protected override string ValidateDefinitionConfiguration() =>
@@ -34,34 +34,56 @@ namespace Immersive.Framework.Editor.CameraAuthoring
     internal abstract class CameraDefinitionEditor : UnityEditor.Editor
     {
         private bool _advanced;
+        private bool _validationOutdated = true;
+        private bool _identityCollision;
+        private string _lastValidationIssue;
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
+            current.Update();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             EditorGUILayout.HelpBox(
                 "Share this exact definition asset through typed references. Its description is intent; its stable ID is technical evidence.",
                 MessageType.Info);
 
             DrawDefinitionFields();
-            serializedObject.ApplyModifiedProperties();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
-            var definition = (ScriptableObject)target;
-            string identityIssue =
-                CameraDefinitionIdentityEditorUtility.Validate(definition);
-            if (identityIssue != null)
+            if (current.ApplyModifiedProperties())
+                _validationOutdated = true;
+
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
+            var definition = inspectedTarget as ScriptableObject;
+            if (definition == null)
+                return;
+            string localIdentityIssue =
+                CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition);
+            if (localIdentityIssue != null)
             {
-                EditorGUILayout.HelpBox(identityIssue, MessageType.Error);
+                EditorGUILayout.HelpBox(localIdentityIssue, MessageType.Error);
+            }
+            else if (_validationOutdated)
+            {
+                EditorGUILayout.HelpBox(
+                    "Configuration changed or has not been validated. Validate explicitly to check identity collisions and rig configuration.",
+                    MessageType.Info);
+            }
+            else if (!string.IsNullOrEmpty(_lastValidationIssue))
+            {
+                EditorGUILayout.HelpBox(_lastValidationIssue, MessageType.Error);
             }
             else
             {
-                string configurationIssue = ValidateDefinitionConfiguration();
-                if (configurationIssue != null)
-                {
-                    EditorGUILayout.HelpBox(
-                        configurationIssue,
-                        MessageType.Error);
-                }
+                EditorGUILayout.HelpBox("Configuration validated.", MessageType.Info);
             }
 
             var id = serializedObject.FindProperty("stableId");
@@ -71,18 +93,44 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 {
                     CameraDefinitionIdentityEditorUtility
                         .GenerateMissingId(definition);
+                    _validationOutdated = true;
+                    if (!IsCurrentTargetValid(inspectedTarget, current))
+                        return;
                 }
             }
-            else if (CameraDefinitionIdentityEditorUtility
-                         .HasCollision(definition))
+
+            if (GUILayout.Button("Validate"))
             {
-                if (GUILayout.Button(
-                        "Repair Collision — New Identity for This Definition"))
+                if (!IsCurrentTargetValid(inspectedTarget, current))
+                    return;
+                _lastValidationIssue =
+                    CameraDefinitionIdentityEditorUtility.Validate(definition);
+                if (!IsCurrentTargetValid(inspectedTarget, current))
+                    return;
+                _identityCollision = _lastValidationIssue != null &&
+                    _lastValidationIssue.IndexOf("collision", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (_lastValidationIssue == null)
                 {
-                    CameraDefinitionIdentityEditorUtility
-                        .RepairCollision(definition);
+                    _lastValidationIssue = ValidateDefinitionConfiguration();
+                    if (!IsCurrentTargetValid(inspectedTarget, current))
+                        return;
                 }
+                _validationOutdated = false;
             }
+
+            if (!_validationOutdated && _identityCollision &&
+                GUILayout.Button("Repair Collision — New Identity for This Definition"))
+            {
+                CameraDefinitionIdentityEditorUtility.RepairCollision(definition);
+                if (!IsCurrentTargetValid(inspectedTarget, current))
+                    return;
+                _identityCollision = false;
+                _lastValidationIssue = null;
+                _validationOutdated = true;
+            }
+
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             _advanced =
                 EditorGUILayout.Foldout(
@@ -108,5 +156,26 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         protected abstract void DrawDefinitionFields();
 
         protected virtual string ValidateDefinitionConfiguration() => null;
+
+        private bool TryGetValidSerializedObject(
+            UnityEngine.Object inspectedTarget,
+            out SerializedObject current)
+        {
+            current = null;
+            if (this == null || inspectedTarget == null || target != inspectedTarget)
+                return false;
+
+            current = serializedObject;
+            return current != null && current.targetObject == inspectedTarget;
+        }
+
+        private bool IsCurrentTargetValid(
+            UnityEngine.Object inspectedTarget,
+            SerializedObject current)
+        {
+            return current != null && inspectedTarget != null &&
+                   target == inspectedTarget &&
+                   current.targetObject == inspectedTarget;
+        }
     }
 }

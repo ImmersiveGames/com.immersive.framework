@@ -30,46 +30,61 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private bool _validationOutdated;
         private bool _materializationOutdated;
         private bool _showAdvancedDebug;
+        private bool _localCinemachineCameraResolved;
+        private CinemachineCamera _localCinemachineCamera;
 
         private void OnEnable()
         {
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
             _behaviorDefinition =
-                serializedObject.FindProperty("behaviorDefinition");
+                current.FindProperty("behaviorDefinition");
             _cinemachineCamera =
-                serializedObject.FindProperty("cinemachineCamera");
+                current.FindProperty("cinemachineCamera");
             _materializedPresentationIntent =
-                serializedObject.FindProperty("materializedPresentationIntent");
+                current.FindProperty("materializedPresentationIntent");
             _frameworkOwnedCinemachineCamera =
-                serializedObject.FindProperty("frameworkOwnedCinemachineCamera");
+                current.FindProperty("frameworkOwnedCinemachineCamera");
             _frameworkOwnedPositionControl =
-                serializedObject.FindProperty("frameworkOwnedPositionControl");
+                current.FindProperty("frameworkOwnedPositionControl");
             _frameworkOwnedRotationControl =
-                serializedObject.FindProperty("frameworkOwnedRotationControl");
+                current.FindProperty("frameworkOwnedRotationControl");
             _frameworkOwnedGroupTargetGroup =
-                serializedObject.FindProperty("frameworkOwnedGroupTargetGroup");
+                current.FindProperty("frameworkOwnedGroupTargetGroup");
             _frameworkOwnedGroupFraming =
-                serializedObject.FindProperty("frameworkOwnedGroupFraming");
+                current.FindProperty("frameworkOwnedGroupFraming");
             _materializationRevision =
-                serializedObject.FindProperty("materializationRevision");
+                current.FindProperty("materializationRevision");
             _logApplyRebuildDiagnostics =
-                serializedObject.FindProperty("logApplyRebuildDiagnostics");
+                current.FindProperty("logApplyRebuildDiagnostics");
             _lastApplyRebuildStatus =
-                serializedObject.FindProperty("lastApplyRebuildStatus");
+                current.FindProperty("lastApplyRebuildStatus");
             _lastBlockingIssue =
-                serializedObject.FindProperty("lastBlockingIssue");
+                current.FindProperty("lastBlockingIssue");
             _lastMaterializationSummary =
-                serializedObject.FindProperty("lastMaterializationSummary");
+                current.FindProperty("lastMaterializationSummary");
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.UpdateIfRequiredOrScript();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
+            _localCinemachineCameraResolved = false;
+            current.UpdateIfRequiredOrScript();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             DrawComposerHeader();
 
             EditorGUI.BeginChangeCheck();
 
             DrawPresentation();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             CameraRigPresentationIntent presentation =
                 ResolvePresentationIntent();
@@ -79,8 +94,9 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             bool authoringChanged =
                 EditorGUI.EndChangeCheck();
 
-            bool modified =
-                serializedObject.ApplyModifiedProperties();
+            bool modified = current.ApplyModifiedProperties();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             if (authoringChanged || modified)
             {
@@ -90,7 +106,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             presentation = ResolvePresentationIntent();
 
             DrawMaterialization(presentation);
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
             DrawValidation();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
             DrawAdvancedDebug();
         }
 
@@ -526,8 +548,17 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             EditorGUI.indentLevel++;
 
             DrawTargetContractEvidence();
+            if (!TryGetValidSerializedObject(target, out _))
+                return;
+
             DrawMaterializationEvidence();
+            if (!TryGetValidSerializedObject(target, out _))
+                return;
+
             DrawLastOperationEvidence();
+            if (!TryGetValidSerializedObject(target, out _))
+                return;
+
             DrawDiagnostics();
 
             EditorGUI.indentLevel--;
@@ -567,6 +598,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private void DrawMaterializationEvidence()
         {
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
             EditorGUILayout.LabelField(
                 "Materialization",
                 EditorStyles.miniBoldLabel);
@@ -582,17 +617,25 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             bool technicalAuthoringChanged =
                 EditorGUI.EndChangeCheck();
 
-            bool advancedModified =
-                serializedObject.ApplyModifiedProperties();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
+
+            bool advancedModified = current.ApplyModifiedProperties();
+            if (!IsCurrentTargetValid(inspectedTarget, current))
+                return;
 
             if (technicalAuthoringChanged)
             {
+                _localCinemachineCameraResolved = false;
                 MarkAuthoringChanged();
             }
 
             if (advancedModified)
             {
-                serializedObject.UpdateIfRequiredOrScript();
+                _localCinemachineCameraResolved = false;
+                current.UpdateIfRequiredOrScript();
+                if (!IsCurrentTargetValid(inspectedTarget, current))
+                    return;
             }
 
             CinemachineCamera local =
@@ -734,6 +777,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private void DrawDiagnostics()
         {
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
+
             EditorGUILayout.LabelField(
                 "Diagnostics",
                 EditorStyles.miniBoldLabel);
@@ -743,7 +790,8 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 new GUIContent(
                     "Log Apply / Rebuild Diagnostics"));
 
-            serializedObject.ApplyModifiedProperties();
+            if (IsCurrentTargetValid(inspectedTarget, current))
+                current.ApplyModifiedProperties();
         }
 
         private void MarkAuthoringChanged()
@@ -812,6 +860,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private CinemachineCamera ResolveLocalCinemachineCamera()
         {
+            if (!TryGetValidSerializedObject(target, out _) ||
+                _cinemachineCamera == null)
+                return null;
+
+            if (_localCinemachineCameraResolved)
+                return _localCinemachineCamera;
+
             CameraRigComposer composer =
                 (CameraRigComposer)target;
 
@@ -819,11 +874,13 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 _cinemachineCamera.objectReferenceValue
                     as CinemachineCamera;
 
-            return assigned != null
+            _localCinemachineCamera = assigned != null
                 ? assigned
                 : composer.GetComponentInChildren<
                     CinemachineCamera>(
                     true);
+            _localCinemachineCameraResolved = true;
+            return _localCinemachineCamera;
         }
 
 
@@ -834,35 +891,79 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
         private void RunValidation()
         {
-            serializedObject.ApplyModifiedProperties();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
 
-            _lastValidationResult =
+            current.ApplyModifiedProperties();
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
+
+            var composer = inspectedTarget as CameraRigComposer;
+            if (composer == null)
+                return;
+
+            CameraRigComposerApplyRebuildResult result =
                 CameraRigComposerApplyRebuildUtility
                     .Validate(
-                        (CameraRigComposer)target,
-                        false);
+                        composer);
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
 
+            _lastValidationResult = result;
             _validationOutdated = false;
 
-            serializedObject
-                .UpdateIfRequiredOrScript();
+            current.UpdateIfRequiredOrScript();
         }
 
         private void RunApplyOrRebuild()
         {
-            serializedObject.ApplyModifiedProperties();
+            UnityEngine.Object inspectedTarget = target;
+            if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
+                return;
 
-            _lastApplyResult =
+            current.ApplyModifiedProperties();
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
+
+            var composer = inspectedTarget as CameraRigComposer;
+            if (composer == null)
+                return;
+
+            CameraRigComposerApplyRebuildResult result =
                 CameraRigComposerApplyRebuildUtility
                     .ApplyOrRebuild(
-                        (CameraRigComposer)target,
+                        composer,
                         true,
                         true);
+            if (!TryGetValidSerializedObject(inspectedTarget, out current))
+                return;
 
+            _lastApplyResult = result;
             _materializationOutdated = false;
 
-            serializedObject
-                .UpdateIfRequiredOrScript();
+            current.UpdateIfRequiredOrScript();
+        }
+
+        private bool TryGetValidSerializedObject(
+            UnityEngine.Object inspectedTarget,
+            out SerializedObject current)
+        {
+            current = null;
+            if (this == null || inspectedTarget == null || target != inspectedTarget)
+                return false;
+
+            current = serializedObject;
+            return current != null && current.targetObject == inspectedTarget;
+        }
+
+        private bool IsCurrentTargetValid(
+            UnityEngine.Object inspectedTarget,
+            SerializedObject current)
+        {
+            return current != null && inspectedTarget != null &&
+                   target == inspectedTarget &&
+                   current.targetObject == inspectedTarget;
         }
     }
 }

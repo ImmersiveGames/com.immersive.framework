@@ -8,7 +8,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 {
     public static class CameraRigComposerApplyRebuildUtility
     {
-        public static CameraRigComposerApplyRebuildResult Validate(CameraRigComposer composer, bool logDiagnostics = true)
+        public static CameraRigComposerApplyRebuildResult Validate(CameraRigComposer composer)
         {
             if (composer == null) return CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", "Composer is missing.");
             string issue;
@@ -25,7 +25,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 ? CameraRigComposerApplyRebuildResult.ValidationSucceeded(
                     $"Behavior Definition '{composer.BehaviorDefinition.name}' projects Presentation model '{composer.PresentationIntent}'. Settings and Group provenance are valid; Apply / Rebuild preflights pipeline ownership.")
                 : CameraRigComposerApplyRebuildResult.Failed("ValidationFailed", issue);
-            Record(composer, result, logDiagnostics);
             return result;
         }
 
@@ -33,7 +32,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 return CameraRigComposerApplyRebuildResult.Failed("ApplyFailed", "Rig materialization requires Edit Mode.");
-            var validation = Validate(composer, false);
+            var validation = Validate(composer);
             if (!validation.Succeeded) return validation;
             int group = -1;
             if (useUndo)
@@ -121,8 +120,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 report.Succeeded, report.Succeeded ? "ApplySucceeded" : "ApplyCompletedWithBlockingIssues",
                 report.Succeeded ? string.Empty : report.FirstBlockingIssue, report.CreateSummary(),
                 report.CreatedCount, report.RepairedCount, report.AlreadyValidCount, report.SkippedCount, report.BlockedCount);
-            Record(composer, result, logDiagnostics);
-            PrefabUtility.RecordPrefabInstancePropertyModifications(composer);
+            if (report.Succeeded)
+            {
+                Record(composer, result, logDiagnostics);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(composer);
+            }
+            else
+            {
+                LogResult(composer, result, logDiagnostics);
+            }
             if (group >= 0) Undo.CollapseUndoOperations(group);
             return result;
         }
@@ -131,6 +137,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         {
             composer.EditorSetApplyRebuildResult(result.Status, result.BlockingIssue, result.MaterializationSummary);
             EditorUtility.SetDirty(composer);
+            LogResult(composer, result, log);
+        }
+
+        private static void LogResult(
+            CameraRigComposer composer,
+            CameraRigComposerApplyRebuildResult result,
+            bool log)
+        {
             if (!log || !composer.LogApplyRebuildDiagnostics) return;
             var logger = FrameworkLogger.Create(typeof(CameraRigComposerApplyRebuildUtility));
             string message = $"Camera rig '{composer.name}': {result.Status}. {result.BlockingIssue} {result.MaterializationSummary}";

@@ -1,4 +1,6 @@
+using System;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Editor.PlayerParticipation;
 using Immersive.Framework.Editor.ProgressionSave;
@@ -7,6 +9,7 @@ using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.ProgressionSave;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 namespace Immersive.Framework.Editor.Authoring
 {
@@ -72,14 +75,18 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _defaultProgressionSaveProfile;
         private SerializedProperty _cameraSession;
         private SerializedProperty _sessionCameraAssignments;
+        private ReorderableList _sessionCameraAssignmentList;
         private SerializedProperty _persistentContent;
         private SerializedProperty _containerScene;
         private SerializedProperty _validationMode;
 
         private FrameworkAuthoringValidationReport _lastValidationReport;
+        private GameApplicationAsset _activeGameApplication;
         private bool _serializedBindingsDirty = true;
         private bool _validationOutdated;
         private bool _showAdvancedDebug;
+        private int _assignmentIdentityCheckIndex = -1;
+        private string _assignmentIdentityCheckMessage;
 
         private void OnEnable()
         {
@@ -107,6 +114,7 @@ namespace Immersive.Framework.Editor.Authoring
                 serializedObject.FindProperty("cameraSession");
             _sessionCameraAssignments =
                 serializedObject.FindProperty("sessionCameraAssignments");
+            _sessionCameraAssignmentList = CreateSessionCameraAssignmentList();
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
             _containerScene =
@@ -114,6 +122,13 @@ namespace Immersive.Framework.Editor.Authoring
                     "containerScene");
             _validationMode =
                 serializedObject.FindProperty("validationMode");
+
+            _activeGameApplication =
+                ImmersiveFrameworkEditorSettingsUtility.TryLoadExistingSettingsAsset(
+                    out ImmersiveFrameworkSettingsAsset settings,
+                    out _)
+                    ? settings.ActiveGameApplication
+                    : null;
 
             _serializedBindingsDirty = false;
         }
@@ -157,9 +172,7 @@ namespace Immersive.Framework.Editor.Authoring
             GameApplicationAsset gameApplication =
                 (GameApplicationAsset)target;
 
-            GameApplicationAsset activeGameApplication =
-                ImmersiveFrameworkEditorSettingsUtility
-                    .GetActiveGameApplication();
+            GameApplicationAsset activeGameApplication = _activeGameApplication;
 
             bool isActive =
                 activeGameApplication == gameApplication;
@@ -183,6 +196,7 @@ namespace Immersive.Framework.Editor.Authoring
                     ImmersiveFrameworkEditorSettingsUtility
                         .AssignActiveGameApplication(
                             gameApplication);
+                    _activeGameApplication = gameApplication;
                 }
 
                 if (GUILayout.Button(
@@ -304,19 +318,9 @@ namespace Immersive.Framework.Editor.Authoring
                 return;
             }
 
-            PlayerSessionInitializationResult resolution =
-                PlayerSessionConfigurationResolver.Resolve(profile);
-            if (!resolution.Succeeded)
-            {
-                EditorGUILayout.HelpBox(
-                    $"Player Session Profile is not resolvable ({resolution.Failure}). {resolution.Message}",
-                    MessageType.Error);
-                return;
-            }
-
             DrawStatusRow(
                 "Configuration",
-                $"Ready — {resolution.Configuration.SupportedSlotCount} Slot(s), resolved once at Session creation.");
+                $"Profile assigned — {profile.SupportedSlotCount} configured Slot(s). Use Validate for structural checks.");
         }
 
         private void DrawProgressionSave()
@@ -442,16 +446,273 @@ namespace Immersive.Framework.Editor.Authoring
                     "Session Actor-selection policy. This is distinct from Player Session initial Actor Resolution."));
         }
 
+        private ReorderableList CreateSessionCameraAssignmentList()
+        {
+            if (_sessionCameraAssignments == null || !_sessionCameraAssignments.isArray)
+                return null;
+
+            var list = new ReorderableList(
+                serializedObject,
+                _sessionCameraAssignments,
+                true,
+                true,
+                true,
+                true);
+            list.drawHeaderCallback = rect => EditorGUI.LabelField(
+                rect,
+                "Session Camera Assignments",
+                EditorStyles.boldLabel);
+            list.elementHeightCallback = index => GetAssignmentElementHeight(index);
+            list.drawElementCallback = DrawSessionCameraAssignmentElement;
+            list.onAddCallback = AddSessionCameraAssignment;
+            list.onRemoveCallback = current =>
+            {
+                if (current.index < 0 || current.index >= _sessionCameraAssignments.arraySize)
+                    return;
+                _sessionCameraAssignments.DeleteArrayElementAtIndex(current.index);
+                serializedObject.ApplyModifiedProperties();
+                _validationOutdated = true;
+            };
+            return list;
+        }
+
+        private float GetAssignmentElementHeight(int index)
+        {
+            if (index < 0 || index >= _sessionCameraAssignments.arraySize)
+                return EditorGUIUtility.singleLineHeight + 6f;
+            SerializedProperty element = _sessionCameraAssignments.GetArrayElementAtIndex(index);
+            if (!element.isExpanded)
+                return EditorGUIUtility.singleLineHeight + 6f;
+
+            float height = EditorGUIUtility.singleLineHeight + 8f;
+            string[] fields =
+            {
+                "definition", "occurrenceMode", "membershipPolicy", "targetPolicy",
+                "memberSlots", "outputDefinitions", "individualMemberOutputMappings"
+            };
+            foreach (string fieldName in fields)
+            {
+                SerializedProperty field = element.FindPropertyRelative(fieldName);
+                if (field != null)
+                    height += EditorGUI.GetPropertyHeight(field, true) + 2f;
+            }
+            SerializedProperty id = element.FindPropertyRelative("assignmentId");
+            bool missing = string.IsNullOrWhiteSpace(id.stringValue);
+            bool duplicate = !missing && HasLocalAssignmentIdCollision(index, id.stringValue);
+            if (missing || duplicate)
+                height += 38f + 4f + EditorGUIUtility.singleLineHeight + 4f;
+            height += EditorGUIUtility.singleLineHeight + 2f;
+            if (id.isExpanded)
+            {
+                height += EditorGUIUtility.singleLineHeight * 3f + 4f;
+                if (_assignmentIdentityCheckIndex == index &&
+                    !string.IsNullOrEmpty(_assignmentIdentityCheckMessage))
+                    height += 22f;
+            }
+            return height;
+        }
+
+        private void DrawSessionCameraAssignmentElement(
+            Rect rect,
+            int index,
+            bool isActive,
+            bool isFocused)
+        {
+            if (index < 0 || index >= _sessionCameraAssignments.arraySize)
+                return;
+
+            SerializedProperty element = _sessionCameraAssignments.GetArrayElementAtIndex(index);
+            rect.y += 2f;
+            rect.height = EditorGUIUtility.singleLineHeight;
+            element.isExpanded = EditorGUI.Foldout(
+                rect,
+                element.isExpanded,
+                $"Assignment {index + 1}",
+                true);
+            if (!element.isExpanded)
+                return;
+
+            float y = rect.yMax + 2f;
+            string[] fields =
+            {
+                "definition", "occurrenceMode", "membershipPolicy", "targetPolicy",
+                "memberSlots", "outputDefinitions", "individualMemberOutputMappings"
+            };
+            foreach (string fieldName in fields)
+            {
+                SerializedProperty field = element.FindPropertyRelative(fieldName);
+                if (field == null)
+                    continue;
+                float height = EditorGUI.GetPropertyHeight(field, true);
+                EditorGUI.PropertyField(new Rect(rect.x + 14f, y, rect.width - 14f, height), field, true);
+                y += height + 2f;
+            }
+
+            SerializedProperty id = element.FindPropertyRelative("assignmentId");
+            bool missing = string.IsNullOrWhiteSpace(id.stringValue);
+            bool duplicate = !missing && HasLocalAssignmentIdCollision(index, id.stringValue);
+            if (missing || duplicate)
+            {
+                EditorGUI.HelpBox(
+                    new Rect(rect.x + 14f, y, rect.width - 14f, 38f),
+                    missing
+                        ? "Assignment ID is missing. Generate it explicitly to repair this asset."
+                        : "Assignment ID is duplicated. Repair this Assignment explicitly.",
+                    MessageType.Error);
+                y += 40f;
+                if (GUI.Button(
+                        new Rect(rect.x + 14f, y, rect.width - 14f, EditorGUIUtility.singleLineHeight),
+                        missing ? "Generate Assignment ID" : "Repair Duplicate Assignment ID"))
+                {
+                    Undo.RecordObject(target, missing ? "Generate Assignment ID" : "Repair Assignment ID Collision");
+                    id.stringValue = GenerateUniqueAssignmentId(index);
+                    serializedObject.ApplyModifiedProperties();
+                    EditorUtility.SetDirty(target);
+                    _validationOutdated = true;
+                }
+                y += EditorGUIUtility.singleLineHeight + 4f;
+            }
+
+            bool advanced = EditorGUI.Foldout(
+                new Rect(rect.x + 14f, y, rect.width - 14f, EditorGUIUtility.singleLineHeight),
+                id.isExpanded,
+                "Advanced / Debug",
+                true);
+            id.isExpanded = advanced;
+            y += EditorGUIUtility.singleLineHeight + 2f;
+            if (advanced)
+            {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUI.TextField(
+                        new Rect(rect.x + 14f, y, rect.width - 14f, EditorGUIUtility.singleLineHeight),
+                        "Assignment ID",
+                        id.stringValue);
+                }
+                y += EditorGUIUtility.singleLineHeight + 2f;
+                if (GUI.Button(
+                        new Rect(rect.x + 14f, y, rect.width - 14f, EditorGUIUtility.singleLineHeight),
+                        "Copy Assignment ID"))
+                    EditorGUIUtility.systemCopyBuffer = id.stringValue;
+                y += EditorGUIUtility.singleLineHeight + 2f;
+                if (GUI.Button(
+                        new Rect(rect.x + 14f, y, rect.width - 14f, EditorGUIUtility.singleLineHeight),
+                        "Check / Repair Global ID Collision"))
+                {
+                    _assignmentIdentityCheckIndex = index;
+                    if (HasGlobalAssignmentIdCollision(index, id.stringValue))
+                    {
+                        Undo.RecordObject(target, "Repair Assignment ID Collision");
+                        id.stringValue = GenerateUniqueAssignmentId(index);
+                        serializedObject.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(target);
+                        _assignmentIdentityCheckMessage = "Duplicate identity repaired. Validate the Game Application again.";
+                        _validationOutdated = true;
+                    }
+                    else
+                    {
+                        _assignmentIdentityCheckMessage = "No global Assignment ID collision was found.";
+                    }
+                }
+                if (_assignmentIdentityCheckIndex == index &&
+                    !string.IsNullOrEmpty(_assignmentIdentityCheckMessage))
+                {
+                    y += EditorGUIUtility.singleLineHeight + 2f;
+                    EditorGUI.HelpBox(
+                        new Rect(rect.x + 14f, y, rect.width - 14f, 20f),
+                        _assignmentIdentityCheckMessage,
+                        MessageType.Info);
+                }
+            }
+        }
+
+        private void AddSessionCameraAssignment(ReorderableList list)
+        {
+            int index = _sessionCameraAssignments.arraySize;
+            _sessionCameraAssignments.InsertArrayElementAtIndex(index);
+            SerializedProperty element = _sessionCameraAssignments.GetArrayElementAtIndex(index);
+            foreach (string fieldName in new[]
+                     {
+                         "definition", "occurrenceMode", "membershipPolicy", "targetPolicy",
+                         "memberSlots", "outputDefinitions", "individualMemberOutputMappings"
+                     })
+            {
+                SerializedProperty field = element.FindPropertyRelative(fieldName);
+                if (field == null)
+                    continue;
+                if (field.isArray)
+                    field.arraySize = 0;
+                else if (field.propertyType == SerializedPropertyType.ObjectReference)
+                    field.objectReferenceValue = null;
+                else if (field.propertyType == SerializedPropertyType.Enum)
+                    field.enumValueIndex = 0;
+            }
+            element.FindPropertyRelative("occurrenceMode").enumValueIndex =
+                Array.IndexOf(Enum.GetNames(typeof(CameraOccurrenceMode)), CameraOccurrenceMode.SessionScoped.ToString());
+            element.FindPropertyRelative("membershipPolicy").enumValueIndex =
+                Array.IndexOf(Enum.GetNames(typeof(CameraMembershipPolicy)), CameraMembershipPolicy.None.ToString());
+            element.FindPropertyRelative("targetPolicy").enumValueIndex =
+                Array.IndexOf(Enum.GetNames(typeof(CameraTargetPolicy)), CameraTargetPolicy.NoSubject.ToString());
+            element.FindPropertyRelative("assignmentId").stringValue = GenerateUniqueAssignmentId(index);
+            element.isExpanded = true;
+            serializedObject.ApplyModifiedProperties();
+            _validationOutdated = true;
+            list.index = index;
+        }
+
+        private bool HasLocalAssignmentIdCollision(int index, string id)
+        {
+            var identity = new SessionCameraAssignmentId(id);
+            for (int current = 0; current < _sessionCameraAssignments.arraySize; current++)
+            {
+                if (current == index)
+                    continue;
+                var candidate = new SessionCameraAssignmentId(
+                    _sessionCameraAssignments.GetArrayElementAtIndex(current)
+                        .FindPropertyRelative("assignmentId").stringValue);
+                if (candidate.Equals(identity))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool HasGlobalAssignmentIdCollision(int index, string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return false;
+            if (HasLocalAssignmentIdCollision(index, id))
+                return true;
+
+            foreach (string guid in AssetDatabase.FindAssets("t:GameApplicationAsset"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameApplicationAsset other = AssetDatabase.LoadAssetAtPath<GameApplicationAsset>(path);
+                if (other == null || ReferenceEquals(other, target))
+                    continue;
+                foreach (SessionCameraAssignmentAuthoring assignment in other.SessionCameraAssignments)
+                    if (assignment != null && assignment.AssignmentId.Equals(new SessionCameraAssignmentId(id)))
+                        return true;
+            }
+            return false;
+        }
+
+        private string GenerateUniqueAssignmentId(int index)
+        {
+            string id;
+            do
+            {
+                id = Guid.NewGuid().ToString("N");
+            }
+            while (HasGlobalAssignmentIdCollision(index, id));
+            return id;
+        }
+
         private void DrawCamera()
         {
             DrawSection("Camera");
 
-            EditorGUILayout.PropertyField(
-                _sessionCameraAssignments,
-                new GUIContent(
-                    "Session Camera Assignments",
-                    "New Session-scoped targetless Fixed camera configuration. Each mapped Output receives one independent runtime Occurrence at Session startup."),
-                true);
+            _sessionCameraAssignmentList?.DoLayoutList();
 
             EditorGUILayout.Space(4f);
 
@@ -753,9 +1014,7 @@ namespace Immersive.Framework.Editor.Authoring
 
             EditorGUI.indentLevel++;
 
-            GameApplicationAsset activeGameApplication =
-                ImmersiveFrameworkEditorSettingsUtility
-                    .GetActiveGameApplication();
+            GameApplicationAsset activeGameApplication = _activeGameApplication;
 
             using (new EditorGUI.DisabledScope(true))
             {
