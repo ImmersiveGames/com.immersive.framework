@@ -1,9 +1,11 @@
 # IF-ADR-032 — Camera Unified Authority, Session Outputs, Presentations, Subjects and Lifecycle
 
-Status: **Accepted current architecture / CAMERA-032-A..E focused evidence retained / CAMERA-032-F legacy removal implemented / aggregate Unity certified**
+Status: **Superseded by IF-ADR-038 — historical implementation and certification evidence only**
 Accepted: **2026-09-21**  
+Superseded: **2026-09-29**
+Superseded by: [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 Type: architecture / Camera / authoring / runtime lifecycle / physical output / multiplayer  
-Normative authority: **This is the single current Camera architecture decision for Immersive Framework.**
+Normative authority: **Historical only. IF-ADR-038 is the current normative decision.**
 
 > IF-ADR-032 consolidates and replaces the normative Camera decisions previously distributed across
 > IF-ADR-004, IF-ADR-004C, IF-ADR-022, IF-ADR-026, IF-ADR-027, IF-ADR-028,

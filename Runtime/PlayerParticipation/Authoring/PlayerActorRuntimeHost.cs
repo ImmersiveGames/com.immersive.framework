@@ -7,13 +7,13 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Generic Framework-owned runtime composition for one Player Actor.
-    /// It owns neither the physical PlayerInput boundary nor Actor-specific presentation or gameplay.
+    /// It defines one Actor occurrence root and owns neither PlayerInput nor Actor-specific gameplay.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Player/Player Actor Runtime Host")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "ADR-023 generic Player Actor Runtime Host composition for selected Actor Profile Presentation.")]
+        "ADR-038 Actor occurrence runtime host; optional visual content is subordinate.")]
     public sealed class PlayerActorRuntimeHost : MonoBehaviour
     {
         [Header("Framework Actor Runtime")]
@@ -21,15 +21,15 @@ namespace Immersive.Framework.PlayerParticipation
         [Tooltip("Canonical Framework Player Actor declaration owned by this generic runtime host.")]
         private PlayerActorDeclaration playerActorDeclaration;
 
-        [Header("Actor Presentation")]
+        [Header("Optional Actor Visual Content")]
         [SerializeField]
-        [Tooltip("Explicit child mount for Actor-specific presentation. It does not own Framework Actor identity or PlayerInput.")]
+        [Tooltip("Optional explicit child mount for visual content. The Actor root remains the physical and spatial authority.")]
         private Transform presentationMount;
 
         public PlayerActorDeclaration PlayerActorDeclaration => playerActorDeclaration;
-        public Transform PresentationMount => presentationMount;
+        public Transform VisualContentMount => presentationMount;
         public bool HasPlayerActorDeclaration => playerActorDeclaration != null;
-        public bool HasPresentationMount => presentationMount != null;
+        public bool HasVisualContentMount => presentationMount != null;
 
         /// <summary>
         /// Validates only this generic runtime-host structure without materializing or binding runtime state.
@@ -74,28 +74,22 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (presentationMount == null)
+            if (presentationMount != null &&
+                (presentationMount == transform || !presentationMount.IsChildOf(transform)))
             {
-                issue = "Player Actor Runtime Host requires an explicit Presentation Mount child transform.";
+                issue = "Optional Player Actor Runtime Host visual-content mount must be a child of the Actor occurrence root.";
                 return false;
             }
 
-            if (presentationMount == transform ||
-                !presentationMount.IsChildOf(transform))
+            if (presentationMount != null && presentationMount.GetComponentInChildren<PlayerInput>(true) != null)
             {
-                issue = "Player Actor Runtime Host Presentation Mount must be a child of the runtime host root.";
+                issue = "Optional visual-content mount must not contain PlayerInput.";
                 return false;
             }
 
-            if (presentationMount.GetComponentInChildren<PlayerInput>(true) != null)
+            if (presentationMount != null && presentationMount.GetComponentInChildren<ActorDeclaration>(true) != null)
             {
-                issue = "Player Actor Runtime Host Presentation Mount must not contain PlayerInput.";
-                return false;
-            }
-
-            if (presentationMount.GetComponentInChildren<ActorDeclaration>(true) != null)
-            {
-                issue = "Player Actor Runtime Host Presentation Mount must not contain Framework Actor declarations.";
+                issue = "Optional visual-content mount must not contain Framework Actor declarations.";
                 return false;
             }
 

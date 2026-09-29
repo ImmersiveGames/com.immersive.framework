@@ -9,23 +9,21 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerPreparedActorOccurrence(
             PlayerActorPreparationToken preparationToken,
             PlayerActorDeclaration actorDeclaration,
-            GameObject presentation)
+            GameObject visualContent)
         {
             PreparationToken = preparationToken;
             ActorDeclaration = actorDeclaration;
-            Presentation = presentation;
+            VisualContent = visualContent;
         }
 
         internal PlayerActorPreparationToken PreparationToken { get; }
         internal PlayerSlotId PlayerSlotId => PreparationToken.PlayerSlotId;
         internal PlayerActorDeclaration ActorDeclaration { get; }
-        internal GameObject Presentation { get; }
+        internal GameObject VisualContent { get; }
 
         internal bool IsValid =>
             PreparationToken.IsValid &&
             ActorDeclaration != null &&
-            ActorDeclaration.transform != null &&
-            Presentation != null &&
-            Presentation.transform != null;
+            ActorDeclaration.transform != null;
     }
 }

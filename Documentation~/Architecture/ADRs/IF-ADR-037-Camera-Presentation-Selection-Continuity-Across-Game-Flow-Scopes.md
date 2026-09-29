@@ -1,7 +1,9 @@
 # IF-ADR-037 — Camera Presentation Selection Continuity Across Game Flow Scopes
 
-Status: **Accepted**
+Status: **Superseded by IF-ADR-038 — historical decision evidence only**
 Accepted: **2026-09-27**
+Superseded: **2026-09-29**
+Superseded by: [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 Date: **2026-09-27**  
 Type: architecture / Camera / Game Flow / lifecycle / ownership  
 Amends: **IF-ADR-032**

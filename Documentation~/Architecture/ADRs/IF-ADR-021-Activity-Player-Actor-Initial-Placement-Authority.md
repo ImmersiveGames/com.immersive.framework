@@ -40,6 +40,9 @@ spatial placement
 ```
 
 Route and Activity only decide spatial intent for that Session-owned physical Player.
+The spatial target is the exact current Actor occurrence/root as established by
+IF-ADR-038; an Actor Presentation is not the placement or pose authority. Preserved
+pose, Route placement and Activity relocation all read/apply the Actor root pose.
 
 ### Route baseline spatial entry
 

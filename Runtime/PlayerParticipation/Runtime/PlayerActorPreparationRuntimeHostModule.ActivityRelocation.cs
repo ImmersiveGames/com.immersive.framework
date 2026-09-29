@@ -68,10 +68,10 @@ namespace Immersive.Framework.PlayerParticipation
                     out _, out _, out _, out PlayerActorMaterializationHandle handle, out issue))
                 return false;
 
-            Transform target = handle.Presentation != null ? handle.Presentation.transform : null;
+            Transform target = handle.ActorRoot;
             if (target == null)
             {
-                issue = "Activity Player relocation requires a complete prepared physical Actor target.";
+                issue = "Activity Player relocation requires a prepared Actor occurrence root.";
                 return false;
             }
 

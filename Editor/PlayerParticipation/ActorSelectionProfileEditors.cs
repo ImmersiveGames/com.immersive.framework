@@ -177,13 +177,13 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawPresentation()
         {
-            DrawSection("Presentation");
+            DrawSection("Optional Visual Content");
 
             EditorGUILayout.PropertyField(
                 _presentationPrefab,
                 new GUIContent(
-                    "Presentation Prefab",
-                    "Actor-specific presentation materialized below the generic Player Actor Runtime Host Presentation Mount."));
+                    "Visual Content Prefab",
+                    "Optional Actor-specific visual content materialized under the configured Actor visual-content mount. It does not own Actor state or pose."));
         }
 
         private void DrawConfigurationStatus()
@@ -287,11 +287,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Typed ActorProfileId",
                     typedIdentity);
 
-                GameObject presentation = profile.PresentationPrefab;
+                GameObject visualContent = profile.VisualContentPrefab;
                 EditorGUILayout.TextField(
-                    "Presentation Asset Path",
-                    presentation != null
-                        ? AssetDatabase.GetAssetPath(presentation)
+                    "Visual Content Asset Path",
+                    visualContent != null
+                        ? AssetDatabase.GetAssetPath(visualContent)
                         : string.Empty);
                 EditorGUILayout.Toggle(
                     "Defined Actor Kind",
@@ -300,8 +300,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Defined Actor Role",
                     profile.HasDefinedActorRole);
                 EditorGUILayout.Toggle(
-                    "Presentation Assigned",
-                    profile.HasPresentationPrefab);
+                    "Visual Content Assigned",
+                    profile.HasVisualContentPrefab);
             }
         }
 

@@ -80,7 +80,8 @@ Activity owns:
 participation projection
 active/inactive representation state
 gameplay admission
-Camera requests
+gameplay camera participation/eligibility under the current Session Camera policy;
+it does not own Camera Assignment or selection (IF-ADR-038)
 readiness contribution
 interaction bindings
 Activity-local references
@@ -94,6 +95,10 @@ IF-ADR-021 keeps placement separate: Route owns baseline spatial-entry intent fo
 the current Route occurrence, while Activity may own opt-in contextual relocation.
 Neither creates a new Player occurrence, changes Session physical lifetime, or turns
 an Activity transition into Join, Leave or recreation.
+
+The Actor occurrence root is the physical/spatial authority for the Player. Any
+visual Actor Presentation is optional and subordinate. Camera Subject ownership and
+Camera Assignment authority follow IF-ADR-038, not Activity-owned Camera Requests.
 
 ### 4. Physical Player occurrence and Activity representation occurrence are different
 

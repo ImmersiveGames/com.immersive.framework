@@ -1,10 +1,11 @@
 # IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle
 
-Status: **Proposed**  
-Proposed: **2026-09-27**  
+Status: **Proposed — normative consolidation in progress**
+Proposed: **2026-09-27**
+Last updated: **2026-09-29**
 Type: architecture / Session Camera / Player membership / Output lifecycle  
 Supersedes as normative Camera architecture: **IF-ADR-032, IF-ADR-037**  
-Normative relationship: **This ADR defines the primary Session Camera model. Route and Activity do not own or select Camera. Historical ADRs and certifications are evidence only.**
+Normative relationship: **This ADR defines the primary Session Camera model and the physical/spatial authority of the Player's Actor occurrence. Route and Activity do not own or select Camera. IF-ADR-023 is superseded; IF-ADR-032 and IF-ADR-037 remain superseded. Certifications are historical evidence only.**
 
 ## 1. Context
 
@@ -53,6 +54,24 @@ Occurrence        ── exact physical destination ──> one Output
 
 The Framework owns primary-camera authoring/runtime contracts, Session assignment and occurrence lifecycle, target projection, Output routing and fallback coverage. Unity/Cinemachine adapters implement supported physical camera behavior. Game-owned additional cameras remain outside this assignment system and use their own game/Cinemachine control.
 
+### 2.1.1 Player Actor occurrence authority
+
+The exact current Actor occurrence is the physical and spatial authority for its
+Session Player. Movement, physics, Route placement, Activity relocation and
+preserved pose operate on the Actor occurrence/root. Actor replacement preserves
+the Actor root pose. An Actor Presentation is not a spatial authority: when visual
+content exists, it is optional and subordinate to the Actor occurrence. Neither
+`VisualContentMount` nor `ActorProfile.VisualContentPrefab` is an architectural
+requirement. A Camera Presentation is a separate Camera concept and does not imply
+an Actor Presentation object.
+
+`PlayerActorRuntimeHost` may remain as a technical occurrence container, but it
+does not displace the Actor occurrence as physical/spatial authority. SceneProvided
+adoption and ManagerProvisioned materialization converge on the same Actor and
+Camera Subject semantics; provisioning origin does not alter ownership. The exact
+Actor/Subject evidence must be committed or rejected before Player/Camera mutation.
+No additional generic mounts are introduced by this decision.
+
 ### 2.2 Assignment dimensions and occurrence identity
 
 Occurrence mode/lifetime and membership/target policy are separate Assignment dimensions. The mode decides how many occurrences exist and when they begin/end. Membership policy decides which exact Player occurrences may participate. Target policy decides which current Subjects those members contribute. A Session-scoped mode does not imply any Player membership; it may have zero membership and use an explicit Scene/World target or no Subject.
@@ -91,7 +110,7 @@ Target sources are declared by the Definition/Assignment and may include:
 
 A Subject is valid only for its exact Player and Actor occurrences and revisions. Player identity, Actor identity and Subject identity are separate typed domains. A stable Player Slot is not an occurrence identity; rejoin creates a fresh Player occurrence. Actor replacement creates a fresh Actor/Subject occurrence while preserving Player identity. Stale, foreign, duplicate or regressed target evidence is rejected and cannot restore an older Actor.
 
-An Actor-backed Camera Subject belongs to the exact current Actor occurrence. The Actor occurrence explicitly provides its `ObservationTransform`; it may differ from the Actor declaration root, and the selected Transform must belong to that Actor occurrence. The Actor root is used only when explicitly assigned as `ObservationTransform`; Camera never infers it as a fallback or resolves a Subject through names or hierarchy searches. Subject identity is fresh for each Actor occurrence/revision. Actor replacement updates the member's Subject evidence in the existing Camera Occurrence and does not recreate that Camera Occurrence. SceneProvided and ManagerProvisioned providers use these same semantics; provisioning origin does not alter Subject ownership or resolution. Subject authoring is Actor-occurrence-owned and does not depend on CameraPresentation.
+An Actor-backed Camera Subject belongs to the exact current Actor occurrence. The Actor occurrence explicitly provides its `ObservationTransform`; it may differ from the Actor root, and the selected Transform must belong to that Actor occurrence. The Actor root is used only when explicitly assigned as `ObservationTransform`; Camera never infers it as a fallback or resolves a Subject through names or hierarchy searches. Subject identity is fresh for each Actor occurrence/revision. Actor replacement preserves the Actor root pose, updates the member's Subject evidence in the existing Camera Occurrence and does not recreate that Camera Occurrence. SceneProvided and ManagerProvisioned providers use these same semantics; provisioning origin does not alter Subject ownership or resolution. Subject authoring is Actor-occurrence-owned and does not depend on Actor Presentation or Camera Presentation.
 
 Activity/Route participation is projected separately from membership. A Player may remain assigned/member while its Actor target is temporarily ineligible. The ineligible Subject is excluded from the occurrence's target set; the Assignment and occurrence remain unchanged. On policy recovery, the current exact Subject can rejoin the target set.
 

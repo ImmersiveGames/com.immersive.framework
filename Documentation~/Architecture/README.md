@@ -184,7 +184,8 @@ Current post-certification reconciliation authority:
 
 [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 
-The IF-ADR-023 composition remains current, but reusable `PlayerActorDeclaration` templates intentionally do not carry a persistent physical occurrence ID.
+Reusable `PlayerActorDeclaration` templates intentionally do not carry a persistent
+physical occurrence ID. The former IF-ADR-023 composition is superseded by IF-ADR-038.
 
 Frozen identity rule:
 
@@ -299,10 +300,11 @@ Those records certify their former implementation boundaries. They do not certif
 
 ### Player Actor runtime and Scene-Provided composition
 
-Current product authority: [IF-ADR-023 — Player Actor Runtime Host and Presentation
-Authority](ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md).
+Current normative authority: [IF-ADR-038 — Session Player Camera Assignments and
+Occurrence Lifecycle](ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md).
+IF-ADR-023 is superseded; its dated certification remains historical evidence only.
 
-Post-certification occurrence identity authority: [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
+Occurrence identity history: [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md). Current Actor/Subject identity follows IF-ADR-038.
 
 ```text
 LocalPlayerHostAuthoring
@@ -310,15 +312,17 @@ LocalPlayerHostAuthoring
 └── ActorMount
     └── PlayerActorRuntimeHost
         ├── PlayerActorDeclaration
-        └── PresentationMount
-            └── ActorProfile.PresentationPrefab
+        ├── Actor occurrence root / physical state
+        ├── ActorCameraSubjectAuthoring / explicit ObservationTransform
+        └── optional subordinate visual content
 ```
 
-`LocalPlayerHostAuthoring` owns the reusable runtime infrastructure and
-`ActorProfile` owns the selected presentation. Scene-Provided physically authors the
-exact Runtime Host and Presentation, then the Framework validates, deterministically
-resolves and adopts that composition. Derived serialized references/evidence are not
-composition authority.
+`LocalPlayerHostAuthoring` owns reusable Player infrastructure. The Actor occurrence
+root owns physical/spatial state; optional visual content is subordinate. Neither
+`VisualContentMount` nor `ActorProfile.VisualContentPrefab` is required architecture.
+Camera Presentation is a separate Camera concept. Player runtime ownership,
+placement, relocation and replacement pose now use the Actor occurrence; the
+remaining Camera/sample migration and Unity validation are pending.
 
 ```text
 Scene-Provided
@@ -329,7 +333,7 @@ Scene-Provided
 
 Manager-Provisioned
   provisioning intent
-  → runtime Host/Actor/Presentation materialization
+  → runtime Player Host/Actor occurrence materialization
   → runtime preparation
 ```
 
@@ -394,13 +398,13 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-019 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-020 — Accepted / reconciled / implemented; current Full Player aggregate 27/27 PASS; historical 25/25 recertification preserved.
 - IF-ADR-021 — Accepted / reconciled / implemented / current QA verified; Route Spatial Entry 18/18, Activity Relocation 23/23 and Full Player aggregate 27/27 PASS.
-- IF-ADR-023 — Accepted / authored-composition implementation complete; physical Scene-Provided validation, resolution and adoption are current without derived evidence, runtime evidence validation or Player Apply/Rebuild.
+- IF-ADR-023 — **Superseded by IF-ADR-038**; certification retained only as historical evidence.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 - IF-ADR-024 — Accepted / reconciled / implemented for Manager-Provisioned V1; public `RequestReplacePreparedActor(...)` positive path certified by Full Player QA 16/16. Scene-Provided prepared physical replacement remains deferred.
 
 ### Camera
 
-- IF-ADR-038 — **Current Camera authority**. CAMERA-038-B..I Assignment, Occurrence, membership, replacement, and selector removal are present in source; Unity validation is pending.
+- IF-ADR-038 — **Normative target; Player runtime ownership migrated**. Remaining Camera implementation/sample migration and Unity validation are pending.
 - Former Camera ADRs 004, 004C, 022 and 026–031 are removed from the active ADR set after consolidation.
 - Assignment replacement is transactional; physical Output/Brain/rig materialization, Fallback coverage, Subject identity, and PlayerInputManager split layout remain.
 - Scene `CameraSharedComposition`, Presentation/Request selection, Route/Activity Camera overrides, and continuity runtimes are removed. Existing sample assets remain migration input for CAMERA-038-J.

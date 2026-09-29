@@ -62,14 +62,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Scene-Provided Local Player Runtime Host prefab source does not match the Local Player Host Runtime Host prefab.");
             }
 
-            GameObject presentationSource = ResolveSourcePrefab(composition.Presentation);
-            if (!AreSamePrefabAsset(
-                    presentationSource,
-                    authoring.ActorProfile.PresentationPrefab))
+            if (authoring.ActorProfile.VisualContentPrefab != null &&
+                !AreSamePrefabAsset(
+                    ResolveSourcePrefab(composition.VisualContent),
+                    authoring.ActorProfile.VisualContentPrefab))
             {
                 return Failure(
                     SceneProvidedLocalPlayerAuthoringStatus.InvalidActorProfile,
-                    "Scene-Provided Local Player Presentation prefab source does not match the selected Actor Profile Presentation prefab.");
+                    "Scene-Provided optional visual-content prefab source does not match the configured Actor Profile visual-content prefab.");
             }
 
             return new SceneProvidedLocalPlayerAuthoringResult(

@@ -271,8 +271,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (record.Handle.State != PlayerActorMaterializationState.Active ||
                 record.Handle.PlayerActorDeclaration == null ||
-                record.Handle.PlayerActorRuntimeHost == null ||
-                record.Handle.Presentation == null)
+                record.Handle.PlayerActorRuntimeHost == null)
             {
                 return ActorEvidenceResult(
                     PlayerCurrentActorEvidenceStatus.RejectedPhysicalEvidenceMismatch,

@@ -11,27 +11,25 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerActorRuntimeHost playerActorRuntimeHost,
             PlayerActorDeclaration playerActorDeclaration,
-            Transform presentationMount,
-            GameObject presentation)
+            Transform visualContentMount,
+            GameObject visualContent)
         {
             LocalPlayerHost = localPlayerHost;
             PlayerActorRuntimeHost = playerActorRuntimeHost;
             PlayerActorDeclaration = playerActorDeclaration;
-            PresentationMount = presentationMount;
-            Presentation = presentation;
+            VisualContentMount = visualContentMount;
+            VisualContent = visualContent;
         }
 
         internal LocalPlayerHostAuthoring LocalPlayerHost { get; }
         internal PlayerActorRuntimeHost PlayerActorRuntimeHost { get; }
         internal PlayerActorDeclaration PlayerActorDeclaration { get; }
-        internal Transform PresentationMount { get; }
-        internal GameObject Presentation { get; }
+        internal Transform VisualContentMount { get; }
+        internal GameObject VisualContent { get; }
         internal bool IsValid =>
             LocalPlayerHost != null &&
             PlayerActorRuntimeHost != null &&
-            PlayerActorDeclaration != null &&
-            PresentationMount != null &&
-            Presentation != null;
+            PlayerActorDeclaration != null;
     }
 
     internal static class SceneProvidedLocalPlayerCompositionResolver
@@ -71,11 +69,10 @@ namespace Immersive.Framework.PlayerParticipation
             if (profile == null ||
                 !profile.TryGetActorProfileId(out _, out issue) ||
                 profile.ActorKind != ActorKind.Player ||
-                profile.ActorRole != ActorRole.Protagonist ||
-                profile.PresentationPrefab == null)
+                profile.ActorRole != ActorRole.Protagonist)
             {
                 issue = string.IsNullOrWhiteSpace(issue)
-                    ? "Scene-Provided Local Player requires a Player Protagonist Actor Profile with a Presentation prefab."
+                    ? "Scene-Provided Local Player requires a Player Protagonist Actor Profile."
                     : issue;
                 return false;
             }
@@ -110,21 +107,30 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            Transform presentationMount = runtimeHost.PresentationMount;
-            if (presentationMount == null ||
-                presentationMount.parent != runtimeHost.transform ||
-                presentationMount.childCount != 1)
+            Transform visualContentMount = runtimeHost.VisualContentMount;
+            if (visualContentMount != null &&
+                (visualContentMount.parent != runtimeHost.transform ||
+                 visualContentMount.childCount > 1))
             {
-                issue = "Scene-Provided Local Player Runtime Host requires one direct Presentation Mount with exactly one direct Presentation child.";
+                issue = "Optional Scene-Provided visual-content mount must be a direct Actor child with at most one direct content object.";
                 return false;
             }
 
-            GameObject presentation = presentationMount.GetChild(0).gameObject;
-            if (presentation.GetComponentInChildren<PlayerInput>(true) != null ||
-                presentation.GetComponentInChildren<ActorDeclaration>(true) != null ||
-                presentation.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null)
+            GameObject visualContent = visualContentMount != null && visualContentMount.childCount == 1
+                ? visualContentMount.GetChild(0).gameObject
+                : null;
+            if (profile.VisualContentPrefab != null && visualContent == null)
             {
-                issue = "Scene-Provided Local Player Presentation must not contain PlayerInput, Actor declarations or Player Actor Runtime Host infrastructure.";
+                issue = "Scene-Provided Actor Profile configures visual content, but the exact authored visual-content instance is missing.";
+                return false;
+            }
+
+            if (visualContent != null &&
+                (visualContent.GetComponentInChildren<PlayerInput>(true) != null ||
+                visualContent.GetComponentInChildren<ActorDeclaration>(true) != null ||
+                visualContent.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null))
+            {
+                issue = "Scene-Provided optional visual content must not contain PlayerInput, Actor declarations or Player Actor Runtime Host infrastructure.";
                 return false;
             }
 
@@ -132,8 +138,8 @@ namespace Immersive.Framework.PlayerParticipation
                 host,
                 runtimeHost,
                 runtimeHost.PlayerActorDeclaration,
-                presentationMount,
-                presentation);
+                visualContentMount,
+                visualContent);
             return true;
         }
     }

@@ -59,7 +59,7 @@ Historical Camera evidence includes:
 
 ### Player — current normative baseline
 
-- [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
+- [IF-ADR-038 — Actor occurrence and Session Camera authority](Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 — Prepared Actor Replacement Public Contract](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md)
 - [IF-ADR-024 — Prepared Actor Replacement Technical Certification — 2026-09-02](Architecture/Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
@@ -90,7 +90,7 @@ Detailed mutable status lives in the [Framework Tracker](Architecture/Tracking/I
 Current Player architecture includes:
 
 ```text
-Player Actor Runtime Host / Presentation authority
+Actor occurrence physical/spatial authority; optional subordinate visual content
 runtime Player Actor occurrence identity established by physical preparation
 explicit Player Session observation + command surface
 Manager-Provisioned prepared Actor replacement V1
@@ -125,7 +125,7 @@ Fallback remains separate.
 
 Session Camera authority explicitly activates Assignment. Route and Activity have no Camera selection authority. Join/Leave changes membership only. PlayerInputManager remains the physical split-layout writer.
 
-CAMERA-038-I removed the Presentation/Request selection pipeline and Route/Activity Camera ownership. Scene/prefab/sample migration remains deferred to CAMERA-038-J. Unity import/compile and runtime recertification remain pending.
+The target removes Camera Presentation/Request selection and Route/Activity Camera ownership. Player runtime ownership, Route placement, Activity relocation and replacement pose now use the Actor occurrence; remaining Camera cuts and scene/prefab/sample migration follow. Unity import/compile and runtime recertification remain pending.
 
 The 2026-09-21 IF-ADR-029/030 certification remains historical evidence for the former CameraSharedComposition implementation and must not be represented as IF-ADR-038 certification.
 
@@ -165,11 +165,11 @@ See the Tracker and IF-ADR-009 reconciliation records for the current boundary.
 | [019](Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md) | Session Player lifetime and Activity representation authority | Accepted / Reconciled / Implemented |
 | [020](Architecture/ADRs/IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md) | Session Player Leave and resource release authority | Accepted / Reconciled / Implemented |
 | [021](Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md) | Route Spatial Entry and Activity explicit relocation | Accepted / Reconciled / Implemented |
-| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Accepted / Implemented; occurrence identity reconciled by 023A |
+| [023](Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md) | Player Actor Runtime Host and Presentation authority | Superseded by IF-ADR-038; certification is historical evidence |
 | [024](Architecture/ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md) | Prepared Actor replacement public contract | Accepted / Reconciled / Manager-Provisioned V1 implemented and certified |
 | [025](Architecture/ADRs/IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md) | Local Player input ownership and device association | Accepted / Implemented |
 | [032](Architecture/ADRs/IF-ADR-032-Camera-Unified-Authority-Session-Outputs-Presentations-Subjects-and-Lifecycle.md) | Camera unified authority, Session Outputs, Presentations, Subjects and lifecycle | Historical / superseded by IF-ADR-038 |
-| [038](Architecture/ADRs/IF-ADR-038-SESSION-PLAYER-CAMERA-AUTHORITY.md) | Session Player Camera authority | Current normative architecture / implementation static validation only |
+| [038](Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) | Session Player Camera and Actor occurrence authority | Normative target; Player runtime ownership migrated, Camera/sample migration and Unity validation pending |
 
 ## Current reconciliation / certification records
 

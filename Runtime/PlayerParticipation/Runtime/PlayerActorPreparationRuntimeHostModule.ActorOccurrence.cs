@@ -58,7 +58,7 @@ namespace Immersive.Framework.PlayerParticipation
             occurrence = new PlayerPreparedActorOccurrence(
                 confirmation.Preparation.Token,
                 actorDeclaration,
-                materialization.Presentation);
+                materialization.VisualContent);
             return occurrence.IsValid;
         }
 

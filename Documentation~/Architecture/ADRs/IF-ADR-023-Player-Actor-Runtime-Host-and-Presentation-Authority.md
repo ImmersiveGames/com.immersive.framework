@@ -1,13 +1,20 @@
 # IF-ADR-023 — Player Actor Runtime Host and Presentation Authority
 
-Status: **Accepted — Scene-Provided authored-composition implementation complete**
+Status: **Superseded by IF-ADR-038 — historical implementation evidence only**
 Accepted: **2026-08-28**  
-Last updated: **2026-08-31**  
+Superseded: **2026-09-29**
+Superseded by: [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
+Last updated: **2026-09-29**
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Historical technical certification: [2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 Occurrence-identity boundary: [IF-ADR-023A](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 
 ## Context
+
+> **Superseded:** This document records the former Actor Presentation composition
+> and spatial authority. IF-ADR-038 is normative for current Actor occurrence,
+> physical/spatial pose, and Camera Subject ownership. The linked certification is
+> retained only as dated evidence for the boundary it tested.
 
 `LocalPlayerHostAuthoring` is the technical Local Player Host. `ActorProfile`
 selects the Player presentation. These responsibilities remain separate.

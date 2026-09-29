@@ -145,7 +145,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring host = composition.LocalPlayerHost;
             PlayerActorRuntimeHost sceneRuntimeHost = composition.PlayerActorRuntimeHost;
             PlayerActorDeclaration sceneActor = composition.PlayerActorDeclaration;
-            GameObject presentation = composition.Presentation;
+            GameObject visualContent = composition.VisualContent;
             if (host == null ||
                 !host.IsJoined ||
                 !host.HasJoinedSlot ||
@@ -215,10 +215,11 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (sceneRuntimeHost == null ||
                 sceneActor == null ||
-                presentation == null ||
                 host.ActorMount == null ||
                 !ReferenceEquals(sceneRuntimeHost.transform.parent, host.ActorMount) ||
-                !ReferenceEquals(presentation.transform.parent, sceneRuntimeHost.PresentationMount))
+                (visualContent != null &&
+                 (sceneRuntimeHost.VisualContentMount == null ||
+                  !ReferenceEquals(visualContent.transform.parent, sceneRuntimeHost.VisualContentMount))))
             {
                 return SceneAdoptionResult(
                     ScenePlayerActorAdoptionStatus.RejectedActorMismatch,
@@ -229,7 +230,7 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     resolvedSource,
                     resolvedReason,
-                    "Scene Player Actor Runtime Host and Presentation must remain under their exact authored mounts.");
+                    "Scene Player Actor occurrence must remain under its exact authored Actor Mount; configured visual content must remain under its exact optional mount.");
             }
 
             if (_sceneAdoptions.TryGetValue(playerSlotId, out SceneAdoptionRecord existingAdoption))
@@ -480,7 +481,7 @@ namespace Immersive.Framework.PlayerParticipation
                     host,
                     host.PlayerInput,
                     sceneRuntimeHost,
-                    presentation,
+                    visualContent,
                     releaseProxy,
                     true,
                     resolvedSource,

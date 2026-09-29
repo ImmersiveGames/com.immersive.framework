@@ -1,8 +1,8 @@
 # Player Usage
 
-Status: **Current Player product contract — Scene-Provided documentation authority updated**
-Last updated: **2026-08-31**  
-Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-023](../Architecture/ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md), [IF-ADR-023A](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
+Status: **Player product contract — Actor occurrence runtime ownership implemented; Unity validation pending**
+Last updated: **2026-09-29**
+Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ## Product model
 
@@ -20,7 +20,7 @@ LocalPlayerHostAuthoring
   technical Player Host, PlayerInput boundary and ActorMount
 
 ActorProfile
-  Actor identity/classification and PresentationPrefab
+  Actor identity/classification and Actor occurrence configuration
 ```
 
 ```text
@@ -43,19 +43,21 @@ FG_SceneProvidedPlayer
 │   └── FG_PlayerActor
 │       ├── PlayerActorRuntimeHost
 │       ├── PlayerActorDeclaration
-│       └── PresentationMount
-│           └── FG_FirstPersonPresentation
+│       ├── physical Actor components / ActorCameraSubjectAuthoring
+│       ├── explicit ObservationTransform
+│       └── optional visual content
 └── Scene-Provided Local Player
     └── SceneProvidedLocalPlayerAuthoring
 ```
 
 The root GameObject name equals its prefab filename without `.prefab`.
 
-`LocalPlayerHostAuthoring.PlayerActorRuntimeHostPrefab` is the canonical Runtime
-Host reference. `ActorProfile.PresentationPrefab` is the canonical Presentation
-reference. In Scene-Provided, their physical instances are already authored in the
-composition. In Manager-Provisioned, the Framework uses the same sources to
-materialize runtime instances.
+`LocalPlayerHostAuthoring.PlayerActorRuntimeHostPrefab` remains the technical Host
+reference. The Actor occurrence root owns physical/spatial state. Optional visual
+content is subordinate. `VisualContentMount` and `ActorProfile.VisualContentPrefab`
+are optional authoring/runtime content; neither is required for Actor validity,
+activation, placement, relocation or replacement. Unity validation remains pending.
+Camera Presentation is a separate Camera concept.
 
 For a generic Player Actor prefab:
 
@@ -66,7 +68,7 @@ PlayerActorDeclaration.ActorId = EMPTY
 Physical preparation/adoption creates the runtime occurrence identity. Do not write
 a persistent authored Player Actor occurrence ID to a reusable prefab.
 
-### Embodiment and spatial authority
+### Actor occurrence, embodiment and spatial authority
 
 The generic Player Actor prefab contains only:
 
@@ -74,26 +76,16 @@ The generic Player Actor prefab contains only:
 <Prefix>_PlayerActor
 ├── PlayerActorRuntimeHost
 ├── PlayerActorDeclaration
-└── PresentationMount
+├── physical body / locomotion as required by the game
+├── ActorCameraSubjectAuthoring + explicit ObservationTransform
+└── optional visual content
 ```
 
-It has no mandatory `CharacterController`, `Rigidbody`, or Actor-specific
-locomotion technology. The Presentation prefab owns its Actor-specific embodiment:
-
-```text
-<Prefix>_<ActorName>Presentation
-├── optional physical body
-├── optional locomotion
-├── visual/model and animator/rig
-├── camera targets
-└── Actor-specific presentation/gameplay behavior
-```
-
-The exact root Transform of the materialized Actor Presentation is the concrete
-spatial authority for that Player Actor embodiment. `PlayerActorRuntimeHost` is the
-generic runtime occurrence container; it is not the canonical locomotion body.
-`CharacterController` is not an invariant of either Player Actor or Presentation;
-it is an optional Presentation implementation choice.
+Movement, physics, placement and preserved pose belong to the Actor occurrence/root.
+Visual content, when authored, is optional and subordinate; it is never the spatial
+authority. The Actor explicitly supplies `ObservationTransform`, which may differ
+from its root and must belong to that Actor occurrence. Camera performs no name or
+hierarchy lookup and has no implicit root fallback.
 
 ## Scene-Provided
 
@@ -113,9 +105,7 @@ At runtime the Framework resolves the exact authored structure:
 ```text
 LocalPlayerHost
 → ActorMount
-→ exact PlayerActorRuntimeHost
-→ PresentationMount
-→ exact Presentation
+→ exact Actor occurrence / PlayerActorRuntimeHost evidence
 ```
 
 This resolution is deterministic. Name, tag, global search and implicit hierarchy
@@ -133,18 +123,18 @@ Editor validation verifies, where applicable:
 - exactly one `PlayerActorRuntimeHost`;
 - compatibility with the Host's configured Runtime Host prefab;
 - a canonical `PlayerActorDeclaration`;
-- Presentation under the exact `PresentationMount` and compatible with
-  `ActorProfile.PresentationPrefab`;
+- exact Actor occurrence and explicit Camera Subject evidence when required;
 - absence of concurrent or ambiguous composition.
 
 Prefab provenance is Editor-owned validation. It is not a runtime certificate.
 
 ### Runtime resolution and adoption
 
-Runtime validates/adopts the current Host and Slot, selected `ActorProfile`, exact
-Actor/Presentation mounts, structural validity, occurrence identity, preparation,
-adoption and runtime content. It fails closed on an invalid composition; it does not
-repair, replace or infer missing content.
+Runtime validates/adopts the current Host and Slot, selected Actor occurrence,
+structural validity, occurrence identity, preparation, adoption and runtime content.
+It fails closed on invalid evidence; it does not repair, replace or infer missing
+content. SceneProvided and ManagerProvisioned converge on the same Actor/Subject
+semantics.
 
 ### Create Local Player
 
@@ -186,7 +176,7 @@ PlayerSessionProfile
 → Actor selection
 → Activity preparation requirement
 → PlayerActorRuntimeHost
-→ ActorProfile.PresentationPrefab
+→ Actor occurrence configuration
 → runtime occurrence identity
 → preparation/adoption
 ```
@@ -198,18 +188,18 @@ does not become Scene-Provided, and Scene-Provided never falls back to this path
 |---|---|---|
 | Physical composition | Consumer authors it before Play | Framework creates it at runtime |
 | Framework authority | Validate, resolve exact structure, adopt | Provision, materialize, prepare |
-| Runtime Host/Presentation | Already authored and adopted | Instantiated from canonical sources |
+| Actor occurrence | Already authored and adopted | Materialized from provisioning configuration |
 | Apply / Rebuild | Not required and not authoritative | Not the Player provisioning contract |
 
 ## Sources of truth
 
 - `LocalPlayerHostAuthoring.PlayerActorRuntimeHostPrefab`;
-- `ActorProfile.PresentationPrefab`;
+- exact Actor occurrence configuration;
 - `PlayerSlotProfile` and `ActorProfile`;
 - the Local Player Host, admission timing and authored physical hierarchy.
 
 Derived serialized Runtime Host/Presentation references, duplicate ActorProfile or
-Presentation prefab evidence, and stamps proving an Editor operation ran are not
+visual-content prefab evidence, and stamps proving an Editor operation ran are not
 sources of truth.
 
 ## Occurrence identity
@@ -266,7 +256,7 @@ Prepared physical evidence is authoritative after adoption commit.
 - name/tag/global-scene lookup as authority;
 - manual Join as fallback for normal Scene-Provided admission;
 - hidden default Actor fallback;
-- a second Runtime Host or Presentation prefab authority;
+- a second Runtime Host or visual-content prefab source;
 - persistent generic `PlayerActorDeclaration.ActorId`;
 - typed occurrence-ID reads before preparation;
 - physical Actor hot-swap hidden behind logical Actor selection.

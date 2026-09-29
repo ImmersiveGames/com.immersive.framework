@@ -2,16 +2,19 @@
 
 Status: **Accepted / Reconciled / Implemented / Current Player QA PASS**  
 Last updated: **2026-08-29**  
-Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023  
+Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-024, IF-ADR-038
 Current aggregate record: [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)  
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
-Actor-runtime composition closure: [IF-ADR-023 — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+Actor occurrence spatial and Camera Subject authority: [IF-ADR-038](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ## Current structural reconciliation
 
 IF-ADR-003 remains authoritative for Player participation, Session Actor selection, Activity projection/readiness and Actor lifecycle semantics.
 
-IF-ADR-023 supersedes the former monolithic Actor structural detail.
+IF-ADR-023 is superseded by IF-ADR-038 for Actor composition and spatial authority.
+This ADR remains authoritative for Player participation and Actor lifecycle. The
+Actor occurrence root owns physical/spatial state; optional visual content is
+subordinate and neither `VisualContentMount` nor `VisualContentPrefab` is required.
 
 Current composition:
 
@@ -20,8 +23,9 @@ Local Player Host
 └── ActorMount
     └── PlayerActorRuntimeHost
         ├── PlayerActorDeclaration
-        └── PresentationMount
-            └── ActorProfile.PresentationPrefab
+        ├── physical Actor components / ActorCameraSubjectAuthoring
+        ├── explicit ObservationTransform
+        └── optional visual content
 ```
 
 The removed `ActorProfile.LogicalActorHostPrefab` is **not** current authority. `LogicalActorsPrepared` remains current semantic readiness terminology.
@@ -84,7 +88,7 @@ Immediate Join may have technical/session Host evidence without contextual Activ
 
 ```text
 consumer scene authors exact Local Player Host
-+ exact PlayerActorRuntimeHost / Presentation candidate where applicable
++ exact PlayerActorRuntimeHost / Actor occurrence
 → Framework validates/adopts
 → successful admission
 → Session owns admitted physical Player occurrence

@@ -10,7 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Designer-facing Scene-Provided Local Player composition.
-    /// The scene supplies an exact Runtime Host and Presentation; ActorProfile supplies only Presentation intent.
+    /// The scene supplies an exact Actor occurrence; visual content is optional and subordinate.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Player/Scene-Provided/Local Player")]

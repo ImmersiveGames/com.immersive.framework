@@ -27,6 +27,35 @@ The current model does not represent Session-scoped cameras without Players, mem
 
 ## Execution cuts
 
+### CAMERA-038-A — Player Actor occurrence authority migration
+
+Migrate Player runtime contracts to the Actor occurrence authority defined by
+IF-ADR-038 before migrating any additional samples/assets. The Actor occurrence
+root owns physical state and spatial pose; optional visual content is subordinate.
+`PresentationMount` and `ActorProfile.PresentationPrefab` are not required
+architecture. Do not add generic mounts or compatibility aliases.
+
+Cover the complete affected boundary:
+
+- `PlayerActorRuntimeHost` and `ActorProfile` authoring/configuration;
+- SceneProvided validation, composition, adoption and release;
+- ManagerProvisioned candidate materialization, commit and release;
+- materialization handle and prepared Actor occurrence/evidence;
+- Route placement and Activity relocation against the Actor root;
+- Actor replacement preserving Actor root pose, Player identity and the existing
+  Camera Occurrence while publishing fresh Actor/Subject evidence;
+- validators, Editor authoring utilities and affected tests/fixtures.
+
+SceneProvided and ManagerProvisioned must converge on the same ownership and
+runtime semantics. Retire the Actor Presentation spatial authority; do not confuse
+it with Camera Presentation. Runtime and serialized changes remain for this cut's
+implementation; this plan entry defines the migration boundary only.
+
+Gate: static reference audit proves no active placement, replacement, prepared
+Actor validity or lifecycle contract requires a separate Actor Presentation.
+Required validation includes affected automated tests and manual SceneProvided /
+ManagerProvisioned Unity validation in the implementation phase.
+
 ### CAMERA-038-B — Core Definition / Assignment / Occurrence
 
 Create the minimum domain model for:
@@ -124,8 +153,8 @@ After all consumers have migrated, remove:
 - Camera Presentation lifecycle;
 - pending Camera selections;
 - CameraRequest publishing/winner arbitration;
-- Player-to-Presentation topology/selection;
-- Presentation materialization that has no new consumer.
+- Player-to-Camera-Presentation selection/topology (not Actor visual ownership);
+- Camera Presentation materialization that has no new consumer.
 
 Reevaluate `CameraOutputContext` and other old types only after reference analysis. Retain Output, Fallback, Subject and group pieces that implement ADR-038.
 
@@ -179,6 +208,18 @@ Only after runtime, authoring, samples and QA are validated, remove obsolete Cam
 
 ## Sequence
 
-`Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Presentation/Request/GameFlow Camera → authoring/samples → QA/documentation cleanup`
+1. CAMERA-038-A — Player Actor occurrence authority migration.
+2. CAMERA-038-B — Core Definition / Assignment / Occurrence.
+3. CAMERA-038-C — Outputs and Fallback.
+4. CAMERA-038-D — Session-scoped camera with zero Players.
+5. CAMERA-038-E — Membership and Subjects.
+6. CAMERA-038-F — Individual per Player.
+7. CAMERA-038-G — Shared group.
+8. CAMERA-038-H — Transactional Assignment change.
+9. CAMERA-038-I — Remove Camera Presentation / Request / GameFlow Camera ownership.
+10. CAMERA-038-J — Authoring, samples and assets.
+11. CAMERA-038-K — QA, regressions and documentation cleanup.
+
+`Player Actor occurrence authority → Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Camera Presentation/Request/GameFlow Camera ownership → authoring/samples → QA/documentation cleanup`
 
 Each cut must report **Implemented / Tested / Integrated / Validated** separately. Manual success is not sufficient for closure.

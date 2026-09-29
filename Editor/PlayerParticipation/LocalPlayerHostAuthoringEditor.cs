@@ -81,7 +81,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 _playerActorRuntimeHostPrefab,
                 new GUIContent(
                     "Player Actor Runtime Host Prefab",
-                    "Generic Framework-owned Actor runtime host supplied by this Local Player Host composition. It is materialized after Actor selection and receives the selected Actor Profile Presentation."));
+                    "Generic Framework-owned Actor runtime host supplied by this Local Player Host composition. It is materialized after Actor selection and may receive configured optional visual content."));
         }
 
         private void DrawConfigurationStatus(

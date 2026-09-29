@@ -7,7 +7,7 @@ namespace Immersive.Framework.Actors
 {
     /// <summary>
     /// Immutable reusable product identity for an Actor option before any runtime Actor exists.
-    /// Runtime selection, ActorId, owner scope, occupancy and presentation state remain outside this asset.
+    /// Runtime selection, ActorId, owner scope, occupancy and runtime visual-content state remain outside this asset.
     /// </summary>
     [CreateAssetMenu(
         fileName = "ActorProfile",
@@ -34,7 +34,7 @@ namespace Immersive.Framework.Actors
         [Tooltip("Broad framework Actor role. This is not a loadout, team or character class.")]
         [SerializeField] private ActorRole actorRole = ActorRole.Protagonist;
 
-        [Tooltip("Actor-specific Presentation prefab. It is materialized only beneath the Player Actor Runtime Host Presentation Mount.")]
+        [Tooltip("Optional visual content prefab. It is subordinate to the Actor occurrence and never owns physical or spatial state.")]
         [SerializeField] private GameObject presentationPrefab;
 
         public string ActorProfileIdText => actorProfileId.NormalizeText();
@@ -51,7 +51,7 @@ namespace Immersive.Framework.Actors
 
         public ActorRole ActorRole => actorRole;
 
-        public GameObject PresentationPrefab => presentationPrefab;
+        public GameObject VisualContentPrefab => presentationPrefab;
 
         public bool HasDefinedActorKind =>
             Enum.IsDefined(typeof(ActorKind), actorKind) && actorKind != ActorKind.Unknown;
@@ -59,7 +59,7 @@ namespace Immersive.Framework.Actors
         public bool HasDefinedActorRole =>
             Enum.IsDefined(typeof(ActorRole), actorRole) && actorRole != ActorRole.Unknown;
 
-        public bool HasPresentationPrefab => presentationPrefab != null;
+        public bool HasVisualContentPrefab => presentationPrefab != null;
 
         public bool TryGetActorProfileId(
             out ActorProfileId resolvedActorProfileId,

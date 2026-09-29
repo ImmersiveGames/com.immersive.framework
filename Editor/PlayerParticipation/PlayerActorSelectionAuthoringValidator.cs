@@ -63,7 +63,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     profile);
             }
 
-            ValidatePresentation(profile, report);
+            ValidateOptionalVisualContent(profile, report);
 
             if (includeProjectDuplicateScan)
             {
@@ -90,7 +90,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' presentation='{profile.PresentationPrefab.name}'.",
+                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' visualContent='{(profile.VisualContentPrefab != null ? profile.VisualContentPrefab.name : "<none>")}'.",
                     profile);
             }
 
@@ -150,34 +150,31 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             return report;
         }
 
-        private static void ValidatePresentation(
+        private static void ValidateOptionalVisualContent(
             ActorProfile profile,
             FrameworkAuthoringValidationReport report)
         {
-            GameObject presentation = profile.PresentationPrefab;
-            if (presentation == null)
+            GameObject visualContent = profile.VisualContentPrefab;
+            if (visualContent == null)
+            {
+                return;
+            }
+
+            if (!PrefabUtility.IsPartOfPrefabAsset(visualContent))
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' requires an explicit Presentation Prefab. No fallback presentation is inferred.",
+                    $"ActorProfile '{profile.name}' configured optional visual content '{visualContent.name}' is not a prefab asset.",
                     profile);
                 return;
             }
 
-            if (!PrefabUtility.IsPartOfPrefabAsset(presentation))
+            if (visualContent.GetComponentInChildren<ActorDeclaration>(true) != null ||
+                visualContent.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null ||
+                visualContent.GetComponentInChildren<PlayerInput>(true) != null)
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' Presentation '{presentation.name}' is not a prefab asset.",
-                    profile);
-                return;
-            }
-
-            if (presentation.GetComponentInChildren<ActorDeclaration>(true) != null ||
-                presentation.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null ||
-                presentation.GetComponentInChildren<PlayerInput>(true) != null)
-            {
-                report.AddError(
-                    $"Presentation Prefab '{presentation.name}' must not contain PlayerInput, Framework Actor declarations or Player Actor Runtime Host infrastructure.",
-                    presentation);
+                    $"Visual-content Prefab '{visualContent.name}' must not contain PlayerInput, Framework Actor declarations or Player Actor Runtime Host infrastructure.",
+                    visualContent);
             }
         }
     }

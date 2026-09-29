@@ -11,6 +11,9 @@ namespace Immersive.Framework.PlayerParticipation
         private bool _hasAppliedForCurrentOccurrence;
         private int _lastOccurrenceSequence;
 
+        internal static Transform ResolveActorRoot(PlayerActorRuntimeHost actorRuntimeHost) =>
+            actorRuntimeHost != null ? actorRuntimeHost.transform : null;
+
         internal void Configure(RoutePlayerSpatialEntryContext value)
         {
             if (_context.Matches(value)) return;
@@ -22,9 +25,9 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool TryApplyBeforeActivation(PlayerActorMaterializationHandle handle, out string issue)
         {
             issue = string.Empty;
-            if (handle == null || handle.Presentation == null)
+            if (handle == null || ResolveActorRoot(handle.PlayerActorRuntimeHost) == null)
             {
-                issue = "Route Player spatial entry requires a complete materialization handle.";
+                issue = "Route Player spatial entry requires a materialized Actor occurrence root.";
                 return false;
             }
             if (!_context.IsValid)
@@ -40,7 +43,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (!RoutePlayerSpatialEntryRuntime.TryApply(
                     _context,
                     handle.Request.Slot.PlayerSlotId,
-                    handle.Presentation.transform,
+                    ResolveActorRoot(handle.PlayerActorRuntimeHost),
                     out issue)) return false;
 
             _lastOccurrenceSequence = _context.OccurrenceSequence;

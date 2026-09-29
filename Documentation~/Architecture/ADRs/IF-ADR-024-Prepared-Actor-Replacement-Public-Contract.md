@@ -4,7 +4,7 @@ Status: **Accepted — Manager-Provisioned V1 implemented and Player QA certifie
 Accepted: **2026-09-02**  
 Last updated: **2026-09-02**  
 Type: architecture / Player public capability / runtime orchestration  
-Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-019, IF-ADR-020, IF-ADR-023
+Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-015, IF-ADR-019, IF-ADR-020, IF-ADR-038
 
 ## Context
 
@@ -76,12 +76,13 @@ A successful or physically committed replacement preserves:
 - current Activity identity and current Activity occurrence.
 
 It changes the selection revision, general Slot revision, prepared Actor identity
-and preparation token, Actor Runtime Host/Presentation, gameplay
+and preparation token, Actor occurrence, gameplay
 admission/input/camera evidence, and the readiness evidence needed to prove B. No
 gameplay authority for A may remain current after B is committed.
 
-Before physical replacement commits, the Framework captures A's exact Presentation
-world position and rotation. B's exact Presentation receives that pose. A
+Before physical replacement commits, the Framework captures A's exact Actor root
+world position and rotation. B's Actor root receives that pose. An optional visual
+child remains subordinate and follows the Actor root. A
 representation change is not a new Route spatial occurrence and does not reapply
 Route entry or invent Activity relocation; a new Route occurrence or an explicit
 new Activity relocation remains authoritative under its own contract.

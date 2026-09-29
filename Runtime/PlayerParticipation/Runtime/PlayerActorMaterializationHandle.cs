@@ -9,9 +9,9 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Typed physical handle for one Player Actor Runtime Host and its selected Presentation.
+    /// Typed physical handle for one Player Actor occurrence and optional subordinate visual content.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Internal, "ADR-023 Player Actor Runtime Host and Presentation materialization handle.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "ADR-038 Player Actor occurrence materialization handle.")]
     internal sealed class PlayerActorMaterializationHandle
     {
         private PlayerActorMaterializationState _state;
@@ -54,13 +54,13 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost = localPlayerHost ?? throw new ArgumentNullException(nameof(localPlayerHost));
             PlayerInput = playerInput ?? throw new ArgumentNullException(nameof(playerInput));
             PlayerActorRuntimeHost = playerActorRuntimeHost ?? throw new ArgumentNullException(nameof(playerActorRuntimeHost));
-            Presentation = presentation ?? throw new ArgumentNullException(nameof(presentation));
+            VisualContent = presentation;
             ReleaseProxy = releaseProxy;
             DestroyLocalPlayerHostOnRelease = destroyLocalPlayerHostOnRelease;
             _state = PlayerActorMaterializationState.StagedInactive;
             _source = source.NormalizeText();
             _reason = reason.NormalizeText();
-            _message = "Player Actor Runtime Host and Presentation are staged inactive.";
+            _message = "Player Actor occurrence and any configured visual content are staged inactive.";
         }
 
         internal PlayerActorMaterializationRequest Request { get; }
@@ -69,8 +69,19 @@ namespace Immersive.Framework.PlayerParticipation
         internal LocalPlayerHostAuthoring LocalPlayerHost { get; }
         internal PlayerInput PlayerInput { get; }
         internal PlayerActorRuntimeHost PlayerActorRuntimeHost { get; }
+        internal Transform ActorRoot => PlayerActorRuntimeHost != null
+            ? PlayerActorRuntimeHost.transform
+            : null;
+        internal bool TrySetActorRootPose(Vector3 position, Quaternion rotation)
+        {
+            Transform target = ActorRoot;
+            if (target == null) return false;
+
+            target.SetPositionAndRotation(position, rotation);
+            return true;
+        }
         internal PlayerActorDeclaration PlayerActorDeclaration => PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.PlayerActorDeclaration : null;
-        internal GameObject Presentation { get; }
+        internal GameObject VisualContent { get; }
         internal GameObject ReleaseProxy { get; }
         internal bool DestroyLocalPlayerHostOnRelease { get; }
         internal bool RequiresRouteSpatialEntryOnFirstActivation => !DestroyLocalPlayerHostOnRelease;
@@ -94,9 +105,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (PlayerActorRuntimeHost == null || PlayerActorDeclaration == null || Presentation == null)
+            if (PlayerActorRuntimeHost == null || PlayerActorDeclaration == null)
             {
-                issue = "Player Actor Runtime Host or selected Presentation is missing before activation.";
+                issue = "Player Actor occurrence root or declaration is missing before activation.";
                 return false;
             }
 
@@ -112,13 +123,13 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            Presentation.SetActive(true);
+            if (VisualContent != null) VisualContent.SetActive(true);
             PlayerActorRuntimeHost.gameObject.SetActive(true);
             _hasEverActivated = true;
             _state = PlayerActorMaterializationState.Active;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Player Actor Runtime Host and Presentation activated.";
+            _message = "Player Actor occurrence activated.";
             issue = string.Empty;
             return true;
         }
@@ -141,7 +152,7 @@ namespace Immersive.Framework.PlayerParticipation
             _state = PlayerActorMaterializationState.StagedInactive;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
-            _message = "Player Actor Runtime Host and Presentation deactivated.";
+            _message = "Player Actor occurrence deactivated.";
             issue = string.Empty;
             return true;
         }

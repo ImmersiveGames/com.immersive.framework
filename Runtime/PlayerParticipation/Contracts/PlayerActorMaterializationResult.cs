@@ -26,7 +26,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerInput playerInput,
             PlayerActorRuntimeHost playerActorRuntimeHost,
-            GameObject presentation,
+            GameObject visualContent,
             PlayerActorMaterializationHandle handle,
             string message)
         {
@@ -42,7 +42,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost = localPlayerHost;
             PlayerInput = playerInput;
             PlayerActorRuntimeHost = playerActorRuntimeHost;
-            Presentation = presentation;
+            VisualContent = visualContent;
             Handle = handle;
             Message = message ?? string.Empty;
         }
@@ -61,7 +61,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorRuntimeHost != null
                 ? PlayerActorRuntimeHost.PlayerActorDeclaration
                 : null;
-        public GameObject Presentation { get; }
+        public GameObject VisualContent { get; }
         public string Message { get; }
 
         internal PlayerActorMaterializationHandle Handle { get; }
@@ -84,8 +84,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost != null &&
             PlayerInput != null &&
             PlayerActorRuntimeHost != null &&
-            PlayerActorDeclaration != null &&
-            Presentation != null;
+            PlayerActorDeclaration != null;
 
         public string ToDiagnosticString()
         {
@@ -94,7 +93,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"runtimeStatus='{(HasRuntimeContentResult ? RuntimeContentResult.Status.ToString() : string.Empty)}' " +
                 $"host='{(LocalPlayerHost != null ? LocalPlayerHost.name : string.Empty)}' " +
                 $"runtimeHost='{(PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.name : string.Empty)}' " +
-                $"presentation='{(Presentation != null ? Presentation.name : string.Empty)}' " +
+                $"visualContent='{(VisualContent != null ? VisualContent.name : string.Empty)}' " +
                 $"declaration='{(PlayerActorDeclaration != null ? PlayerActorDeclaration.name : string.Empty)}' " +
                 $"stagedInactive='{(PlayerActorRuntimeHost != null && !PlayerActorRuntimeHost.gameObject.activeSelf)}' " +
                 $"message='{Message}'";
@@ -109,7 +108,7 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHostAuthoring localPlayerHost,
             PlayerInput playerInput,
             PlayerActorRuntimeHost playerActorRuntimeHost,
-            GameObject presentation,
+            GameObject visualContent,
             string message,
             PlayerActorMaterializationStatus originalStatus = PlayerActorMaterializationStatus.None)
         {
@@ -124,7 +123,7 @@ namespace Immersive.Framework.PlayerParticipation
                 localPlayerHost,
                 playerInput,
                 playerActorRuntimeHost,
-                presentation,
+                visualContent,
                 null,
                 message);
         }
@@ -147,7 +146,7 @@ namespace Immersive.Framework.PlayerParticipation
                 handle.LocalPlayerHost,
                 handle.PlayerInput,
                 handle.PlayerActorRuntimeHost,
-                handle.Presentation,
+                handle.VisualContent,
                 handle,
                 message);
         }

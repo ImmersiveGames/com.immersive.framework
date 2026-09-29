@@ -917,12 +917,6 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (!actorProfile.HasPresentationPrefab)
-            {
-                issue = $"ActorProfile '{actorProfile.name}' requires a Presentation prefab.";
-                return false;
-            }
-
             issue = string.Empty;
             return true;
         }

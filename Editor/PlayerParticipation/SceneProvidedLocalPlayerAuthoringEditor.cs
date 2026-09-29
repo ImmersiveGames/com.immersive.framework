@@ -66,7 +66,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 new GUIContent("Player Slot", "Exact configured Session Player Slot."));
             EditorGUILayout.PropertyField(
                 _actorProfile,
-                new GUIContent("Actor Profile", "Player Protagonist Profile and Presentation prefab authority."));
+                new GUIContent("Actor Profile", "Player Protagonist identity and optional subordinate visual content."));
 
             FrameworkAuthoringInspectorGui.Section("Local Player Host");
             EditorGUILayout.PropertyField(

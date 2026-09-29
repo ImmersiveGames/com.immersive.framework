@@ -23,7 +23,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             serializedObject.UpdateIfRequiredOrScript();
 
-            DrawSection("Runtime Structure");
+            DrawSection("Actor Occurrence");
             EditorGUILayout.PropertyField(
                 _playerActorDeclaration,
                 new GUIContent(
@@ -32,8 +32,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             EditorGUILayout.PropertyField(
                 _presentationMount,
                 new GUIContent(
-                    "Presentation Mount",
-                    "Child transform that receives the selected Actor Profile Presentation."));
+                    "Optional Visual Content Mount",
+                    "Optional child mount for configured visual content. The Actor root owns physical state and spatial pose."));
 
             serializedObject.ApplyModifiedProperties();
 
@@ -75,8 +75,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Player Actor Declaration Assigned",
                     runtimeHost.HasPlayerActorDeclaration);
                 EditorGUILayout.Toggle(
-                    "Presentation Mount Assigned",
-                    runtimeHost.HasPresentationMount);
+                    "Visual Content Mount Assigned",
+                    runtimeHost.HasVisualContentMount);
             }
         }
 

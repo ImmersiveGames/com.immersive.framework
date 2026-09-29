@@ -1079,10 +1079,8 @@ namespace Immersive.Framework.PlayerParticipation
                     correlationIssue);
             }
 
-            Transform previousPresentation = currentRecord.Handle.Presentation != null
-                ? currentRecord.Handle.Presentation.transform
-                : null;
-            if (previousPresentation == null)
+            Transform previousActorRoot = currentRecord.Handle.ActorRoot;
+            if (previousActorRoot == null)
             {
                 return CreateResult(
                     PlayerActorPreparationStatus.RejectedPreparedActorConflict,
@@ -1098,11 +1096,11 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Prepared Actor replacement requires exact current Presentation spatial evidence.");
+                    "Prepared Actor replacement requires the current Actor occurrence root.");
             }
 
-            Vector3 previousPresentationPosition = previousPresentation.position;
-            Quaternion previousPresentationRotation = previousPresentation.rotation;
+            Vector3 previousActorPosition = previousActorRoot.position;
+            Quaternion previousActorRotation = previousActorRoot.rotation;
 
             PlayerActorMaterializationResult replacementMaterialization =
                 _materializationAdapter.TryMaterialize(
@@ -1137,12 +1135,12 @@ namespace Immersive.Framework.PlayerParticipation
 
             PlayerActorMaterializationHandle replacementHandle =
                 replacementMaterialization.Handle;
-            if (replacementHandle.Presentation == null)
+            if (!replacementHandle.TrySetActorRootPose(previousActorPosition, previousActorRotation))
             {
                 bool rollbackSucceeded = _materializationAdapter.TryReleaseMaterialization(
                     replacementHandle,
                     resolvedSource,
-                    "replacement-presentation-evidence-rollback",
+                    "replacement-actor-root-evidence-rollback",
                     out string rollbackIssue);
                 if (!rollbackSucceeded)
                 {
@@ -1165,15 +1163,12 @@ namespace Immersive.Framework.PlayerParticipation
                     false,
                     false,
                     string.Empty,
-                    "Replacement materialization returned no exact Presentation spatial evidence.",
+                    "Replacement materialization returned no Actor occurrence root.",
                     rollbackSucceeded
                         ? PlayerActorPreparationStatus.None
                         : PlayerActorPreparationStatus.FailedMaterialization);
             }
 
-            replacementHandle.Presentation.transform.SetPositionAndRotation(
-                previousPresentationPosition,
-                previousPresentationRotation);
             var canonicalSelectionRequest = new PlayerActorSelectionRequest(
                 playerSlotId,
                 replacementRequest.ActorProfile,
