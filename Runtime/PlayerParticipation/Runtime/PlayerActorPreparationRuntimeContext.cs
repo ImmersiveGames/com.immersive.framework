@@ -816,25 +816,6 @@ namespace Immersive.Framework.PlayerParticipation
                     : $"Current Logical Player Actor released, but retained previous cleanup failed. {retainedIssue}");
         }
 
-        internal bool TryDeactivatePreparedActorPresentation(
-            PlayerSlotId playerSlotId,
-            PlayerActorPreparationToken expectedPreparation,
-            string source,
-            string reason,
-            out string issue)
-        {
-            issue = string.Empty;
-            if (!playerSlotId.IsValid ||
-                !_records.TryGetValue(playerSlotId, out PreparationRecord record) ||
-                !MatchesExpectedPreparation(record, expectedPreparation))
-            {
-                issue = "Player Actor presentation deactivation rejected a foreign or stale preparation token.";
-                return false;
-            }
-
-            return record.Handle.TryDeactivate(source, reason, out issue);
-        }
-
         internal PlayerActorPreparationResult TryReplacePreparedActor(
             RuntimeScopeContext activityScopeContext,
             RuntimeScopeContext physicalScopeContext,

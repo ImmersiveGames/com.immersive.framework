@@ -721,22 +721,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal override bool HasJoinCapability => _manager.IsReady;
 
-        internal bool TryGetLegacyObservation(
-            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
-        {
-            if (!TryGetContext(out string issue))
-            {
-                observation = LocalPlayerProvisioningConsumerObservationSnapshot
-                    .Unavailable(Snapshot.Scope, Snapshot.Owner, issue);
-                return false;
-            }
-
-            return _manager.TryGetObservation(
-                Snapshot.Scope,
-                Snapshot.Owner,
-                out observation);
-        }
-
         public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
         {
             if (!TryGetContext(out string issue))
@@ -749,76 +733,6 @@ namespace Immersive.Framework.PlayerParticipation
                 : LocalPlayerJoinResult.RuntimeUnavailable(request,
                     "Manager-Provisioned Player join capability is unavailable.");
         }
-    }
-
-    /// <summary>
-    /// Source-compatible facade for the retired combined Manager endpoint.
-    /// It owns no state and delegates to the same live ACCESS-2 transport.
-    /// </summary>
-    [Obsolete(
-        "Use IPlayerSessionScopedAccess and request ILocalPlayerJoinAccess only when Manager-Provisioned join is required.")]
-    internal sealed class LegacyManagerProvisioningConsumerAccess :
-        ILocalPlayerProvisioningConsumerAccess
-    {
-        private readonly ManagerPlayerSessionScopedAccess _access;
-
-        internal LegacyManagerProvisioningConsumerAccess(
-            ManagerPlayerSessionScopedAccess access)
-        {
-            _access = access ?? throw new ArgumentNullException(nameof(access));
-        }
-
-        public PlayerSessionScopedAccessSnapshot Snapshot => _access.Snapshot;
-
-        public event Action<PlayerSessionChange> Changed
-        {
-            add => _access.Changed += value;
-            remove => _access.Changed -= value;
-        }
-
-        public bool TryGetObservation(
-            out PlayerSessionScopedObservationSnapshot observation) =>
-            _access.TryGetObservation(out observation);
-
-        public bool TryGetObservation(
-            out LocalPlayerProvisioningConsumerObservationSnapshot observation) =>
-            _access.TryGetLegacyObservation(out observation);
-
-        public PlayerParticipationOperationResult OpenJoining(string source, string reason) =>
-            _access.OpenJoining(source, reason);
-
-        public PlayerParticipationOperationResult CloseJoining(string source, string reason) =>
-            _access.CloseJoining(source, reason);
-
-        public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request) =>
-            _access.RequestJoin(request);
-
-        public SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request) =>
-            _access.RequestLeave(request);
-
-        public PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
-            PlayerPreparedActorReplacementRequest request) =>
-            _access.RequestReplacePreparedActor(request);
-
-        public PlayerActorSelectionResult RequestSelectActorProfile(
-            PlayerActorSelectionRequest request) =>
-            _access.RequestSelectActorProfile(request);
-
-        public PlayerActorSelectionResult RequestSelectDefaultActor(
-            PlayerSlotId playerSlotId,
-            int expectedSelectionRevision,
-            string source,
-            string reason) =>
-            _access.RequestSelectDefaultActor(
-                playerSlotId, expectedSelectionRevision, source, reason);
-
-        public PlayerActorSelectionResult RequestReplaceActorSelection(
-            PlayerActorSelectionRequest request) =>
-            _access.RequestReplaceActorSelection(request);
-
-        public PlayerActorSelectionResult RequestClearActorSelection(
-            PlayerActorSelectionRequest request) =>
-            _access.RequestClearActorSelection(request);
     }
 
     internal static class PlayerSessionScopedObservationProjection

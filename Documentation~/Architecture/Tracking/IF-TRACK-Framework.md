@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — OpenUPM distribution published; IF-ADR-038 Player runtime ownership migrated; remaining Camera/sample migration and Unity import/compile validation pending**
+Status: **Active — OpenUPM distribution published; IF-ADR-038 Camera cuts A-H implemented in source; asset/QA migration and Unity validation pending**
 
-Last updated: **2026-09-29**
+Last updated: **2026-09-30**
 
 ## Authority and status model
 
@@ -164,7 +164,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
 | 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
-| 038 | NORMATIVE; Player runtime ownership implemented | Existing Camera evidence remains historical until recertified | Remaining Camera cuts and sample migration; Unity import/compile/runtime recertification pending |
+| 038 | PROPOSED; source implementation through CAMERA-038-H present | Editor test sources exist; not executed in this update | CAMERA-038-J/K partial; serialized asset migration, Unity validation and recertification pending |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -313,7 +313,7 @@ Certification and reconciliation records:
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)
 - [IF-ADR-024 Prepared Actor Replacement Technical Certification — 2026-09-02](../Reconciliation/IF-ADR-024-PREPARED-ACTOR-REPLACEMENT-TECHNICAL-CERTIFICATION-2026-09-02.md)
 
-## Current Camera and Actor occurrence target — IF-ADR-038 — 2026-09-29
+## Current Camera and Actor occurrence target — IF-ADR-038 — 2026-09-30
 
 ~~~text
 CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
@@ -328,11 +328,29 @@ Its explicit ObservationTransform owns Camera observation, and replacement updat
 Subject evidence while preserving Player and Camera Occurrence identity. Output,
 Fallback and PlayerInputManager physical split-layout ownership remain.
 
-The Player runtime ownership cut is implemented: Actor occurrence is authoritative
-for physical state, placement, relocation and replacement pose; visual content is
-optional and subordinate. Remaining Camera cuts and sample migration are pending.
-Unity import, compile and runtime recertification have not been run. Cinemachine
-group framing remains deferred.
+The Player runtime ownership cut and the Session Camera runtime path are present in
+source. `FrameworkRuntimeHost` materializes Outputs, creates Assignment occurrences,
+integrates Player membership and routes transition coverage through Output fallback.
+The assignment runtime supports Session-scoped, Individual and Shared Group modes,
+membership/Subject reconciliation, and transactional replacement.
+
+| Cut | Source status | Repository evidence | Remaining gate |
+|---|---|---|---|
+| CAMERA-038-A — Actor occurrence authority | Implemented in source | Actor-root ownership, optional visual content and explicit Subject authoring; Editor coverage exists | SceneProvided and ManagerProvisioned Unity revalidation |
+| CAMERA-038-B — Definition / Assignment / Occurrence | Implemented in source | Definition, Assignment, mode-specific identity and identity/validation coverage exist | Unity import/compile and runtime certification |
+| CAMERA-038-C — Outputs / Fallback | Implemented in source | Per-Output state, Fallback coverage and same-occurrence recovery have Editor coverage | Unity runtime certification across multiple Outputs |
+| CAMERA-038-D — Zero-Player Session Camera | Implemented in source | Regression source covers normal Session occurrence before Players join | Unity Play Mode evidence |
+| CAMERA-038-E — Membership / Subjects | Implemented in source | Current Player/Actor occurrence reconciliation and Subject updates have Editor coverage | Unity Join/Leave/replacement evidence |
+| CAMERA-038-F — Individual per Player | Implemented in source | Exact PlayerOccurrence identity, isolated Outputs, Leave/Rejoin and Actor replacement have Editor coverage | Unity multiplayer/split-screen evidence |
+| CAMERA-038-G — Shared group | Implemented in source; framing partial | Shared occurrence lifetime and membership through zero members have Editor coverage; group framing remains deferred | Unity group framing and target-validity evidence |
+| CAMERA-038-H — Transactional Assignment change | Implemented in source | Candidate replacement, rollback and Output preservation have Editor coverage | Unity failure-path and multi-Output evidence |
+| CAMERA-038-I — Remove Presentation / Request / Game Flow ownership | Package code removed | Old Presentation/Request symbols are absent from Runtime/Editor | Migrate and revalidate remaining serialized QA/consumer assets |
+| CAMERA-038-J — Authoring / samples / assets | Partial | GameApplication authoring, Definition/Assignment/Output Inspector support and one planet-devourer Getting Started camera asset use the new model | Migrate remaining planet-devourer and QA assets; prove authoring in Unity |
+| CAMERA-038-K — QA / regressions / documentation cleanup | Partial | Assignment, Output, identity and Actor Subject Editor test sources exist | Execute Unity validation; migrate QA-NEW-004 and active guides/certification navigation |
+
+The Editor test sources are present but were not executed during this update.
+Unity import, compile, Play Mode and QA recertification remain pending. Existing
+Camera certifications remain historical evidence and do not certify IF-ADR-038.
 
 Previous IF-ADR-032 and IF-ADR-029/030 certifications remain historical evidence
 for the exact former boundaries; they do not certify IF-ADR-038.
@@ -347,7 +365,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle has historical proof through `GameplayReady`; Actor occurrence now owns physical/spatial state and replacement pose. Unity recertification and sample migration remain pending.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-038 is normative. Player runtime ownership is migrated; remaining Camera cuts and sample/asset migration follow. Unity import/compile/runtime validation remains pending. Group framing policy remains deferred.
+3. **Camera** — IF-ADR-038 remains Proposed. Assignment/Occurrence/Fallback runtime cuts A-H are present in source; package-side Presentation/Request ownership is removed. Consumer/QA asset migration and Unity import/compile/runtime recertification remain pending. Group framing remains partial/deferred.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

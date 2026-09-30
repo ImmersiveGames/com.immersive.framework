@@ -103,15 +103,6 @@ namespace Immersive.Framework.Authoring
             other.HasValidActivityId &&
             ActivityId == other.ActivityId;
 
-        /// <summary>
-        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
-        /// </summary>
-        [Obsolete(
-            "HasSameIdentity compares only ActivityId (stable boundary identity). " +
-            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
-            false)]
-        public bool HasSameIdentity(ActivityAsset other) => HasSameStableId(other);
-
         public string ActivityName => activityName.NormalizeText();
 
         public string Description => description ?? string.Empty;

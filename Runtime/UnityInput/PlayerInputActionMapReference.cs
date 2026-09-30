@@ -119,25 +119,6 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
-        public bool HasSameIdentity(
-            PlayerInputActionMapReference other)
-        {
-            return TryGetMapId(
-                    out Guid currentId) &&
-                other.TryGetMapId(
-                    out Guid otherId) &&
-                currentId == otherId;
-        }
-
-        public bool HasSameIdentity(
-            InputActionMap actionMap)
-        {
-            return actionMap != null &&
-                TryGetMapId(
-                    out Guid currentId) &&
-                currentId == actionMap.id;
-        }
-
         public string ToDiagnosticString()
         {
             return

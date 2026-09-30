@@ -56,20 +56,14 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSessionScopedAccessState.Bound &&
             _access != null && _access.Snapshot.IsAvailable;
 
-        public bool IsBound => IsScopedAccessAvailable;
-
         public PlayerSessionScopedAccessState ScopedAccessState =>
             _access != null && _access.Snapshot.IsDisposed
                 ? PlayerSessionScopedAccessState.Released
                 : _bindingState;
 
-        public PlayerSessionScopedAccessState BindingState => ScopedAccessState;
-
         public string ScopedAccessDiagnostic => _access != null
             ? _access.Snapshot.Diagnostic
             : GetUnboundDiagnostic();
-
-        public string Diagnostic => ScopedAccessDiagnostic;
 
         public PlayerSessionScopedAccessSnapshot ScopedAccessSnapshot =>
             _access != null
@@ -78,9 +72,6 @@ namespace Immersive.Framework.PlayerParticipation
                     scope,
                     default,
                     GetUnboundDiagnostic());
-
-        public PlayerSessionScopedAccessSnapshot Snapshot =>
-            ScopedAccessSnapshot;
 
         /// <summary>
         /// Advanced typed access for consumers already holding this concrete
@@ -105,36 +96,6 @@ namespace Immersive.Framework.PlayerParticipation
 
             issue = string.Empty;
             return true;
-        }
-
-        /// <summary>
-        /// Obsolete Manager-Provisioned endpoint retained only so existing
-        /// consumers can migrate independently to IPlayerSessionScopedAccess
-        /// and the optional ILocalPlayerJoinAccess capability.
-        /// </summary>
-        [Obsolete(
-            "Use TryGetAccess(out IPlayerSessionScopedAccess, out issue) and " +
-            "TryGetJoinAccess only when a Manager-Provisioned join is required.")]
-        public bool TryGetAccess(
-            out ILocalPlayerProvisioningConsumerAccess resolvedAccess,
-            out string issue)
-        {
-            resolvedAccess = null;
-            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out issue))
-            {
-                return false;
-            }
-
-            if (access is ManagerPlayerSessionScopedAccess managerAccess)
-            {
-                resolvedAccess = new LegacyManagerProvisioningConsumerAccess(
-                    managerAccess);
-                issue = string.Empty;
-                return true;
-            }
-
-            issue = "Manager-Provisioned Player access is unavailable for this Player Session scope.";
-            return false;
         }
 
         /// <summary>

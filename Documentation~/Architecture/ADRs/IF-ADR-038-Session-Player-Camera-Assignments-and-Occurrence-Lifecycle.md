@@ -2,7 +2,7 @@
 
 Status: **Proposed — normative consolidation in progress**
 Proposed: **2026-09-27**
-Last updated: **2026-09-29**
+Last updated: **2026-09-30**
 Type: architecture / Session Camera / Player membership / Output lifecycle  
 Supersedes as normative Camera architecture: **IF-ADR-032, IF-ADR-037**  
 Normative relationship: **This ADR defines the primary Session Camera model and the physical/spatial authority of the Player's Actor occurrence. Route and Activity do not own or select Camera. IF-ADR-023 is superseded; IF-ADR-032 and IF-ADR-037 remain superseded. Certifications are historical evidence only.**
@@ -305,9 +305,9 @@ Failure results identify Session, Assignment, Occurrence, Player occurrence, Act
 
 ## 7. Current implementation coverage
 
-This is a proposed target architecture and is not implemented by the current package. Current `CameraSessionConfiguration` combines explicit Outputs with Player Slot-to-Output and Player Slot-to-Presentation bindings. Route/Activity assets still expose Camera Presentations and selections; `CameraPresentationLifecycleRuntime`, CameraRequest arbitration, Presentation materialization and Player-to-Presentation selection implement the previous architecture. Current authoring does not express the complete Session Assignment distinction among Session-scoped, Individual per Player and Shared group occurrences, nor a normal no-Player Session camera independent of Fallback.
+The current package contains the Session Camera runtime path through Assignment replacement: `GameApplicationAsset` authors Session Outputs and Assignments; `FrameworkRuntimeHost` materializes Outputs, creates Assignment occurrences, integrates Player membership and routes transition coverage through Output Fallback. Runtime contracts distinguish Definition, Assignment, mode-specific Occurrence identity, membership, Subject evidence, Output routing and temporary Fallback coverage. Session-scoped, Individual and Shared Group paths and transactional replacement have Editor test sources.
 
-The existing two-Output QA evidence is useful for Output/channel isolation, explicit split-screen mapping, PlayerInputManager layout and Leave/Rejoin cleanup. It does not certify the assignment modes or this lifecycle. Presentation continuity QA is historical evidence only for the model it exercised.
+The package-side Camera Presentation / CameraRequest / Route-Activity selection runtime is absent. Migration is incomplete outside the package: QAFramework and planet-devourer still contain serialized assets referring to former Presentation fields/types, while the planet-devourer Getting Started MinimalGame contains the inspected new Definition/Assignment authoring. Editor test source is present but was not executed for this status update. Unity import/compile, Play Mode, consumer migration and Camera QA recertification remain open gates. Group framing remains partial/deferred. See the mutable cut-by-cut status in [IF-TRACK-Framework](../Tracking/IF-TRACK-Framework.md).
 
 ## 8. Historical documentation to remove after migration
 

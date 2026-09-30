@@ -62,7 +62,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsAvailable => Availability ==
             PlayerProvisioningStatusAvailability.Available;
 
-        public new string Diagnostic
+        public string Diagnostic
         {
             get
             {
@@ -103,23 +103,6 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return access.TryGetObservation(out observation) &&
-                observation != null && observation.IsAvailable;
-        }
-
-        /// <summary>
-        /// Obsolete Manager-Provisioned observation overload retained for
-        /// existing presentation consumers during ACCESS-2 migration.
-        /// </summary>
-        [Obsolete(
-            "Use TryGetObservation(out PlayerSessionScopedObservationSnapshot).")]
-        public bool TryGetObservation(
-            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
-        {
-            observation = null;
-            return TryGetAccess(
-                    out ILocalPlayerProvisioningConsumerAccess access,
-                    out _) &&
-                access.TryGetObservation(out observation) &&
                 observation != null && observation.IsAvailable;
         }
 

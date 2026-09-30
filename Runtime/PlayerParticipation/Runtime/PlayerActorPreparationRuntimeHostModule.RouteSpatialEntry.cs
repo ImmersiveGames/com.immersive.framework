@@ -65,13 +65,5 @@ namespace Immersive.Framework.PlayerParticipation
                 out issue);
         }
 
-        internal bool ShouldRetainPhysicalActorPresentationForIncomingActivity(
-            RuntimeContentOwner exitingOwner, PlayerSlotId playerSlotId) =>
-            _currentActivityRelocationContext.IsValid && exitingOwner.IsValid &&
-            _currentActivityRelocationContext.Owner != exitingOwner && playerSlotId.IsValid &&
-            _participationContext != null &&
-            ActivityPlayerParticipationProjectionResolver.TryResolve(
-                _currentActivityRelocationContext.Activity, _participationContext, out _,
-                out var slots, out _) && slots.Exists(slot => slot.PlayerSlotId == playerSlotId);
     }
 }

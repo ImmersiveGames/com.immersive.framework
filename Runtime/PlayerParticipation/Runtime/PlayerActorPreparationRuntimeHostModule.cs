@@ -668,34 +668,6 @@ namespace Immersive.Framework.PlayerParticipation
                 out issue);
         }
 
-        internal bool TryDeactivatePreparedActorPresentation(
-            PlayerSlotId playerSlotId,
-            PlayerActorPreparationToken expectedPreparation,
-            string source,
-            string reason,
-            out string issue)
-        {
-            issue = string.Empty;
-            if (_preparationContext == null)
-            {
-                issue = _diagnostic;
-                return false;
-            }
-
-            bool deactivated = _preparationContext.TryDeactivatePreparedActorPresentation(
-                playerSlotId,
-                expectedPreparation,
-                source,
-                reason,
-                out issue);
-            if (!deactivated)
-            {
-                _diagnostic = issue;
-            }
-
-            return deactivated;
-        }
-
         internal bool TryGetCurrentActorEvidence(
             PlayerSlotId playerSlotId,
             out PlayerActorCorrelationEvidence evidence,

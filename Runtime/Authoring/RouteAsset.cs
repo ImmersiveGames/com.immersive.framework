@@ -83,15 +83,6 @@ namespace Immersive.Framework.Authoring
             other.HasValidRouteId &&
             RouteId == other.RouteId;
 
-        /// <summary>
-        /// Obsolete alias for <see cref="HasSameStableId"/>. The name incorrectly suggested authored-definition equality.
-        /// </summary>
-        [System.Obsolete(
-            "HasSameIdentity compares only RouteId (stable boundary identity). " +
-            "Use HasSameStableId for stable-ID equality, or ReferenceEquals for authored-definition equality (IF-ADR-014).",
-            false)]
-        public bool HasSameIdentity(RouteAsset other) => HasSameStableId(other);
-
         public string RouteName
         {
             get

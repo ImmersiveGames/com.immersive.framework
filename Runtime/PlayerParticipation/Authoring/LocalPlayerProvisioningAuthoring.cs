@@ -143,27 +143,6 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
-        internal bool TryGetConsumerObservation(
-            LocalPlayerProvisioningConsumerScope scope,
-            RuntimeContentOwner scopeOwner,
-            out LocalPlayerProvisioningConsumerObservationSnapshot observation)
-        {
-            if (RuntimeReady && _runtimeModule.TryGetObservation(
-                    scope,
-                    scopeOwner,
-                    out observation))
-            {
-                return true;
-            }
-
-            observation =
-                LocalPlayerProvisioningConsumerObservationSnapshot.Unavailable(
-                    scope,
-                    scopeOwner,
-                    RuntimeDiagnostic);
-            return false;
-        }
-
         internal void SubscribeSessionChanges(Action<PlayerSessionChange> listener)
         {
             if (!RuntimeReady)

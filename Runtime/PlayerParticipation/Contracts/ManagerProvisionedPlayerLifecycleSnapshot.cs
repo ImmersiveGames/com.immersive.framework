@@ -21,50 +21,6 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly IReadOnlyList<
             ManagerProvisionedPlayerLifecycleSlotSnapshot> _slots;
 
-        [Obsolete(
-            "Use the overload that declares GateEvidenceScope explicitly.")]
-        public ManagerProvisionedPlayerLifecycleSnapshot(
-            bool isAvailable,
-            ManagerProvisionedPlayerLifecycleStatus status,
-            string activityName,
-            int activityOccurrence,
-            int sessionRevision,
-            int requestedSessionRevision,
-            int appliedSessionRevision,
-            string entryPolicy,
-            string readinessStatus,
-            string readinessReason,
-            bool hasGateEvidence,
-            bool gateHeld,
-            bool joiningOpen,
-            int hostCount,
-            IReadOnlyList<
-                ManagerProvisionedPlayerLifecycleSlotSnapshot> slots,
-            string diagnostic)
-            : this(
-                isAvailable,
-                status,
-                activityName,
-                activityOccurrence,
-                sessionRevision,
-                requestedSessionRevision,
-                appliedSessionRevision,
-                entryPolicy,
-                readinessStatus,
-                readinessReason,
-                hasGateEvidence
-                    ? ManagerProvisionedPlayerGateEvidenceScope
-                        .ActivityPlayerReadinessContribution
-                    : ManagerProvisionedPlayerGateEvidenceScope.None,
-                hasGateEvidence,
-                gateHeld,
-                joiningOpen,
-                hostCount,
-                slots,
-                diagnostic)
-        {
-        }
-
         public ManagerProvisionedPlayerLifecycleSnapshot(
             bool isAvailable,
             ManagerProvisionedPlayerLifecycleStatus status,

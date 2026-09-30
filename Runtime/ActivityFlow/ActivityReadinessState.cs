@@ -85,61 +85,6 @@ namespace Immersive.Framework.ActivityFlow
         {
         }
 
-        /// <summary>
-        /// Compatibility overload for callers that predate explicit completion and release counts.
-        /// Any participant not pending or failed is treated as completed; released counts are zero.
-        /// </summary>
-        public ActivityReadinessState(
-            ActivityReadinessStatus status,
-            ActivityAsset activity,
-            ActivityContentSet activityContentSet,
-            ActivityContentLifecycleResult activityContentLifecycleResult,
-            bool activityContentExecutionExecuted,
-            bool activityContentExecutionBlocksReadiness,
-            int activityContentExecutionBlockingIssueCount,
-            int requiredCount,
-            int optionalCount,
-            int requiredPendingCount,
-            int requiredFailedCount,
-            int optionalPendingCount,
-            int optionalFailedCount,
-            int blockingIssueCount,
-            string source,
-            string reason,
-            string diagnosticReason)
-            : this(
-                status,
-                activity,
-                activityContentSet,
-                activityContentLifecycleResult,
-                activityContentExecutionExecuted,
-                activityContentExecutionBlocksReadiness,
-                activityContentExecutionBlockingIssueCount,
-                requiredCount,
-                optionalCount,
-                requiredPendingCount,
-                ResolveLegacyCompletedCount(
-                    requiredCount,
-                    requiredPendingCount,
-                    requiredFailedCount,
-                    nameof(requiredCount)),
-                requiredFailedCount,
-                0,
-                optionalPendingCount,
-                ResolveLegacyCompletedCount(
-                    optionalCount,
-                    optionalPendingCount,
-                    optionalFailedCount,
-                    nameof(optionalCount)),
-                optionalFailedCount,
-                0,
-                blockingIssueCount,
-                source,
-                reason,
-                diagnosticReason)
-        {
-        }
-
         public ActivityReadinessState(
             ActivityReadinessStatus status,
             ActivityAsset activity,
@@ -371,27 +316,6 @@ namespace Immersive.Framework.ActivityFlow
                 resolvedSource,
                 resolvedReason,
                 diagnosticReason);
-        }
-
-        private static int ResolveLegacyCompletedCount(
-            int totalCount,
-            int pendingCount,
-            int failedCount,
-            string parameterName)
-        {
-            ValidateNonNegative(totalCount, parameterName);
-            ValidateNonNegative(pendingCount, nameof(pendingCount));
-            ValidateNonNegative(failedCount, nameof(failedCount));
-
-            int completedCount = totalCount - pendingCount - failedCount;
-            if (completedCount < 0)
-            {
-                throw new ArgumentException(
-                    "Pending and failed participant counts cannot exceed the total count.",
-                    parameterName);
-            }
-
-            return completedCount;
         }
 
         private static void ValidateContributionCounts(
