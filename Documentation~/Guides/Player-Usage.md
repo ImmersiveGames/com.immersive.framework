@@ -1,7 +1,7 @@
 # Player Usage
 
-Status: **Player product contract — Actor occurrence runtime ownership implemented; Unity validation pending**
-Last updated: **2026-09-29**
+Status: **Scene-Provided authoring and runtime adoption are implemented; Unity validation pending. ActorProfile and admission timing remain Experimental.**
+Last updated: **2026-09-30**
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ## Product model
@@ -20,7 +20,7 @@ LocalPlayerHostAuthoring
   technical Player Host, PlayerInput boundary and ActorMount
 
 ActorProfile
-  Actor identity/classification and Actor occurrence configuration
+  reusable Actor identity/classification and optional visual-content reference
 ```
 
 ```text
@@ -31,6 +31,18 @@ Join
 ```
 
 ## Player Prefab Composition Baseline
+
+For the Scene-Provided path, `PlayerSlotProfile` and `ActorProfile` references on
+`SceneProvidedLocalPlayerAuthoring` are both required. The Actor Profile must
+classify the Actor as Player / Protagonist. Its visual-content prefab is optional;
+if supplied, the scene composition must contain the matching authored visual
+instance. This is a mixed-maturity workflow: `SceneProvidedLocalPlayerAuthoring`
+and `PlayerSlotProfile` are Stable, while `ActorProfile` and
+`SceneLocalPlayerAdmissionTiming` are Experimental.
+
+The default admission timing is `OnActivityEnter`; `Manual` is also available,
+but remains Experimental. The Editor creator is Development Tooling: it creates
+an initial technical shell and does not admit or own a Player at runtime.
 
 The Local Player Host is the shared technical composition for both origins.
 
@@ -57,7 +69,6 @@ reference. The Actor occurrence root owns physical/spatial state. Optional visua
 content is subordinate. `VisualContentMount` and `ActorProfile.VisualContentPrefab`
 are optional authoring/runtime content; neither is required for Actor validity,
 activation, placement, relocation or replacement. Unity validation remains pending.
-Camera Presentation is a separate Camera concept.
 
 For a generic Player Actor prefab:
 
@@ -111,6 +122,13 @@ LocalPlayerHost
 This resolution is deterministic. Name, tag, global search and implicit hierarchy
 conventions are not fallback mechanisms.
 
+The application must have Player Session enabled and reference a
+`PlayerSessionProfile`. Include the Scene-Provided `PlayerSlotProfile` in that
+Profile’s Supported Slots and set its Host Provisioning to `SceneProvided`.
+`PlayerSessionProfile` and `PlayerHostProvisioningMode` are Experimental, so the
+complete Scene-Provided setup combines Stable authoring components with
+Experimental Session configuration.
+
 Scene-Provided does not require Apply / Rebuild. It neither depends on derived
 serialized Runtime Host/Presentation references nor treats those references,
 duplicate profile/prefab evidence or an Apply / Rebuild stamp as authority.
@@ -135,6 +153,17 @@ structural validity, occurrence identity, preparation, adoption and runtime cont
 It fails closed on invalid evidence; it does not repair, replace or infer missing
 content. SceneProvided and ManagerProvisioned converge on the same Actor/Subject
 semantics.
+
+After Scene-Provided adoption, the admitted physical Host is promoted to Session
+lifetime and persists across scene loads. Activity or Route transitions do not
+recreate or remove it; explicit Session Leave or Session termination ends that
+lifetime.
+
+Before admission, the Scene-Provided candidate’s `PlayerInput` is held inactive
+while the Framework resolves the exact Slot/Host authority. After admission,
+`UnityPlayerInputGateAdapter` applies the configured gameplay Input gate. Keep
+these gates on the exact Local Player Host; do not manually enable input as an
+admission workaround.
 
 ### Create Local Player
 

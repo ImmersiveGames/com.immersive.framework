@@ -1,71 +1,79 @@
 # Camera Usage
 
-Status: **IF-ADR-038 runtime implemented; Unity import and Play Mode validation pending**
-Last updated: **2026-09-28**
+Status: **IF-ADR-038 Camera model in active implementation; package Camera/sample migration and Unity import/Play Mode validation pending.**
+Last updated: **2026-09-30**
 
-Normative architecture: [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md).
+Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) is marked Proposed while normative consolidation is in progress. This guide describes the current authored model reflected by implementation and package documentation. This status is not Unity validation or promotion of Experimental Camera assets to Stable API.
 
-## Runtime model
+## Mental model
+
+The current primary Camera flow is:
 
 ```text
-CameraDefinition
-  -> Session Camera Assignment
-  -> Camera Occurrence
-  -> Assignment membership and current Actor Subjects
-  -> exact Camera Output
-
-Fallback Camera -> separate physical Output coverage
+Actor occurrence
+  └─ explicit Camera Subject (ObservationTransform)
+       ↓
+Camera Definition / Rig configuration
+       ↓
+Session Camera Assignment
+       ↓
+Camera Occurrence for an exact Output
+       ↓
+Camera Output (Unity Camera + Cinemachine Brain)
+       └─ Fallback Camera coverage when needed
 ```
 
-The Session Camera authority activates an explicit Assignment for its mapped
-Outputs. Occurrence identity is Assignment + Output for Session/Shared modes,
-and Assignment + exact PlayerOccurrence + Output for Individual mode. Reusing a
-Definition creates isolated occurrence state.
+Subjects are supplied by the current Actor occurrence. Camera configuration defines rig behavior. The Session Assignment determines membership, target policy, occurrence mode and Output mapping. Each physical Output presents one normal occurrence or its Fallback Camera.
 
-Route and Activity do not declare or select the normal Camera. Join and Leave
-change Assignment membership. They do not create or destroy Session/Shared
-Occurrences. Actor replacement updates the current Subject on the existing
-Occurrence. A Player without a current Actor can remain a member; target
-requirements decide whether the normal occurrence is presentable.
+There is no supported Camera Request selection surface in the current model.
 
-## Authoring and physical Outputs
+## Supported composition
 
-`GameApplicationAsset` owns the Session Camera Assignments and the physical
-`CameraSessionConfiguration`. The configuration supplies explicit Output
-prefabs. Each `CameraOutputAuthoring` binds one Unity Camera, its Cinemachine
-Brain and its independent Fallback Camera Rig. Assignment Output mappings
-select destinations; Player Slot -> Output bindings remain for physical local
-Player camera association. `PlayerInputManager` remains the split-screen layout
-owner and writes viewport geometry.
+- `ActorCameraSubjectAuthoring` explicitly supplies the Actor’s observation Transform. It may differ from the Actor root and must belong to that exact Actor occurrence. Camera does not infer a root or search by hierarchy/name.
+- `CameraDefinition` references reusable rig configuration. A `CameraRigComposer` owns the concrete rig configuration and materializes the supported Cinemachine rig locally.
+- `GameApplicationAsset` owns Session Camera configuration: physical Output capacity/configuration and Session Camera Assignments.
+- Each `CameraOutputAuthoring` binds one explicit Unity Camera, its Cinemachine Brain and its independent Fallback Camera rig.
+- Assignment authoring explicitly maps Outputs and declares occurrence mode, Player membership and target policy. Output count and Player-to-Output associations are explicit; Player count does not create Camera Outputs.
 
-`CameraDefinition` references a reusable `CameraRigComposer` configuration.
-Each runtime Occurrence materializes an independent rig instance for its Output.
-The current shared-group implementation exposes all current Subjects explicitly;
-it does not choose a Follow/LookAt Subject or apply a Cinemachine group-framing
-policy.
+The Camera system/assets are not currently marked Stable as a whole. Check the Public API Reference for each surface’s maturity.
 
-## Lifecycle
+## Runtime behavior
 
-- Session-scoped and Shared Occurrences may be active with zero members.
-- Individual Assignments create one Occurrence only for each eligible exact
-  `PlayerOccurrence` and its explicitly mapped Output.
-- Leave removes that exact Player membership. It releases only an Individual
-  Occurrence owned by that PlayerOccurrence.
-- Rejoining with a new PlayerOccurrence creates a new Individual identity.
-- Explicit Assignment replacement prepares candidates before commit, applies
-  every mapped Output, and releases the previous Assignment only after commit.
-  A failed candidate preserves the active Assignment and its presentation.
-- Fallback covers an Output when no valid normal occurrence can be shown or
-  during explicit transition coverage. Zero members alone do not select it.
+- Session-scoped and Shared occurrences live for the Assignment lifetime, including when they have zero members if their target requirements permit presentation.
+- Individual occurrences are created for eligible exact Player occurrences and their explicitly mapped Output.
+- Join/Leave reconciles membership. It does not select a different Assignment.
+- Actor replacement updates the current Subject on the existing Camera occurrence. It does not, by itself, replace the Assignment or recreate the occurrence.
+- A new Route or Activity does not request a Camera and does not select a replacement. The configured Session Assignment and its occurrence remain. Route/Activity participation may temporarily make an Actor Subject ineligible.
+- The Output may show its current normal occurrence or temporary/required fallback coverage. Showing fallback does not deactivate or remove the configured Assignment. Zero members alone do not select fallback.
+- Only an explicit Session Camera Assignment change changes normal camera selection. Candidate preparation must succeed before replacement commits; failed preparation preserves the previous Assignment.
 
-Route/Activity participation and eligibility may affect which Actor Subjects are
-currently valid. They never activate, arbitrate or restore a Camera Assignment.
+Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. `PlayerInputManager` owns physical split-screen viewport layout; Camera Output assignment does not write viewport geometry.
 
-## Verification boundary
+## Setup outline
 
-Static source checks and `git diff --check` do not confirm Unity compilation or
-scene behavior. Before release, import the package in Unity and validate
-Session startup with zero Players, Session/Shared membership, Individual Join /
-Leave, Actor replacement and failure-safe Assignment replacement on every
-mapped Output. Re-run consumer scenes and samples after their CAMERA-038-J asset
-migration.
+1. On the Game Application, author explicit physical Camera Outputs and their fallback rigs.
+2. Create a `Camera Definition` and configure its rig behavior through a `CameraRigComposer`.
+3. Configure Session Camera Assignments on the Game Application, mapping each Assignment to explicit Outputs and choosing its target and membership policy.
+4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
+5. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
+
+The concrete Output prefab and assignment settings must match the intended one-Output, shared or per-Player design. See IF-ADR-038 for cardinality and failure details.
+
+## Common mistakes
+
+- Expecting a Route or Activity to supply or select a camera.
+- Equating temporary fallback display with removal of the configured Assignment.
+- Assuming zero Players always means fallback.
+- Leaving Output, membership or target selection implicit.
+- Expecting a group rig to choose a follow/look-at subject automatically.
+- Treating an Actor Profile or Actor root as a substitute for explicit Subject authoring.
+- Relying on an old Camera Request/Presentation sample without migrating it to the current Assignment model.
+
+## Public surfaces
+
+See the [Public API Reference](../API/Public-API.md#camera). Session Camera Definition and related authoring are Experimental/current implementation surfaces; Output authoring and rig composition have separately declared API status.
+
+## Related architecture
+
+- [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
+- [IF-ADR-019 — Session Player lifetime and Activity representation](../Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)

@@ -1,259 +1,62 @@
-# Pause Usage
+# Input and Pause Usage
 
-Status: Current  
-Last updated: 2026-08-06
+Status: **Stable single-player Pause/Input/Gate product surface. Multiplayer Pause policy is out of scope.**
+Last updated: **2026-09-30**
 
-## Responsibilities
+## Choose a request path
 
-```text
-PauseRuntime
-  owns logical Running / Paused state
+The Framework supports two ways to request Pause:
 
-PlayerPauseInput
-  single-player physical Pause action and lifecycle registration
+1. **Player input** through `PlayerPauseInput` on the admitted Local Player Host.
+2. **Authored UI or UnityEvent** through `PauseRequestTrigger`, which can request Pause, Resume or Toggle without Player input.
 
-UnityPlayerInputGateAdapter
-  explicit PlayerInput and Gameplay Action Map authority
-  physical writer adapter for the Framework Gate
+Both paths request logical Pause. The request trigger does not own Pause state.
 
-PauseRequestTrigger
-  exposes Pause / Resume / Toggle to UnityEvent and UI Button
+## Player input setup
 
-UnityPauseSurfaceAdapter
-  presents the current PauseSnapshot
+On the same Local Player Host GameObject, add:
 
-SceneLifecycleRuntime
-  injects and releases scene-scoped request bindings
+- exactly one `UnityPlayerInputGateAdapter`;
+- one `PlayerPauseInput`.
 
-PauseSessionPlayerInputBindingRuntimeHostModule
-  projects Session Local Player Host lifetime into physical Pause binding
-```
+Configure the Gate Adapter with the exact `PlayerInput` and Gameplay Action Map. On `PlayerPauseInput`, assign the Pause `InputActionReference` (for example, the `Global/Pause` action). The Global map is derived from that action; do not configure a second map by name.
 
-No authored component searches for `FrameworkRuntimeHost`. Actor replacement,
-multiplayer Pause policy and automatic Player creation are not owned by these
-surfaces.
+The binding belongs to the admitted Session Local Player Host lifetime. Activity scene changes do not release it while that Host remains current. Pause/Input/Gate apply as a transaction; an invalid or missing binding is reported and does not switch to an unrelated input map.
 
-## Two supported request modes
+## Pause request trigger
 
-### Physical Player input
+Add a `PauseRequestTrigger` to a scene that lives as long as the UI/request needs it. Connect one of its public methods—request Pause, request Resume or toggle—to the UI Button/UnityEvent.
 
-`Escape` or Gamepad Start requires an active binding on the admitted Local
-Player Host:
+A trigger can be authored in Persistent Content, Route content or Activity content. Its request binding is injected for that exact scope and released when that scene scope unloads. A UI request without Player input is an explicit Application-only request path; it does not create a Player or change action maps.
 
-```text
-PlayerInput
-LocalPlayerHostAuthoring
-PlayerPauseInput
-UnityPlayerInputGateAdapter
-```
+## Activity requirement
 
-Physical path:
+Add `ActivityPauseAuthoring` to an Activity’s authoring composition only when that Activity declares product Pause binding as a requirement for its admitted Local Player. Its `Requiredness` defaults to `Required`. This declaration does not create Pause runtime or bind input; Activity lifecycle resolves the declared requirement.
 
-```text
-Escape / Gamepad Start
-  -> PlayerPauseInput
-  -> PauseProductBindingRuntimeContext
-  -> logical Pause + InputMode transaction
-```
+## Pause presentation
 
-Result:
+Choose the adapter matching the authored Canvas lifetime:
 
-```text
-productStatus = Applied
-executionMode = PlayerInputTransaction
-```
+- `UnityPauseSurfaceAdapter` projects Pause state onto explicit Canvas/CanvasGroup references for an application-scoped Persistent Content surface.
+- `UnityPauseResidentSurfaceAdapter` projects Pause state onto an already-authored resident surface (such as a global UI surface).
 
-Pause, InputMode and action maps commit as one transaction.
+Both adapters only present a Pause snapshot. They do not own Pause state, input, Gate evaluation or `Time.timeScale`, and they do not create the UI. A resume button can call `PauseRequestTrigger.RequestResume`.
 
-### Authored button without Player input
+## Common mistakes
 
-A UI Button may call:
+- Adding a second `PlayerInput` or Gate Adapter to the Local Player Host.
+- Assigning a Gameplay Action Map by display name rather than the GUID-backed `PlayerInputActionMapReference`.
+- Putting a short-lived trigger in an Activity scene when its UI must persist across Activity changes.
+- Treating a Pause surface adapter as the owner of Pause or time scale.
+- Assuming multiplayer Pause semantics are supported.
+- Using internal runtime/binding result types as a gameplay API. Use the authoring components and their supported public methods.
 
-```text
-PauseRequestTrigger.RequestPause
-PauseRequestTrigger.RequestResume
-PauseRequestTrigger.TogglePause
-```
+## Public surfaces
 
-The Trigger requires an injected `IPauseProductRequestPort`, but it does not
-require an active `PlayerPauseInput`.
+- Authoring/request: `PlayerPauseInput`, `PauseRequestTrigger`, `ActivityPauseAuthoring`.
+- Unity adapters: `UnityPlayerInputGateAdapter`, `UnityPauseSurfaceAdapter`, `UnityPauseResidentSurfaceAdapter`.
+- Stable contracts: `IPauseSurfaceAdapter` and the Pause request/result observation types listed in the [Public API Reference](../API/Public-API.md#input-and-pause).
 
-Result:
+## Related architecture
 
-```text
-productStatus = AppliedWithoutPlayerInput
-executionMode = ApplicationOnly
-```
-
-The framework applies logical Pause, `Time.timeScale` and the persistent Pause
-surface. It does not create a Player and does not modify action maps.
-
-This is explicit product behavior, not a silent fallback. Failed or inconsistent
-Player binding evidence is rejected as `BindingUnavailable`.
-
-## Authoring PlayerPauseInput
-
-Add `PlayerPauseInput` and exactly one `UnityPlayerInputGateAdapter` to the
-same GameObject. The Gate Adapter is the only authoring authority for the
-gameplay `PlayerInput` and Gameplay Action Map.
-
-### References
-
-```text
-Pause Action
-  InputActionReference
-  resolved by action GUID
-
-Global Action Map
-  derived from Pause Action.actionMap
-  not separately typed by the designer
-
-Player Input and Gameplay Action Map
-  authored on UnityPlayerInputGateAdapter
-  Gameplay map stores InputActionAsset + Action Map GUID
-```
-
-Runtime never falls back to Action Map names. The selected Gameplay map is
-resolved by GUID against the exact `PlayerInput.actions` instance, including
-PlayerInput-owned action-asset copies. A cached map name exists only for
-Inspector display and diagnostics.
-
-### Authoring flow
-
-1. Add exactly one `UnityPlayerInputGateAdapter` to the Local Player Host.
-2. Assign its exact `PlayerInput` and Gameplay Action Map.
-3. Add `PlayerPauseInput` to that same GameObject.
-4. Assign the Pause `InputActionReference` (for example `Global/Pause`).
-
-`PlayerPauseInput` shows the Gate-owned target and Gameplay map read-only in
-its Inspector. It neither creates nor overwrites a Gate Adapter.
-
-Technical commands and verbose runtime evidence live in the collapsed
-`Advanced / Debug` foldout.
-
-### Failure behavior
-
-The composition fails explicitly when:
-
-```text
-Gate Adapter is missing or duplicated
-Gate Adapter PlayerInput or actions are missing
-Pause Action is missing
-Pause Action GUID is absent from PlayerInput.actions
-Gate Adapter Gameplay Action Map reference is missing or invalid
-Gameplay map GUID is absent from the Gate Adapter PlayerInput.actions
-Global and Gameplay resolve to the same map
-```
-
-No runtime map-name fallback, hierarchy search, singleton or service locator is
-used.
-
-### Legacy migration
-
-Legacy Gameplay map migration remains owned by `UnityPlayerInputGateAdapter`.
-`PlayerPauseInput` no longer reads legacy PlayerInput or map fields; the Global
-map is always derived from the assigned Pause Action.
-
-## Runtime ownership
-
-The Session Local Player Host occurrence provides the lifetime for physical
-Pause input. The Pause-side runtime observes canonical Session Host evidence,
-binds the co-located `PlayerPauseInput`, receives an opaque token, applies
-`Global + gameplay`, and resolves the action by GUID in `PlayerInput.actions`.
-
-Route/Activity scene release does not release that physical binding while the
-Session Host remains current. Session Host release/Leave releases the exact
-token and restores the original PlayerInput posture. A normal request rollback
-restores the previous Pause snapshot; Activity lifecycle cleanup retains its
-explicit Running policy.
-
-## Trigger locations
-
-`PauseRequestTrigger` may be authored in:
-
-```text
-Persistent Content
-Route primary/content scene
-Activity content scene
-```
-
-Binding is automatic:
-
-```text
-Persistent Content
-  bound during application boot
-
-Route / Activity
-  bound from exact SceneLifecycle roots
-  released before the exact scene unloads
-```
-
-## Diagnostics
-
-Every authored request emits a structured framework log.
-
-Application-only success:
-
-```text
-[INFO][Immersive.Framework][PauseRequestTrigger]
-Pause Request completed.
-productStatus='AppliedWithoutPlayerInput'
-executionMode='ApplicationOnly'
-```
-
-PlayerInput transaction success:
-
-```text
-productStatus='Applied'
-executionMode='PlayerInputTransaction'
-```
-
-Distinguish:
-
-```text
-Pause product request port is not bound
-  Trigger was not composed
-
-AppliedWithoutPlayerInput
-  Trigger was composed and logical Pause succeeded without Player input
-
-BindingUnavailable
-  Player binding evidence exists but is failed/inconsistent
-
-Failed
-  logical or physical application failed
-```
-
-## Persistent presentation
-
-The application Persistent Content scene normally contains:
-
-```text
-GlobalCanvas
-  PauseSurface
-    UnityPauseSurfaceAdapter
-    Visual
-      Resume Button
-        PauseRequestTrigger
-```
-
-The adapter only projects Pause state. It does not own Pause, input maps or
-`Time.timeScale`.
-
-## Manual validation
-
-1. Enter gameplay with no `PlayerPauseInput`.
-2. Confirm Route/Activity Trigger binding reports `Bound`.
-3. Press the authored Pause button.
-4. Confirm `AppliedWithoutPlayerInput`, paused TimeScale and visible surface.
-5. Press Resume and confirm `Running`.
-6. Repeat with an official Player binding.
-7. Confirm `Applied` and `PlayerInputTransaction`.
-8. Leave Route/Activity and confirm exact trigger release.
-
-
-## Stable product status (2026-09-26)
-
-The current Pause product surface is Stable. The supported product paths are physical Player input through `PlayerPauseInput`, scene-authored Pause/Resume requests through `PauseRequestTrigger`, and lifecycle-scoped presentation through `IPauseSurfaceAdapter` implementations. Pause capability remains admitted only while an Activity is active; presentation presence does not grant Pause admission.
-
-Pause-specific QA/smoke implementation is not owned by the runtime package. The package keeps product/runtime contracts and diagnostics required by those contracts, while external certification may exercise them from a consumer QA project.
+- [IF-ADR-005 — Input, Pause, Gate and Reset](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md)

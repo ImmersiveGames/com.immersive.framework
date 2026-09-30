@@ -49,26 +49,9 @@ cannot resolve their semantic versions from Git alone.
 
 ## Getting started
 
-1. Create a `GameApplicationAsset` from the Immersive Framework asset menu.
-2. Configure the application policies and create the required `RouteAsset` and
-   `ActivityAsset` definitions.
-3. Create the application-persistent scene through `File > New Scene > Immersive
-   Persistent Content`.
-4. Save that scene as a game-owned `.unity` asset and assign it to
-   `GameApplicationAsset > Persistent Content > Content Scene`.
-5. Use the Game Application Inspector action to add or enable the scene in the
-   active Build Profile Scene List.
-6. Author each feature through its component, asset, Project Settings, Template
-   or Composer surface, then validate it from the owning Inspector.
-7. Enter Play Mode and inspect runtime evidence separately from authoring
-   validation.
-
-Required configuration fails explicitly. The framework does not silently repair
-missing dependencies, discover a runtime host through global lookup or fabricate
-identity from object names.
-
-See [Framework Usage](Documentation~/Guides/Framework-Usage.md) for the complete
-workflow.
+Start with the [Framework Getting Started guide](Documentation~/Guides/Getting-Started.md)
+for the consumer setup path, then use the [documentation index](Documentation~/README.md)
+to find the canonical guide for each domain.
 
 ## Product surfaces
 
@@ -89,71 +72,21 @@ workflow.
 
 ### Application and Game Flow
 
-The canonical ownership chain is:
-
-```text
-GameApplicationAsset
-  -> bootstrap
-  -> Persistent Content
-  -> internal FrameworkRuntimeHost
-  -> Session
-  -> Route lifecycle
-  -> Activity lifecycle
-  -> scoped feature contexts
-```
-
-`FrameworkRuntimeHost` is the internal composition root. It intentionally has no
-static current-host registry or service-locator API. Route and Activity
-definitions own their content, readiness, participation, transition and
-presentation intent.
+The application owns Session setup; Routes own navigation scopes and Activities
+own contextual gameplay. See the [Game Flow guide](Documentation~/Guides/Game-Flow.md)
+for their transitions and lifetime rules.
 
 ### Player and local multiplayer
 
-Player participation separates logical intent from physical ownership:
-
-```text
-Join
-!= Actor Selection
-!= Activity Actor Preparation
-!= Physical Materialization
-!= Prepared Actor Replacement
-```
-
-The product surface includes:
-
-- `PlayerSessionObserver` for scoped read-only Session evidence;
-- explicit Open Joining, Close Joining, Join, Select Actor, Default Actor
-  Selection, Replace Actor Selection, Clear Actor Selection and Leave commands;
-- Manager-Provisioned and Scene-Provided local Player workflows;
-- Route Spatial Entry and explicit Activity relocation;
-- explicit, Experimental device/InputUser/control-scheme ownership evidence for
-  the implemented local multiplayer boundary; exact-Slot Join remains deferred;
-- Manager-Provisioned prepared Actor replacement while preserving the owning
-  Player Slot, Host, PlayerInput, Session and Activity occurrence.
-
-See [Player Usage](Documentation~/Guides/Player-Usage.md) and
-[Activity Readiness](Documentation~/Guides/Activity-Readiness.md).
+Use the [Player Usage guide](Documentation~/Guides/Player-Usage.md) for
+Scene-Provided and Manager-Provisioned paths, Actor ownership, and maturity limits.
+See [Activity Readiness](Documentation~/Guides/Activity-Readiness.md) for readiness.
 
 ### Camera
 
-IF-ADR-038 is the current Camera architecture:
-
-```text
-CameraDefinition
-  -> Session Camera Assignment
-  -> Assignment/Output or Assignment/PlayerOccurrence/Output Occurrence
-  -> membership and current Actor Subjects
-  -> exact Camera Output
-  -> separate Fallback coverage
-```
-
-Session Camera authority explicitly activates Assignments by Output. Route and
-Activity do not select Camera. Join/Leave changes Assignment membership; it does
-not create or destroy Session/Shared Occurrences. `PlayerInputManager` remains
-the physical split-layout writer. Legacy Camera Presentation/Request code has
-been removed; legacy consumer assets are scheduled for migration in CAMERA-038-J.
-
-See [Camera Usage](Documentation~/Guides/Camera-Usage.md).
+For the current Session Assignment model and its migration/validation status, see
+[Camera Usage](Documentation~/Guides/Camera-Usage.md) and the
+[curated Public API Reference](Documentation~/API/Public-API.md#camera).
 
 ### Persistence, reset and optional integrations
 
@@ -169,18 +102,6 @@ The Audio module is optional and integrates Route/Activity BGM intent with
 `com.immersive.logging` package.
 
 ## Persistent Content Scene Template
-
-Create the official template through:
-
-```text
-File
-  -> New Scene
-  -> Immersive Persistent Content
-```
-
-The template is an Editor authoring aid, not runtime authority. The package does
-not silently create, repair, save, assign or add consumer scenes to a build.
-Under IF-ADR-038, Persistent Content does not own gameplay Camera topology.
 
 See [Persistent Content Scene Template](Documentation~/Guides/Persistent-Content-Scene-Template.md).
 
@@ -219,23 +140,10 @@ in the consuming Unity project before promoting a game build.
 
 ## Documentation
 
-- [Documentation index](Documentation~/README.md)
+- [Documentation index](Documentation~/README.md) — canonical usage guide map, API reference and architecture navigation.
+- [Getting Started](Documentation~/Guides/Getting-Started.md)
+- [Curated Public API Reference](Documentation~/API/Public-API.md)
 - [Current Framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
-- [Architecture map](Documentation~/Architecture/README.md)
-- [Framework Usage](Documentation~/Guides/Framework-Usage.md)
-- [Editor Authoring Standard](Documentation~/Guides/Editor-Authoring-Standard.md)
-- [Player Usage](Documentation~/Guides/Player-Usage.md)
-- [Camera Usage](Documentation~/Guides/Camera-Usage.md)
-- [Activity Readiness](Documentation~/Guides/Activity-Readiness.md)
-- [Pause Usage](Documentation~/Guides/Pause-Usage.md)
-- [Reset Usage](Documentation~/Guides/Reset-Usage.md)
-- [Progression Save Authoring](Documentation~/Guides/Progression-Save-Authoring.md)
-- [Progression Save backend contract](Documentation~/Guides/Progression-Save-Backend-Adapter-Contract.md)
-- [Built-in JSON backend](Documentation~/Guides/Progression-Save-Built-In-Json-Backend.md)
-- [Audio Usage](Documentation~/Guides/Audio-Usage.md)
-- [Logging Usage](Documentation~/Guides/Logging-Usage.md)
-- [Application Frame Rate](Documentation~/Guides/Application-Frame-Rate-Usage.md)
-- [Scene Lifecycle Events](Documentation~/Guides/Scene-Lifecycle-Events.md)
 - [Changelog](CHANGELOG.md)
 
 QAFramework owns synthetic technical validation. FIRSTGAME and consumer samples

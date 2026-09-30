@@ -1,6 +1,10 @@
 # Activity Readiness
 
-Last updated: **2026-08-31**
+Last updated: **2026-09-30**
+
+Canonical focused guide for Activity entry readiness. For Route/Activity ownership,
+navigation requests and the relationship between navigation and readiness, see
+[Game Flow](Game-Flow.md).
 
 Activity readiness is the occurrence-scoped post-materialization contract used to decide when an Activity is safe to reveal and release for normal use.
 
@@ -234,7 +238,7 @@ character visuals complete
 
 Those remain gameplay-owned composition requirements. A game may require `GameplayReady` before using those systems without redefining `GameplayReady` as proof that the systems exist.
 
-FIRSTGAME Scene-Provided evidence on 2026-08-31 reached `Ready` at both `LogicalActorsPrepared` and `GameplayReady` with one projected/selected/prepared Player and zero failures. That evidence proves the Framework Player lifecycle contract and physical/contextual projection; it does not certify the completeness of a game-owned First Person Presentation.
+For Actor occurrence identity and preparation boundaries, see [Player Usage](Player-Usage.md) and [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md).
 
 Player Actor occurrence identity is likewise a preparation concern: reusable `PlayerActorDeclaration` templates may have an empty authored occurrence ID, and typed runtime `ActorId` becomes valid only when physical Player Actor preparation establishes the occurrence identity. See [IF-ADR-023A](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
 
@@ -393,118 +397,11 @@ enter Wait Covered
 
 Old occurrence updates must not advance the replacement occurrence.
 
-## Player certification reference
+## Related architecture
 
-The 2026-08-15 Full Player QA completed `25/25` mandatory contracts. Its public-surface, failed-first-adoption, failed-contextual-reprojection and no-physical-handoff cases certify the Player/readiness separation described above.
-
-Post-certification Player Actor occurrence-identity reconciliation is recorded in [IF-ADR-023A — Player Actor Occurrence Identity Boundary — 2026-08-31](../Architecture/Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md).
-
-## Game Flow Showcase consumer proof — 2026-08-22
-
-Repository:
-
-```text
-ImmersiveGames/planet-devourer
-```
-
-Demonstration:
-
-```text
-Assets/_Sample/GameFlow/GameFlowShowcase/
-```
-
-Current readiness topology:
-
-```text
-Route_ReadinessShowcase
-  Primary Scene -> SCN_GameFlow_Basic_Readiness
-  Startup Activity -> Activity_Basic_C
-
-Activity_Basic_C
-  Observe Only
-  no ActivityContentProfile
-  neutral baseline
-
-Activity_Basic_D
-  Wait Visible
-  Fade With Loading
-  Input Interaction And Gameplay gate
-
-Activity_Basic_E
-  Wait Covered
-  Fade With Loading
-  Input Interaction And Gameplay gate
-
-D / E
-  shared ActivityContentReadiness
-  -> SCN_GameFlow_Content_Readiness
-  -> one Required ActivityReadinessParticipant
-  -> content released when returning to C
-```
-
-The consumer proof exercises:
-
-```text
-C -> D -> C
-C -> E -> C
-D -> C -> D repeatability
-E -> C -> E repeatability
-```
-
-Observed successful evidence includes fresh Activity-scene materialization on D/E entry, release of `SCN_GameFlow_Content_Readiness` on return to C, fresh readiness occurrence on reentry, `activityReadiness=Ready` and `blockingIssues=0`.
-
-For `Wait Covered`, the Loading surface reaches its readiness terminal through:
-
-```text
-loadingProgressMode = Determinate
-loadingProgressPhase = ActivityReadiness
-Required completed = 1
-Required total = 1
-Required pending = 0
-```
-
-For `Wait Visible`, the same preparation is revealed while it may still be running and the Activity settles to `Ready` before capability release.
-
-This closes the intended **Game Flow consumer path** for `Observe Only`, `Wait Visible`, `Wait Covered`, `Fade With Loading` and participant-aware readiness progress. Terminal failure/recovery semantics remain part of technical QA and are not a pending Game Flow Showcase/FIRSTGAME completion gate.
-
-## Earlier FIRSTGAME reference
-
-Repository:
-
-```text
-ImmersiveGames/planet-devourer
-```
-
-Earlier demo:
-
-```text
-Assets/_Project/Demo 01 - Routes and Activities/
-```
-
-Primary reference assets:
-
-```text
-Data/Activity Readiness/Activities/ActivityReadiness_WaitCovered.asset
-Data/Activity Readiness/Activities/Profiles/ActivityContent_ReadinessWaitCovered.asset
-Scenes/Activity Readiness/ActivitiesContent/Activity_Readiness_WaitCovered.unity
-Prefabs/Activity Readiness/Activity Readiness Scenario - Wait Covered.prefab
-Prefabs/Activity Readiness/Ui/Canvas_ActivityReadinessNavigation.prefab
-```
-
-That earlier scenario proves:
-
-```text
-4 independent Required participants
-1 Optional participant kept pending
-Fade With Loading
-Input Interaction And Gameplay gate
-100% after Ready
-Loading Hide before reveal
-Intermission exit and clean reentry
-```
-
-Consumer demonstrations are evidence, not authority for the progress formula.
-
+- [IF-ADR-007 — Activity entry readiness and reveal gating](../Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md)
+- [IF-ADR-011 — Participant-aware Activity readiness/loading progress](../Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md)
+- [IF-ADR-012 — Activity Player participation and readiness compatibility](../Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md)
 ## Current limits
 
 ```text
