@@ -29,9 +29,10 @@ The public OpenUPM graph is published:
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
 
-Release candidate in this checkout: **`1.1.0-preview.1`** — not yet tagged or
-published. It is a Camera/Player preview; Unity import/compile and runtime
-validation remain pending.
+Release candidate in this checkout: **`1.1.0-preview.2`** — not yet tagged or
+published. The `v1.1.0-preview.1` tag stopped at signed-archive verification;
+no GitHub Release or OpenUPM publication was created. Unity import/compile and
+runtime validation remain pending for this Camera/Player preview.
 
 Registry dependency graph:
 

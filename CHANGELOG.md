@@ -2,7 +2,7 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.1] - 2026-09-30
+## [1.1.0-preview.2] - 2026-09-30
 
 First preview of the Session Camera Assignment and Player occurrence authority
 redesign defined by IF-ADR-038. This package version is a preview and remains
@@ -18,10 +18,17 @@ subject to API and serialized-authoring changes.
   migration has been identified. Unity import/compile and runtime validation
   remain pending.
 
+## [1.1.0-preview.1] - 2026-09-30 — unpublished
+
+The tag was created, but release stopped during signed-archive verification
+before creating a GitHub Release or publishing to OpenUPM. The verification
+pipeline is corrected in `1.1.0-preview.2`.
+
 ## [1.0.3-preview.1] - 2026-09-24 — unpublished, superseded
 
-This preview preparation was never tagged or published. Its distribution and
-dependency updates are included in the later `1.1.0-preview.1` candidate.
+This preview preparation was not included in a tagged package release. Its
+distribution and dependency updates are included in the later
+`1.1.0-preview.2` candidate.
 
 - Added signed Unity UPM release distribution through GitHub Releases and OpenUPM.
 - Updated Foundation to `0.2.2` and Logging to `0.2.3` for the signed registry graph.
