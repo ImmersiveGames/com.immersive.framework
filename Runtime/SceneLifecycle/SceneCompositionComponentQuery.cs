@@ -65,6 +65,23 @@ namespace Immersive.Framework.SceneLifecycle
             return components;
         }
 
+        internal static IReadOnlyList<T> GetActivityOwnedComponents<T>(
+            ActivityContentDiscoveryScope scope,
+            ActivityAsset activity)
+            where T : Component
+        {
+            var components = new List<T>();
+            var seen = new HashSet<T>();
+            IReadOnlyList<ActivityContentDiscoveryScene> scenes = scope.ActivityOwnedScenes;
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                ActivityContentDiscoveryScene scene = scenes[i];
+                if (!scene.MatchesActivity(activity)) continue;
+                AddComponentsInLoadedScene(scene.ScenePath, scene.SceneName, components, seen);
+            }
+            return components;
+        }
+
         private static void AddComponentsInLoadedScene<T>(
             string scenePath,
             string sceneName,

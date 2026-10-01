@@ -1,10 +1,10 @@
 # IF-ADR-035 — Reset Composition, Ownership, Membership and Targeting
 
 Status: **Accepted**
-Last updated: **2026-09-26**
+Last updated: **2026-10-01**
 Normative classification: **Corrective Reset architecture authority**
 Supersedes: **the Reset authoring, explicit scope authoring, explicit subject-selection and Unity registration assumptions of IF-ADR-005 where they conflict with this ADR**
-Reopens / requires reconciliation: **IF-ADR-001, IF-ADR-002, IF-ADR-005, IF-ADR-010, IF-ADR-014**
+Reopens / requires reconciliation: **IF-ADR-001, IF-ADR-002, IF-ADR-005, IF-ADR-010**
 Supersedes as implementation direction: **IF-ADR-034 draft in its current per-GameObject Cycle Reset authoring form**
 Related: **RuntimeContent ownership, Activity Restart, Cycle Reset, Unity authoring, cross-boundary identity**
 
@@ -122,7 +122,7 @@ The existing textual Reset subject ID currently supplies this boundary.
 
 The corrective architecture must preserve cross-boundary specific targeting, but stable identity becomes opt-in boundary identity rather than mandatory Reset authoring for every object.
 
-This decision must reuse or reconcile the stable-identity authority of IF-ADR-014 rather than create a competing Reset-only identity system.
+Stable cross-boundary targeting consumes the generic `StableObjectBinding` authority defined by IF-ADR-014; Reset does not create a competing identity system.
 
 ## 3. Decision
 
@@ -211,6 +211,8 @@ Hierarchy must not become:
 
 Nested ResetComposition / Resettable boundaries must have deterministic collection rules.
 
+RESET-035-D uses depth-first hierarchy order for `Descendants` and serialized list order for `ExplicitMembers`. A descendant `ResetComposition` excludes its entire GameObject subtree from the outer composition and resolves its own set. Nested `Resettable` components remain distinct members; their capability collection still stops at the nested Resettable boundary. Composition roots must be part of the owner transaction's materialized roots before their members can receive registered membership. Null explicit references are ignored with diagnostics; repeated typed references are deduplicated.
+
 ### 6.2 Membership policy
 
 Reset membership may be supplied by a ResetComposition so repeated members do not each repeat the same semantic policy.
@@ -218,6 +220,8 @@ Reset membership may be supplied by a ResetComposition so repeated members do no
 Local override is permitted only where a real exception exists.
 
 The common path should minimize per-object infrastructure decisions.
+
+RESET-035-D defines one precedence rule: an explicit local `Activity` or `Route` value on `Resettable` wins; local `FollowOwner` delegates to the containing composition's membership. A composition with `FollowOwner` leaves the member at its local policy. If a shared Resettable resolves to different membership values from multiple compositions after local precedence, owner-aware registration rejects the ambiguity before registering any subjects. Repeated inclusion with the same resolved membership remains one Resettable registration.
 
 ## 7. Ownership
 
@@ -259,6 +263,8 @@ Visitors
 ```
 
 This allows the Visitors to survive Activity Clear while still restoring selected state as part of an Activity-targeted Reset/Restart.
+
+RESET-035-C defines the initial runtime policy as `ResetMembership.FollowOwner` (default), `Activity` or `Route`, authored on `Resettable` until composition-level policy exists. Route-owned content may opt into Activity membership. Activity-owned content cannot opt into Route membership because Activity ownership does not survive the Route boundary; that combination is rejected during owner-aware registration. Membership is recorded on the registered subject and never changes `RuntimeContentOwner`.
 
 Terminology must not call this policy `ActivityCycle`, because Cycle Reset is a separate subsystem.
 
@@ -310,7 +316,14 @@ Targets a specific Resettable across a serialization/content boundary where a di
 
 StableReference is opt-in.
 
-It must be reconciled with IF-ADR-014 stable identity rather than creating a parallel identity authority.
+It carries an `ObjectEntryId` value and resolves through the generic
+`StableObjectBinding` boundary decided by IF-ADR-014. When an ID is reused under different authored owners, the reference
+may select an exact `RouteAsset` or `ActivityAsset`; the framework derives its
+stable identity and definition token. It never stores RuntimeContentOwner,
+RouteId/ActivityId text or ResetSubjectId. Resolution uses the binding's current
+physical occurrence and validates its current registered Resettable/subject.
+Zero matches fail as unavailable; multiple matches fail as ambiguous. Reset
+consumes this boundary and does not own its binding lifecycle.
 
 ## 10. Runtime identity
 
@@ -433,6 +446,8 @@ Normal authoring should not require:
 - owner occurrence tokens;
 - registry binding details;
 - repeated lifecycle scope that can be derived.
+- copied stable identity text across declaration and request;
+- RouteId/ActivityId text when an exact typed owner asset can be referenced.
 
 Those remain Advanced / Diagnostics evidence where useful.
 
@@ -461,6 +476,8 @@ Requirements:
 - rollback before transaction commit;
 - release by owner.
 
+**Tracking (2026-10-01):** RESET-035-B is closed and validated, including QAFramework lifecycle integration and Unity compile/import validation.
+
 ### RESET-035-C — Reset membership
 
 Separate content ownership from Reset membership.
@@ -473,6 +490,8 @@ Prove at minimum:
 - CurrentRoute follows the defined membership contract;
 - no membership leakage across unrelated owners.
 
+**Tracking (2026-10-01):** RESET-035-C is closed and validated with membership metadata, CurrentActivity/CurrentRoute resolution, and QA coverage.
+
 ### RESET-035-D — ResetComposition
 
 Introduce descendant and explicit-member composition.
@@ -484,6 +503,8 @@ Prove:
 - composition Reset executes each member once;
 - nested boundaries do not duplicate capabilities.
 
+**Tracking (2026-10-01):** RESET-035-D is closed and validated per user direction. Descendants/ExplicitMembers authoring, deterministic typed resolution, composition membership precedence and owner-registration preparation integration are implemented with focused Editor contracts.
+
 ### RESET-035-E — request surface
 
 Introduce the ResetTarget-based request surface.
@@ -492,11 +513,23 @@ Adapt Activity Restart to semantic targeting.
 
 Keep legacy triggers during migration.
 
+**Tracking (2026-10-01):** `ResetRequestTrigger` resolves Object, Composition, CurrentActivity and CurrentRoute through `ResetTargetResolver` into the existing `ResetSelectionResolution` and `ResetExecutor` path. Object and Composition require registered members in the current Activity/Route owner context and never register implicitly. Activity Restart defaults to CurrentActivity but filters its pre-clear selection to current Route-owned subjects; CurrentActivity additionally requires effective Activity membership. This excludes Activity-owned content recreated by Clear/Reenter and avoids duplicate restoration. Focused Edit Mode contracts were added; Unity compile/import, Edit Mode execution and Activity Restart lifecycle integration QA remain pending.
+
 ### RESET-035-F — stable cross-boundary targeting
 
-Reconcile IF-ADR-014 and implement StableReference only after the identity authority is explicit.
+Consume the accepted `StableObjectBinding` authority from IF-ADR-014 and
+implement `ResetTarget.StableReference`. The owner-aware Route/Activity content
+transaction creates the binding; rollback/release removes it with that owner.
+StableReference carries an `ObjectEntryId` and accepts an optional typed
+`RouteAsset`/`ActivityAsset` owner selector. Stable identity projections are
+derived by Framework; no owner identity text is authored. It resolves to
+exactly one current physical occurrence and then to its
+currently registered Resettable/ResetSubject. It remains an exceptional target:
+prefer Object or Composition whenever a direct authored reference is suitable.
 
-Migrate the real Route Primary -> RouteContent sample without requiring universal Reset IDs.
+**Tracking (2026-10-01):** `StableObjectBindingRegistry` is host-owned and receives materialized Route/Activity roots from their existing transactions. Prepared bindings are not resolvable until the content owner commits; rollback/release removes them with that owner. It rejects ambiguity and never stores runtime Reset subject identity in the reference. `ResetTarget.StableReference` resolves through that authority and the current Resettable registration. Edit Mode tests were authored for commit visibility, resolve/missing/ambiguity/owner separation/unload-reload/current registration; static checks only were possible here. Unity compile/import and Edit Mode execution remain pending. Real application/sample use is intentionally a separate validation.
+
+**Authoring refinement:** Object Entry ID is serialized on the declaration and repeated only when a StableReference crosses an authoring boundary. Both use the shared Route/Activity explicit Generate/Copy/Regenerate pattern; StableReference supports Paste ID. Route/Activity scope and owner derive only from the admission transaction. No identity container or dual path exists. `ResetTarget` Inspector shows only the payload for its selected kind.
 
 ### RESET-035-G — runtime materialization
 
@@ -570,16 +603,16 @@ QA must distinguish behavioral contracts from legacy authoring structure.
 - runtime materialization bypassing Reset registration;
 - Activity Restart resetting state that lifecycle would immediately recreate.
 
-Each risk requires explicit QA before legacy removal.
+The broader RESET-035-H legacy removal remains deferred; this authoring correction removes obsolete identity/owner serialization from the two surfaces above.
 
-## 21. Supersession and reconciliation
+## 21. Supersession and reconciled boundaries
 
 This ADR is the normative authority when older Reset documentation conflicts with it.
 
-Required reconciliation:
+Reconciled authority and remaining requirements:
 
 - **IF-ADR-005:** supersede explicit per-subject scope authoring, textual normal Reset identity and ResetSelectionConfig-as-product assumptions; document ownership vs membership and Activity Restart surviving-state semantics.
-- **IF-ADR-014:** reopen/reconcile stable identity for cross-boundary Reset targeting.
+- **IF-ADR-014 (reconciled 2026-10-01):** `StableObjectBinding` is the generic owner-transaction projection from `ObjectEntryId` to a live physical occurrence; Reset consumes it without owning its lifecycle.
 - **IF-ADR-001:** add owner-aware transaction registration and rollback invariant; current state is not ownership authority for target content during transition.
 - **IF-ADR-002:** reconcile typed hierarchy/composition as authoring boundary without making hierarchy runtime identity.
 - **IF-ADR-010:** classify Resettable / ResetComposition / ResetTarget as the intended Reset product surface; generated runtime identity belongs in Advanced/Diagnostics.

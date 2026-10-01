@@ -584,8 +584,6 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
                 out PlayerSlotId firstSlot,
                 out PlayerSlotId secondSlot);
-            SessionCameraOccurrence originalOccurrence = occurrence;
-            CameraOccurrenceIdentity originalIdentity = occurrence.Identity;
             var firstPlayer = new PlayerOccurrenceId("player-occurrence:subject-first");
             var secondPlayer = new PlayerOccurrenceId("player-occurrence:subject-second");
             var firstSubjectRoot = new GameObject("First Member Subject");
@@ -628,6 +626,8 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraOccurrence occurrence = CreateMembershipOccurrence(
                 out PlayerSlotId firstSlot,
                 out _);
+            SessionCameraOccurrence originalOccurrence = occurrence;
+            CameraOccurrenceIdentity originalIdentity = occurrence.Identity;
             var player = new PlayerOccurrenceId("player-occurrence:stable");
             var firstSubjectRoot = new GameObject("First Subject");
             var replacementSubjectRoot = new GameObject("Replacement Subject");

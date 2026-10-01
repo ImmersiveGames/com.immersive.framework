@@ -19,6 +19,18 @@ namespace Immersive.Framework.Reset
             RuntimeContentOwner owner,
             string displayName,
             string diagnosticTag)
+            : this(subjectId, scope, origin, owner, displayName, diagnosticTag, ResetMembership.FollowOwner)
+        {
+        }
+
+        public ResetSubject(
+            ResetSubjectId subjectId,
+            ResetSubjectScope scope,
+            ResetSubjectOrigin origin,
+            RuntimeContentOwner owner,
+            string displayName,
+            string diagnosticTag,
+            ResetMembership membership)
         {
             if (!subjectId.IsValid)
             {
@@ -40,10 +52,16 @@ namespace Immersive.Framework.Reset
                 throw new ArgumentException($"Reset subject scope '{scope}' requires a valid runtime owner.", nameof(owner));
             }
 
+            if (!Enum.IsDefined(typeof(ResetMembership), membership))
+            {
+                throw new ArgumentOutOfRangeException(nameof(membership), membership, "Reset membership must be explicit.");
+            }
+
             SubjectId = subjectId;
             Scope = scope;
             Origin = origin;
             Owner = owner;
+            Membership = membership;
             DisplayName = displayName.NormalizeText();
             DiagnosticTag = diagnosticTag.NormalizeText();
         }
@@ -66,13 +84,22 @@ namespace Immersive.Framework.Reset
 
         public RuntimeContentOwner Owner { get; }
 
+        public ResetMembership Membership { get; }
+
+        public ResetMembership EffectiveMembership => Membership == ResetMembership.FollowOwner
+            ? MembershipForOwner(Owner)
+            : Membership;
+
         public string DisplayName { get; }
 
         public string DiagnosticTag { get; }
 
         public bool HasOwner => Owner.IsValid;
 
-        public bool IsValid => SubjectId.IsValid && Scope != ResetSubjectScope.Unknown && Origin != ResetSubjectOrigin.Unknown;
+        public bool IsValid => SubjectId.IsValid
+            && Scope != ResetSubjectScope.Unknown
+            && Origin != ResetSubjectOrigin.Unknown
+            && IsMembershipCompatibleWithOwner(Membership, Owner);
 
         public string OwnerStableText => HasOwner ? Owner.StableText : string.Empty;
 
@@ -82,6 +109,7 @@ namespace Immersive.Framework.Reset
                 && Scope == other.Scope
                 && Origin == other.Origin
                 && Owner.Equals(other.Owner)
+                && Membership == other.Membership
                 && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
                 && string.Equals(DiagnosticTag, other.DiagnosticTag, StringComparison.Ordinal);
         }
@@ -99,6 +127,7 @@ namespace Immersive.Framework.Reset
                 hashCode = hashCode * 397 ^ (int)Scope;
                 hashCode = hashCode * 397 ^ (int)Origin;
                 hashCode = hashCode * 397 ^ Owner.GetHashCode();
+                hashCode = hashCode * 397 ^ (int)Membership;
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(DisplayName ?? string.Empty);
                 hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(DiagnosticTag ?? string.Empty);
                 return hashCode;
@@ -110,7 +139,7 @@ namespace Immersive.Framework.Reset
             string ownerText = HasOwner ? Owner.StableText : "<none>";
             string displayNameText = DisplayName.ToDiagnosticText("<unnamed>");
             string diagnosticTagText = DiagnosticTag.ToDiagnosticText("<none>");
-            return $"subjectId='{SubjectId.StableText}' scope='{Scope}' origin='{Origin}' owner='{ownerText}' displayName='{displayNameText}' diagnosticTag='{diagnosticTagText}'";
+            return $"subjectId='{SubjectId.StableText}' scope='{Scope}' origin='{Origin}' membership='{Membership}' effectiveMembership='{EffectiveMembership}' owner='{ownerText}' displayName='{displayNameText}' diagnosticTag='{diagnosticTagText}'";
         }
 
         public static ResetSubject SceneRoute(
@@ -137,7 +166,56 @@ namespace Immersive.Framework.Reset
             string displayName,
             string diagnosticTag)
         {
-            return new ResetSubject(subjectId, ResetSubjectScope.Runtime, ResetSubjectOrigin.RuntimeRegistered, owner, displayName, diagnosticTag);
+            return Runtime(subjectId, owner, displayName, diagnosticTag, ResetMembership.FollowOwner);
+        }
+
+        public static ResetSubject Runtime(
+            ResetSubjectId subjectId,
+            RuntimeContentOwner owner,
+            string displayName,
+            string diagnosticTag,
+            ResetMembership membership)
+        {
+            return new ResetSubject(subjectId, ResetSubjectScope.Runtime, ResetSubjectOrigin.RuntimeRegistered, owner, displayName, diagnosticTag, membership);
+        }
+
+        internal static bool IsMembershipCompatibleWithOwner(ResetMembership membership, RuntimeContentOwner owner)
+        {
+            if (!Enum.IsDefined(typeof(ResetMembership), membership))
+            {
+                return false;
+            }
+
+            if (!owner.IsValid)
+            {
+                return membership == ResetMembership.FollowOwner;
+            }
+
+            if (membership == ResetMembership.FollowOwner)
+            {
+                return true;
+            }
+
+            if (owner.Scope != RuntimeContentScope.Activity && owner.Scope != RuntimeContentScope.Route)
+            {
+                return false;
+            }
+
+            // Activity-owned content cannot outlive its Activity to participate in a Route reset.
+            return membership != ResetMembership.Route || owner.Scope == RuntimeContentScope.Route;
+        }
+
+        private static ResetMembership MembershipForOwner(RuntimeContentOwner owner)
+        {
+            switch (owner.Scope)
+            {
+                case RuntimeContentScope.Activity:
+                    return ResetMembership.Activity;
+                case RuntimeContentScope.Route:
+                    return ResetMembership.Route;
+                default:
+                    return ResetMembership.FollowOwner;
+            }
         }
     }
 }

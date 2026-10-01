@@ -213,6 +213,7 @@ namespace Immersive.Framework.ActivityFlow
                     sceneCompositionResult,
                     resolvedSource,
                     resolvedReason);
+                PrepareStableObjectBindings(runtimeEnterResult.Owner, sceneCompositionResult);
 
                 ActivityRequestTriggerBinderResult activityTriggerBinder =
                     TryBindActivityRequestTriggers(sceneCompositionResult);
@@ -341,6 +342,7 @@ namespace Immersive.Framework.ActivityFlow
                     resolvedReason);
                 transaction.Commit(
                     "Target Activity became the current Activity authority.");
+                CommitStableObjectBindings(runtimeEnterResult.Owner);
 
                 participantTransition = PrepareActivityParticipantTransition(
                     previousActivity,
@@ -365,6 +367,7 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     "activity-exit");
+                ReleaseStableObjectBindingsForPreviousActivity(previousActivity);
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "All previous Activity participants completed Exit before target Enter.");
@@ -649,6 +652,7 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     "activity-clear");
+                ReleaseStableObjectBindingsForPreviousActivity(previousActivity);
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "Previous Activity participants completed release.");
@@ -896,6 +900,17 @@ namespace Immersive.Framework.ActivityFlow
             {
                 compensationDiagnostic +=
                     $" Resettable registration compensation threw '{rollbackException.GetType().Name}': " +
+                    rollbackException.Message;
+            }
+
+            try
+            {
+                RollbackTargetStableObjectBindings(targetActivity);
+            }
+            catch (Exception rollbackException)
+            {
+                compensationDiagnostic +=
+                    $" Stable object binding compensation threw '{rollbackException.GetType().Name}': " +
                     rollbackException.Message;
             }
 

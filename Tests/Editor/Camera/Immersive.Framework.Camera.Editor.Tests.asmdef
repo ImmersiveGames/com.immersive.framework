@@ -3,6 +3,7 @@
   "rootNamespace": "Immersive.Framework.Camera.Tests",
   "references": [
     "Immersive.Framework.Runtime",
+    "Unity.InputSystem",
     "Unity.Cinemachine",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"

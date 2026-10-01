@@ -1,4 +1,5 @@
 using Immersive.Framework.Reset.Unity;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.GameFlow
 {
@@ -12,6 +13,11 @@ namespace Immersive.Framework.GameFlow
             ResettableOwnerRegistrationRuntime registration)
         {
             _routeLifecycleRuntime.SetResettableOwnerRegistration(registration);
+        }
+
+        internal void SetStableObjectBindingRegistry(StableObjectBindingRegistry registry)
+        {
+            _routeLifecycleRuntime.SetStableObjectBindingRegistry(registry);
         }
     }
 }

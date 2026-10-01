@@ -45,8 +45,8 @@ namespace Immersive.Framework.ActivityRestart
         [SerializeField] private bool requireTargetActivityIsCurrent = true;
         [SerializeField] private string reason;
 
-        [Header("Reset Selection")]
-        [SerializeField] private ResetSelectionConfig resetSelection = new ResetSelectionConfig();
+        [Header("Reset Target")]
+        [SerializeField] private ResetTarget resetTarget = ResetTarget.CurrentActivity();
 
         public bool IsRequestInFlight => _requestInFlight;
         public int InvocationCount => _invocationCount;
@@ -66,8 +66,7 @@ namespace Immersive.Framework.ActivityRestart
         public bool LastRequestFailed => _lastOutcome == FlowRequestOutcome.Failed;
         public string LastResultSummary => BuildLastResultSummary();
         public ActivityAsset TargetActivity { get => targetActivity; set => targetActivity = value; }
-        public ResetSelectionConfig ResetSelection => resetSelection;
-        public ResetSelectionMode ResetSelectionMode => resetSelection != null ? resetSelection.Mode : ResetSelectionMode.ExplicitSubjects;
+        public ResetTarget ResetTarget { get => resetTarget; set => resetTarget = value; }
         public bool HasActivityRestartRuntimeBinding => _activityRestartRuntime != null;
         public string ActivityRestartRuntimeBindingStatus => HasActivityRestartRuntimeBinding ? "Bound" : "Missing";
         public string ActivityRestartRuntimeBindingDiagnostic => _activityRestartRuntimeBindingDiagnostic;
@@ -122,7 +121,7 @@ namespace Immersive.Framework.ActivityRestart
                 LogFields.Field("source", DefaultSource),
                 LogFields.Field("reason", resolvedReason),
                 LogFields.Field("targetMode", targetActivity != null ? "ExplicitActivity" : "CurrentActivity"),
-                LogFields.Field("selectionMode", ResetSelectionMode.ToString()),
+                LogFields.Field("resetTarget", resetTarget.ToString()),
                 LogFields.Field("hasRuntimeBinding", HasActivityRestartRuntimeBinding),
                 LogFields.Field("requestInFlight", _requestInFlight)));
             if (_requestInFlight)
@@ -172,7 +171,7 @@ namespace Immersive.Framework.ActivityRestart
                     targetActivity,
                     useCurrentActivityWhenTargetMissing,
                     requireTargetActivityIsCurrent,
-                    resetSelection,
+                    resetTarget,
                     DefaultSource,
                     resolvedReason);
             }

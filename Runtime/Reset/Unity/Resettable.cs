@@ -23,6 +23,9 @@ namespace Immersive.Framework.Reset.Unity
         [Tooltip("Optional diagnostics label. Never used as runtime identity.")]
         [SerializeField] private string displayName;
 
+        [Tooltip("Reset target membership. FollowOwner derives Activity or Route membership from the content owner.")]
+        [SerializeField] private ResetMembership membership = ResetMembership.FollowOwner;
+
         private ResetRegistrationHandle _subjectHandle;
         private ResetSubject _subject;
         private int _registeredCapabilityCount;
@@ -35,6 +38,9 @@ namespace Immersive.Framework.Reset.Unity
 
         /// <summary>Advanced/diagnostic evidence: owner supplied by the registering transaction.</summary>
         public RuntimeContentOwner Owner => _subject.Owner;
+
+        /// <summary>Semantic Reset membership policy, independent from the content lifetime owner.</summary>
+        public ResetMembership Membership => membership;
 
         public int RegisteredCapabilityCount => _registeredCapabilityCount;
 

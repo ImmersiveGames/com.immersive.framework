@@ -10,7 +10,7 @@ namespace Immersive.Framework.ActivityRestart
             ActivityAsset targetActivity,
             bool useCurrentActivityWhenTargetMissing,
             bool requireTargetActivityIsCurrent,
-            ResetSelectionConfig resetSelection,
+            ResetTarget resetTarget,
             string source,
             string reason);
     }

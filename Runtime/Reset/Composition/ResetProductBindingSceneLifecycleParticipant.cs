@@ -39,11 +39,14 @@ namespace Immersive.Framework.Reset.Composition
             UnityResetSubjectAdapterBindingResult adapterBinding = UnityResetSubjectAdapterBinding.TryBind(roots, _resetRegistrationRuntime);
             ObjectResetTriggerBinderResult objectBinder = ObjectResetTriggerBinder.TryBind(roots, _resetExecutionRuntime);
             ObjectResetGroupTriggerBinderResult groupBinder = ObjectResetGroupTriggerBinder.TryBind(roots, _resetSelectionExecutionRuntime);
+            bool requestBindingSucceeded = ResetRequestTriggerBinder.TryBind(
+                roots, _resetSelectionExecutionRuntime, out int requestTriggerCount, out string requestDiagnostic);
             CollectSubjectAdapters(roots);
             RegistrationSummary registration = RefreshSubjectRegistrations("scene-available");
 
-            diagnostic = BuildAvailableDiagnostic(scene, adapterBinding, registration, objectBinder, groupBinder);
-            if (!adapterBinding.Succeeded || !objectBinder.Succeeded || !groupBinder.Succeeded)
+            diagnostic = BuildAvailableDiagnostic(scene, adapterBinding, registration, objectBinder, groupBinder)
+                + $" resetRequestTriggers='{requestTriggerCount}' requestBinding='{requestDiagnostic}'";
+            if (!adapterBinding.Succeeded || !objectBinder.Succeeded || !groupBinder.Succeeded || !requestBindingSucceeded)
             {
                 _logger.Error("Reset Scene Lifecycle composition rejected.", LogFields.Of(
                     LogFields.Field("operation", "SceneAvailable"),
@@ -54,7 +57,8 @@ namespace Immersive.Framework.Reset.Composition
 
             bool hasAuthoredSurfaces = adapterBinding.AdapterCount > 0
                 || objectBinder.TriggerCount > 0
-                || groupBinder.TriggerCount > 0;
+                || groupBinder.TriggerCount > 0
+                || requestTriggerCount > 0;
             if (!hasAuthoredSurfaces)
             {
                 _logger.Debug("Reset Scene Lifecycle composition found no authored Reset surfaces.", LogFields.Of(

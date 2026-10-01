@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.Identity;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
@@ -37,41 +39,15 @@ namespace Immersive.Framework.ObjectEntry
             IReadOnlyList<ObjectEntryDeclaration> declarations = CollectScopedSceneDeclarations(context);
             var descriptors = new List<ObjectEntryDescriptor>(declarations.Count);
             var issues = new List<ObjectEntryIssue>();
-            int filteredDeclarationCount = 0;
 
             for (int i = 0; i < declarations.Count; i++)
             {
                 var declaration = declarations[i];
-                if (!declaration.HasRequiredAuthoredOwner)
-                {
-                    issues.Add(ObjectEntryIssue.Error(
-                        ObjectEntryIssueKind.MissingOwner,
-                        FormatDeclarationIssue(declaration, $"Scope '{declaration.Scope}' requires an explicit authored owner.")));
-                    continue;
-                }
-
-                if (declaration.Scope == ObjectEntryScope.Route && !declaration.MatchesRouteOwner(context.Route))
-                {
-                    filteredDeclarationCount++;
-                    continue;
-                }
-
-                if (declaration.Scope == ObjectEntryScope.Activity
-                    && (!context.HasActiveActivity || !declaration.MatchesActivityOwner(context.Activity)))
-                {
-                    filteredDeclarationCount++;
-                    continue;
-                }
-
-                if (!context.TryResolveOwnerIdentity(declaration.Scope, out var ownerIdentity))
-                {
-                    issues.Add(ObjectEntryIssue.Error(
-                        ObjectEntryIssueKind.MissingOwner,
-                        FormatDeclarationIssue(declaration, $"No active typed owner is available for scope '{declaration.Scope}'.")));
-                    continue;
-                }
-
-                if (!declaration.TryCreateScopedDescriptor(ownerIdentity, out var descriptor, out string issue))
+                bool activityOwned = context.HasActiveActivity
+                    && IsInActivityOwnedScene(declaration, context);
+                ObjectEntryScope scope = activityOwned ? ObjectEntryScope.Activity : ObjectEntryScope.Route;
+                FrameworkIdentityKey ownerIdentity = activityOwned ? context.ActivityOwnerIdentity : context.RouteOwnerIdentity;
+                if (!declaration.TryCreateDescriptor(scope, ownerIdentity, out var descriptor, out string issue))
                 {
                     issues.Add(ObjectEntryIssue.Error(
                         ObjectEntryIssueKind.InvalidRequest,
@@ -106,7 +82,7 @@ namespace Immersive.Framework.ObjectEntry
             int acceptedDeclarations = aggregateRejected || status == ObjectEntryResultStatus.Rejected
                 ? 0
                 : set.Count;
-            int rejectedDeclarations = declarations.Count - filteredDeclarationCount - acceptedDeclarations;
+            int rejectedDeclarations = declarations.Count - acceptedDeclarations;
 
             return new ObjectEntryDeclarationSourceResult(
                 set,
@@ -115,62 +91,7 @@ namespace Immersive.Framework.ObjectEntry
                 descriptors.Count,
                 acceptedDeclarations,
                 rejectedDeclarations,
-                filteredDeclarationCount,
-                issues);
-        }
-
-        public ObjectEntryDeclarationSourceResult Collect(
-            IEnumerable<ObjectEntryDeclaration> declarations,
-            string source = null)
-        {
-            ObjectEntryDeclaration[] materializedDeclarations = declarations == null
-                ? Array.Empty<ObjectEntryDeclaration>()
-                : declarations.Where(declaration => declaration != null).ToArray();
-
-            var descriptors = new List<ObjectEntryDescriptor>(materializedDeclarations.Length);
-            var issues = new List<ObjectEntryIssue>();
-            for (int i = 0; i < materializedDeclarations.Length; i++)
-            {
-                var declaration = materializedDeclarations[i];
-                if (!declaration.TryCreateDescriptor(out var descriptor, out string issue))
-                {
-                    issues.Add(ObjectEntryIssue.Error(
-                        ObjectEntryIssueKind.InvalidRequest,
-                        FormatDeclarationIssue(declaration, issue)));
-                    continue;
-                }
-
-                descriptors.Add(descriptor);
-            }
-
-            ObjectEntrySet set;
-            bool aggregateRejected = false;
-            try
-            {
-                set = new ObjectEntrySet(descriptors);
-            }
-            catch (ArgumentException exception)
-            {
-                aggregateRejected = true;
-                set = ObjectEntrySet.Empty();
-                issues.Add(ObjectEntryIssue.Error(
-                    ObjectEntryIssueKind.DuplicateIdentity,
-                    $"Object Entry declaration source '{ResolveSource(source)}' rejected duplicate identity. {exception.Message}"));
-            }
-
-            var status = ResolveStatus(issues);
-            int acceptedDeclarations = aggregateRejected || status == ObjectEntryResultStatus.Rejected
-                ? 0
-                : set.Count;
-            int rejectedDeclarations = materializedDeclarations.Length - acceptedDeclarations;
-
-            return new ObjectEntryDeclarationSourceResult(
-                set,
-                status,
-                materializedDeclarations.Length,
-                descriptors.Count,
-                acceptedDeclarations,
-                rejectedDeclarations,
+                0,
                 issues);
         }
 
@@ -189,18 +110,25 @@ namespace Immersive.Framework.ObjectEntry
         private static IReadOnlyList<ObjectEntryDeclaration> CollectScopedSceneDeclarations(
             ObjectEntryScopedCollectionContext context)
         {
-            if (context.HasActiveActivity)
-            {
-                return SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(
-                    context.ActivityContentDiscoveryScope,
-                    context.Activity);
-            }
-
             RouteContentDiscoveryScope scope =
                 RouteContentDiscoveryScope.FromCompositionResult(
                     context.RouteSceneCompositionResult);
-            return SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(
-                scope);
+            var result = new List<ObjectEntryDeclaration>(SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(scope));
+            if (context.HasActiveActivity)
+                result.AddRange(SceneCompositionComponentQuery.GetActivityOwnedComponents<ObjectEntryDeclaration>(context.ActivityContentDiscoveryScope, context.Activity));
+            return result;
+        }
+
+        private static bool IsInActivityOwnedScene(ObjectEntryDeclaration declaration, ObjectEntryScopedCollectionContext context)
+        {
+            if (declaration == null || !declaration.gameObject.scene.IsValid()) return false;
+            IReadOnlyList<ActivityContentDiscoveryScene> scenes = context.ActivityContentDiscoveryScope.ActivityOwnedScenes;
+            for (int i = 0; i < scenes.Count; i++)
+            {
+                if (scenes[i].MatchesActivity(context.Activity)
+                    && string.Equals(declaration.gameObject.scene.path, scenes[i].ScenePath, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
         }
 
         private static string FormatDeclarationIssue(ObjectEntryDeclaration declaration, string issue)
@@ -213,11 +141,6 @@ namespace Immersive.Framework.ObjectEntry
                 : "<no-scene>";
             string message = issue.NormalizeTextOrFallback("Invalid Object Entry declaration.");
             return $"ObjectEntryDeclaration object='{objectName}' scene='{sceneName}' issue='{message}'.";
-        }
-
-        private static string ResolveSource(string source)
-        {
-            return source.NormalizeTextOrFallback(nameof(ObjectEntryDeclarationSource));
         }
     }
 }

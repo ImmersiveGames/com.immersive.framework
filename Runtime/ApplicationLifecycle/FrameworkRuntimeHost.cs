@@ -890,6 +890,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPauseActivityBindingLifecycle();
             ApplyPauseActivityLifecyclePort();
             ApplyResettableOwnerRegistration();
+            ApplyStableObjectBindings();
             IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
             RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
                 _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
@@ -1394,7 +1395,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             ActivityAsset targetActivity,
             bool useCurrentActivityWhenTargetMissing,
             bool requireTargetActivityIsCurrent,
-            ResetSelectionConfig resetSelection,
+            ResetTarget resetTarget,
             string source,
             string reason)
         {
@@ -1438,30 +1439,12 @@ namespace Immersive.Framework.ApplicationLifecycle
                     $"Activity Restart failed. Target Activity must be the current active Activity. current='{ResolveActivityRestartName(currentActivity)}' target='{resolvedActivityName}'."));
             }
 
-            if (resetSelection == null)
-            {
-                ResetExecutionResult invalidSelection = ResetExecutionResult.RejectedInvalidRequest(
-                    ResetIssue.Error(ResetIssueKind.InvalidRequest, "Activity Restart reset selection is required."),
-                    resolvedSource,
-                    BuildActivityRestartStageReason(resolvedReason, "reset"));
-                return ActivityRestartRuntimeResult.From(new ActivityRestartResult(
-                    ActivityRestartResultStatus.ResetExecutionFailed,
-                    resolvedActivity,
-                    resolvedActivityName,
-                    resolvedSource,
-                    resolvedReason,
-                    invalidSelection,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    "Activity Restart failed. Reset selection is unavailable."));
-            }
-
-            ResetSelectionResolution selectionResolution = resetSelection.Resolve(
+            string resetReason = BuildActivityRestartStageReason(resolvedReason, "reset");
+            ResetSelectionResolution selectionResolution = ResetTargetResolver.ResolveForActivityRestart(
                 this,
+                resetTarget,
                 resolvedSource,
-                BuildActivityRestartStageReason(resolvedReason, "reset"));
+                resetReason);
             if (selectionResolution.Failed)
             {
                 ResetIssue issue = selectionResolution.Issues.Count > 0
@@ -1485,7 +1468,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                     "Activity Restart failed. Reset selection failed."), selectionResolution);
             }
 
-            ResetExecutionRequest resetRequest = resetSelection.CreateExecutionRequest(selectionResolution);
+            ResetExecutionRequest resetRequest = selectionResolution.ToExecutionRequest(
+                allowNoSubjects: true,
+                allowNoParticipants: true,
+                stopOnFailure: true,
+                yieldBetweenSubjects: false);
             ResetExecutionResult resetExecutionResult = default;
             FrameworkActivityRestartFlowResult restartFlowResult = await RestartActivityAsync(
                 resolvedActivity,
@@ -1497,7 +1484,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                     {
                         var executor = new ResetExecutor(ResetRegistry);
                         resetExecutionResult = await executor.ExecuteAsync(resetRequest);
-                        return !resetExecutionResult.Failed;
+                        return ShouldContinueActivityRestartAfterReset(resetExecutionResult);
                     }
                     catch (Exception exception)
                     {

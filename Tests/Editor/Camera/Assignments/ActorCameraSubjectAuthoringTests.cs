@@ -104,7 +104,7 @@ namespace Immersive.Framework.Camera.Tests
 
             try
             {
-                Assert.That(SessionCameraAssignmentRuntime.TryResolveSubject(
+                Assert.That(SessionCameraMembershipRuntime.TryResolveSubject(
                     occurrence,
                     out CameraSubject subject,
                     out string issue), Is.True, issue);
@@ -142,7 +142,7 @@ namespace Immersive.Framework.Camera.Tests
 
             try
             {
-                Assert.That(SessionCameraAssignmentRuntime.TryResolveSubject(
+                Assert.That(SessionCameraMembershipRuntime.TryResolveSubject(
                     occurrence,
                     out CameraSubject subject,
                     out string issue), Is.False);

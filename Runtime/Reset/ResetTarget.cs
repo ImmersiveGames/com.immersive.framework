@@ -1,54 +1,48 @@
 using System;
+using Immersive.Framework.ApiStatus;
+using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.Reset.Unity;
+using UnityEngine;
 
 namespace Immersive.Framework.Reset
 {
-    /// <summary>
-    /// Internal semantic Reset target introduced by IF-ADR-035.
-    /// It deliberately stays outside the public authoring surface until Resettable and ResetComposition exist.
-    /// </summary>
-    internal readonly struct ResetTarget : IEquatable<ResetTarget>
+    /// <summary>API status: Experimental. Semantic authoring target for a Reset request.</summary>
+    [Serializable]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-035 RESET-035-E/F semantic request target.")]
+    public struct ResetTarget
     {
-        private ResetTarget(ResetTargetKind kind, ResetSubjectId stableReference)
+        [SerializeField] private ResetTargetKind kind;
+        [SerializeField] private Resettable resettable;
+        [SerializeField] private ResetComposition composition;
+        [SerializeField] private StableObjectReference stableReference;
+
+        public ResetTargetKind Kind => kind;
+        public Resettable Object => resettable;
+        public ResetComposition Composition => composition;
+        public StableObjectReference StableReference => stableReference;
+
+        public bool IsValid => kind switch
         {
-            Kind = kind;
-            StableReference = stableReference;
-        }
+            ResetTargetKind.Object => resettable != null,
+            ResetTargetKind.Composition => composition != null,
+            ResetTargetKind.StableReference => stableReference.IsValid,
+            ResetTargetKind.CurrentActivity => true,
+            ResetTargetKind.CurrentRoute => true,
+            _ => false
+        };
 
-        public ResetTargetKind Kind { get; }
+        public static ResetTarget ForObject(Resettable value) => new ResetTarget { kind = ResetTargetKind.Object, resettable = value };
+        public static ResetTarget ForComposition(ResetComposition value) => new ResetTarget { kind = ResetTargetKind.Composition, composition = value };
+        public static ResetTarget ForStableReference(StableObjectReference value) => new ResetTarget { kind = ResetTargetKind.StableReference, stableReference = value };
+        public static ResetTarget CurrentActivity() => new ResetTarget { kind = ResetTargetKind.CurrentActivity };
+        public static ResetTarget CurrentRoute() => new ResetTarget { kind = ResetTargetKind.CurrentRoute };
 
-        public ResetSubjectId StableReference { get; }
-
-        public bool IsValid =>
-            Kind == ResetTargetKind.CurrentActivity
-            || Kind == ResetTargetKind.CurrentRoute
-            || (Kind == ResetTargetKind.StableReference && StableReference.IsValid);
-
-        public static ResetTarget CurrentActivity() =>
-            new ResetTarget(ResetTargetKind.CurrentActivity, default);
-
-        public static ResetTarget CurrentRoute() =>
-            new ResetTarget(ResetTargetKind.CurrentRoute, default);
-
-        public static ResetTarget ForLegacyStableReference(ResetSubjectId subjectId) =>
-            new ResetTarget(ResetTargetKind.StableReference, subjectId);
-
-        public bool Equals(ResetTarget other) =>
-            Kind == other.Kind && StableReference.Equals(other.StableReference);
-
-        public override bool Equals(object obj) =>
-            obj is ResetTarget other && Equals(other);
-
-        public override int GetHashCode()
+        public override string ToString() => kind switch
         {
-            unchecked
-            {
-                return ((int)Kind * 397) ^ StableReference.GetHashCode();
-            }
-        }
-
-        public override string ToString() =>
-            Kind == ResetTargetKind.StableReference
-                ? $"kind='{Kind}' stableReference='{StableReference.StableText}'"
-                : $"kind='{Kind}'";
+            ResetTargetKind.Object => $"kind='{kind}' object='{(resettable != null ? resettable.name : "<null>")}'",
+            ResetTargetKind.Composition => $"kind='{kind}' composition='{(composition != null ? composition.name : "<null>")}'",
+            ResetTargetKind.StableReference => $"kind='{kind}' {stableReference}",
+            _ => $"kind='{kind}'"
+        };
     }
 }

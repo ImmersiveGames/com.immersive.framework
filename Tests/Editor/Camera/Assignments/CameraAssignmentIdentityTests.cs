@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 using NUnit.Framework;

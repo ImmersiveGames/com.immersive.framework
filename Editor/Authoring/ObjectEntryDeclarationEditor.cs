@@ -1,6 +1,9 @@
+using Immersive.Framework.Editor.Settings;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.ObjectEntry;
 using UnityEditor;
 using UnityEngine;
+
 namespace Immersive.Framework.Editor.Authoring
 {
     [CustomEditor(typeof(ObjectEntryDeclaration))]
@@ -8,128 +11,94 @@ namespace Immersive.Framework.Editor.Authoring
     internal sealed class ObjectEntryDeclarationEditor : UnityEditor.Editor
     {
         private SerializedProperty _objectEntryId;
-        private SerializedProperty _scope;
-        private SerializedProperty _routeOwner;
-        private SerializedProperty _activityOwner;
         private SerializedProperty _requiredness;
-        private SerializedProperty _displayName;
+        private bool _showAdvanced;
 
         private void OnEnable()
         {
             _objectEntryId = serializedObject.FindProperty("objectEntryId");
-            _scope = serializedObject.FindProperty("scope");
-            _routeOwner = serializedObject.FindProperty("routeOwner");
-            _activityOwner = serializedObject.FindProperty("activityOwner");
             _requiredness = serializedObject.FindProperty("requiredness");
-            _displayName = serializedObject.FindProperty("displayName");
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-
             EditorGUILayout.LabelField("Object Entry Declaration", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox(
-                "Declares a logical object entry known by the framework. This is passive authoring metadata only; it does not bind a GameObject as a runtime object, reset components, create Player/Actor semantics, spawn prefabs, or participate in Object Reset yet.",
-                MessageType.Info);
+            EditorGUILayout.PropertyField(_requiredness, new GUIContent("Requiredness", "Whether this declaration is required or optional for Object Entry validation."));
 
-            EditorGUILayout.PropertyField(
-                _objectEntryId,
-                new GUIContent(
-                    "Object Entry Id",
-                    "Stable functional identity for this logical object entry. Do not use GameObject names or hierarchy paths as canonical identity."));
-            EditorGUILayout.PropertyField(
-                _scope,
-                new GUIContent(
-                    "Scope",
-                    "Lifecycle scope that owns this logical object entry: Session, Route, or Activity."));
-            DrawOwnerField();
-            EditorGUILayout.PropertyField(
-                _requiredness,
-                new GUIContent(
-                    "Requiredness",
-                    "Whether this declaration is required or optional for future validation/entry flows."));
-            EditorGUILayout.PropertyField(
-                _displayName,
-                new GUIContent(
-                    "Display Name",
-                    "Optional human-facing label for diagnostics. It is not a functional identity."));
-
-            DrawGuardrails();
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced / Debug", true);
+            if (_showAdvanced)
+            {
+                EditorGUI.indentLevel++;
+                DrawStableId();
+                DrawIdentityValidation();
+                EditorGUI.indentLevel--;
+            }
 
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawGuardrails()
+        private void DrawStableId()
         {
-            if (_objectEntryId != null && !_objectEntryId.hasMultipleDifferentValues && string.IsNullOrWhiteSpace(_objectEntryId.stringValue))
-            {
-                EditorGUILayout.HelpBox("Object Entry Id is required. It must be a stable logical id, not a GameObject name or hierarchy path.", MessageType.Error);
-            }
+            string id = _objectEntryId != null ? _objectEntryId.stringValue ?? string.Empty : string.Empty;
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.TextField(new GUIContent("Object Entry ID", "Stable identity independent of GameObject name, hierarchy and scene location."), id);
 
-            if (_scope != null && !_scope.hasMultipleDifferentValues && _scope.enumValueIndex == (int)ObjectEntryScope.Unspecified)
+            using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.HelpBox("Scope must be explicit.", MessageType.Error);
-            }
-
-            if (_requiredness != null && !_requiredness.hasMultipleDifferentValues && _requiredness.enumValueIndex == (int)ObjectEntryRequiredness.Unspecified)
-            {
-                EditorGUILayout.HelpBox("Requiredness must be explicit.", MessageType.Error);
-            }
-
-            if (_scope != null && !_scope.hasMultipleDifferentValues)
-            {
-                var selectedScope = (ObjectEntryScope)_scope.intValue;
-                if (selectedScope == ObjectEntryScope.Route
-                    && _routeOwner != null
-                    && !_routeOwner.hasMultipleDifferentValues
-                    && _routeOwner.objectReferenceValue == null)
+                using (new EditorGUI.DisabledScope(!string.IsNullOrWhiteSpace(id) || serializedObject.isEditingMultipleObjects))
                 {
-                    EditorGUILayout.HelpBox("Route Owner is required for a Route-scoped Object Entry.", MessageType.Error);
+                    if (GUILayout.Button("Generate ID"))
+                    {
+                        _objectEntryId.stringValue = ImmersiveFrameworkEditorSettingsUtility.GenerateObjectEntryIdText();
+                        serializedObject.ApplyModifiedProperties();
+                        serializedObject.Update();
+                    }
                 }
-
-                if (selectedScope == ObjectEntryScope.Activity
-                    && _activityOwner != null
-                    && !_activityOwner.hasMultipleDifferentValues
-                    && _activityOwner.objectReferenceValue == null)
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(id)))
                 {
-                    EditorGUILayout.HelpBox("Activity Owner is required for an Activity-scoped Object Entry.", MessageType.Error);
+                    if (GUILayout.Button("Copy ID")) EditorGUIUtility.systemCopyBuffer = id;
                 }
             }
 
-            EditorGUILayout.HelpBox(
-                "F13 only declares logical object entries. Object Reset, Component Reset, Player Reset, Actor Reset, Transform/Rigidbody reset and runtime binding are later phases.",
-                MessageType.Info);
+            using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(id) || serializedObject.isEditingMultipleObjects))
+            {
+                if (GUILayout.Button(new GUIContent("Regenerate Stable ID...", "Replaces this ID only after confirmation. Rename, move and import never regenerate it.")))
+                    RegenerateStableId();
+            }
+
+            if (string.IsNullOrWhiteSpace(id))
+                EditorGUILayout.HelpBox("Generate a valid Object Entry ID for this declaration.", MessageType.Error);
         }
 
-        private void DrawOwnerField()
+        private void RegenerateStableId()
         {
-            if (_scope == null || _scope.hasMultipleDifferentValues)
+            string current = _objectEntryId.stringValue ?? string.Empty;
+            if (!EditorUtility.DisplayDialog("Regenerate Object Entry Stable ID",
+                    "This replaces the stable ID for this declaration. Existing StableReference values must be updated. Rename and move do not change this ID.\n\n" +
+                    $"Current ID:\n{current}\n\nContinue?", "Regenerate", "Cancel")) return;
+
+            if (!FrameworkIdentityAuthoringValidator.TryRegenerateStableId((ObjectEntryDeclaration)target,
+                    out _, out _, out string issue))
             {
-                EditorGUILayout.HelpBox("Select a single Scope to edit its owner.", MessageType.Info);
+                EditorUtility.DisplayDialog("Regenerate Object Entry Stable ID", issue, "OK");
+                return;
+            }
+            serializedObject.Update();
+        }
+
+        private void DrawIdentityValidation()
+        {
+            EditorGUILayout.LabelField("Object Entry Identity Validation", EditorStyles.boldLabel);
+            if (serializedObject.isEditingMultipleObjects)
+            {
+                EditorGUILayout.HelpBox("Select one declaration to validate its Object Entry ID.", MessageType.Info);
                 return;
             }
 
-            switch ((ObjectEntryScope)_scope.intValue)
-            {
-                case ObjectEntryScope.Session:
-                    EditorGUILayout.HelpBox("Session owner is resolved from the active Application Runtime. No asset owner is authored here.", MessageType.Info);
-                    break;
-                case ObjectEntryScope.Route:
-                    EditorGUILayout.PropertyField(
-                        _routeOwner,
-                        new GUIContent(
-                            "Route Owner",
-                            "Explicit Route that owns this Object Entry. Scene and hierarchy names are not owner fallbacks."));
-                    break;
-                case ObjectEntryScope.Activity:
-                    EditorGUILayout.PropertyField(
-                        _activityOwner,
-                        new GUIContent(
-                            "Activity Owner",
-                            "Explicit Activity that owns this Object Entry. The currently active Activity is used only to filter this authored owner."));
-                    break;
-            }
+            FrameworkAuthoringValidationReport report = FrameworkIdentityAuthoringValidator.ValidateObjectEntryDeclaration(
+                (ObjectEntryDeclaration)target);
+            FrameworkAuthoringValidationGui.DrawIssues(report, false);
         }
     }
 }

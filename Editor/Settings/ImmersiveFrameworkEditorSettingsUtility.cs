@@ -106,6 +106,8 @@ namespace Immersive.Framework.Editor.Settings
 
         internal static string GenerateActivityIdText() => GenerateAuthoringIdText();
 
+        internal static string GenerateObjectEntryIdText() => GenerateAuthoringIdText();
+
         private static void AssignNewRouteId(RouteAsset route)
         {
             var serialized = new SerializedObject(route);

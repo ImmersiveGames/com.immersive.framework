@@ -6,164 +6,63 @@ using UnityEngine;
 
 namespace Immersive.Framework.ObjectEntry
 {
-    /// <summary>
-    /// API status: Experimental. Passive scene-authored declaration for a logical object entry.
-    /// It does not bind a Unity GameObject as a runtime object, reset anything, spawn anything or create Player/Actor semantics.
-    /// </summary>
+    /// <summary>Declares Object Entry requiredness and its optional stable boundary identity.</summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Object Entry/Object Entry Declaration")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F13C passive scene-authored Object Entry declaration; F13J adds explicit Route/Activity owner authoring.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Scene-authored Object Entry metadata admitted under its transaction owner.")]
     public sealed class ObjectEntryDeclaration : MonoBehaviour
     {
-        [Header("Object Entry")]
-        [SerializeField] private string objectEntryId;
-        [SerializeField] private ObjectEntryScope scope = ObjectEntryScope.Activity;
-        [SerializeField] private RouteAsset routeOwner;
-        [SerializeField] private ActivityAsset activityOwner;
+        [SerializeField, HideInInspector] private string objectEntryId = string.Empty;
         [SerializeField] private ObjectEntryRequiredness requiredness = ObjectEntryRequiredness.Required;
-        [SerializeField] private string displayName;
-
-        public string ObjectEntryIdText => objectEntryId;
-
-        public ObjectEntryScope Scope => scope;
-
-        public RouteAsset RouteOwner => routeOwner;
-
-        public ActivityAsset ActivityOwner => activityOwner;
 
         public ObjectEntryRequiredness Requiredness => requiredness;
+        public bool HasObjectEntryId => TryGetObjectEntryId(out _);
+        public ObjectEntryId ObjectEntryId => TryGetObjectEntryId(out ObjectEntryId id) ? id : default;
 
-        public string DisplayName => displayName;
-
-        public bool HasObjectEntryId => !string.IsNullOrWhiteSpace(objectEntryId);
-
-        public bool HasRequiredAuthoredOwner
+        public bool TryGetObjectEntryId(out ObjectEntryId id)
         {
-            get
-            {
-                switch (scope)
-                {
-                    case ObjectEntryScope.Session:
-                        return true;
-                    case ObjectEntryScope.Route:
-                        return routeOwner != null;
-                    case ObjectEntryScope.Activity:
-                        return activityOwner != null;
-                    default:
-                        return false;
-                }
-            }
-        }
-
-        public bool TryCreateDescriptor(out ObjectEntryDescriptor descriptor, out string issue)
-        {
-            descriptor = default;
-            issue = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(objectEntryId))
-            {
-                issue = "Missing Object Entry Id.";
-                return false;
-            }
-
-            if (!Enum.IsDefined(typeof(ObjectEntryScope), scope) || scope == ObjectEntryScope.Unspecified)
-            {
-                issue = "Object Entry Scope must be explicit.";
-                return false;
-            }
-
-            if (!Enum.IsDefined(typeof(ObjectEntryRequiredness), requiredness) || requiredness == ObjectEntryRequiredness.Unspecified)
-            {
-                issue = "Object Entry Requiredness must be explicit.";
-                return false;
-            }
-
-            if (scope == ObjectEntryScope.Route
-                && routeOwner != null
-                && !routeOwner.HasValidRouteId)
-            {
-                issue = "Route Owner requires a valid RouteId before it can provide a typed owner identity.";
-                return false;
-            }
-
-            if (scope == ObjectEntryScope.Activity
-                && activityOwner != null
-                && !activityOwner.HasValidActivityId)
-            {
-                issue = "Activity Owner requires a valid ActivityId before it can provide a typed owner identity.";
-                return false;
-            }
-
+            id = default;
+            if (string.IsNullOrWhiteSpace(objectEntryId)) return false;
             try
             {
-                descriptor = new ObjectEntryDescriptor(
-                    ObjectEntryId.From(objectEntryId.Trim()),
-                    scope,
-                    ObjectEntrySourceKind.SceneAuthored,
-                    requiredness,
-                    ResolveDisplayName(),
-                    TryCreateAuthoredOwnerIdentity(out var authoredOwnerIdentity)
-                        ? authoredOwnerIdentity
-                        : (FrameworkIdentityKey?)null);
+                id = Immersive.Framework.ObjectEntry.ObjectEntryId.From(objectEntryId.Trim());
                 return true;
             }
-            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
+            catch (ArgumentException)
             {
-                issue = exception.Message;
                 return false;
             }
         }
 
-        public ObjectEntryDescriptor CreateDescriptor()
-        {
-            if (TryCreateDescriptor(out var descriptor, out string issue))
-            {
-                return descriptor;
-            }
-
-            throw new InvalidOperationException(issue);
-        }
-
-        internal bool TryCreateScopedDescriptor(
+        internal bool TryCreateDescriptor(
+            ObjectEntryScope scope,
             FrameworkIdentityKey ownerIdentity,
             out ObjectEntryDescriptor descriptor,
             out string issue)
         {
             descriptor = default;
             issue = string.Empty;
-
-            if (!ownerIdentity.IsValid)
+            if (!TryGetObjectEntryId(out ObjectEntryId id))
             {
-                issue = "Object Entry owner identity is missing.";
+                issue = "A valid Object Entry ID is required.";
                 return false;
             }
-
-            if (!Enum.IsDefined(typeof(ObjectEntryScope), scope) || scope == ObjectEntryScope.Unspecified)
+            if (!Enum.IsDefined(typeof(ObjectEntryRequiredness), requiredness)
+                || requiredness == ObjectEntryRequiredness.Unspecified)
             {
-                issue = "Object Entry Scope must be explicit.";
+                issue = "Object Entry Requiredness must be explicit.";
                 return false;
             }
-
-            if (ownerIdentity.Domain != ObjectEntryDescriptor.GetExpectedOwnerDomain(scope))
+            if (!ownerIdentity.IsValid || ownerIdentity.Domain != ObjectEntryDescriptor.GetExpectedOwnerDomain(scope))
             {
-                issue = $"Object Entry owner domain '{ownerIdentity.Domain}' does not match scope '{scope}'.";
-                return false;
-            }
-
-            if (!TryCreateDescriptor(out var unscopedDescriptor, out issue))
-            {
+                issue = $"The admission transaction did not provide an owner matching scope '{scope}'.";
                 return false;
             }
 
             try
             {
                 descriptor = new ObjectEntryDescriptor(
-                    unscopedDescriptor.Id,
-                    unscopedDescriptor.Scope,
-                    unscopedDescriptor.SourceKind,
-                    unscopedDescriptor.Requiredness,
-                    unscopedDescriptor.DisplayName,
-                    ownerIdentity);
+                    id, scope, ObjectEntrySourceKind.SceneAuthored, requiredness, gameObject.name, ownerIdentity);
                 return true;
             }
             catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
@@ -173,60 +72,12 @@ namespace Immersive.Framework.ObjectEntry
             }
         }
 
-        internal bool MatchesRouteOwner(RouteAsset route)
+#if UNITY_EDITOR
+        internal void ConfigureForQa(ObjectEntryId qaIdentity, ObjectEntryRequiredness qaRequiredness)
         {
-            return routeOwner != null && ReferenceEquals(routeOwner, route);
-        }
-
-        internal bool MatchesActivityOwner(ActivityAsset activity)
-        {
-            return activityOwner != null && ReferenceEquals(activityOwner, activity);
-        }
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        internal void ConfigureForQa(
-            string qaObjectEntryId,
-            ObjectEntryScope qaScope,
-            ObjectEntryRequiredness qaRequiredness,
-            string qaDisplayName,
-            RouteAsset qaRouteOwner = null,
-            ActivityAsset qaActivityOwner = null)
-        {
-            objectEntryId = qaObjectEntryId;
-            scope = qaScope;
+            objectEntryId = qaIdentity.IsValid ? qaIdentity.Value.Value : string.Empty;
             requiredness = qaRequiredness;
-            displayName = qaDisplayName;
-            routeOwner = qaRouteOwner;
-            activityOwner = qaActivityOwner;
         }
 #endif
-
-        private bool TryCreateAuthoredOwnerIdentity(out FrameworkIdentityKey ownerIdentity)
-        {
-            switch (scope)
-            {
-                case ObjectEntryScope.Route when routeOwner != null && routeOwner.HasValidRouteId:
-                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Route, routeOwner.RouteId.StableText);
-                    return true;
-                case ObjectEntryScope.Activity when activityOwner != null && activityOwner.HasValidActivityId:
-                    ownerIdentity = FrameworkIdentityKey.From(FrameworkIdentityDomain.Activity, activityOwner.ActivityId.StableText);
-                    return true;
-                default:
-                    ownerIdentity = default;
-                    return false;
-            }
-        }
-
-        private string ResolveDisplayName()
-        {
-            if (!string.IsNullOrWhiteSpace(displayName))
-            {
-                return displayName.Trim();
-            }
-
-            return gameObject != null && !string.IsNullOrWhiteSpace(gameObject.name)
-                ? gameObject.name.Trim()
-                : objectEntryId.Trim();
-        }
     }
 }

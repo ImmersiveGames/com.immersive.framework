@@ -61,9 +61,20 @@ namespace Immersive.Framework.Reset.Unity
             }
 
             List<Resettable> resettables = CollectResettables(roots);
+            if (!ResetCompositionResolver.TryResolveMemberships(
+                    roots,
+                    resettables,
+                    out Dictionary<Resettable, ResetMembership> membershipByResettable,
+                    out string compositionDiagnostic))
+            {
+                diagnostic =
+                    $"reset-composition-resolution-failed: owner='{owner.StableText}'. {compositionDiagnostic}";
+                return false;
+            }
+
             if (resettables.Count == 0)
             {
-                diagnostic = $"resettables-absent: owner='{owner.StableText}' roots='{roots?.Count ?? 0}'.";
+                diagnostic = $"resettables-absent: owner='{owner.StableText}' roots='{roots?.Count ?? 0}'. {compositionDiagnostic}".TrimEnd();
                 return true;
             }
 
@@ -90,6 +101,14 @@ namespace Immersive.Framework.Reset.Unity
                     issueCount++;
                     issues.Append(
                         $" resettable='{resettable.DisplayName}' issue='mixed-legacy-adapter' detail='UnityResetSubjectAdapter inside the Resettable boundary ({legacyAdapters.Count}); use either Resettable or the legacy adapter, not both.'.");
+                }
+
+                ResetMembership resolvedMembership = membershipByResettable[resettable];
+                if (!ResetSubject.IsMembershipCompatibleWithOwner(resolvedMembership, owner))
+                {
+                    issueCount++;
+                    issues.Append(
+                        $" resettable='{resettable.DisplayName}' issue='membership-owner-incompatible' membership='{resolvedMembership}' owner='{owner.StableText}'. Activity-owned content cannot have Route reset membership.");
                 }
 
                 UnityResetSubjectAdapter coveringAncestor =
@@ -120,6 +139,7 @@ namespace Immersive.Framework.Reset.Unity
                         capabilitiesByResettable[index],
                         owner,
                         scope,
+                        membershipByResettable[resettable],
                         resolvedSource,
                         resolvedReason,
                         out int capabilityCount,
@@ -141,7 +161,7 @@ namespace Immersive.Framework.Reset.Unity
 
             _resettablesByOwner[owner] = registered;
             diagnostic =
-                $"resettables-registered: owner='{owner.StableText}' scope='{scope}' resettables='{registered.Count}' capabilities='{capabilityTotal}'.";
+                $"resettables-registered: owner='{owner.StableText}' scope='{scope}' resettables='{registered.Count}' capabilities='{capabilityTotal}'. {compositionDiagnostic}".TrimEnd();
             return true;
         }
 
@@ -202,6 +222,7 @@ namespace Immersive.Framework.Reset.Unity
             IReadOnlyList<MonoBehaviour> capabilities,
             RuntimeContentOwner owner,
             ResetSubjectScope scope,
+            ResetMembership membership,
             string source,
             string reason,
             out int capabilityCount,
@@ -216,7 +237,8 @@ namespace Immersive.Framework.Reset.Unity
                 resettable.DisplayName,
                 "Resettable:RESET-035-B",
                 source,
-                reason);
+                reason,
+                membership);
             if (!subjectResult.Succeeded)
             {
                 issue = "Subject registration rejected. " + FirstIssue(subjectResult);

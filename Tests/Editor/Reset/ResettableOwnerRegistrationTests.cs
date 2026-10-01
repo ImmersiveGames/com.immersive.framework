@@ -164,6 +164,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(Register(_route, rootB, out string diagnosticB), diagnosticB);
 
             Assert.IsTrue(_registration.TryReleaseOwner(_activityA, "test", "release", out string releaseDiagnostic), releaseDiagnostic);
+            Assert.IsTrue(_registration.TryReleaseOwner(_activityA, "test", "release-again", out string repeatedReleaseDiagnostic), repeatedReleaseDiagnostic);
 
             Assert.IsFalse(resettableA.IsRegistered);
             Assert.IsTrue(resettableB.IsRegistered);

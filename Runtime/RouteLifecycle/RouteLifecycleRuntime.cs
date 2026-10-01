@@ -591,6 +591,7 @@ namespace Immersive.Framework.RouteLifecycle
             _routeOccurrenceSequence = playerSpatialEntryContext.OccurrenceSequence;
             _currentRouteResult = result;
             _hasCurrentRouteContext = true;
+            CommitRouteStableObjectBindings(route);
             PublishRouteTransition(previousRoute, route, source, reason);
             return result;
         }

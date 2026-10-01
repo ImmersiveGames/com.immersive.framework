@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Settings;
 using Immersive.Framework.Editor.Validation;
+using Immersive.Framework.ObjectEntry;
 using UnityEditor;
+using UnityEngine;
 namespace Immersive.Framework.Editor.Authoring
 {
     /// <summary>
@@ -11,6 +13,37 @@ namespace Immersive.Framework.Editor.Authoring
     /// </summary>
     internal static class FrameworkIdentityAuthoringValidator
     {
+        internal static FrameworkAuthoringValidationReport ValidateObjectEntryDeclaration(
+            ObjectEntryDeclaration declaration,
+            FrameworkValidationMode validationMode = FrameworkValidationMode.Standard)
+        {
+            var report = new FrameworkAuthoringValidationReport(validationMode);
+            if (declaration == null)
+            {
+                report.AddError("Object Entry Declaration is missing.", null);
+                return report;
+            }
+            if (!declaration.TryGetObjectEntryId(out ObjectEntryId id))
+            {
+                report.AddError("Object Entry ID is missing or invalid. Generate it explicitly under Advanced / Debug.", declaration);
+                return report;
+            }
+
+            ObjectEntryDeclaration[] loaded = Resources.FindObjectsOfTypeAll<ObjectEntryDeclaration>();
+            for (int index = 0; index < loaded.Length; index++)
+            {
+                ObjectEntryDeclaration other = loaded[index];
+                if (other == null || other == declaration || !other.TryGetObjectEntryId(out ObjectEntryId otherId)
+                    || otherId != id || !other.gameObject.scene.IsValid() || !other.gameObject.scene.isLoaded)
+                    continue;
+
+                report.AddWarning(
+                    $"Duplicate Object Entry ID '{id.StableText}' exists in loaded content. Reuse across different owners is allowed; duplicates within one owner are rejected, and an unqualified StableReference may be ambiguous.",
+                    other);
+            }
+            return report;
+        }
+
         internal static FrameworkAuthoringValidationReport ValidateProjectAssets(
             FrameworkValidationMode validationMode)
         {
@@ -312,6 +345,38 @@ namespace Immersive.Framework.Editor.Authoring
             property.stringValue = newId;
             serialized.ApplyModifiedProperties();
             EditorUtility.SetDirty(activity);
+            return true;
+        }
+
+        internal static bool TryRegenerateStableId(
+            ObjectEntryDeclaration declaration,
+            out string previousId,
+            out string newId,
+            out string issue)
+        {
+            previousId = string.Empty;
+            newId = string.Empty;
+            issue = string.Empty;
+            if (declaration == null)
+            {
+                issue = "Object Entry Declaration is missing.";
+                return false;
+            }
+
+            var serialized = new SerializedObject(declaration);
+            SerializedProperty property = serialized.FindProperty("objectEntryId");
+            if (property == null)
+            {
+                issue = "Object Entry ID property was not found.";
+                return false;
+            }
+
+            previousId = property.stringValue ?? string.Empty;
+            newId = ImmersiveFrameworkEditorSettingsUtility.GenerateObjectEntryIdText();
+            Undo.RecordObject(declaration, "Regenerate Object Entry Stable ID");
+            property.stringValue = newId;
+            serialized.ApplyModifiedProperties();
+            EditorUtility.SetDirty(declaration);
             return true;
         }
 

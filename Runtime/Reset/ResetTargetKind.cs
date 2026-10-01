@@ -1,10 +1,10 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Reset
 {
-    /// <summary>
-    /// Internal semantic Reset target kinds introduced by IF-ADR-035.
-    /// Object and Composition become resolvable when their typed authoring boundaries exist.
-    /// </summary>
-    internal enum ResetTargetKind
+    /// <summary>API status: Experimental. Supported semantic Reset request target kinds.</summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-035 RESET-035-E/F semantic target kinds.")]
+    public enum ResetTargetKind
     {
         Unknown = 0,
         Object = 10,

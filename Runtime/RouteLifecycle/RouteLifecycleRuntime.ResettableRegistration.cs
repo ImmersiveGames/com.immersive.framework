@@ -1,5 +1,6 @@
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Reset.Unity;
+using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.RouteLifecycle
 {
@@ -12,12 +13,19 @@ namespace Immersive.Framework.RouteLifecycle
     internal sealed partial class RouteLifecycleRuntime
     {
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
+        private StableObjectBindingRegistry _stableObjectBindingRegistry;
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
         {
             _resettableOwnerRegistration = registration;
             _activityFlowRuntime.SetResettableOwnerRegistration(registration);
+        }
+
+        internal void SetStableObjectBindingRegistry(StableObjectBindingRegistry registry)
+        {
+            _stableObjectBindingRegistry = registry;
+            _activityFlowRuntime.SetStableObjectBindingRegistry(registry);
         }
 
         private bool TryPrepareRouteResettableRegistration(
@@ -28,23 +36,47 @@ namespace Immersive.Framework.RouteLifecycle
             out string diagnostic)
         {
             diagnostic = string.Empty;
-            if (_resettableOwnerRegistration == null || route == null)
+            if (route == null)
             {
-                return true;
+                return TryPrepareRouteStableObjectBindings(route, compositionResult, out diagnostic);
             }
 
-            if (_resettableOwnerRegistration.TryRegisterOwnerContent(
+            if (_resettableOwnerRegistration != null && !_resettableOwnerRegistration.TryRegisterOwnerContent(
                     CreateRouteOwner(route),
                     ResolveMaterializedRouteSceneRoots(compositionResult),
                     source,
                     reason,
                     out string registrationDiagnostic))
             {
-                return true;
+                diagnostic = "Resettable registration blocked Route admission. " + registrationDiagnostic;
+                return false;
             }
 
-            diagnostic = "Resettable registration blocked Route admission. " + registrationDiagnostic;
+            if (TryPrepareRouteStableObjectBindings(route, compositionResult, out diagnostic)) return true;
+            RollbackRouteResettableRegistration(route, source, "stable-object-binding-admission-failed");
             return false;
+        }
+
+        private bool TryPrepareRouteStableObjectBindings(
+            RouteAsset route,
+            RouteSceneCompositionResult compositionResult,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (_stableObjectBindingRegistry == null || route == null) return true;
+            if (_stableObjectBindingRegistry.TryRegisterOwnerContent(
+                    CreateRouteOwner(route),
+                    ResolveMaterializedRouteSceneRoots(compositionResult),
+                    out diagnostic)) return true;
+            diagnostic = "Stable Object Binding admission failed for Route content. " + diagnostic;
+            return false;
+        }
+
+        private void CommitRouteStableObjectBindings(RouteAsset route)
+        {
+            if (_stableObjectBindingRegistry == null || route == null) return;
+            if (!_stableObjectBindingRegistry.TryCommitOwner(CreateRouteOwner(route), out string diagnostic))
+                throw new System.InvalidOperationException("Stable Object Binding commit failed for Route content. " + diagnostic);
         }
 
         private void RollbackRouteResettableRegistration(
@@ -52,16 +84,10 @@ namespace Immersive.Framework.RouteLifecycle
             string source,
             string reason)
         {
-            if (_resettableOwnerRegistration == null || route == null)
-            {
-                return;
-            }
-
-            _resettableOwnerRegistration.TryRollbackOwner(
-                CreateRouteOwner(route),
-                source,
-                reason,
-                out _);
+            if (route == null) return;
+            RuntimeContentOwner owner = CreateRouteOwner(route);
+            _resettableOwnerRegistration?.TryRollbackOwner(owner, source, reason, out _);
+            _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
         }
 
         private bool TryReleasePreviousRouteResettableRegistration(
@@ -71,21 +97,30 @@ namespace Immersive.Framework.RouteLifecycle
             out string diagnostic)
         {
             diagnostic = string.Empty;
-            if (_resettableOwnerRegistration == null || previousRoute == null)
+            if (previousRoute == null)
             {
                 return true;
             }
 
-            if (_resettableOwnerRegistration.TryReleaseOwner(
+            string releaseDiagnostic = string.Empty;
+            bool resettableReleased = _resettableOwnerRegistration == null || _resettableOwnerRegistration.TryReleaseOwner(
                     CreateRouteOwner(previousRoute),
                     source,
                     reason,
-                    out string releaseDiagnostic))
+                    out releaseDiagnostic);
+            if (!resettableReleased)
+            {
+                diagnostic = "Resettable registration release failed for the exiting Route. " + releaseDiagnostic;
+                return false;
+            }
+
+            if (_stableObjectBindingRegistry == null || _stableObjectBindingRegistry.TryReleaseOwner(
+                    CreateRouteOwner(previousRoute), out string bindingDiagnostic))
             {
                 return true;
             }
 
-            diagnostic = "Resettable registration release failed for the exiting Route. " + releaseDiagnostic;
+            diagnostic = "Stable Object Binding release failed for the exiting Route. " + bindingDiagnostic;
             return false;
         }
     }

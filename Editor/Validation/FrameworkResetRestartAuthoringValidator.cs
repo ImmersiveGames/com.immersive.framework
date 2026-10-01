@@ -2,6 +2,7 @@ using System;
 using Immersive.Framework.ActivityRestart;
 using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Reset;
+using Immersive.Framework.Reset.Unity;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -19,6 +20,7 @@ namespace Immersive.Framework.Editor.Validation
 
             ValidateOpenSceneObjectResetGroupTriggers(report);
             ValidateOpenSceneActivityRestartTriggers(report);
+            ValidateOpenSceneResetRequestTriggers(report);
         }
 
         private static void ValidateOpenSceneObjectResetGroupTriggers(FrameworkAuthoringValidationReport report)
@@ -106,7 +108,7 @@ namespace Immersive.Framework.Editor.Validation
             var targetActivityProperty = serializedObject.FindProperty("targetActivity");
             var useCurrentActivityWhenTargetMissingProperty = serializedObject.FindProperty("useCurrentActivityWhenTargetMissing");
             var requireTargetActivityIsCurrentProperty = serializedObject.FindProperty("requireTargetActivityIsCurrent");
-            var resetSelectionProperty = serializedObject.FindProperty("resetSelection");
+            var resetTargetProperty = serializedObject.FindProperty("resetTarget");
 
             bool hasTargetActivity = targetActivityProperty != null && targetActivityProperty.objectReferenceValue != null;
             bool useCurrentActivityWhenTargetMissing = useCurrentActivityWhenTargetMissingProperty == null || useCurrentActivityWhenTargetMissingProperty.boolValue;
@@ -126,8 +128,57 @@ namespace Immersive.Framework.Editor.Validation
                     trigger);
             }
 
-            ValidateResetSelectionConfig(report, resetSelectionProperty, trigger, "Activity Restart Trigger");
+            ValidateResetTarget(report, resetTargetProperty, trigger, "Activity Restart Trigger");
             ValidateTriggerStacking(report, trigger);
+        }
+
+        private static void ValidateOpenSceneResetRequestTriggers(FrameworkAuthoringValidationReport report)
+        {
+            ResetRequestTrigger[] triggers = Object.FindObjectsByType<ResetRequestTrigger>(FindObjectsInactive.Include);
+            int scannedCount = 0;
+            if (triggers != null)
+            {
+                for (int index = 0; index < triggers.Length; index++)
+                {
+                    ResetRequestTrigger trigger = triggers[index];
+                    if (!IsLoadedSceneComponent(trigger)) continue;
+                    scannedCount++;
+                    var serializedObject = new SerializedObject(trigger);
+                    ValidateResetTarget(report, serializedObject.FindProperty("target"), trigger, "Reset Request Trigger");
+                }
+            }
+
+            if (scannedCount > 0)
+                report.AddInfo($"Reset Request Trigger authoring validation scanned triggers='{scannedCount}'.", null);
+        }
+
+        private static void ValidateResetTarget(
+            FrameworkAuthoringValidationReport report,
+            SerializedProperty targetProperty,
+            Object context,
+            string label)
+        {
+            SerializedProperty kindProperty = targetProperty?.FindPropertyRelative("kind");
+            if (kindProperty == null)
+            {
+                report.AddError($"{label} has no semantic Reset Target.", context);
+                return;
+            }
+
+            ResetTargetKind kind = (ResetTargetKind)kindProperty.intValue;
+            if (!Enum.IsDefined(typeof(ResetTargetKind), kind) || kind == ResetTargetKind.Unknown)
+            {
+                report.AddError($"{label} has an invalid Reset Target kind.", context);
+                return;
+            }
+
+            if (kind == ResetTargetKind.Object
+                && targetProperty.FindPropertyRelative("resettable")?.objectReferenceValue == null)
+                report.AddError($"{label} targets Object but has no Resettable reference.", context);
+
+            if (kind == ResetTargetKind.Composition
+                && targetProperty.FindPropertyRelative("composition")?.objectReferenceValue == null)
+                report.AddError($"{label} targets Composition but has no ResetComposition reference.", context);
         }
 
         private static void ValidateResetSelectionConfig(
@@ -178,7 +229,7 @@ namespace Immersive.Framework.Editor.Validation
             if (mode == ResetSelectionMode.CurrentActivitySubjects)
             {
                 report.AddInfo(
-                    "Activity Restart Trigger uses CurrentActivitySubjects. It includes Activity-scoped subjects and Runtime-scoped subjects owned by the current Activity; Route-owned subjects are not included by this policy.",
+                    "CurrentActivity includes Activity-owned subjects and Route-owned subjects with effective Activity membership. Activity Restart further filters out Activity-owned content recreated by Clear/Reenter.",
                     context);
             }
         }

@@ -64,6 +64,29 @@ namespace Immersive.Framework.Reset
             string source,
             string reason)
         {
+            return RegisterRuntimeSubject(
+                authoredPrefix,
+                scope,
+                owner,
+                ownerObject,
+                displayName,
+                diagnosticTag,
+                source,
+                reason,
+                ResetMembership.FollowOwner);
+        }
+
+        public ResetRegistryOperationResult RegisterRuntimeSubject(
+            string authoredPrefix,
+            ResetSubjectScope scope,
+            RuntimeContentOwner owner,
+            object ownerObject,
+            string displayName,
+            string diagnosticTag,
+            string source,
+            string reason,
+            ResetMembership membership)
+        {
             if (!TryGenerateRuntimeSubjectId(authoredPrefix, out ResetSubjectId subjectId, out ResetIssue issue))
             {
                 return ResetRegistryOperationResult.Rejected(
@@ -81,7 +104,8 @@ namespace Immersive.Framework.Reset
                     ResetSubjectOrigin.RuntimeRegistered,
                     owner,
                     displayName,
-                    diagnosticTag);
+                    diagnosticTag,
+                    membership);
             }
             catch (Exception exception)
             {
