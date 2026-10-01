@@ -2,7 +2,26 @@
 
 All notable package changes are documented in this file.
 
-## [1.0.3] - 2026-09-24
+## [1.1.0-preview.1] - 2026-09-30
+
+First preview of the Session Camera Assignment and Player occurrence authority
+redesign defined by IF-ADR-038. This package version is a preview and remains
+subject to API and serialized-authoring changes.
+
+- Replaced the package Camera Presentation/Request runtime path with Session
+  Camera Outputs, Assignments, mode-specific Occurrences and Output Fallback.
+- Integrated Camera Assignment creation, Player membership reconciliation and
+  transactional Assignment replacement into the Framework runtime host.
+- Added Editor regression test sources for Session, Individual and Shared Group
+  assignment behavior, membership changes and replacement.
+- Only the project's own test fixture requires migration; no external consumer
+  migration has been identified. Unity import/compile and runtime validation
+  remain pending.
+
+## [1.0.3-preview.1] - 2026-09-24 — unpublished, superseded
+
+This preview preparation was never tagged or published. Its distribution and
+dependency updates are included in the later `1.1.0-preview.1` candidate.
 
 - Added signed Unity UPM release distribution through GitHub Releases and OpenUPM.
 - Updated Foundation to `0.2.2` and Logging to `0.2.3` for the signed registry graph.

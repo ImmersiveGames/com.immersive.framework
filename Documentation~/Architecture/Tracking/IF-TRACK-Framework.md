@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — OpenUPM distribution published; IF-ADR-038 Camera cuts A-H implemented in source; asset/QA migration and Unity validation pending**
+Status: **Active — OpenUPM distribution published through 1.0.2; IF-ADR-038 Camera cuts A-H implemented in source; project test migration and Unity validation pending**
 
 Last updated: **2026-09-30**
 
@@ -28,6 +28,10 @@ The public OpenUPM graph is published:
 | `com.immersive.pooling` | `0.2.1` | [v0.2.1](https://github.com/ImmersiveGames/com.immersive.pooling/releases/tag/v0.2.1) | [package](https://openupm.com/packages/com.immersive.pooling/) |
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
+
+Release candidate in this checkout: **`1.1.0-preview.1`** — not yet tagged or
+published. It is a Camera/Player preview; Unity import/compile and runtime
+validation remain pending.
 
 Registry dependency graph:
 

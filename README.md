@@ -4,7 +4,10 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current version: `1.0.3` (stable package release).
+Preview candidate: `1.1.0-preview.1` (not yet published; Camera/Player
+validation is pending). Latest stable package release: `1.0.2`. The earlier
+`1.0.3-preview.1` preparation was not published and is superseded by this
+candidate.
 
 The package provides runtime authorities, designer-facing authoring surfaces,
 Editor workflows, diagnostics and validation. It consumes the technical
@@ -36,16 +39,23 @@ scope, then declare only the Framework package:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.0.3"
+    "com.immersive.framework": "1.0.2"
   }
 }
 ```
 
-Unity resolves Foundation `0.2.2` and Logging `0.2.3` automatically. As a Git
-fallback, use
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.3`; Git
+The stable `1.0.2` release resolves Foundation `0.2.1` and Logging `0.2.2`.
+The preview candidate in this checkout targets Foundation `0.2.2` and Logging
+`0.2.3`. As a Git fallback for the stable release, use
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.2`; Git
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
+
+After the preview is published, opt in through OpenUPM by setting the package
+version to `1.1.0-preview.1`, or use the Git tag
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.1`.
+The preview introduces the Session Camera Assignment and Player occurrence
+authority redesign; its API and serialized authoring may still change.
 
 ## Getting started
 
