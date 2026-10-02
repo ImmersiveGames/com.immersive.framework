@@ -172,6 +172,8 @@ The closed consumer proof set covers these distinct contracts:
 
 All eight scenarios are integrated in the planet-devourer authoring/proving workspace and were manually validated. This consumer closure does not claim UPM package-import validation.
 
+All eight scenarios are integrated in the planet-devourer authoring/proving workspace and were manually validated. This consumer closure does not claim UPM package-import validation.
+
 These scenarios are usage examples, not additional runtime APIs.
 
 ## Technical validation
