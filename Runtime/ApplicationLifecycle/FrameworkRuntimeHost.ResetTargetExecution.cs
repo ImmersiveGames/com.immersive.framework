@@ -8,12 +8,12 @@ namespace Immersive.Framework.ApplicationLifecycle
     {
         internal static bool ShouldContinueActivityRestartAfterReset(ResetExecutionResult result) => !result.Failed;
 
-        async Task<ResetSelectionExecutionRuntimeResult> IResetSelectionExecutionRuntimePort.ExecuteResetTargetAsync(
+        async Task<ResetSelectionExecutionRuntimeResult> IResetTargetExecutionRuntimePort.ExecuteResetTargetAsync(
             ResetTarget target,
             string source,
             string reason)
         {
-            string resolvedSource = source.NormalizeTextOrFallback(nameof(IResetSelectionExecutionRuntimePort));
+            string resolvedSource = source.NormalizeTextOrFallback(nameof(IResetTargetExecutionRuntimePort));
             string resolvedReason = reason.NormalizeText();
             ResetSelectionResolution resolution = ResetTargetResolver.Resolve(this, target, resolvedSource, resolvedReason);
             if (resolution.Failed)

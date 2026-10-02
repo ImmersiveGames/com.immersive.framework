@@ -152,16 +152,16 @@ namespace Immersive.Framework.Reset.Tests
             GameObject first = CreateEntry(id, _routeA, true);
             Register(_ownerA, first);
             Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, new[] { first }, "test", "first", out string resetDiagnostic), resetDiagnostic);
-            Assert.IsTrue(ResetTargetResolver.TryResolveStableReferenceSubject(_bindings, _resets, reference, out ResetSubject before, out string beforeDiagnostic), beforeDiagnostic);
+            Assert.IsTrue(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out ResetSubject before, out string beforeDiagnostic), beforeDiagnostic);
 
             Assert.IsTrue(_resetRegistration.TryReleaseOwner(_ownerA, "test", "unload", out string resetReleaseDiagnostic), resetReleaseDiagnostic);
             Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out string bindingReleaseDiagnostic), bindingReleaseDiagnostic);
-            Assert.IsFalse(ResetTargetResolver.TryResolveStableReferenceSubject(_bindings, _resets, reference, out _, out _));
+            Assert.IsFalse(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out _, out _));
 
             GameObject second = CreateEntry(id, _routeA, true);
             Register(_ownerA, second);
             Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, new[] { second }, "test", "reload", out resetDiagnostic), resetDiagnostic);
-            Assert.IsTrue(ResetTargetResolver.TryResolveStableReferenceSubject(_bindings, _resets, reference, out ResetSubject after, out string afterDiagnostic), afterDiagnostic);
+            Assert.IsTrue(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out ResetSubject after, out string afterDiagnostic), afterDiagnostic);
             Assert.AreNotEqual(before.SubjectId, after.SubjectId);
             Assert.IsTrue(_bindings.TryResolve(ObjectEntryId.From(id), null, null, out StableObjectBinding reloadedBinding, out _, out string bindingDiagnostic), bindingDiagnostic);
             Assert.AreSame(second, reloadedBinding.PhysicalObject);
@@ -176,10 +176,94 @@ namespace Immersive.Framework.Reset.Tests
             Register(_ownerA, target);
             StableObjectReference reference = StableObjectReference.ForEntry(Id(id));
 
-            Assert.IsFalse(ResetTargetResolver.TryResolveStableReferenceSubject(_bindings, _resets, reference, out _, out string diagnostic));
+            Assert.IsFalse(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out _, out string diagnostic));
             Assert.IsNotEmpty(diagnostic);
             Assert.IsFalse(target.GetComponent<Resettable>().IsRegistered);
             Assert.AreEqual(0, _resets.SubjectCount);
+        }
+
+        [Test]
+        public void StableObjectTarget_RejectsBoundOccurrenceWithoutResettable()
+        {
+            const string id = "qa.stable.no-resettable";
+            GameObject target = CreateEntry(id, _routeA, false);
+            Register(_ownerA, target);
+            StableObjectReference reference = StableObjectReference.ForRoute(Id(id), _routeA);
+
+            Assert.IsFalse(ResetTargetResolver.TryResolveStableObjectSubject(
+                _bindings, _resets, reference, out _, out string diagnostic));
+            StringAssert.Contains("without a Resettable", diagnostic);
+        }
+
+        [Test]
+        public void StableCompositionTarget_ResolvesMembersOnBoundOccurrence()
+        {
+            const string id = "qa.stable.composition";
+            GameObject root = Create(id);
+            ObjectEntryDeclaration declaration = root.AddComponent<ObjectEntryDeclaration>();
+            declaration.ConfigureForQa(Id(id), ObjectEntryRequiredness.Required);
+            ResetComposition composition = root.AddComponent<ResetComposition>();
+            Resettable member = AddResettable(root.transform, "Member");
+            SetExplicitMembers(composition, member);
+            var ownerRoots = new[] { root };
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, ownerRoots, out string bindingDiagnostic), bindingDiagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out bindingDiagnostic), bindingDiagnostic);
+            Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, ownerRoots, "test", "composition", out string resetDiagnostic), resetDiagnostic);
+            StableObjectReference reference = StableObjectReference.ForRoute(Id(id), _routeA);
+
+            Assert.IsTrue(ResetTargetResolver.TryResolveStableCompositionSubjects(
+                _bindings, _resets, reference, new[] { _ownerA }, out IReadOnlyList<ResetSubjectId> ids,
+                out _, out string diagnostic), diagnostic);
+            CollectionAssert.AreEqual(new[] { member.RuntimeSubjectId }, ids);
+        }
+
+        [Test]
+        public void StableCompositionTarget_RejectsBoundOccurrenceWithoutComposition()
+        {
+            const string id = "qa.stable.no-composition";
+            GameObject root = CreateEntry(id, _routeA, true);
+            Register(_ownerA, root);
+            StableObjectReference reference = StableObjectReference.ForRoute(Id(id), _routeA);
+
+            Assert.IsFalse(ResetTargetResolver.TryResolveStableCompositionSubjects(
+                _bindings, _resets, reference, new[] { _ownerA }, out _, out _, out string diagnostic));
+            StringAssert.Contains("without a ResetComposition", diagnostic);
+        }
+
+        [Test]
+        public void StableCompositionTarget_ReloadResolvesNewPhysicalOccurrenceAndMembers()
+        {
+            const string id = "qa.stable.composition-reload";
+            StableObjectReference reference = StableObjectReference.ForRoute(Id(id), _routeA);
+            GameObject firstRoot = Create(id);
+            ObjectEntryDeclaration declaration = firstRoot.AddComponent<ObjectEntryDeclaration>();
+            declaration.ConfigureForQa(Id(id), ObjectEntryRequiredness.Required);
+            ResetComposition firstComposition = firstRoot.AddComponent<ResetComposition>();
+            Resettable firstMember = AddResettable(firstRoot.transform, "FirstMember");
+            SetExplicitMembers(firstComposition, firstMember);
+            RegisterStableCompositionOccurrence(firstRoot, "first");
+            Assert.IsTrue(ResetTargetResolver.TryResolveStableCompositionSubjects(
+                _bindings, _resets, reference, new[] { _ownerA }, out IReadOnlyList<ResetSubjectId> firstIds,
+                out _, out string firstDiagnostic), firstDiagnostic);
+
+            Assert.IsTrue(_resetRegistration.TryReleaseOwner(_ownerA, "test", "unload", out string resetRelease), resetRelease);
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out string bindingRelease), bindingRelease);
+            Assert.IsFalse(ResetTargetResolver.TryResolveStableCompositionSubjects(
+                _bindings, _resets, reference, new[] { _ownerA }, out _, out _, out _));
+
+            GameObject secondRoot = Create(id);
+            ObjectEntryDeclaration secondDeclaration = secondRoot.AddComponent<ObjectEntryDeclaration>();
+            secondDeclaration.ConfigureForQa(Id(id), ObjectEntryRequiredness.Required);
+            ResetComposition secondComposition = secondRoot.AddComponent<ResetComposition>();
+            Resettable secondMember = AddResettable(secondRoot.transform, "SecondMember");
+            SetExplicitMembers(secondComposition, secondMember);
+            RegisterStableCompositionOccurrence(secondRoot, "reload");
+            Assert.IsTrue(ResetTargetResolver.TryResolveStableCompositionSubjects(
+                _bindings, _resets, reference, new[] { _ownerA }, out IReadOnlyList<ResetSubjectId> secondIds,
+                out _, out string secondDiagnostic), secondDiagnostic);
+
+            Assert.AreNotEqual(firstIds[0], secondIds[0]);
+            CollectionAssert.AreEqual(new[] { secondMember.RuntimeSubjectId }, secondIds);
         }
 
         [Test]
@@ -187,10 +271,12 @@ namespace Immersive.Framework.Reset.Tests
         {
             Resettable resettable = CreateEntry("qa.stable.target-kinds", _routeA, true).GetComponent<Resettable>();
             ResetComposition composition = Create("Composition").AddComponent<ResetComposition>();
-            Assert.AreEqual(ResetTargetKind.Object, ResetTarget.ForObject(resettable).Kind);
-            Assert.AreEqual(ResetTargetKind.Composition, ResetTarget.ForComposition(composition).Kind);
-            Assert.AreEqual(ResetTargetKind.StableReference,
-                ResetTarget.ForStableReference(StableObjectReference.ForEntry(Id("qa.stable.target-kinds"))).Kind);
+            Assert.AreEqual(ResetTargetKind.Object, ResetTarget.ForObject(ResetObjectTarget.Direct(resettable)).Kind);
+            Assert.AreEqual(ResetReferenceMode.Stable, ResetTarget.ForObject(
+                ResetObjectTarget.Stable(StableObjectReference.ForEntry(Id("qa.stable.target-kinds")))).ObjectTarget.ReferenceMode);
+            Assert.AreEqual(ResetTargetKind.Composition, ResetTarget.ForComposition(ResetCompositionTarget.Direct(composition)).Kind);
+            Assert.AreEqual(ResetReferenceMode.Stable, ResetTarget.ForComposition(
+                ResetCompositionTarget.Stable(StableObjectReference.ForEntry(Id("qa.stable.target-kinds")))).CompositionTarget.ReferenceMode);
         }
 
         [Test]
@@ -251,6 +337,25 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(_bindings.TryCommitOwner(owner, out string commitDiagnostic), commitDiagnostic);
         }
 
+        private void RegisterStableCompositionOccurrence(GameObject root, string reason)
+        {
+            var roots = new[] { root };
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, roots, out string bindingDiagnostic), bindingDiagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out bindingDiagnostic), bindingDiagnostic);
+            Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, roots, "test", reason, out string resetDiagnostic), resetDiagnostic);
+        }
+
+        private static void SetExplicitMembers(ResetComposition composition, params Resettable[] members)
+        {
+            var serialized = new SerializedObject(composition);
+            serialized.FindProperty("memberMode").enumValueIndex = (int)ResetCompositionMemberMode.ExplicitMembers;
+            SerializedProperty list = serialized.FindProperty("explicitMembers");
+            list.arraySize = members.Length;
+            for (int index = 0; index < members.Length; index++)
+                list.GetArrayElementAtIndex(index).objectReferenceValue = members[index];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private GameObject CreateEntry(string id, RouteAsset route, bool addResettable)
         {
             GameObject value = Create(id);
@@ -269,6 +374,13 @@ namespace Immersive.Framework.Reset.Tests
             var value = new GameObject(objectName);
             _objects.Add(value);
             return value;
+        }
+
+        private static Resettable AddResettable(Transform parent, string objectName)
+        {
+            var value = new GameObject(objectName);
+            value.transform.SetParent(parent, false);
+            return value.AddComponent<Resettable>();
         }
 
         private RouteAsset CreateRoute(string routeId)

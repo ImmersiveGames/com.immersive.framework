@@ -1,5 +1,4 @@
 using Immersive.Framework.Editor.Common;
-using Immersive.Framework.Reset;
 using Immersive.Framework.Reset.Unity;
 using UnityEditor;
 using UnityEngine;
@@ -15,11 +14,6 @@ namespace Immersive.Framework.Editor.Reset
         private static readonly GUIContent CaptureOnEnableLabel = new GUIContent(
             "Capture Baseline On Enable",
             "When enabled, the baseline below is captured from the target Transform every time the Participant becomes enabled.");
-        private static readonly GUIContent RequirednessLabel = new GUIContent(
-            "Requiredness",
-            "Required failures block the Subject reset result. Optional failures follow the runtime optional-participant policy.");
-        private static readonly GUIContent OrderLabel = new GUIContent("Order", "Lower values execute first.");
-
         private SerializedProperty _participantId, _requiredness, _order, _displayName, _source, _reason;
         private SerializedProperty _targetTransform, _captureOnEnable, _resetPosition, _resetRotation, _resetScale, _baselinePosition, _baselineRotation, _baselineScale;
         private bool _showBaseline, _showAdvanced, _showDiagnostics;
@@ -35,21 +29,21 @@ namespace Immersive.Framework.Editor.Reset
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
-
-            FrameworkAuthoringInspectorGui.ProductHeader("Transform Reset Participant", string.Empty);
+            UnityResetParticipantBehaviour participant = (UnityResetParticipantBehaviour)target;
+            UnityResetParticipantAuthoringContext context = UnityResetParticipantEditorUtility.ResolveContext(participant);
 
             DrawConfiguration();
             DrawBaseline();
-            DrawConfigurationStatus();
-            DrawActions();
+            DrawConfigurationStatus(context);
+            DrawActions(context);
             UnityResetParticipantEditorUtility.DrawIdentityAndDiagnostics(
-                (UnityResetParticipantBehaviour)target,
+                context,
                 _participantId,
                 _source,
                 _reason,
+                _requiredness,
                 ref _showAdvanced,
-                ref _showDiagnostics,
-                _displayName);
+                ref _showDiagnostics);
 
             serializedObject.ApplyModifiedProperties();
         }
@@ -65,9 +59,7 @@ namespace Immersive.Framework.Editor.Reset
             EditorGUILayout.PropertyField(_resetRotation, new GUIContent("Rotation"));
             EditorGUILayout.PropertyField(_resetScale, new GUIContent("Scale"));
 
-            EditorGUILayout.LabelField("Execution", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(_requiredness, RequirednessLabel);
-            EditorGUILayout.PropertyField(_order, OrderLabel);
+            UnityResetParticipantEditorUtility.DrawExecution(_displayName, _requiredness, _order);
 
             if (!_resetPosition.boolValue && !_resetRotation.boolValue && !_resetScale.boolValue)
             {
@@ -82,23 +74,32 @@ namespace Immersive.Framework.Editor.Reset
             using (new EditorGUI.DisabledScope(true)) { EditorGUILayout.PropertyField(_baselinePosition); EditorGUILayout.PropertyField(_baselineRotation); EditorGUILayout.PropertyField(_baselineScale); }
         }
 
-        private void DrawConfigurationStatus()
+        private void DrawConfigurationStatus(UnityResetParticipantAuthoringContext context)
         {
             FrameworkAuthoringInspectorGui.Section("Configuration Status");
-            bool ready = !string.IsNullOrWhiteSpace(_participantId.stringValue) &&
-                _requiredness.intValue != (int)ResetParticipantRequiredness.Unknown &&
+            bool ready = UnityResetParticipantEditorUtility.ValidateCommon(context, _participantId, _requiredness, out string issue) &&
                 (_resetPosition.boolValue || _resetRotation.boolValue || _resetScale.boolValue);
             FrameworkAuthoringInspectorGui.Status(ready ? "Ready" : "Incomplete");
+            if (!ready && !string.IsNullOrWhiteSpace(issue))
+                EditorGUILayout.HelpBox(issue, MessageType.Warning);
         }
 
-        private void DrawActions()
+        private void DrawActions(UnityResetParticipantAuthoringContext context)
         {
             FrameworkAuthoringInspectorGui.Section("Actions");
             using (new EditorGUI.DisabledScope(targets.Length != 1))
             {
                 if (GUILayout.Button("Capture Current Transform As Baseline")) CaptureCurrentBaseline();
-                if (GUILayout.Button("Generate Missing ID")) { Undo.RecordObject(target, "Generate Reset Participant ID"); if (ResetAuthoringIdentityUtility.GenerateMissingParticipantId(_participantId)) { serializedObject.ApplyModifiedPropertiesWithoutUndo(); ResetAuthoringIdentityUtility.RecordPrefabModification(target); } }
-                if (GUILayout.Button("Validate Participant")) ValidateTransformParticipant();
+                if (context.UsesAdapter && GUILayout.Button("Generate Missing ID"))
+                {
+                    Undo.RecordObject(target, "Generate Reset Participant ID");
+                    if (ResetAuthoringIdentityUtility.GenerateMissingParticipantId(_participantId))
+                    {
+                        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                        ResetAuthoringIdentityUtility.RecordPrefabModification(target);
+                    }
+                }
+                if (GUILayout.Button("Validate Participant")) ValidateTransformParticipant(context);
             }
             if (!string.IsNullOrWhiteSpace(_validationMessage)) EditorGUILayout.HelpBox(_validationMessage, _validationMessageType);
         }
@@ -114,9 +115,9 @@ namespace Immersive.Framework.Editor.Reset
             serializedObject.ApplyModifiedPropertiesWithoutUndo(); ResetAuthoringIdentityUtility.RecordPrefabModification(target);
         }
 
-        private void ValidateTransformParticipant()
+        private void ValidateTransformParticipant(UnityResetParticipantAuthoringContext context)
         {
-            if (!UnityResetParticipantEditorUtility.ValidateCommon(_participantId, _requiredness, out string issue)) { SetValidation(issue, MessageType.Error); return; }
+            if (!UnityResetParticipantEditorUtility.ValidateCommon(context, _participantId, _requiredness, out string issue)) { SetValidation(issue, MessageType.Error); return; }
             if (_targetTransform.objectReferenceValue == null) { SetValidation("Target is missing. The runtime falls back to this component Transform, but assign a Target to make authoring explicit.", MessageType.Warning); return; }
             if (!_resetPosition.boolValue && !_resetRotation.boolValue && !_resetScale.boolValue) { SetValidation("No restore channels are selected. Reset will be a no-op.", MessageType.Warning); return; }
             SetValidation("Authoring evidence is valid. Subject discovery and runtime registration are runtime-dependent.", MessageType.Info);

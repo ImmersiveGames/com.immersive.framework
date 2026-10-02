@@ -1,8 +1,10 @@
 using System;
 using Immersive.Framework.ActivityRestart;
-using Immersive.Framework.ObjectReset;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.Reset;
 using Immersive.Framework.Reset.Unity;
+using Immersive.Framework.RuntimeContent;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -13,123 +15,51 @@ namespace Immersive.Framework.Editor.Validation
     {
         internal static void ValidateOpenScenes(FrameworkAuthoringValidationReport report)
         {
-            if (report == null)
-            {
-                return;
-            }
-
-            ValidateOpenSceneObjectResetGroupTriggers(report);
+            if (report == null) return;
             ValidateOpenSceneActivityRestartTriggers(report);
             ValidateOpenSceneResetRequestTriggers(report);
-        }
-
-        private static void ValidateOpenSceneObjectResetGroupTriggers(FrameworkAuthoringValidationReport report)
-        {
-            ObjectResetGroupTrigger[] triggers = Object.FindObjectsByType<ObjectResetGroupTrigger>(FindObjectsInactive.Include);
-            int scannedCount = 0;
-
-            if (triggers != null)
-            {
-                for (int i = 0; i < triggers.Length; i++)
-                {
-                    var trigger = triggers[i];
-                    if (!IsLoadedSceneComponent(trigger))
-                    {
-                        continue;
-                    }
-
-                    scannedCount++;
-                    ValidateObjectResetGroupTrigger(report, trigger);
-                }
-            }
-
-            if (scannedCount == 0)
-            {
-                report.AddInfo("No scene-authored Object Reset Group Trigger components were found in loaded scenes.", null);
-                return;
-            }
-
-            report.AddInfo($"Object Reset Group Trigger authoring validation scanned triggers='{scannedCount}'.", null);
         }
 
         private static void ValidateOpenSceneActivityRestartTriggers(FrameworkAuthoringValidationReport report)
         {
             ActivityRestartTrigger[] triggers = Object.FindObjectsByType<ActivityRestartTrigger>(FindObjectsInactive.Include);
             int scannedCount = 0;
-
             if (triggers != null)
             {
-                for (int i = 0; i < triggers.Length; i++)
+                for (int index = 0; index < triggers.Length; index++)
                 {
-                    var trigger = triggers[i];
-                    if (!IsLoadedSceneComponent(trigger))
-                    {
-                        continue;
-                    }
-
+                    ActivityRestartTrigger trigger = triggers[index];
+                    if (!IsLoadedSceneComponent(trigger)) continue;
                     scannedCount++;
                     ValidateActivityRestartTrigger(report, trigger);
                 }
             }
 
             if (scannedCount == 0)
-            {
                 report.AddInfo("No scene-authored Activity Restart Trigger components were found in loaded scenes.", null);
-                return;
-            }
-
-            report.AddInfo($"Activity Restart Trigger authoring validation scanned triggers='{scannedCount}'.", null);
-        }
-
-        private static void ValidateObjectResetGroupTrigger(
-            FrameworkAuthoringValidationReport report,
-            ObjectResetGroupTrigger trigger)
-        {
-            if (trigger == null)
-            {
-                return;
-            }
-
-            var serializedObject = new SerializedObject(trigger);
-            var selectionProperty = serializedObject.FindProperty("selection");
-            ValidateResetSelectionConfig(report, selectionProperty, trigger, "Object Reset Group Trigger");
+            else
+                report.AddInfo($"Activity Restart Trigger authoring validation scanned triggers='{scannedCount}'.", null);
         }
 
         private static void ValidateActivityRestartTrigger(
             FrameworkAuthoringValidationReport report,
             ActivityRestartTrigger trigger)
         {
-            if (trigger == null)
-            {
-                return;
-            }
-
+            if (trigger == null) return;
             var serializedObject = new SerializedObject(trigger);
-            var targetActivityProperty = serializedObject.FindProperty("targetActivity");
-            var useCurrentActivityWhenTargetMissingProperty = serializedObject.FindProperty("useCurrentActivityWhenTargetMissing");
-            var requireTargetActivityIsCurrentProperty = serializedObject.FindProperty("requireTargetActivityIsCurrent");
-            var resetTargetProperty = serializedObject.FindProperty("resetTarget");
+            SerializedProperty targetActivity = serializedObject.FindProperty("targetActivity");
+            SerializedProperty useCurrent = serializedObject.FindProperty("useCurrentActivityWhenTargetMissing");
+            SerializedProperty requireCurrent = serializedObject.FindProperty("requireTargetActivityIsCurrent");
+            bool hasTargetActivity = targetActivity != null && targetActivity.objectReferenceValue != null;
+            bool useCurrentWhenMissing = useCurrent == null || useCurrent.boolValue;
+            bool requireTargetIsCurrent = requireCurrent == null || requireCurrent.boolValue;
 
-            bool hasTargetActivity = targetActivityProperty != null && targetActivityProperty.objectReferenceValue != null;
-            bool useCurrentActivityWhenTargetMissing = useCurrentActivityWhenTargetMissingProperty == null || useCurrentActivityWhenTargetMissingProperty.boolValue;
-            bool requireTargetActivityIsCurrent = requireTargetActivityIsCurrentProperty == null || requireTargetActivityIsCurrentProperty.boolValue;
+            if (!hasTargetActivity && !useCurrentWhenMissing)
+                report.AddError("Activity Restart Trigger has no Target Activity and Use Current Activity When Target Missing is disabled.", trigger);
+            if (hasTargetActivity && !requireTargetIsCurrent)
+                report.AddWarning("Activity Restart Trigger targets an explicit Activity without requiring it to be current.", trigger);
 
-            if (!hasTargetActivity && !useCurrentActivityWhenTargetMissing)
-            {
-                report.AddError(
-                    "Activity Restart Trigger has no Target Activity and Use Current Activity When Target Missing is disabled. The restart cannot resolve an Activity target.",
-                    trigger);
-            }
-
-            if (hasTargetActivity && !requireTargetActivityIsCurrent)
-            {
-                report.AddWarning(
-                    "Activity Restart Trigger targets an explicit Activity without requiring it to be current. This can act like an Activity switch; keep Require Target Activity Is Current enabled for restart semantics unless this is deliberate.",
-                    trigger);
-            }
-
-            ValidateResetTarget(report, resetTargetProperty, trigger, "Activity Restart Trigger");
-            ValidateTriggerStacking(report, trigger);
+            ValidateResetTarget(report, serializedObject.FindProperty("resetTarget"), trigger, "Activity Restart Trigger");
         }
 
         private static void ValidateOpenSceneResetRequestTriggers(FrameworkAuthoringValidationReport report)
@@ -154,11 +84,11 @@ namespace Immersive.Framework.Editor.Validation
 
         private static void ValidateResetTarget(
             FrameworkAuthoringValidationReport report,
-            SerializedProperty targetProperty,
+            SerializedProperty target,
             Object context,
             string label)
         {
-            SerializedProperty kindProperty = targetProperty?.FindPropertyRelative("kind");
+            SerializedProperty kindProperty = target?.FindPropertyRelative("kind");
             if (kindProperty == null)
             {
                 report.AddError($"{label} has no semantic Reset Target.", context);
@@ -168,158 +98,150 @@ namespace Immersive.Framework.Editor.Validation
             ResetTargetKind kind = (ResetTargetKind)kindProperty.intValue;
             if (!Enum.IsDefined(typeof(ResetTargetKind), kind) || kind == ResetTargetKind.Unknown)
             {
-                report.AddError($"{label} has an invalid Reset Target kind.", context);
+                report.AddError($"{label} has an invalid or Unknown Reset Target kind.", context);
                 return;
             }
 
-            if (kind == ResetTargetKind.Object
-                && targetProperty.FindPropertyRelative("resettable")?.objectReferenceValue == null)
-                report.AddError($"{label} targets Object but has no Resettable reference.", context);
-
-            if (kind == ResetTargetKind.Composition
-                && targetProperty.FindPropertyRelative("composition")?.objectReferenceValue == null)
-                report.AddError($"{label} targets Composition but has no ResetComposition reference.", context);
+            SerializedProperty objectTarget = target.FindPropertyRelative("objectTarget");
+            SerializedProperty compositionTarget = target.FindPropertyRelative("compositionTarget");
+            if (kind == ResetTargetKind.Object)
+            {
+                ValidateObjectTarget(report, objectTarget, context, label);
+                if (HasCompositionPayload(compositionTarget))
+                    report.AddError($"{label} has stale Composition payload while targeting Object.", context);
+            }
+            else if (kind == ResetTargetKind.Composition)
+            {
+                ValidateCompositionTarget(report, compositionTarget, context, label);
+                if (HasObjectPayload(objectTarget))
+                    report.AddError($"{label} has stale Object payload while targeting Composition.", context);
+            }
+            else if (HasObjectPayload(objectTarget) || HasCompositionPayload(compositionTarget))
+            {
+                report.AddError($"{label} has stale Object/Composition payload while targeting {kind}.", context);
+            }
         }
 
-        private static void ValidateResetSelectionConfig(
+        private static void ValidateObjectTarget(FrameworkAuthoringValidationReport report, SerializedProperty target, Object context, string label)
+        {
+            ValidateReferenceTarget(report, target, context, label, "directResettable", "Object/Direct requires a Resettable reference.");
+        }
+
+        private static void ValidateCompositionTarget(FrameworkAuthoringValidationReport report, SerializedProperty target, Object context, string label)
+        {
+            ValidateReferenceTarget(report, target, context, label, "directComposition", "Composition/Direct requires a ResetComposition reference.");
+        }
+
+        private static void ValidateReferenceTarget(
             FrameworkAuthoringValidationReport report,
-            SerializedProperty resetSelectionProperty,
+            SerializedProperty target,
             Object context,
-            string label)
+            string label,
+            string directField,
+            string directMissingMessage)
         {
-            if (resetSelectionProperty == null)
+            if (target == null)
             {
-                report.AddError($"{label} has no Reset Selection config.", context);
+                report.AddError($"{label} has no typed target payload.", context);
                 return;
             }
 
-            var modeProperty = resetSelectionProperty.FindPropertyRelative("mode");
-            var explicitSubjectsProperty = resetSelectionProperty.FindPropertyRelative("explicitSubjects");
-            var allowNoSubjectsProperty = resetSelectionProperty.FindPropertyRelative("allowNoSubjects");
-            ResetSelectionMode mode = ResolveResetSelectionMode(modeProperty);
-            bool allowNoSubjects = allowNoSubjectsProperty != null && allowNoSubjectsProperty.boolValue;
-            int explicitSubjectCount = CountArray(explicitSubjectsProperty);
-
-            if (!Enum.IsDefined(typeof(ResetSelectionMode), mode) || mode == ResetSelectionMode.Unknown)
+            SerializedProperty modeProperty = target.FindPropertyRelative("referenceMode");
+            ResetReferenceMode mode = modeProperty != null ? (ResetReferenceMode)modeProperty.intValue : (ResetReferenceMode)(-1);
+            if (!Enum.IsDefined(typeof(ResetReferenceMode), mode))
             {
-                report.AddError(
-                    $"{label} has invalid Reset Selection Mode. Choose ExplicitSubjects, CurrentActivitySubjects, CurrentRouteSubjects, CurrentRouteAndActivitySubjects or AllCurrentSubjects.",
-                    context);
+                report.AddError($"{label} has an invalid Reference Mode.", context);
                 return;
             }
 
-            if (mode == ResetSelectionMode.ExplicitSubjects)
+            SerializedProperty direct = target.FindPropertyRelative(directField);
+            SerializedProperty stable = target.FindPropertyRelative("stableReference");
+            if (mode == ResetReferenceMode.Direct)
             {
-                if (explicitSubjectCount == 0 && !allowNoSubjects)
-                {
-                    report.AddError(
-                        $"{label} uses ExplicitSubjects but has no explicit Reset Subjects and Allow No Subjects is disabled.",
-                        context);
-                }
-
-                ValidateResetSubjectReferences(report, explicitSubjectsProperty, context, $"{label} explicit subject");
-            }
-            else if (explicitSubjectCount > 0)
-            {
-                report.AddWarning(
-                    $"{label} uses scoped Reset Selection Mode '{mode}', so explicit Reset Subjects are ignored. Remove explicit subjects or switch to ExplicitSubjects.",
-                    context);
-            }
-
-            if (mode == ResetSelectionMode.CurrentActivitySubjects)
-            {
-                report.AddInfo(
-                    "CurrentActivity includes Activity-owned subjects and Route-owned subjects with effective Activity membership. Activity Restart further filters out Activity-owned content recreated by Clear/Reenter.",
-                    context);
-            }
-        }
-
-        private static void ValidateResetSubjectReferences(
-            FrameworkAuthoringValidationReport report,
-            SerializedProperty explicitSubjectsProperty,
-            Object context,
-            string label)
-        {
-            if (explicitSubjectsProperty == null || !explicitSubjectsProperty.isArray)
-            {
+                if (direct == null || direct.objectReferenceValue == null)
+                    report.AddError($"{label}: {directMissingMessage}", context);
+                if (HasStableReferencePayload(stable))
+                    report.AddError($"{label} has a stale Stable reference while using Direct mode.", context);
                 return;
             }
 
-            for (int i = 0; i < explicitSubjectsProperty.arraySize; i++)
-            {
-                var referenceProperty = explicitSubjectsProperty.GetArrayElementAtIndex(i);
-                if (referenceProperty == null)
-                {
-                    report.AddError($"{label} index '{i}' is null.", context);
-                    continue;
-                }
-
-                var adapterProperty = referenceProperty.FindPropertyRelative("subjectAdapter");
-                var subjectIdProperty = referenceProperty.FindPropertyRelative("subjectId");
-                bool hasAdapter = adapterProperty != null && adapterProperty.objectReferenceValue != null;
-                string subjectId = subjectIdProperty != null ? subjectIdProperty.stringValue : string.Empty;
-
-                if (!hasAdapter && string.IsNullOrWhiteSpace(subjectId))
-                {
-                    report.AddError(
-                        $"{label} index '{i}' has no UnityResetSubjectAdapter and no ResetSubjectId text.",
-                        context);
-                }
-
-                if (hasAdapter && !string.IsNullOrWhiteSpace(subjectId))
-                {
-                    report.AddWarning(
-                        $"{label} index '{i}' has both UnityResetSubjectAdapter and ResetSubjectId text. The adapter wins at runtime; remove the extra id unless this is deliberate documentation.",
-                        context);
-                }
-            }
+            if (direct != null && direct.objectReferenceValue != null)
+                report.AddError($"{label} has a stale direct reference while using Stable mode.", context);
+            ValidateStableReference(report, stable, context, label);
         }
 
-        private static void ValidateTriggerStacking(
-            FrameworkAuthoringValidationReport report,
-            ActivityRestartTrigger trigger)
+        private static void ValidateStableReference(FrameworkAuthoringValidationReport report, SerializedProperty stable, Object context, string label)
         {
-            if (trigger == null)
+            if (stable == null)
             {
+                report.AddError($"{label} has no StableObjectReference payload.", context);
                 return;
             }
 
-            if (trigger.GetComponent<ObjectResetGroupTrigger>() != null)
+            string idText = stable.FindPropertyRelative("objectEntryIdText")?.stringValue ?? string.Empty;
+            try
             {
-                report.AddWarning(
-                    "Activity Restart Trigger is on the same GameObject as ObjectResetGroupTrigger. This is valid only if different UI buttons call different components; a Restart button should call only ActivityRestartTrigger.RequestActivityRestart().",
-                    trigger);
+                ObjectEntryId.From(idText.Trim());
+            }
+            catch (ArgumentException)
+            {
+                report.AddError($"{label} Stable reference requires a valid ObjectEntryId.", context);
+                return;
             }
 
-            if (trigger.GetComponent<ObjectResetTrigger>() != null)
+            SerializedProperty selector = stable.FindPropertyRelative("ownerSelectorKind");
+            StableObjectOwnerSelectorKind kind = selector != null
+                ? (StableObjectOwnerSelectorKind)selector.intValue
+                : (StableObjectOwnerSelectorKind)(-1);
+            SerializedProperty route = stable.FindPropertyRelative("routeOwner");
+            SerializedProperty activity = stable.FindPropertyRelative("activityOwner");
+            if (!Enum.IsDefined(typeof(StableObjectOwnerSelectorKind), kind))
             {
-                report.AddWarning(
-                    "Activity Restart Trigger is on the same GameObject as ObjectResetTrigger. This is valid only if different UI buttons call different components; a Restart button should not also call ObjectResetTrigger.RequestObjectReset().",
-                    trigger);
+                report.AddError($"{label} Stable reference has an invalid owner selector.", context);
+                return;
+            }
+
+            if (kind == StableObjectOwnerSelectorKind.Route)
+            {
+                RouteAsset routeAsset = route != null ? route.objectReferenceValue as RouteAsset : null;
+                if (routeAsset == null || !routeAsset.HasValidRouteId)
+                    report.AddError($"{label} Stable reference Route selector requires a RouteAsset with a valid RouteId.", context);
+                if (activity != null && activity.objectReferenceValue != null)
+                    report.AddError($"{label} Stable reference has an inactive Activity selector asset.", context);
+            }
+            else if (kind == StableObjectOwnerSelectorKind.Activity)
+            {
+                ActivityAsset activityAsset = activity != null ? activity.objectReferenceValue as ActivityAsset : null;
+                if (activityAsset == null || !activityAsset.HasValidActivityId)
+                    report.AddError($"{label} Stable reference Activity selector requires an ActivityAsset with a valid ActivityId.", context);
+                if (route != null && route.objectReferenceValue != null)
+                    report.AddError($"{label} Stable reference has an inactive Route selector asset.", context);
+            }
+            else if ((route != null && route.objectReferenceValue != null)
+                || (activity != null && activity.objectReferenceValue != null))
+            {
+                report.AddError($"{label} Stable reference has an owner asset while the selector is Unspecified.", context);
             }
         }
 
-        private static ResetSelectionMode ResolveResetSelectionMode(SerializedProperty property)
-        {
-            if (property == null)
-            {
-                return ResetSelectionMode.Unknown;
-            }
+        private static bool HasObjectPayload(SerializedProperty target) => target != null
+            && (target.FindPropertyRelative("directResettable")?.objectReferenceValue != null
+                || HasStableReferencePayload(target.FindPropertyRelative("stableReference")));
 
-            return (ResetSelectionMode)property.intValue;
-        }
+        private static bool HasCompositionPayload(SerializedProperty target) => target != null
+            && (target.FindPropertyRelative("directComposition")?.objectReferenceValue != null
+                || HasStableReferencePayload(target.FindPropertyRelative("stableReference")));
 
-        private static int CountArray(SerializedProperty property)
-        {
-            return property != null && property.isArray ? property.arraySize : 0;
-        }
+        private static bool HasStableReferencePayload(SerializedProperty stable) => stable != null
+            && (!string.IsNullOrWhiteSpace(stable.FindPropertyRelative("objectEntryIdText")?.stringValue)
+                || (stable.FindPropertyRelative("ownerSelectorKind")?.intValue ?? (int)StableObjectOwnerSelectorKind.Unspecified)
+                    != (int)StableObjectOwnerSelectorKind.Unspecified
+                || (stable.FindPropertyRelative("routeOwner")?.objectReferenceValue != null)
+                || (stable.FindPropertyRelative("activityOwner")?.objectReferenceValue != null));
 
-        private static bool IsLoadedSceneComponent(Component component)
-        {
-            return component != null
-                && component.gameObject != null
-                && component.gameObject.scene.IsValid()
-                && component.gameObject.scene.isLoaded;
-        }
+        private static bool IsLoadedSceneComponent(Component component) => component != null
+            && component.gameObject != null
+            && component.gameObject.scene.IsValid()
+            && component.gameObject.scene.isLoaded;
     }
 }

@@ -139,7 +139,9 @@ ResetComposition
     semantic/structural set of Resettables
         ↓
 ResetTarget
-    Object | Composition | CurrentActivity | CurrentRoute | StableReference
+    Object / Direct or Stable
+    Composition / Direct or Stable
+    CurrentActivity | CurrentRoute
         ↓
 owner-aware / membership-aware resolution
         ↓
@@ -282,48 +284,77 @@ The exact public type names are implementation work, but the conceptual separati
 
 Normal request authoring targets gameplay intent rather than registry mechanics.
 
-The target model is:
+The semantic target kind is independent from its addressing mode:
 
 ```text
-Object
-Composition
+ResetTarget
+├─ Object
+│  └─ ResetObjectTarget
+│     ├─ Direct -> Resettable
+│     └─ Stable -> StableObjectReference
+├─ Composition
+│  └─ ResetCompositionTarget
+│     ├─ Direct -> ResetComposition
+│     └─ Stable -> StableObjectReference
 CurrentActivity
 CurrentRoute
-StableReference
 ```
+
+`ResetTargetKind.Unknown` is a default/serialization sentinel. It is never valid
+authoring and the resolver rejects it explicitly. `StableReference` is not a
+semantic target kind; it is one addressing mode available to Object and
+Composition.
 
 ### 9.1 Object
 
-Targets one Resettable through a direct typed reference when the authoring boundary permits it.
+`Object/Direct` targets one Resettable through a typed reference. `Object/Stable`
+uses the Object Entry stable addressing boundary when a direct reference is not
+available.
 
 ### 9.2 Composition
 
-Targets all Resettables resolved by one ResetComposition.
+`Composition/Direct` targets all Resettables resolved by one typed
+ResetComposition reference. `Composition/Stable` resolves the current physical
+GameObject occurrence through StableObjectBinding, requires ResetComposition on
+that same GameObject and resolves its current members. It creates no composition
+identity or registry.
 
 ### 9.3 CurrentActivity
 
 Targets Resettables whose effective Reset membership includes the current Activity.
 
 It does not mean only objects physically owned by Activity scenes.
+It includes Activity-owned subjects in the current Activity occurrence and
+Route-owned subjects in the current Route occurrence that opt into Activity
+membership. It excludes Route membership.
 
 ### 9.4 CurrentRoute
 
-Targets Resettables whose effective Reset membership includes the current Route according to the final membership contract.
+Route is the parent Reset scope of its Activities (`Activity ⊂ Route`).
+`CurrentRoute` targets registered subjects in the current Route occurrence with
+effective Route membership, plus Route-owned subjects with effective Activity
+membership and Activity-owned subjects belonging to the current Activity
+context when one is active. Activity-owned subjects from other Activities or
+Routes are excluded. If no Activity is active, the target still includes the
+Route-owned Activity-membership subjects.
 
-### 9.5 StableReference
+Thus `CurrentActivity` is the narrower selection; `CurrentRoute` is its
+Route-scoped umbrella while remaining isolated to the current Route and its
+current Activity context. Membership never changes the subject's owner.
 
-Targets a specific Resettable across a serialization/content boundary where a direct Unity reference is not available.
+### 9.5 Stable addressing
 
-StableReference is opt-in.
-
-It carries an `ObjectEntryId` value and resolves through the generic
-`StableObjectBinding` boundary decided by IF-ADR-014. When an ID is reused under different authored owners, the reference
-may select an exact `RouteAsset` or `ActivityAsset`; the framework derives its
-stable identity and definition token. It never stores RuntimeContentOwner,
-RouteId/ActivityId text or ResetSubjectId. Resolution uses the binding's current
-physical occurrence and validates its current registered Resettable/subject.
-Zero matches fail as unavailable; multiple matches fail as ambiguous. Reset
-consumes this boundary and does not own its binding lifecycle.
+Stable addressing is opt-in for Object and Composition. It carries an
+`ObjectEntryId` and an optional exact `RouteAsset` or `ActivityAsset` selector;
+Framework derives stable identity and definition token from the typed asset.
+It never stores RuntimeContentOwner, RouteId/ActivityId text or ResetSubjectId.
+Resolution goes through the generic IF-ADR-014 StableObjectBinding boundary.
+Object/Stable requires a currently registered Resettable on the resolved
+physical GameObject and validates its registration owner against the binding.
+Composition/Stable requires ResetComposition on that same GameObject and
+resolves current members. Zero matches fail as unavailable; multiple matches
+fail as ambiguous. The content transaction owns binding lifetime; Reset does
+not.
 
 ## 10. Runtime identity
 
@@ -383,9 +414,10 @@ The distinction between an individual Object Reset product and an Object Reset G
 
 A group is a ResetComposition target, not a different kind of Reset operation.
 
-The desired product direction is one request surface capable of expressing the ResetTarget variants.
-
-Legacy `ObjectResetTrigger` and `ObjectResetGroupTrigger` remain during migration and may be deprecated after the new path is technically validated and the consumer sample is migrated.
+`ResetRequestTrigger` is the single Reset request surface and expresses the
+semantic target and its selected addressing mode. `ObjectResetTrigger`,
+`ObjectResetGroupTrigger` and `ResetSelectionConfig` are removed; no compatibility
+path or migration adapter remains.
 
 ## 15. Activity Restart
 
@@ -455,7 +487,8 @@ Those remain Advanced / Diagnostics evidence where useful.
 
 Migration is parallel and incremental.
 
-The existing Reset runtime remains operational while the new authoring path is proven.
+The existing Reset execution and owner-aware registration runtimes remain
+operational. `ResetRequestTrigger` is the only Reset request authoring path.
 
 ### RESET-035-A — target model and internal resolution
 
@@ -490,7 +523,7 @@ Prove at minimum:
 - CurrentRoute follows the defined membership contract;
 - no membership leakage across unrelated owners.
 
-**Tracking (2026-10-01):** RESET-035-C is closed and validated with membership metadata, CurrentActivity/CurrentRoute resolution, and QA coverage.
+**Tracking (2026-10-02):** RESET-035-C membership metadata and CurrentActivity/CurrentRoute resolution are implemented. The CurrentRoute umbrella contract is covered by the focused membership and resolver regressions; Unity validation remains pending under repository policy.
 
 ### RESET-035-D — ResetComposition
 
@@ -507,29 +540,28 @@ Prove:
 
 ### RESET-035-E — request surface
 
-Introduce the ResetTarget-based request surface.
+Introduce the ResetTarget-based request surface and adapt Activity Restart to
+semantic targeting. Semantic target kind remains independent from addressing
+mode.
 
-Adapt Activity Restart to semantic targeting.
-
-Keep legacy triggers during migration.
-
-**Tracking (2026-10-01):** `ResetRequestTrigger` resolves Object, Composition, CurrentActivity and CurrentRoute through `ResetTargetResolver` into the existing `ResetSelectionResolution` and `ResetExecutor` path. Object and Composition require registered members in the current Activity/Route owner context and never register implicitly. Activity Restart defaults to CurrentActivity but filters its pre-clear selection to current Route-owned subjects; CurrentActivity additionally requires effective Activity membership. This excludes Activity-owned content recreated by Clear/Reenter and avoids duplicate restoration. Focused Edit Mode contracts were added; Unity compile/import, Edit Mode execution and Activity Restart lifecycle integration QA remain pending.
+**Tracking (2026-10-02):** `ResetRequestTrigger` resolves Object, Composition, CurrentActivity and CurrentRoute through `ResetTargetResolver` into the existing `ResetSelectionResolution` and `ResetExecutor` path. Object and Composition require registered members in the current Activity/Route owner context and never register implicitly. Activity Restart defaults to CurrentActivity but filters its pre-clear selection to current Route-owned subjects; CurrentActivity additionally requires effective Activity membership. This excludes Activity-owned content recreated by Clear/Reenter and avoids duplicate restoration. CurrentRoute applies the explicit Route umbrella contract in §9.4. Focused Edit Mode contracts were added; Unity compile/import, Edit Mode execution and Activity Restart lifecycle integration QA remain pending.
 
 ### RESET-035-F — stable cross-boundary targeting
 
 Consume the accepted `StableObjectBinding` authority from IF-ADR-014 and
-implement `ResetTarget.StableReference`. The owner-aware Route/Activity content
+implement stable addressing for Object and Composition. The owner-aware Route/Activity content
 transaction creates the binding; rollback/release removes it with that owner.
-StableReference carries an `ObjectEntryId` and accepts an optional typed
+`StableObjectReference` carries an `ObjectEntryId` and accepts an optional typed
 `RouteAsset`/`ActivityAsset` owner selector. Stable identity projections are
 derived by Framework; no owner identity text is authored. It resolves to
-exactly one current physical occurrence and then to its
-currently registered Resettable/ResetSubject. It remains an exceptional target:
-prefer Object or Composition whenever a direct authored reference is suitable.
+exactly one current physical occurrence. Object/Stable then resolves the
+registered Resettable; Composition/Stable resolves ResetComposition and its
+current members. Stable addressing remains exceptional: prefer direct
+references when suitable.
 
-**Tracking (2026-10-01):** `StableObjectBindingRegistry` is host-owned and receives materialized Route/Activity roots from their existing transactions. Prepared bindings are not resolvable until the content owner commits; rollback/release removes them with that owner. It rejects ambiguity and never stores runtime Reset subject identity in the reference. `ResetTarget.StableReference` resolves through that authority and the current Resettable registration. Edit Mode tests were authored for commit visibility, resolve/missing/ambiguity/owner separation/unload-reload/current registration; static checks only were possible here. Unity compile/import and Edit Mode execution remain pending. Real application/sample use is intentionally a separate validation.
+**Tracking (2026-10-01):** `StableObjectBindingRegistry` is host-owned and receives materialized Route/Activity roots from their existing transactions. Prepared bindings are not resolvable until the content owner commits; rollback/release removes them with that owner. It rejects ambiguity and never stores runtime Reset subject identity in the reference. Stable Object/Composition addressing consumes that authority and validates the required domain component on the resolved physical GameObject. Edit Mode contracts cover commit visibility, resolve/missing/ambiguity/owner separation/unload-reload/current registration; Unity execution remains subject to repository validation policy. Real application/sample use is validated separately.
 
-**Authoring refinement:** Object Entry ID is serialized on the declaration and repeated only when a StableReference crosses an authoring boundary. Both use the shared Route/Activity explicit Generate/Copy/Regenerate pattern; StableReference supports Paste ID. Route/Activity scope and owner derive only from the admission transaction. No identity container or dual path exists. `ResetTarget` Inspector shows only the payload for its selected kind.
+**Authoring refinement:** Object Entry ID is serialized on the declaration and repeated only when stable addressing crosses an authoring boundary. The Inspector exposes Object/Direct, Object/Stable, Composition/Direct, Composition/Stable, CurrentActivity and CurrentRoute; Current* has no payload. Switching kind or reference mode clears inactive serialized payloads. Route/Activity scope and owner derive only from the admission transaction. No identity container or dual path exists.
 
 ### RESET-035-G — runtime materialization
 
@@ -543,12 +575,10 @@ After QA and consumer validation:
 
 - migrate planet-devourer;
 - deprecate/remove UnityResetSubjectAdapter normal authoring;
-- deprecate/remove ResetSubjectReference textual normal selection;
-- deprecate/remove explicit ResetSelectionConfig product authoring where replaced;
-- converge ObjectResetTrigger/ObjectResetGroupTrigger as justified;
 - update Reset-Usage.
 
-Removal is not allowed before equivalent contracts are validated.
+Removal of the remaining registration authoring is not allowed before its
+equivalent contracts are validated.
 
 ## 19. QA obligations
 
@@ -569,7 +599,7 @@ Required new evidence includes:
 - ownerless arbitrary runtime instantiation is rejected or remains unregistered explicitly;
 - CurrentActivity does not leak unrelated Route membership;
 - Cycle Reset does not automatically execute Resettable;
-- cross-boundary StableReference resolves only within its explicit identity contract.
+- cross-boundary stable Object/Composition addressing resolves only within its explicit identity contract.
 
 QA must distinguish behavioral contracts from legacy authoring structure.
 
@@ -591,19 +621,20 @@ QA must distinguish behavioral contracts from legacy authoring structure.
 - registration moves deeper into Route/Activity transaction integration;
 - ownership and Reset membership become separate concepts that tooling/documentation must present clearly;
 - cross-scene specific targeting still requires stable identity;
-- migration temporarily supports both legacy and corrective authoring paths;
+- existing UnityResetSubjectAdapter registration authoring remains for separate migration work;
 - ordering needs an explicit runtime contract rather than relying on authored ID text.
 
 ### Risks
 
-- accidental double registration while legacy and new authoring coexist;
 - incorrect membership inheritance through nested compositions;
 - cross-boundary identity becoming a second global lookup system;
 - transaction rollback gaps;
 - runtime materialization bypassing Reset registration;
 - Activity Restart resetting state that lifecycle would immediately recreate.
 
-The broader RESET-035-H legacy removal remains deferred; this authoring correction removes obsolete identity/owner serialization from the two surfaces above.
+RESET-035-H remains pending for consumer migration and the separate
+UnityResetSubjectAdapter authoring path; ObjectResetTrigger,
+ObjectResetGroupTrigger and ResetSelectionConfig have been removed in this cut.
 
 ## 21. Supersession and reconciled boundaries
 
@@ -650,12 +681,11 @@ Ownership comes from composition/materialization origin.
 Reset membership answers which semantic Reset targets include a Resettable.
 Ownership and membership are independent.
 
-ResetTarget expresses request intent:
-  Object
-  Composition
+ResetTarget expresses semantic request intent and addressing:
+  Object / Direct or Stable
+  Composition / Direct or Stable
   CurrentActivity
   CurrentRoute
-  StableReference
 
 Runtime IDs, handles and registry mechanics remain internal by default.
 
@@ -666,5 +696,5 @@ It does not infer ownership from current state during OnEnable.
 
 Cycle Reset remains a separate lifecycle-system contract.
 
-Migration preserves the existing Reset execution core until the new authoring path is proven.
+ResetRequestTrigger is the sole request surface and feeds the existing Reset execution core.
 ```

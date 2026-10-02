@@ -10,7 +10,6 @@ namespace Immersive.Framework.Reset
         Object = 10,
         Composition = 20,
         CurrentActivity = 30,
-        CurrentRoute = 40,
-        StableReference = 50
+        CurrentRoute = 40
     }
 }

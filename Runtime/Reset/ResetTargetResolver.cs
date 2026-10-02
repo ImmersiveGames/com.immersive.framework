@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Common;
+using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
@@ -15,6 +16,13 @@ namespace Immersive.Framework.Reset
         {
             string resolvedSource = source.NormalizeTextOrFallback(nameof(ResetTargetResolver));
             string resolvedReason = reason.NormalizeText();
+            if (!System.Enum.IsDefined(typeof(ResetTargetKind), target.Kind) || target.Kind == ResetTargetKind.Unknown)
+            {
+                return Failed(target.Kind, ResetSelectionResolutionStatus.RejectedInvalidRequest,
+                    ResetIssue.Error(ResetIssueKind.InvalidRequest, $"Reset target kind '{target.Kind}' is unknown or unsupported."),
+                    resolvedSource, resolvedReason, $"Reset target kind '{target.Kind}' was rejected.");
+            }
+
             if (runtimeHost == null)
             {
                 return Failed(target.Kind, ResetSelectionResolutionStatus.RejectedRuntimeUnavailable,
@@ -32,11 +40,13 @@ namespace Immersive.Framework.Reset
             switch (target.Kind)
             {
                 case ResetTargetKind.Object:
-                    return ResolveObject(runtimeHost, target.Object, resolvedSource, resolvedReason);
+                    return target.ObjectTarget.ReferenceMode == ResetReferenceMode.Direct
+                        ? ResolveObject(runtimeHost, target.ObjectTarget.DirectResettable, resolvedSource, resolvedReason)
+                        : ResolveStableObject(runtimeHost, target.ObjectTarget.StableReference, resolvedSource, resolvedReason);
                 case ResetTargetKind.Composition:
-                    return ResolveComposition(runtimeHost, target.Composition, resolvedSource, resolvedReason);
-                case ResetTargetKind.StableReference:
-                    return ResolveStableReference(runtimeHost, target.StableReference, resolvedSource, resolvedReason);
+                    return target.CompositionTarget.ReferenceMode == ResetReferenceMode.Direct
+                        ? ResolveComposition(runtimeHost, target.CompositionTarget.DirectComposition, resolvedSource, resolvedReason)
+                        : ResolveStableComposition(runtimeHost, target.CompositionTarget.StableReference, resolvedSource, resolvedReason);
                 case ResetTargetKind.CurrentActivity:
                     return ResolveCurrentActivity(runtimeHost, resolvedSource, resolvedReason);
                 case ResetTargetKind.CurrentRoute:
@@ -103,13 +113,22 @@ namespace Immersive.Framework.Reset
                 .Select(subject => subject.SubjectId).ToArray();
         }
 
-        internal static IReadOnlyList<ResetSubjectId> ResolveCurrentRouteSubjects(ResetRegistry registry, RuntimeContentOwner routeOwner)
+        internal static IReadOnlyList<ResetSubjectId> ResolveCurrentRouteSubjects(
+            ResetRegistry registry,
+            RuntimeContentOwner routeOwner,
+            RuntimeContentOwner activityOwner)
         {
             if (registry == null || !routeOwner.IsValid || routeOwner.Scope != RuntimeContentScope.Route)
                 return System.Array.Empty<ResetSubjectId>();
 
             return registry.SnapshotSubjects()
-                .Where(subject => subject.EffectiveMembership == ResetMembership.Route && subject.Owner.Equals(routeOwner))
+                .Where(subject =>
+                    (subject.Owner.Equals(routeOwner)
+                        && (subject.EffectiveMembership == ResetMembership.Route
+                            || subject.EffectiveMembership == ResetMembership.Activity))
+                    || (activityOwner.IsValid && activityOwner.Scope == RuntimeContentScope.Activity
+                        && subject.Owner.Equals(activityOwner)
+                        && subject.EffectiveMembership == ResetMembership.Activity))
                 .OrderBy(subject => subject.Owner.StableText, System.StringComparer.Ordinal)
                 .ThenBy(subject => subject.SubjectId.StableText, System.StringComparer.Ordinal)
                 .Select(subject => subject.SubjectId).ToArray();
@@ -149,7 +168,7 @@ namespace Immersive.Framework.Reset
             return true;
         }
 
-        internal static bool TryResolveStableReferenceSubject(
+        internal static bool TryResolveStableObjectSubject(
             StableObjectBindingRegistry bindings,
             ResetRegistry registry,
             StableObjectReference reference,
@@ -157,37 +176,15 @@ namespace Immersive.Framework.Reset
             out string diagnostic)
         {
             subject = default;
-            if (!reference.IsValid || !reference.TryGetObjectEntryId(out ObjectEntryId objectEntryId)
-                || !reference.TryGetOwnerSelector(out var ownerSelector, out var ownerDefinitionSelector))
+            if (!TryResolveStableBinding(bindings, reference, out StableObjectBinding binding,
+                    out ObjectEntryId objectEntryId, out diagnostic))
             {
-                diagnostic = "StableReference requires a valid ObjectEntryId and typed owner selector.";
-                return false;
-            }
-
-            if (bindings == null)
-            {
-                diagnostic = "StableReference cannot resolve because the StableObjectBinding authority is unavailable.";
-                return false;
-            }
-
-            if (!bindings.TryResolve(objectEntryId, ownerSelector, ownerDefinitionSelector,
-                    out StableObjectBinding binding, out StableObjectBindingResolutionStatus bindingStatus,
-                    out string bindingDiagnostic))
-            {
-                diagnostic = bindingDiagnostic;
-                return false;
-            }
-
-            if (bindingStatus != StableObjectBindingResolutionStatus.Resolved || binding == null
-                || binding.PhysicalObject == null)
-            {
-                diagnostic = bindingDiagnostic;
                 return false;
             }
 
             if (!binding.PhysicalObject.TryGetComponent(out Resettable resettable) || resettable == null)
             {
-                diagnostic = $"StableReference ObjectEntryId='{objectEntryId.StableText}' resolved a physical occurrence without a Resettable component.";
+                diagnostic = $"Object/Stable ObjectEntryId='{objectEntryId.StableText}' resolved a physical occurrence without a Resettable component.";
                 return false;
             }
 
@@ -198,11 +195,79 @@ namespace Immersive.Framework.Reset
                 || !subject.Owner.Equals(binding.Owner))
             {
                 subject = default;
-                diagnostic = $"StableReference ObjectEntryId='{objectEntryId.StableText}' resolved a Resettable without a current registration for the bound owner.";
+                diagnostic = $"Object/Stable ObjectEntryId='{objectEntryId.StableText}' resolved a Resettable without a current registration for the bound owner.";
                 return false;
             }
 
             diagnostic = string.Empty;
+            return true;
+        }
+
+        internal static bool TryResolveStableCompositionSubjects(
+            StableObjectBindingRegistry bindings,
+            ResetRegistry registry,
+            StableObjectReference reference,
+            IReadOnlyList<RuntimeContentOwner> currentOwners,
+            out IReadOnlyList<ResetSubjectId> subjectIds,
+            out IReadOnlyList<ResetIssue> issues,
+            out string diagnostic)
+        {
+            subjectIds = System.Array.Empty<ResetSubjectId>();
+            issues = System.Array.Empty<ResetIssue>();
+            if (!TryResolveStableBinding(bindings, reference, out StableObjectBinding binding,
+                    out ObjectEntryId objectEntryId, out diagnostic))
+                return false;
+
+            if (!binding.PhysicalObject.TryGetComponent(out ResetComposition composition) || composition == null)
+            {
+                diagnostic = $"Composition/Stable ObjectEntryId='{objectEntryId.StableText}' resolved a physical occurrence without a ResetComposition component.";
+                return false;
+            }
+
+            if (!TryResolveCompositionSubjects(registry, composition, currentOwners,
+                    out subjectIds, out issues, out diagnostic))
+            {
+                subjectIds = System.Array.Empty<ResetSubjectId>();
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool TryResolveStableBinding(
+            StableObjectBindingRegistry bindings,
+            StableObjectReference reference,
+            out StableObjectBinding binding,
+            out ObjectEntryId objectEntryId,
+            out string diagnostic)
+        {
+            binding = null;
+            objectEntryId = default;
+            if (!reference.IsValid || !reference.TryGetObjectEntryId(out objectEntryId)
+                || !reference.TryGetOwnerSelector(out FrameworkIdentityKey? ownerSelector,
+                    out RuntimeDefinitionToken? ownerDefinitionSelector))
+            {
+                diagnostic = "Stable addressing requires a valid ObjectEntryId and typed optional owner selector.";
+                return false;
+            }
+
+            if (bindings == null)
+            {
+                diagnostic = "Stable addressing cannot resolve because the StableObjectBinding authority is unavailable.";
+                return false;
+            }
+
+            if (!bindings.TryResolve(objectEntryId, ownerSelector, ownerDefinitionSelector,
+                    out binding, out StableObjectBindingResolutionStatus bindingStatus, out diagnostic))
+                return false;
+
+            if (bindingStatus != StableObjectBindingResolutionStatus.Resolved || binding == null
+                || binding.PhysicalObject == null)
+            {
+                diagnostic = "Stable addressing did not resolve one live physical occurrence.";
+                return false;
+            }
+
             return true;
         }
 
@@ -271,13 +336,13 @@ namespace Immersive.Framework.Reset
             return ResetSelectionResolution.SucceededResult(ResetSelectionMode.ExplicitSubjects, ids, issues, source, reason, diagnostic);
         }
 
-        private static ResetSelectionResolution ResolveStableReference(
+        private static ResetSelectionResolution ResolveStableObject(
             FrameworkRuntimeHost host,
             StableObjectReference reference,
             string source,
             string reason)
         {
-            if (!TryResolveStableReferenceSubject(
+            if (!TryResolveStableObjectSubject(
                     host.StableObjectBindings,
                     host.ResetRegistry,
                     reference,
@@ -287,9 +352,9 @@ namespace Immersive.Framework.Reset
                 ResetIssueKind issueKind = diagnostic.Contains("ambiguous")
                     ? ResetIssueKind.InvalidSubject
                     : ResetIssueKind.SubjectNotFound;
-                return Failed(ResetTargetKind.StableReference, ResetSelectionResolutionStatus.Failed,
+                return Failed(ResetTargetKind.Object, ResetSelectionResolutionStatus.Failed,
                     ResetIssue.Error(issueKind, diagnostic), source, reason,
-                    "StableReference did not resolve exactly one live occurrence with a currently registered Resettable.");
+                    "Object/Stable did not resolve exactly one live occurrence with a currently registered Resettable.");
             }
 
             return ResetSelectionResolution.SucceededResult(
@@ -298,7 +363,34 @@ namespace Immersive.Framework.Reset
                 System.Array.Empty<ResetIssue>(),
                 source,
                 reason,
-                "StableReference resolved the current physical occurrence and its current Reset subject.");
+                "Object/Stable resolved the current physical occurrence and its current Reset subject.");
+        }
+
+        private static ResetSelectionResolution ResolveStableComposition(
+            FrameworkRuntimeHost host,
+            StableObjectReference reference,
+            string source,
+            string reason)
+        {
+            if (!TryGetCurrentOwners(host, out RuntimeContentOwner[] owners, out string ownerDiagnostic))
+                return Failed(ResetTargetKind.Composition, ResetSelectionResolutionStatus.Failed,
+                    ResetIssue.Error(ResetIssueKind.InvalidRequest, ownerDiagnostic), source, reason,
+                    "Composition/Stable target owner context could not be resolved.");
+
+            if (!TryResolveStableCompositionSubjects(host.StableObjectBindings, host.ResetRegistry, reference,
+                    owners, out IReadOnlyList<ResetSubjectId> ids, out IReadOnlyList<ResetIssue> issues,
+                    out string diagnostic))
+            {
+                ResetIssueKind issueKind = diagnostic.Contains("ambiguous")
+                    ? ResetIssueKind.InvalidSubject
+                    : ResetIssueKind.SubjectNotFound;
+                return Failed(ResetTargetKind.Composition, ResetSelectionResolutionStatus.Failed,
+                    ResetIssue.Error(issueKind, diagnostic), source, reason,
+                    "Composition/Stable did not resolve one live occurrence with a registered ResetComposition and current members.");
+            }
+
+            return ResetSelectionResolution.SucceededResult(ResetSelectionMode.ExplicitSubjects,
+                ids, issues, source, reason, "Composition/Stable resolved members from the current physical occurrence.");
         }
 
         private static bool TryGetCurrentOwners(FrameworkRuntimeHost host, out RuntimeContentOwner[] owners, out string diagnostic)
@@ -339,7 +431,8 @@ namespace Immersive.Framework.Reset
                     ResetIssue.Error(ResetIssueKind.InvalidRequest, $"Current Route owner could not be resolved. {issue}"), source, reason,
                     "CurrentRoute target resolution failed before execution.");
 
-            IReadOnlyList<ResetSubjectId> ids = ResolveCurrentRouteSubjects(host.ResetRegistry, route);
+            host.TryResolveCurrentResetOwner(ResetSubjectScope.Activity, out RuntimeContentOwner activity, out _);
+            IReadOnlyList<ResetSubjectId> ids = ResolveCurrentRouteSubjects(host.ResetRegistry, route, activity);
             return ResetSelectionResolution.SucceededResult(ResetSelectionMode.CurrentRouteSubjects, ids,
                 System.Array.Empty<ResetIssue>(), source, reason, "CurrentRoute target resolved registered subjects.");
         }

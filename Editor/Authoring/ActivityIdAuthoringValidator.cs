@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.Editor.Settings;
 using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.ObjectEntry;
+using Immersive.Framework.RouteLifecycle;
 using UnityEditor;
 using UnityEngine;
 namespace Immersive.Framework.Editor.Authoring
@@ -33,8 +35,12 @@ namespace Immersive.Framework.Editor.Authoring
             for (int index = 0; index < loaded.Length; index++)
             {
                 ObjectEntryDeclaration other = loaded[index];
-                if (other == null || other == declaration || !other.TryGetObjectEntryId(out ObjectEntryId otherId)
-                    || otherId != id || !other.gameObject.scene.IsValid() || !other.gameObject.scene.isLoaded)
+                if (other == null || ReferenceEquals(other, declaration)
+                    || !other.TryGetObjectEntryId(out ObjectEntryId otherId)
+                    || otherId != id || !other.gameObject.scene.IsValid() || !other.gameObject.scene.isLoaded
+                    || !TryGetAuthoringOwner(declaration, out Object owner)
+                    || !TryGetAuthoringOwner(other, out Object otherOwner)
+                    || !ReferenceEquals(owner, otherOwner))
                     continue;
 
                 report.AddWarning(
@@ -377,7 +383,36 @@ namespace Immersive.Framework.Editor.Authoring
             property.stringValue = newId;
             serialized.ApplyModifiedProperties();
             EditorUtility.SetDirty(declaration);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(declaration);
+            if (declaration.gameObject.scene.IsValid())
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(declaration.gameObject.scene);
             return true;
+        }
+
+        private static bool TryGetAuthoringOwner(
+            ObjectEntryDeclaration declaration,
+            out UnityEngine.Object owner)
+        {
+            owner = null;
+            if (declaration == null) return false;
+
+            Transform current = declaration.transform;
+            while (current != null)
+            {
+                if (current.TryGetComponent(out RouteContentContribution routeContribution))
+                {
+                    owner = routeContribution.Route;
+                    return owner != null;
+                }
+                if (current.TryGetComponent(out ActivityContentContribution activityContribution))
+                {
+                    owner = activityContribution.Activity;
+                    return owner != null;
+                }
+                current = current.parent;
+            }
+
+            return false;
         }
 
         private static void CollectStartupIdentityChain(

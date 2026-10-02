@@ -173,12 +173,13 @@ Future runtime materialization may use the same binding boundary by passing its
 explicit request owner and materialized roots. This does not introduce a second
 identity model or alter this decision's scene-authored transaction contract.
 
-Reset consumes this generic boundary only: `StableReference` carries
-`ObjectEntryId` and, when needed, a typed stable owner selector; resolution
-returns the unique current physical occurrence, validates its registered
-`Resettable`, and then uses that occurrence's current runtime Reset subject.
-Reset never stores `ResetSubjectId` in the stable reference and never owns,
-creates or releases the binding.
+The binding resolves only the current physical GameObject occurrence. A domain
+consumer then resolves and validates its required semantic component on that
+same GameObject. For Reset, Object/Stable requires a registered `Resettable`,
+while Composition/Stable requires a `ResetComposition` and resolves its current
+members. `StableObjectBinding` remains generic and gains no Reset-specific
+registration or lookup behavior. Reset never stores `ResetSubjectId` in stable
+authoring and never owns, creates or releases the binding.
 
 Physical binding, Reset execution, spawn/materialization behavior, Player/Actor
 lifecycle and service registration remain outside the identity semantics of

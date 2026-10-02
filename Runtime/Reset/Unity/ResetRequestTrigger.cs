@@ -16,7 +16,7 @@ namespace Immersive.Framework.Reset.Unity
         [SerializeField] private ResetTarget target;
         [SerializeField] private string reason;
 
-        private IResetSelectionExecutionRuntimePort _runtime;
+        private IResetTargetExecutionRuntimePort _runtime;
         private bool _requestInFlight;
         private ResetSelectionResolution _lastResolution;
         private ResetExecutionResult _lastResult;
@@ -32,7 +32,7 @@ private void RequestResetFromContextMenu()
 {
     RequestReset();
 }
-        internal bool TryBind(IResetSelectionExecutionRuntimePort runtime, out string issue)
+        internal bool TryBind(IResetTargetExecutionRuntimePort runtime, out string issue)
         {
             if (runtime == null)
             {

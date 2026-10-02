@@ -3,7 +3,7 @@ using Immersive.Framework.ApiStatus;
 namespace Immersive.Framework.Reset
 {
     /// <summary>
-    /// API status: Experimental. Status for resolving a ResetSelectionConfig into explicit ResetSubject ids.
+    /// API status: Experimental. Status for resolving a ResetTarget into explicit ResetSubject ids.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12D Reset selection resolution status.")]
     public enum ResetSelectionResolutionStatus

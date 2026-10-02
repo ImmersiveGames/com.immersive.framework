@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.Common;
 using Immersive.Framework.Diagnostics;
-using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Logging.Records;
@@ -18,35 +17,30 @@ namespace Immersive.Framework.Reset.Composition
     internal sealed class ResetProductBindingSceneLifecycleParticipant : ISceneLifecycleParticipant
     {
         private readonly IResetRegistrationRuntimePort _resetRegistrationRuntime;
-        private readonly IResetExecutionRuntimePort _resetExecutionRuntime;
-        private readonly IResetSelectionExecutionRuntimePort _resetSelectionExecutionRuntime;
+        private readonly IResetTargetExecutionRuntimePort _resetTargetExecutionRuntime;
         private readonly HashSet<UnityResetSubjectAdapter> _subjectAdapters = new();
         private readonly FrameworkLogger _logger;
 
         internal ResetProductBindingSceneLifecycleParticipant(
             IResetRegistrationRuntimePort resetRegistrationRuntime,
-            IResetExecutionRuntimePort resetExecutionRuntime,
-            IResetSelectionExecutionRuntimePort resetSelectionExecutionRuntime)
+            IResetTargetExecutionRuntimePort resetTargetExecutionRuntime)
         {
             this._resetRegistrationRuntime = resetRegistrationRuntime ?? throw new ArgumentNullException(nameof(resetRegistrationRuntime));
-            this._resetExecutionRuntime = resetExecutionRuntime ?? throw new ArgumentNullException(nameof(resetExecutionRuntime));
-            this._resetSelectionExecutionRuntime = resetSelectionExecutionRuntime ?? throw new ArgumentNullException(nameof(resetSelectionExecutionRuntime));
+            this._resetTargetExecutionRuntime = resetTargetExecutionRuntime ?? throw new ArgumentNullException(nameof(resetTargetExecutionRuntime));
             _logger = FrameworkLogger.Create<ResetProductBindingSceneLifecycleParticipant>();
         }
 
         public bool OnSceneAvailable(Scene scene, IReadOnlyList<GameObject> roots, out string diagnostic)
         {
             UnityResetSubjectAdapterBindingResult adapterBinding = UnityResetSubjectAdapterBinding.TryBind(roots, _resetRegistrationRuntime);
-            ObjectResetTriggerBinderResult objectBinder = ObjectResetTriggerBinder.TryBind(roots, _resetExecutionRuntime);
-            ObjectResetGroupTriggerBinderResult groupBinder = ObjectResetGroupTriggerBinder.TryBind(roots, _resetSelectionExecutionRuntime);
             bool requestBindingSucceeded = ResetRequestTriggerBinder.TryBind(
-                roots, _resetSelectionExecutionRuntime, out int requestTriggerCount, out string requestDiagnostic);
+                roots, _resetTargetExecutionRuntime, out int requestTriggerCount, out string requestDiagnostic);
             CollectSubjectAdapters(roots);
             RegistrationSummary registration = RefreshSubjectRegistrations("scene-available");
 
-            diagnostic = BuildAvailableDiagnostic(scene, adapterBinding, registration, objectBinder, groupBinder)
+            diagnostic = BuildAvailableDiagnostic(scene, adapterBinding, registration)
                 + $" resetRequestTriggers='{requestTriggerCount}' requestBinding='{requestDiagnostic}'";
-            if (!adapterBinding.Succeeded || !objectBinder.Succeeded || !groupBinder.Succeeded || !requestBindingSucceeded)
+            if (!adapterBinding.Succeeded || !requestBindingSucceeded)
             {
                 _logger.Error("Reset Scene Lifecycle composition rejected.", LogFields.Of(
                     LogFields.Field("operation", "SceneAvailable"),
@@ -56,8 +50,6 @@ namespace Immersive.Framework.Reset.Composition
             }
 
             bool hasAuthoredSurfaces = adapterBinding.AdapterCount > 0
-                || objectBinder.TriggerCount > 0
-                || groupBinder.TriggerCount > 0
                 || requestTriggerCount > 0;
             if (!hasAuthoredSurfaces)
             {
@@ -77,14 +69,7 @@ namespace Immersive.Framework.Reset.Composition
                 LogFields.Field("rejectedSubjectAdapters", adapterBinding.RejectedCount),
                 LogFields.Field("activeRegisteredSubjects", registration.RegisteredSubjects),
                 LogFields.Field("activeRegisteredParticipants", registration.RegisteredParticipants),
-                LogFields.Field("objectTriggers", objectBinder.TriggerCount),
-                LogFields.Field("newObjectTriggers", objectBinder.BoundCount),
-                LogFields.Field("idempotentObjectTriggers", objectBinder.IdempotentCount),
-                LogFields.Field("rejectedObjectTriggers", objectBinder.RejectedCount),
-                LogFields.Field("groupTriggers", groupBinder.TriggerCount),
-                LogFields.Field("newGroupTriggers", groupBinder.BoundCount),
-                LogFields.Field("idempotentGroupTriggers", groupBinder.IdempotentCount),
-                LogFields.Field("rejectedGroupTriggers", groupBinder.RejectedCount)));
+                LogFields.Field("resetRequestTriggers", requestTriggerCount)));
             return true;
         }
 
@@ -112,9 +97,7 @@ namespace Immersive.Framework.Reset.Composition
                 _subjectAdapters.Remove(adapter);
             }
 
-            int objectTriggers = CountComponents<ObjectResetTrigger>(roots);
-            int groupTriggers = CountComponents<ObjectResetGroupTrigger>(roots);
-            diagnostic = $"Reset Scene Lifecycle release completed. scene='{SceneLabel(scene)}' subjectAdapters='{adapters.Count}' registeredSubjectsReleased='{releasedSubjects}' registeredParticipantsReleased='{releasedParticipants}' objectTriggers='{objectTriggers}' groupTriggers='{groupTriggers}'.";
+            diagnostic = $"Reset Scene Lifecycle release completed. scene='{SceneLabel(scene)}' subjectAdapters='{adapters.Count}' registeredSubjectsReleased='{releasedSubjects}' registeredParticipantsReleased='{releasedParticipants}'.";
             if (releasedSubjects == 0 && releasedParticipants == 0)
             {
                 _logger.Debug("Reset Scene Lifecycle release completed with no state changes.", LogFields.Of(
@@ -130,9 +113,7 @@ namespace Immersive.Framework.Reset.Composition
                 LogFields.Field("reason", reason.NormalizeTextOrFallback("scene-release")),
                 LogFields.Field("subjectAdapters", adapters.Count),
                 LogFields.Field("registeredSubjectsReleased", releasedSubjects),
-                LogFields.Field("registeredParticipantsReleased", releasedParticipants),
-                LogFields.Field("objectTriggers", objectTriggers),
-                LogFields.Field("groupTriggers", groupTriggers)));
+                LogFields.Field("registeredParticipantsReleased", releasedParticipants)));
             return true;
         }
 
@@ -218,21 +199,8 @@ namespace Immersive.Framework.Reset.Composition
             return adapters;
         }
 
-        private static int CountComponents<T>(IReadOnlyList<GameObject> roots) where T : Component
-        {
-            var found = new HashSet<T>();
-            if (roots == null) return 0;
-            for (int index = 0; index < roots.Count; index++)
-            {
-                GameObject root = roots[index];
-                if (root == null) continue;
-                foreach (T component in root.GetComponentsInChildren<T>(true)) if (component != null) found.Add(component);
-            }
-            return found.Count;
-        }
-
-        private static string BuildAvailableDiagnostic(Scene scene, UnityResetSubjectAdapterBindingResult adapterBinding, RegistrationSummary registration, ObjectResetTriggerBinderResult objectBinder, ObjectResetGroupTriggerBinderResult groupBinder) =>
-            $"Reset Scene Lifecycle composition completed. operation='SceneAvailable' scene='{SceneLabel(scene)}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' activeRegisteredSubjects='{registration.RegisteredSubjects}' activeRegisteredParticipants='{registration.RegisteredParticipants}' objectTriggers='{objectBinder.TriggerCount}' newObjectTriggers='{objectBinder.BoundCount}' idempotentObjectTriggers='{objectBinder.IdempotentCount}' rejectedObjectTriggers='{objectBinder.RejectedCount}' groupTriggers='{groupBinder.TriggerCount}' newGroupTriggers='{groupBinder.BoundCount}' idempotentGroupTriggers='{groupBinder.IdempotentCount}' rejectedGroupTriggers='{groupBinder.RejectedCount}'.";
+        private static string BuildAvailableDiagnostic(Scene scene, UnityResetSubjectAdapterBindingResult adapterBinding, RegistrationSummary registration) =>
+            $"Reset Scene Lifecycle composition completed. operation='SceneAvailable' scene='{SceneLabel(scene)}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' activeRegisteredSubjects='{registration.RegisteredSubjects}' activeRegisteredParticipants='{registration.RegisteredParticipants}'.";
 
         private static string SceneLabel(Scene scene) => scene.IsValid() ? scene.name.NormalizeTextOrFallback("<unnamed>") : "<invalid>";
 

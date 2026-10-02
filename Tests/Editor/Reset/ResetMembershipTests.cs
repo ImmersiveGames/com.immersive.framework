@@ -94,7 +94,7 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
-        public void CurrentRoute_IncludesOnlyRouteMembersOwnedByCurrentRouteOccurrence()
+        public void CurrentRoute_IncludesRouteMembersAndExcludesOtherRouteOccurrence()
         {
             Resettable currentRouteMember = CreateResettable("CurrentRoute");
             Resettable otherRouteMember = CreateResettable("OtherRoute");
@@ -103,7 +103,7 @@ namespace Immersive.Framework.Reset.Tests
 
             CollectionAssert.AreEqual(
                 new[] { currentRouteMember.RuntimeSubjectId },
-                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _routeA));
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _routeA, _activityA));
         }
 
         [Test]
@@ -117,6 +117,19 @@ namespace Immersive.Framework.Reset.Tests
             CollectionAssert.AreEqual(
                 new[] { activityAResettable.RuntimeSubjectId },
                 ResetTargetResolver.ResolveCurrentActivitySubjects(_registry, _activityA, _routeA));
+        }
+
+        [Test]
+        public void CurrentRoute_IncludesActivityOwnedSubjectsFromCurrentActivityOnly()
+        {
+            Resettable currentActivityMember = CreateResettable("CurrentActivity");
+            Resettable otherActivityMember = CreateResettable("OtherActivity");
+            AssertRegistered(_activityA, currentActivityMember);
+            AssertRegistered(_activityB, otherActivityMember);
+
+            CollectionAssert.AreEqual(
+                new[] { currentActivityMember.RuntimeSubjectId },
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _routeA, _activityA));
         }
 
         [Test]
@@ -152,13 +165,15 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
-        public void CurrentRoute_ExcludesRouteOwnedSubjectWithActivityMembership()
+        public void CurrentRoute_IncludesRouteOwnedSubjectWithActivityMembership()
         {
             Resettable activityMember = CreateResettable("ActivityMember");
             SetMembership(activityMember, ResetMembership.Activity);
             AssertRegistered(_routeA, activityMember);
 
-            CollectionAssert.IsEmpty(ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _routeA));
+            CollectionAssert.AreEqual(
+                new[] { activityMember.RuntimeSubjectId },
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _routeA, default));
         }
 
         private Resettable CreateResettable(string objectName)

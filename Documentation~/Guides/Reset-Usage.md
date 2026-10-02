@@ -1,135 +1,63 @@
 # Reset Usage
 
-Status: Transitional — RESET-035-B owner-aware registration, RESET-035-C membership, RESET-035-D composition, RESET-035-E semantic requests and RESET-035-F StableReference are implemented in Framework; legacy Reset authoring remains available during migration
+Status: RESET-035-B through RESET-035-F implemented in Framework; Unity compile/import and Edit Mode execution remain subject to repository validation policy.
 Last updated: 2026-10-01
 
-> **Architecture transition (IF-ADR-035):** The sections explicitly labeled legacy remain supported during migration but are not the target product model. New authoring converges on `Resettable -> ResetComposition -> ResetTarget`, with content ownership derived from composition/materialization origin and Reset membership modeled separately. Do not expand the legacy textual-ID/scope/list authoring model.
+Reset content ownership, Reset membership, semantic target kind and target addressing are separate concerns:
 
-## RESET-035-B implemented surface
+- `RuntimeContentOwner` controls content lifetime and registration release.
+- `ResetMembership` controls inclusion in CurrentActivity or CurrentRoute.
+- `ResetTargetKind` describes what the request resets.
+- `ResetReferenceMode` selects direct or stable addressing for Object/Composition.
 
-`Resettable` is registered by Route/Activity scene composition transactions using the target `RuntimeContentOwner` and their materialized scene roots. The runtime generates subject identity, keeps nested `Resettable` boundaries separate, rejects mixed legacy/new registration, rolls back failed admission, and releases registrations by owner. The legacy authoring flow below is still supported during migration.
+## Register resettable content
 
-## RESET-035-C membership
+Add `Resettable` to a GameObject and author its local Reset capabilities. Route/Activity content transactions register it with their actual owner; they do not infer ownership from the current scene or component enable timing. `ResetMembership.FollowOwner` is the default. Route-owned content may use Activity membership when it survives Activity Clear/Reenter but should restore during Activity Reset. Activity-owned content cannot use Route membership.
 
-`Resettable` defaults to `ResetMembership.FollowOwner`. The transaction records its membership policy with the generated runtime subject:
+`ResetComposition` groups Resettable members but is not a Reset subject. `Descendants` collects within its hierarchy boundary, stops at nested ResetComposition boundaries and preserves deterministic hierarchy order. `ExplicitMembers` uses only typed references, deduplicates them and preserves list order. Invalid/null references and empty compositions have defined diagnostics.
 
-| Content owner | Membership | Effective target |
+## Author a Reset request
+
+Use `ResetRequestTrigger` as the single Reset request surface. Its target is selected by semantic intent and then addressed as follows:
+
+| Target kind | Reference mode | Payload |
 |---|---|---|
-| Activity | `FollowOwner` | Current Activity |
-| Route | `FollowOwner` | Current Route |
-| Route | `Activity` | Current Activity while that Route occurrence is current |
-| Activity | `Route` | Invalid; registration rejects it because Activity content does not survive its Route boundary |
+| Object | Direct | Typed `Resettable` reference |
+| Object | Stable | `StableObjectReference` resolving to a GameObject with a currently registered `Resettable` |
+| Composition | Direct | Typed `ResetComposition` reference |
+| Composition | Stable | `StableObjectReference` resolving to a GameObject with `ResetComposition`; resolves its current members |
+| CurrentActivity | None | No payload |
+| CurrentRoute | None | No payload |
 
-`CurrentRoute` includes only Route members registered by the current Route occurrence. `CurrentActivity` includes Activity members from the current Activity occurrence and Activity members explicitly contributed by the current Route occurrence. Membership does not alter content ownership or release authority. `ResetSubjectScope` remains a transitional registry/request bridge; do not use it as the membership policy or add it to normal authoring.
+`Unknown` is only a default/serialization sentinel and is invalid. Changing target kind or reference mode clears inactive payloads. Null, unregistered, stale, ambiguous, missing-component or out-of-context targets fail diagnostically; Reset never registers a target implicitly.
 
-## RESET-035-D composition
+## Stable addressing
 
-Add `ResetComposition` to a GameObject to author a semantic set of Resettable members. It is not a Reset subject and does not register or execute Reset.
-
-- `Descendants` walks the composition GameObject and its child hierarchy in depth-first sibling order. It deduplicates Resettable references and stops before any nested ResetComposition GameObject; that nested composition resolves its own set. Nested Resettable components remain distinct members, while each Resettable's own capability collection stops at its nested Resettable boundary.
-- `ExplicitMembers` resolves only the serialized Resettable references, preserving list order and deduplicating repeats. Null references are skipped with diagnostics. No names or paths are used to find members.
-- An explicit local `Activity` or `Route` value on a Resettable takes precedence. A local `FollowOwner` delegates to the composition's membership; composition `FollowOwner` leaves owner-derived membership intact. Shared members may appear in multiple compositions if they resolve to the same membership. Conflicting resolved memberships are rejected before registration.
-- An explicit member must be among the materialized roots being registered by the owner transaction. This keeps membership assignment inside the transaction that supplies its lifetime owner. Empty compositions resolve successfully with a `reset-composition-empty` diagnostic.
-- An explicit typed reference may intentionally name a member beneath another composition boundary. If both compositions include that Resettable, the same precedence and conflict rules apply.
-
-Composition resolution prepares membership and member sets. RESET-035-E resolves a Composition target through the same typed member resolution and sends registered subjects to the existing executor.
-
-## RESET-035-E semantic request
-
-Use one `ResetRequestTrigger` with a typed `ResetTarget`:
-
-| Target | Resolution |
-|---|---|
-| `Object` | Exactly one registered `Resettable` in the current Activity/Route owner context |
-| `Composition` | Registered members resolved by the referenced `ResetComposition`, in deterministic collection order |
-| `CurrentActivity` | Subjects with effective Activity membership for the current Activity and Route occurrence |
-| `CurrentRoute` | Subjects with effective Route membership for the current Route occurrence |
-
-Null, unregistered, stale or out-of-context Object/Composition members fail diagnostically; requests never register a target implicitly. Empty compositions resolve to an empty successful selection with a diagnostic. All targets use `ResetTargetResolver`, `ResetSelectionResolution` and the existing `ResetExecutor`.
-
-Activity Restart defaults to `CurrentActivity`, but its pre-clear Reset includes only selected subjects owned by the current Route. For `CurrentActivity`, the Route-owned subject must also have effective Activity membership. Activity-owned scene content is recreated by Clear/Reenter and is excluded to prevent duplicate restoration. Reset failure blocks Clear/Reenter through the existing Activity Restart callback contract.
-
-`StableReference` is an exceptional cross-boundary target backed by the generic `StableObjectBinding` authority from IF-ADR-014. Generate the declaration's stable `ObjectEntryId` under Advanced / Debug, then use Copy ID there and Paste ID in StableReference. Object Entry IDs follow the same explicit Generate/Copy/Regenerate pattern as Route and Activity IDs and do not change on rename or move. The owner-aware admission transaction supplies effective Route/Activity scope and owner, so the declaration only authors Requiredness in its normal Inspector.
-
-When that logical identity is active under multiple owners, select the exact `RouteAsset` or `ActivityAsset` in StableReference; Framework derives stable identity and definition token. No textual owner field or duplicated owner metadata is authored. StableReference resolves only a unique live occurrence admitted by its content transaction, then requires that occurrence's currently registered Resettable. Rollback/release removes its binding; reload resolves the new occurrence and runtime Reset subject. Missing and ambiguous bindings fail diagnostically. Do not persist runtime subject IDs. Prefer Object or Composition when a direct typed reference is possible. Application-level StableReference use is validated separately from this Framework implementation.
-
-## Remaining target authoring model
+Prefer Direct when an authored Unity reference can cross the relevant boundary. Stable addressing is for a real cross-scene/serialization boundary and uses the generic IF-ADR-014 `StableObjectBinding`:
 
 ```text
-Reset capability
-  -> Resettable
-      -> optional ResetComposition
-          -> ResetTarget
-              -> existing ResetRegistry / ResetExecutor during migration
+ObjectEntryId + optional typed RouteAsset/ActivityAsset selector
+  -> current physical GameObject occurrence
+  -> Resettable or ResetComposition on that same GameObject
 ```
 
-Normal target authoring does not require textual Reset IDs, per-object ownership scope or explicit subject-ID groups. Stable identity remains opt-in for real cross-boundary specific targeting.
+Generate the declaration's `ObjectEntryId` explicitly under Advanced / Debug, then use Copy ID and Paste ID in the stable reference. The optional selector derives stable owner identity and exact definition token from the typed asset. Missing bindings fail as unavailable; multiple matches fail as ambiguous. Rollback/release removes the binding with its owner, and reload resolves the new physical occurrence. No runtime subject ID is serialized.
 
-## Legacy operation mapping during migration
+## Current targets and Activity Restart
 
+`CurrentActivity` includes registered subjects with effective Activity membership owned by the current Activity or by the current Route. It excludes Route membership.
 
+`CurrentRoute` is the parent scope of the current Activity (`Activity ⊂ Route`). It includes effective Route membership owned by the current Route, Route-owned subjects with Activity membership, and Activity-owned subjects from the current Activity context when registered. It excludes subjects from another Route and Activity-owned subjects from other Activities. With no active Activity, it still includes the current Route's Route and Activity memberships.
 
-| Need | Surface |
-|---|---|
-| New semantic Reset request | `ResetRequestTrigger` + `ResetTarget` |
-| Legacy individual Object Reset | `ObjectResetTrigger` |
-| Legacy selected/scoped Object Reset | `ObjectResetGroupTrigger` + `ResetSelectionConfig` |
-| Reset objects and restart the current Activity | `ActivityRestartTrigger` |
-| Run Route/Activity lifecycle reset participants | `RouteCycleResetTrigger` / `ActivityCycleResetTrigger` |
+Activity Restart uses the semantic Reset target to restore surviving state before Activity Clear/Reenter. It filters out Activity-owned content that will be recreated and includes surviving Route-owned content selected for Activity membership. A failed Reset blocks Clear and Reenter.
 
-Object Reset, Cycle Reset, Release, Snapshot and Save are separate operations.
+## Registration adapter
 
-## Author an Object Reset subject
-
-1. Add `UnityResetSubjectAdapter` to the object.
-2. Choose an authored stable id or runtime-instance id generation.
-3. Choose Route, Activity or Runtime scope.
-4. Add built-in Transform/active-state participants as needed.
-5. Implement `IUnityResettable` for custom synchronous gameplay state.
-6. Configure participant order and requiredness.
-7. Point a trigger or selection configuration at the subject/scope.
-
-Bootstrap/lifecycle binds the adapter's explicit Reset registration port.
-Although the public registration method is still named
-`RegisterWithCurrentHost`, it uses that bound port and performs no static host
-lookup.
-
-## Runtime flow
-
-```text
-UnityResetSubjectAdapter (legacy)
--> IResetRegistrationRuntimePort
--> ResetRegistry
--> ResetTargetResolver / ResetSelectionConfig (legacy)
--> ResetExecutor
--> ordered IResetParticipant.Reset
--> typed aggregate result
-```
-
-Required participant failure blocks the subject according to execution policy.
-Optional failure remains diagnostic. Empty selection succeeds only when
-explicitly allowed.
-
-## Cycle Reset and Activity Restart
-
-Cycle Reset executes explicitly registered lifecycle participants; it does not
-reload scenes or reset gameplay objects automatically.
-
-Activity Restart uses the semantic Reset target and canonical lifecycle/transition path. Its pre-clear selection is restricted to state that survives Activity Clear/Reenter; a blocking Reset failure prevents both lifecycle stages.
-
-## Diagnose
-
-Inspect subject id, origin, scope, owner, participant order/requiredness,
-selection resolution and typed issues. Fix missing explicit port binding or
-invalid ownership at its composition owner.
+`UnityResetSubjectAdapter` remains available for its independent subject registration contract. It is not a Reset request surface and does not replace `Resettable` owner-aware registration.
 
 ## Manual validation
 
 1. Compile/import Framework and QAFramework in Unity.
-2. Run `ResetTargetResolverTests`, `ResetCompositionTests`, and the focused
-   registry/executor/legacy adapter suites.
-3. Run a lifecycle integration QA for Activity Restart with Activity-owned
-   recreated state and Route-owned Activity-membership state.
-4. Confirm required Reset failure blocks Activity Clear/Reenter and that
-   surviving state restores exactly once.
-5. Confirm runtime subjects receive unique ids and stale owners are cleaned.
+2. Run `ResetTargetResolverTests`, `ResetCompositionTests`, `StableObjectBindingTests` and `ResetTargetAuthoringTests`.
+3. Run the Activity Restart lifecycle QA for successful surviving-state restoration and Reset failure blocking Clear/Reenter.
+4. Validate an Object and a Composition stable target across scene boundaries, including unload/reload and ambiguity.

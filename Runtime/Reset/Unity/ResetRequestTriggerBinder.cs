@@ -8,7 +8,7 @@ namespace Immersive.Framework.Reset.Unity
     {
         internal static bool TryBind(
             IReadOnlyList<GameObject> roots,
-            IResetSelectionExecutionRuntimePort runtime,
+            IResetTargetExecutionRuntimePort runtime,
             out int triggerCount,
             out string diagnostic)
         {

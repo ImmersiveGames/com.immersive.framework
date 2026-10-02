@@ -2,16 +2,12 @@ using System.Threading.Tasks;
 
 namespace Immersive.Framework.Reset
 {
-    internal interface IResetSelectionExecutionRuntimePort
+    internal interface IResetTargetExecutionRuntimePort
     {
         Task<ResetSelectionExecutionRuntimeResult> ExecuteResetTargetAsync(
             ResetTarget target,
             string source,
             string reason);
 
-        Task<ResetSelectionExecutionRuntimeResult> ExecuteResetSelectionAsync(
-            ResetSelectionConfig selection,
-            string source,
-            string reason);
     }
 }

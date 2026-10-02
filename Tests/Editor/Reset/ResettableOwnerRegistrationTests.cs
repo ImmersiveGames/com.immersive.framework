@@ -4,6 +4,7 @@ using Immersive.Framework.Reset;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Immersive.Framework.Reset.Tests
@@ -50,7 +51,8 @@ namespace Immersive.Framework.Reset.Tests
         {
             GameObject root = CreateObject("Root");
             Resettable resettable = AddResettable(root);
-            AddTransformCapability(root);
+            UnityTransformResetParticipant capability = AddTransformCapability(root);
+            SetParticipantMetadata(capability, string.Empty, ResetParticipantRequiredness.Required, 0, "Transform capability");
 
             Assert.IsTrue(Register(_activityB, root, out string diagnostic), diagnostic);
 
@@ -58,9 +60,71 @@ namespace Immersive.Framework.Reset.Tests
             Assert.AreEqual(_activityB, resettable.Owner);
             Assert.AreEqual(ResetSubjectScope.Activity, resettable.Subject.Scope);
             Assert.AreEqual(1, resettable.RegisteredCapabilityCount);
+            ResetParticipantDescriptor descriptor = _registry.GetParticipants(resettable.SubjectHandle).Single();
+            Assert.AreEqual("capability-0000-UnityTransformResetParticipant", descriptor.ParticipantId.StableText);
+            Assert.AreEqual("Transform capability", descriptor.DisplayName);
             StringAssert.StartsWith(ResettableOwnerRegistrationRuntime.RuntimeSubjectPrefix + "#", resettable.RuntimeSubjectId.StableText);
             CollectionAssert.Contains(SubjectIds(ResetSubjectScope.Activity, _activityB), resettable.RuntimeSubjectId);
             CollectionAssert.IsEmpty(SubjectIds(ResetSubjectScope.Activity, _activityA));
+        }
+
+        [Test]
+        public void Registration_MultipleCapabilitiesUseGeneratedIdsAndPreserveMetadata()
+        {
+            GameObject root = CreateObject("Root");
+            Resettable resettable = AddResettable(root);
+            UnityTransformResetParticipant transformCapability = AddTransformCapability(root);
+            UnityGameObjectActiveResetParticipant activeCapability = root.AddComponent<UnityGameObjectActiveResetParticipant>();
+            SetParticipantMetadata(transformCapability, string.Empty, ResetParticipantRequiredness.Optional, 30, "Position restore");
+            SetParticipantMetadata(activeCapability, string.Empty, ResetParticipantRequiredness.Required, 5, "Active state");
+
+            Assert.IsTrue(Register(_activityA, root, out string diagnostic), diagnostic);
+
+            IReadOnlyList<ResetParticipantDescriptor> descriptors = _registry.GetParticipants(resettable.SubjectHandle);
+            Assert.AreEqual(2, descriptors.Count);
+            ResetParticipantDescriptor transform = descriptors.Single(item => item.ParticipantId.StableText.EndsWith("UnityTransformResetParticipant"));
+            ResetParticipantDescriptor active = descriptors.Single(item => item.ParticipantId.StableText.EndsWith("UnityGameObjectActiveResetParticipant"));
+            Assert.AreEqual("capability-0000-UnityTransformResetParticipant", transform.ParticipantId.StableText);
+            Assert.AreEqual("capability-0001-UnityGameObjectActiveResetParticipant", active.ParticipantId.StableText);
+            Assert.AreNotEqual(transform.ParticipantId, active.ParticipantId);
+            Assert.AreEqual(ResetParticipantRequiredness.Optional, transform.Requiredness);
+            Assert.AreEqual(30, transform.Order);
+            Assert.AreEqual("Position restore", transform.DisplayName);
+            Assert.AreEqual(ResetParticipantRequiredness.Required, active.Requiredness);
+            Assert.AreEqual(5, active.Order);
+            Assert.AreEqual("Active state", active.DisplayName);
+        }
+
+        [Test]
+        public void LegacyAdapterParticipantDescriptor_RequiresAndUsesAuthoredId()
+        {
+            GameObject gameObject = CreateObject("LegacyParticipant");
+            UnityTransformResetParticipant participant = AddTransformCapability(gameObject);
+            SetParticipantMetadata(participant, string.Empty, ResetParticipantRequiredness.Required, 4, "Legacy transform");
+            ResetSubject subject = new ResetSubject(
+                ResetSubjectId.From("reset-035-b.legacy-subject"),
+                ResetSubjectScope.Activity,
+                ResetSubjectOrigin.RuntimeRegistered,
+                _activityA,
+                "Legacy subject",
+                "test");
+
+            Assert.IsFalse(participant.TryCreateResetParticipantDescriptor(subject, out _, out ResetIssue missingIdIssue));
+            StringAssert.Contains("Participant Id", missingIdIssue.Message);
+
+            SetParticipantMetadata(participant, "legacy.transform.authored", ResetParticipantRequiredness.Optional, 17, "Legacy transform");
+            var serialized = new SerializedObject(participant);
+            serialized.FindProperty("source").stringValue = "legacy-source";
+            serialized.FindProperty("reason").stringValue = "legacy-reason";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.IsTrue(participant.TryCreateResetParticipantDescriptor(subject, out ResetParticipantDescriptor descriptor, out ResetIssue issue), issue.Message);
+            Assert.AreEqual("legacy.transform.authored", descriptor.ParticipantId.StableText);
+            Assert.AreEqual(ResetParticipantRequiredness.Optional, descriptor.Requiredness);
+            Assert.AreEqual(17, descriptor.Order);
+            Assert.AreEqual("Legacy transform", descriptor.DisplayName);
+            Assert.AreEqual("legacy-source", descriptor.Source);
+            Assert.AreEqual("legacy-reason", descriptor.Reason);
         }
 
         [Test]
@@ -278,10 +342,26 @@ namespace Immersive.Framework.Reset.Tests
             return gameObject.AddComponent<Resettable>();
         }
 
-        private static void AddTransformCapability(GameObject gameObject)
+        private static UnityTransformResetParticipant AddTransformCapability(GameObject gameObject)
         {
             UnityTransformResetParticipant participant = gameObject.AddComponent<UnityTransformResetParticipant>();
             participant.CaptureBaseline();
+            return participant;
+        }
+
+        private static void SetParticipantMetadata(
+            UnityResetParticipantBehaviour participant,
+            string participantId,
+            ResetParticipantRequiredness requiredness,
+            int order,
+            string displayName)
+        {
+            var serialized = new SerializedObject(participant);
+            serialized.FindProperty("participantId").stringValue = participantId;
+            serialized.FindProperty("requiredness").intValue = (int)requiredness;
+            serialized.FindProperty("order").intValue = order;
+            serialized.FindProperty("displayName").stringValue = displayName;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private bool Register(RuntimeContentOwner owner, GameObject root, out string diagnostic)

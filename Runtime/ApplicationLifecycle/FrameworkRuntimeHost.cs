@@ -15,7 +15,6 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
-using Immersive.Framework.ObjectReset;
 using Immersive.Framework.Reset.Composition;
 using Immersive.Framework.Reset;
 using UnityEngine;
@@ -40,7 +39,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IPauseActivityLifecyclePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IPauseActivityLifecyclePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort, IResetTargetExecutionRuntimePort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -1821,8 +1820,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _resetProductBindingSceneLifecycleParticipant =
                 new ResetProductBindingSceneLifecycleParticipant(
                     (IResetRegistrationRuntimePort)this,
-                    (IResetExecutionRuntimePort)this,
-                    (IResetSelectionExecutionRuntimePort)this);
+                    (IResetTargetExecutionRuntimePort)this);
             _pauseSurfaceSceneLifecycleParticipant =
                 new PauseSurfaceSceneLifecycleParticipant(_pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(

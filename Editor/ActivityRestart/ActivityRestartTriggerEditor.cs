@@ -23,7 +23,6 @@ namespace Immersive.Framework.Editor.ActivityRestart
         private SerializedProperty _requireCurrent;
         private SerializedProperty _reason;
         private SerializedProperty _resetTarget;
-        private bool _showAdvanced;
         private bool _showDiagnostics;
 
         private void OnEnable()
@@ -40,11 +39,8 @@ namespace Immersive.Framework.Editor.ActivityRestart
             serializedObject.Update();
             var trigger = (ActivityRestartTrigger)target;
 
-            FrameworkAuthoringInspectorGui.ProductHeader("Activity Restart Trigger", string.Empty);
-
             DrawConfiguration();
             DrawConfigurationStatus(trigger);
-            DrawAdvanced();
             DrawDiagnostics(trigger);
 
             serializedObject.ApplyModifiedProperties();
@@ -52,12 +48,10 @@ namespace Immersive.Framework.Editor.ActivityRestart
 
         private void DrawConfiguration()
         {
-            FrameworkAuthoringInspectorGui.Section("Activity Target");
             EditorGUILayout.PropertyField(_targetActivity);
             EditorGUILayout.PropertyField(_useCurrent, UseCurrentLabel);
             EditorGUILayout.PropertyField(_requireCurrent, RequireCurrentLabel);
 
-            FrameworkAuthoringInspectorGui.Section("Reset Target");
             if (_resetTarget == null)
             {
                 EditorGUILayout.HelpBox(
@@ -66,13 +60,12 @@ namespace Immersive.Framework.Editor.ActivityRestart
             }
             else
             {
-                EditorGUILayout.PropertyField(_resetTarget, includeChildren: true);
+                EditorGUILayout.PropertyField(_resetTarget, GUIContent.none, includeChildren: true);
                 EditorGUILayout.HelpBox(
                     "CurrentActivity is the default. Activity Restart resets only selected Route-owned state that survives Activity Clear/Reenter.",
                     MessageType.Info);
             }
 
-            FrameworkAuthoringInspectorGui.Section("Reason");
             EditorGUILayout.PropertyField(_reason, ReasonLabel);
             using (new EditorGUI.DisabledScope(targets.Length != 1 || !string.IsNullOrWhiteSpace(_reason.stringValue)))
             {
@@ -104,18 +97,6 @@ namespace Immersive.Framework.Editor.ActivityRestart
             {
                 EditorGUILayout.LabelField("Runtime", trigger.HasActivityRestartRuntimeBinding ? "Bound" : "Not bound");
             }
-        }
-
-        private void DrawAdvanced()
-        {
-            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "Advanced", true);
-            if (!_showAdvanced || _resetTarget == null)
-            {
-                return;
-            }
-
-            EditorGUILayout.LabelField("Reset Target Details", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(_resetTarget.FindPropertyRelative("kind"));
         }
 
         private void DrawDiagnostics(ActivityRestartTrigger trigger)

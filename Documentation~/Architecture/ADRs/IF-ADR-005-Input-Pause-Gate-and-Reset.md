@@ -23,7 +23,7 @@ FIRSTGAME baseline observed: `796618243c3ca76f70d582f38475320c6461420b` (`Demo02
 
 > **2026-09-26 Reset corrective supersession — IF-ADR-035.** The Reset execution core established by this ADR remains valid, but IF-ADR-035 supersedes this ADR's Reset authoring/selection assumptions where they conflict. In particular, authored `ResetSubjectScope` is no longer the target product authority for content ownership or semantic Reset membership; normal authoring must not require textual Reset subject IDs or explicit subject-ID lists solely for execution; Reset ownership is derived from content origin; Reset membership is a separate semantic policy; and semantic requests converge on `ResetTarget`. `ResetRegistry`, `ResetExecutor`, typed results/issues and local Reset participants remain the initial execution foundation during migration.
 >
-> The 2026-09-26 Reset selection amendment below is therefore historical for the legacy path. Its `CurrentActivitySubjects` / `CurrentRouteSubjects` behavior remains implemented until RESET-035 migration replaces it, but it is not the target product model. Activity Restart must also account for the fact that Activity Clear/Reenter physically recreates Activity-owned scene content; pre-Clear Reset is primarily meaningful for surviving state, including Route-owned content with Activity Reset membership.
+> The 2026-09-26 Reset selection amendment below is historical and its authoring/runtime selection path has been removed by RESET-035-E. Current Activity/Route selection is provided by `ResetTarget` and the shared resolver. Activity Restart resets only surviving state before Clear/Reenter, including eligible Route-owned content with Activity Reset membership.
 >
 > **2026-09-26 stable promotion.** The current Pause product surface is promoted to Stable after validation of the three supported consumer paths: physical Player Pause input, direct scene-authored Pause/Resume requests, and lifecycle-scoped Pause presentation. Pause-specific package-owned QA/smoke runners were removed; external QA may certify the Stable contracts without owning runtime implementation.
 >
@@ -246,9 +246,8 @@ UnityPlayerInputStateWriter
 
 ResetRegistry
 Reset subjects / participants
-ResetSelectionConfig
+ResetTarget / ResetRequestTrigger
 ResetExecutor
-object/group reset triggers
 
 Activity Restart integration
 GameFlow transition/readiness gate projections
@@ -259,7 +258,7 @@ The representative product surfaces are semantically sufficient:
 ```text
 Pause Request              COMPLIANT
 Activity Restart           COMPLIANT
-Object Reset Group Trigger COMPLIANT
+Reset Request Trigger COMPLIANT
 Unity Input Gate           COMPLIANT
 ```
 

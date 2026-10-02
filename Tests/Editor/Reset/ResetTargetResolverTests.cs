@@ -16,18 +16,22 @@ namespace Immersive.Framework.Reset.Tests
         private readonly List<GameObject> _created = new List<GameObject>();
         private ResetRegistry _registry;
         private ResettableOwnerRegistrationRuntime _registration;
+        private StableObjectBindingRegistry _bindings;
         private RuntimeContentOwner _activity;
         private RuntimeContentOwner _otherActivity;
         private RuntimeContentOwner _route;
+        private RuntimeContentOwner _otherRoute;
 
         [SetUp]
         public void SetUp()
         {
             _registry = new ResetRegistry();
             _registration = new ResettableOwnerRegistrationRuntime(_registry);
+            _bindings = new StableObjectBindingRegistry();
             _activity = RuntimeContentOwner.Activity("reset-035-e.activity", "Activity", RuntimeDefinitionToken.MintAnonymous());
             _otherActivity = RuntimeContentOwner.Activity("reset-035-e.other-activity", "Other Activity", RuntimeDefinitionToken.MintAnonymous());
             _route = RuntimeContentOwner.Route("reset-035-e.route", "Route", RuntimeDefinitionToken.MintAnonymous());
+            _otherRoute = RuntimeContentOwner.Route("reset-035-e.other-route", "Other Route", RuntimeDefinitionToken.MintAnonymous());
         }
 
         [TearDown]
@@ -50,6 +54,69 @@ namespace Immersive.Framework.Reset.Tests
                 _registry, target, CurrentOwners(), out ResetSubject subject, out string diagnostic), diagnostic);
             Assert.AreEqual(target.RuntimeSubjectId, subject.SubjectId);
             Assert.AreNotEqual(other.RuntimeSubjectId, subject.SubjectId);
+        }
+
+        [Test]
+        public void ObjectDirectTarget_IsValidAndCarriesOnlyDirectReference()
+        {
+            Resettable resettable = AddResettable(Create("DirectObject").transform, "Resettable");
+            ResetObjectTarget objectTarget = ResetObjectTarget.Direct(resettable);
+            ResetTarget target = ResetTarget.ForObject(objectTarget);
+
+            Assert.IsTrue(target.IsValid);
+            Assert.AreEqual(ResetTargetKind.Object, target.Kind);
+            Assert.AreEqual(ResetReferenceMode.Direct, target.ObjectTarget.ReferenceMode);
+            Assert.AreSame(resettable, target.ObjectTarget.DirectResettable);
+        }
+
+        [Test]
+        public void ObjectStableTarget_IsValidAndCarriesStableReference()
+        {
+            StableObjectReference reference = StableObjectReference.ForEntry(
+                Immersive.Framework.ObjectEntry.ObjectEntryId.From("qa.reset.object-stable"));
+            ResetTarget target = ResetTarget.ForObject(ResetObjectTarget.Stable(reference));
+
+            Assert.IsTrue(target.IsValid);
+            Assert.AreEqual(ResetReferenceMode.Stable, target.ObjectTarget.ReferenceMode);
+            Assert.AreEqual(reference, target.ObjectTarget.StableReference);
+            Assert.IsNull(target.ObjectTarget.DirectResettable);
+        }
+
+        [Test]
+        public void CompositionDirectTarget_IsValidAndCarriesOnlyDirectReference()
+        {
+            ResetComposition composition = Create("DirectComposition").AddComponent<ResetComposition>();
+            ResetTarget target = ResetTarget.ForComposition(ResetCompositionTarget.Direct(composition));
+
+            Assert.IsTrue(target.IsValid);
+            Assert.AreEqual(ResetTargetKind.Composition, target.Kind);
+            Assert.AreEqual(ResetReferenceMode.Direct, target.CompositionTarget.ReferenceMode);
+            Assert.AreSame(composition, target.CompositionTarget.DirectComposition);
+        }
+
+        [Test]
+        public void CompositionStableTarget_IsValidAndCarriesStableReference()
+        {
+            StableObjectReference reference = StableObjectReference.ForEntry(
+                Immersive.Framework.ObjectEntry.ObjectEntryId.From("qa.reset.composition-stable"));
+            ResetTarget target = ResetTarget.ForComposition(ResetCompositionTarget.Stable(reference));
+
+            Assert.IsTrue(target.IsValid);
+            Assert.AreEqual(ResetReferenceMode.Stable, target.CompositionTarget.ReferenceMode);
+            Assert.AreEqual(reference, target.CompositionTarget.StableReference);
+            Assert.IsNull(target.CompositionTarget.DirectComposition);
+        }
+
+        [Test]
+        public void UnknownTarget_IsInvalidAndRejectedBeforeRuntimeLookup()
+        {
+            ResetTarget target = default;
+
+            Assert.IsFalse(target.IsValid);
+            Assert.IsFalse(System.Enum.IsDefined(typeof(ResetTargetKind), "StableReference"));
+            ResetSelectionResolution result = ResetTargetResolver.Resolve(null, target, "test", "unknown");
+            Assert.AreEqual(ResetSelectionResolutionStatus.RejectedInvalidRequest, result.Status);
+            StringAssert.Contains("Unknown", result.Message);
         }
 
         [TestCase(false)]
@@ -124,21 +191,37 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
-        public void CurrentActivityAndCurrentRoute_KeepMembershipAndOwnerFiltering()
+        public void CurrentActivityAndCurrentRoute_ApplyParentAndChildMembershipScopes()
         {
             GameObject root = Create("Root");
             Resettable activityMember = AddResettable(root.transform, "Activity");
             Resettable routeActivityMember = AddResettable(root.transform, "RouteActivity");
             Resettable routeMember = AddResettable(root.transform, "Route");
+            Resettable otherActivityMember = AddResettable(root.transform, "OtherActivity");
+            Resettable otherRouteActivityMember = AddResettable(root.transform, "OtherRouteActivity");
+            Resettable otherRouteMember = AddResettable(root.transform, "OtherRoute");
             SetMembership(routeActivityMember, ResetMembership.Activity);
+            SetMembership(otherRouteActivityMember, ResetMembership.Activity);
             Register(_activity, activityMember.gameObject);
             Register(_route, routeActivityMember.gameObject, routeMember.gameObject);
+            Register(_otherActivity, otherActivityMember.gameObject);
+            Register(_otherRoute, otherRouteActivityMember.gameObject, otherRouteMember.gameObject);
 
             CollectionAssert.AreEquivalent(
                 new[] { activityMember.RuntimeSubjectId, routeActivityMember.RuntimeSubjectId },
                 ResetTargetResolver.ResolveCurrentActivitySubjects(_registry, _activity, _route));
-            CollectionAssert.AreEqual(new[] { routeMember.RuntimeSubjectId },
-                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _route));
+            CollectionAssert.AreEquivalent(
+                new[] { activityMember.RuntimeSubjectId, routeActivityMember.RuntimeSubjectId, routeMember.RuntimeSubjectId },
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _route, _activity));
+            CollectionAssert.DoesNotContain(
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _route, _activity),
+                otherActivityMember.RuntimeSubjectId);
+            CollectionAssert.DoesNotContain(
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _route, _activity),
+                otherRouteActivityMember.RuntimeSubjectId);
+            CollectionAssert.DoesNotContain(
+                ResetTargetResolver.ResolveCurrentRouteSubjects(_registry, _route, _activity),
+                otherRouteMember.RuntimeSubjectId);
         }
 
         [Test]
@@ -180,8 +263,8 @@ namespace Immersive.Framework.Reset.Tests
             Resettable resettable = AddResettable(Create("Target").transform, "Resettable");
             ResetComposition composition = Create("Composition").AddComponent<ResetComposition>();
             trigger.Target = targetKind == ResetTargetKind.Object
-                ? ResetTarget.ForObject(resettable)
-                : ResetTarget.ForComposition(composition);
+                ? ResetTarget.ForObject(ResetObjectTarget.Direct(resettable))
+                : ResetTarget.ForComposition(ResetCompositionTarget.Direct(composition));
             var runtime = new RecordingRuntime();
             Assert.IsTrue(trigger.TryBind(runtime, out string bindingIssue), bindingIssue);
 
@@ -189,8 +272,8 @@ namespace Immersive.Framework.Reset.Tests
 
             Assert.AreEqual(ResetExecutionStatus.SucceededNoSubjects, execution.Status);
             Assert.AreEqual(targetKind, runtime.Target.Kind);
-            Assert.AreEqual(trigger.Target.Object, runtime.Target.Object);
-            Assert.AreEqual(trigger.Target.Composition, runtime.Target.Composition);
+            Assert.AreEqual(trigger.Target.ObjectTarget, runtime.Target.ObjectTarget);
+            Assert.AreEqual(trigger.Target.CompositionTarget, runtime.Target.CompositionTarget);
             Assert.IsFalse(trigger.IsRequestInFlight);
         }
 
@@ -239,7 +322,7 @@ namespace Immersive.Framework.Reset.Tests
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private sealed class RecordingRuntime : IResetSelectionExecutionRuntimePort
+        private sealed class RecordingRuntime : IResetTargetExecutionRuntimePort
         {
             internal ResetTarget Target { get; private set; }
 
@@ -254,10 +337,6 @@ namespace Immersive.Framework.Reset.Tests
                 return Task.FromResult(new ResetSelectionExecutionRuntimeResult(resolution, execution));
             }
 
-            public Task<ResetSelectionExecutionRuntimeResult> ExecuteResetSelectionAsync(ResetSelectionConfig selection, string source, string reason)
-            {
-                throw new System.NotSupportedException();
-            }
         }
     }
 }
