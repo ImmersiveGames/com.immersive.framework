@@ -2,6 +2,24 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0-preview.3] - 2026-10-02 — prepared, unpublished
+
+This candidate consolidates the IF-ADR-035 Reset authoring and runtime cut.
+Reset consumer scenarios 1-8 were integrated and manually validated in
+`planet-devourer`; package import/compile and broader Camera/Player validation
+remain pending. This candidate has not been tagged or published.
+
+- Reconciled Reset around owner-scoped `Resettable` registration,
+  `ResetComposition` and explicit `ResetTarget`, and removed the superseded
+  Object Reset Trigger/Group authoring path.
+- Closed Activity and Route membership targeting semantics, including Route
+  resets covering resettable Activity membership within the current Route.
+- Preserved Activity Restart survivor filtering for Route-owned state and
+  completed its Reset Target Inspector surface.
+- Fixed scoped Object Entry identity duplicate detection and contextualized
+  Reset Participant authoring for Resettable and legacy Adapter boundaries.
+- Added Active reset baseline authoring and immediate verification diagnostics.
+
 ## [1.1.0-preview.2] - 2026-09-30
 
 First preview of the Session Camera Assignment and Player occurrence authority

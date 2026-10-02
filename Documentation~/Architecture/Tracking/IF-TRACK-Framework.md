@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.2 published; IF-ADR-038 Camera cuts A-H implemented in source; project test migration and Unity validation pending**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.2 published; 1.1.0-preview.3 prepared locally and unpublished; IF-ADR-035 Reset scenarios 1-8 manually validated in planet-devourer; Camera/Player validation pending**
 
-Last updated: **2026-09-30**
+Last updated: **2026-10-02**
 
 ## Authority and status model
 
@@ -33,6 +33,11 @@ Preview **`1.1.0-preview.2`** is published to GitHub Releases and OpenUPM. The
 `v1.1.0-preview.1` tag stopped at signed-archive verification; no GitHub Release
 or OpenUPM publication was created for it. Unity import/compile and runtime
 validation remain pending for this Camera/Player preview.
+
+Candidate **`1.1.0-preview.3`** is prepared in the current source tree but has
+not been tagged or published. It includes the IF-ADR-035 Reset cut. Reset
+consumer scenarios 1-8 were manually validated in `planet-devourer` on
+2026-10-02; package import/compile and Camera/Player validation remain pending.
 
 Registry dependency graph:
 
