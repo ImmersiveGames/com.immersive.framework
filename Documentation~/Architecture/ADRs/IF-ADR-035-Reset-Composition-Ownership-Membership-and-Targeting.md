@@ -700,3 +700,25 @@ Cycle Reset remains a separate lifecycle-system contract.
 
 ResetRequestTrigger is the sole request surface and feeds the existing Reset execution core.
 ```
+
+
+## 24. Consumer proof closure — 2026-10-02
+
+The IF-ADR-035 consumer authoring/proving slice is closed in `planet-devourer` for the current implementation.
+
+Integrated and manually validated scenarios:
+
+```text
+Object / Direct
+Object / Stable
+Composition / Direct - Descendants
+Composition / Stable - Explicit Members
+CurrentActivity
+CurrentRoute
+Activity Restart
+Multiple Participants
+```
+
+The Multiple Participants proof uses one root `Resettable` with capabilities collected from two descendant GameObjects: one Transform capability and one GameObject active-state capability. The Resettable diagnostic display name remains free to preserve the original authored object name; it is not runtime identity.
+
+This closure records consumer proof of the accepted architecture. It does not change the normative model and does not claim UPM package-import/release validation.

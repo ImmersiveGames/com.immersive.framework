@@ -1,6 +1,6 @@
 # Reset Usage
 
-Status: IF-ADR-035 Resettable / Composition / Target model implemented; consumer validation is ongoing by scenario.
+Status: IF-ADR-035 Resettable / Composition / Target model implemented; consumer scenarios 1-8 are integrated and manually validated in planet-devourer as of 2026-10-02. UPM release validation remains separate.
 Last updated: 2026-10-02
 
 Reset content ownership, Reset membership, semantic target kind and target addressing are separate concerns:
@@ -159,7 +159,7 @@ For scenario validation, record both the requested selection and the observable 
 
 ## Consumer validation scenarios
 
-The current consumer proof set covers these distinct contracts:
+The closed consumer proof set covers these distinct contracts:
 
 1. Object / Direct.
 2. Object / Stable.
@@ -169,6 +169,8 @@ The current consumer proof set covers these distinct contracts:
 6. CurrentRoute as the Route umbrella.
 7. Activity Restart with surviving Route-owned / Activity-membership state.
 8. One Resettable with multiple participants restoring different state.
+
+All eight scenarios are integrated in the planet-devourer authoring/proving workspace and were manually validated. This consumer closure does not claim UPM package-import validation.
 
 These scenarios are usage examples, not additional runtime APIs.
 
