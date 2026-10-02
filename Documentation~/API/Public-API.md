@@ -98,11 +98,31 @@ Guide: [Input and Pause](../Guides/Pause-Usage.md).
 
 Guides: [Progression Save authoring](../Guides/Progression-Save-Authoring.md), [backend adapter contract](../Guides/Progression-Save-Backend-Adapter-Contract.md), [built-in JSON backend](../Guides/Progression-Save-Built-In-Json-Backend.md).
 
-## Optional Audio and Reset
+## Reset
 
-`ActivityBgmAuthoring` and `FrameworkBgmDirector` are Experimental optional BGM surfaces. Reset authoring is also Experimental. Use the feature guides for composition; neither domain is required to start an application.
+Reset authoring is Experimental. The supported consumer model is semantic authoring around Resettable, capabilities, compositions and Reset targets; registry mechanics and runtime-generated identities are not the normal gameplay API.
 
-Guides: [Audio Usage](../Guides/Audio-Usage.md), [Reset Usage](../Guides/Reset-Usage.md).
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `Resettable` | Authoring component · Experimental | One independently executable Reset subject and hierarchy boundary for local Reset capabilities. Nested Resettables form independent boundaries. |
+| `ResetComposition` | Authoring component · Experimental | Resolves a deterministic set of Resettables. It is not itself a Reset subject. |
+| `ResetRequestTrigger` | Request component · Experimental | Sole normal Reset request surface for Object, Composition, CurrentActivity and CurrentRoute targets. |
+| `ResetTarget`, `ResetObjectTarget`, `ResetCompositionTarget` | Target values · Experimental | Express semantic target intent and Direct/Stable addressing without exposing registry mechanics. |
+| `ResetMembership` | Authoring policy · Experimental | Controls CurrentActivity/CurrentRoute inclusion independently from content ownership. |
+| `ResetReferenceMode` | Addressing policy · Experimental | Selects Direct typed references or Stable IF-ADR-014 addressing for Object/Composition. |
+| `UnityTransformResetParticipant` | Reset capability · Experimental | Restores an authored Transform baseline. |
+| `UnityGameObjectActiveResetParticipant` | Reset capability · Experimental | Restores an authored GameObject active-state baseline. |
+| `UnityResetSubjectAdapter` | Independent registration adapter · Experimental | Retained independent subject-registration contract; not the normal Resettable path and not a request surface. |
+
+Under `Resettable`, collected capability identity is runtime-generated/deterministic; consumers do not need to author participant IDs for the normal path.
+
+Guide: [Reset Usage](../Guides/Reset-Usage.md). Architecture: [IF-ADR-035](../Architecture/ADRs/IF-ADR-035-Reset-Composition-Ownership-Membership-and-Targeting.md).
+
+## Optional Audio
+
+`ActivityBgmAuthoring` and `FrameworkBgmDirector` are Experimental optional BGM surfaces. Audio is not required to start an application.
+
+Guide: [Audio Usage](../Guides/Audio-Usage.md).
 
 ## Logging
 

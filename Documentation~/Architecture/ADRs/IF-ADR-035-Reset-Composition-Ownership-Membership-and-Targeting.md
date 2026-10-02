@@ -1,7 +1,7 @@
 # IF-ADR-035 — Reset Composition, Ownership, Membership and Targeting
 
 Status: **Accepted**
-Last updated: **2026-10-01**
+Last updated: **2026-10-02**
 Normative classification: **Corrective Reset architecture authority**
 Supersedes: **the Reset authoring, explicit scope authoring, explicit subject-selection and Unity registration assumptions of IF-ADR-005 where they conflict with this ADR**
 Reopens / requires reconciliation: **IF-ADR-001, IF-ADR-002, IF-ADR-005, IF-ADR-010**
@@ -183,9 +183,9 @@ A Resettable:
 
 A Resettable forms a collection boundary.
 
-Descendant discovery must not cross into another nested Resettable when collecting local capabilities.
+Capability collection traverses the Resettable hierarchy deterministically. Capabilities may live on the Resettable GameObject or on descendant GameObjects inside that boundary. Descendant discovery must not cross into another nested Resettable; the nested Resettable owns its own capabilities and maps to a separate runtime subject.
 
-This prevents duplicate registration/execution in nested gameplay composition.
+One Resettable may therefore register multiple capabilities located on different GameObjects while still executing as one subject. This prevents duplicate registration/execution in nested gameplay composition and keeps capability placement separate from subject identity.
 
 ## 6. ResetComposition
 
@@ -363,6 +363,8 @@ not.
 They are internal/runtime concerns by default.
 
 Normal authoring must not require consumers to invent textual identifiers solely so Reset can execute.
+
+Under the Resettable path, collected capabilities receive deterministic runtime participant identity from the Resettable registration boundary; authored participant IDs are not required for normal Resettable authoring. The independent UnityResetSubjectAdapter path retains its authored participant descriptor/identity contract.
 
 Stable authored identity remains valid only when identity itself is a real cross-boundary gameplay/integration requirement.
 

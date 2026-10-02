@@ -1,4 +1,6 @@
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.Diagnostics;
+using Immersive.Logging.Records;
 using UnityEngine;
 
 namespace Immersive.Framework.Reset.Unity
@@ -61,7 +63,24 @@ namespace Immersive.Framework.Reset.Unity
                     "Unity GameObject active reset failed because the target GameObject is missing.");
             }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            bool beforeActive = resolvedTarget.activeSelf;
+#endif
             resolvedTarget.SetActive(baselineActive);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            bool immediateAfterActive = resolvedTarget.activeSelf;
+            bool verificationSucceeded = immediateAfterActive == baselineActive;
+
+            FrameworkLogger.Create<UnityGameObjectActiveResetParticipant>().Debug(
+                "Unity GameObject active reset immediate verification.",
+                LogFields.Field("participantId", ParticipantIdText),
+                LogFields.Field("targetName", resolvedTarget.name),
+                LogFields.Field("baselineActive", baselineActive),
+                LogFields.Field("beforeActive", beforeActive),
+                LogFields.Field("immediateAfterActive", immediateAfterActive),
+                LogFields.Field("verificationSucceeded", verificationSucceeded));
+#endif
+
             return ResetParticipantResult.CreateSucceeded(
                 CreateDescriptorForResult(context),
                 nameof(UnityGameObjectActiveResetParticipant),
