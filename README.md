@@ -4,9 +4,9 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Latest published preview: `1.1.0-preview.2`. Prepared, unpublished candidate:
-`1.1.0-preview.3` (Reset consumer validation is complete; Camera/Player
-validation remains pending). Latest stable package release: `1.0.2`. The earlier
+Latest published preview: `1.1.0-preview.3` (Reset consumer validation is
+complete; Camera/Player validation remains pending). Latest stable package
+release: `1.0.2`. The earlier
 `1.0.3-preview.1` preparation was not published and `1.1.0-preview.1` failed
 archive verification before distribution.
 
@@ -52,12 +52,10 @@ The preview candidate in this checkout targets Foundation `0.2.2` and Logging
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
 
-The latest published preview is `1.1.0-preview.2`; use that version through
-OpenUPM or the Git tag
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.2`.
-Candidate `1.1.0-preview.3` is prepared in this source tree but is not available
-from OpenUPM or a release tag yet. It consolidates the Reset authoring and
-runtime cut; preview APIs and serialized authoring may still change.
+Use preview `1.1.0-preview.3` through OpenUPM or the Git tag
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.3`.
+It consolidates the Reset authoring and runtime cut; preview APIs and serialized
+authoring may still change.
 
 ## Getting started
 

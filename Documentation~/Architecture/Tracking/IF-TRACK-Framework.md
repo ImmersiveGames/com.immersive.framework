@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.2 published; 1.1.0-preview.3 prepared locally and unpublished; IF-ADR-035 Reset scenarios 1-8 manually validated in planet-devourer; Camera/Player validation pending**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; IF-ADR-035 Reset scenarios 1-8 manually validated in planet-devourer; Camera/Player validation pending**
 
 Last updated: **2026-10-02**
 
@@ -29,15 +29,12 @@ The public OpenUPM graph is published:
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
 
-Preview **`1.1.0-preview.2`** is published to GitHub Releases and OpenUPM. The
+Preview **`1.1.0-preview.3`** is published to GitHub Releases and OpenUPM. The
 `v1.1.0-preview.1` tag stopped at signed-archive verification; no GitHub Release
-or OpenUPM publication was created for it. Unity import/compile and runtime
-validation remain pending for this Camera/Player preview.
-
-Candidate **`1.1.0-preview.3`** is prepared in the current source tree but has
-not been tagged or published. It includes the IF-ADR-035 Reset cut. Reset
-consumer scenarios 1-8 were manually validated in `planet-devourer` on
-2026-10-02; package import/compile and Camera/Player validation remain pending.
+or OpenUPM publication was created for it. The `.3` release includes the
+IF-ADR-035 Reset cut. Reset consumer scenarios 1-8 were manually validated in
+`planet-devourer` on 2026-10-02; package import/compile and Camera/Player
+validation remain pending.
 
 Registry dependency graph:
 

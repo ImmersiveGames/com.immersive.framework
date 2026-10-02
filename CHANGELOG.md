@@ -2,12 +2,12 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.3] - 2026-10-02 — prepared, unpublished
+## [1.1.0-preview.3] - 2026-10-02
 
 This candidate consolidates the IF-ADR-035 Reset authoring and runtime cut.
 Reset consumer scenarios 1-8 were integrated and manually validated in
 `planet-devourer`; package import/compile and broader Camera/Player validation
-remain pending. This candidate has not been tagged or published.
+remain pending. Published through GitHub Releases and OpenUPM as a preview.
 
 - Reconciled Reset around owner-scoped `Resettable` registration,
   `ResetComposition` and explicit `ResetTarget`, and removed the superseded
