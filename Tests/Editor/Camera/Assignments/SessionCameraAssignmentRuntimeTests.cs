@@ -395,6 +395,65 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void EmptyStartupCanActivateAndClearSessionAssignmentBackToFallback()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                System.Array.Empty<SessionCameraAssignmentAuthoring>(),
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.True, issue);
+            _runtimes.Add(runtime);
+
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            Assert.That(output.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+
+            Assert.That(runtime.TryActivateAssignment(
+                fixture.Assignments[0],
+                out issue), Is.True, issue);
+            Assert.That(output.OutputState.ActiveAssignmentId,
+                Is.EqualTo(fixture.AssignmentId));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+
+            Assert.That(runtime.TryClearAssignment(
+                fixture.AssignmentId,
+                out issue), Is.True, issue);
+            Assert.That(output.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(runtime.Occurrences, Is.Empty);
+        }
+
+        [Test]
+        public void ActivateRejectsOccupiedOutputAndPreservesCurrentAssignment()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence original = runtime.Occurrences[0];
+            CameraOutputSession output = fixture.Outputs[0].Session;
+
+            SessionCameraAssignmentAuthoring candidate =
+                CreateReplacementAuthoring(
+                    fixture,
+                    "assignment.activation-conflict",
+                    CameraOccurrenceMode.SessionScoped,
+                    CameraTargetPolicy.NoSubject,
+                    new[] { 0 },
+                    null);
+
+            Assert.That(runtime.TryActivateAssignment(
+                candidate,
+                out string issue), Is.False);
+            Assert.That(issue, Does.Contain("active"));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(original));
+            Assert.That(output.OutputState.ActiveAssignmentId,
+                Is.EqualTo(fixture.AssignmentId));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+        }
+
+        [Test]
         public void SessionAssignmentReplacementIsExplicitNoOpForSameIdAndPreservesCurrentOnInvalidCandidate()
         {
             Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
