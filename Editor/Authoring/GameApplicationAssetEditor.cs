@@ -717,7 +717,7 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUILayout.Space(4f);
 
             EditorGUILayout.HelpBox(
-                "Assignments choose normal cameras and map their Occurrences to these physical Outputs. Each Output retains its independent Fallback Camera. Persistent Content does not supply Camera Outputs.",
+                "Assignments choose normal cameras and map their Occurrences to these physical Outputs. Individual Assignments also own the Player Slot -> Output mapping used for PlayerInput.camera. Each Output retains its independent Fallback Camera. Persistent Content does not supply Camera Outputs.",
                 MessageType.Info);
 
             EditorGUILayout.PropertyField(
@@ -727,20 +727,11 @@ namespace Immersive.Framework.Editor.Authoring
 
             SerializedProperty outputPrefabs =
                 _cameraSession?.FindPropertyRelative("outputPrefabs");
-            SerializedProperty playerOutputBindings =
-                _cameraSession?.FindPropertyRelative("playerOutputBindings");
-
             int outputCount =
                 outputPrefabs != null &&
                 outputPrefabs.isArray
                     ? outputPrefabs.arraySize
                     : 0;
-            int playerBindingCount =
-                playerOutputBindings != null &&
-                playerOutputBindings.isArray
-                    ? playerOutputBindings.arraySize
-                    : 0;
-
             if (outputCount == 0)
             {
                 EditorGUILayout.HelpBox(
@@ -753,12 +744,6 @@ namespace Immersive.Framework.Editor.Authoring
                     "Physical Outputs",
                     $"{outputCount} explicit Output prefab(s).");
             }
-
-            DrawStatusRow(
-                "Player Output Bindings",
-                playerBindingCount == 0
-                    ? "Optional — no Player Slot -> Output bindings configured."
-                    : $"{playerBindingCount} explicit binding(s).");
 
         }
 

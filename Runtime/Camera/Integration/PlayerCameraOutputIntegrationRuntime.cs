@@ -35,7 +35,7 @@ namespace Immersive.Framework.Camera
         private readonly PlayerActorPreparationRuntimeHostModule _physicalPlayers;
         private readonly PlayerInputManager _splitScreenManager;
         private readonly CameraOutputSessionTopology _outputs;
-        private readonly PlayerCameraOutputTopology _bindings;
+        private PlayerCameraOutputTopology _bindings;
         private readonly Dictionary<PlayerSlotId, AppliedBinding> _applied = new();
         private readonly bool _automaticSplitScreenConfigured;
         private PlayerSlotId _splitScreenJoinSlot;
@@ -64,6 +64,30 @@ namespace Immersive.Framework.Camera
 
         internal bool LastReconciliationSucceeded { get; private set; }
         internal string Diagnostic { get; private set; }
+
+        internal bool TrySetTopology(
+            PlayerCameraOutputTopology bindings,
+            out string diagnostic)
+        {
+            if (_disposed || bindings == null)
+            {
+                diagnostic = "Player Camera Output integration requires an active runtime and explicit Assignment topology.";
+                return false;
+            }
+
+            _bindings = bindings;
+            if (!ReconcileAll(out diagnostic))
+            {
+                LastReconciliationSucceeded = false;
+                Diagnostic = diagnostic;
+                return false;
+            }
+
+            RefreshPhysicalParticipation();
+            LastReconciliationSucceeded = true;
+            Diagnostic = "Player Camera Output integration was reconciled from the current Session Camera Assignments.";
+            return true;
+        }
 
         internal static bool TryCreate(
             PlayerParticipationRuntimeContext playerSession,
@@ -362,10 +386,7 @@ namespace Immersive.Framework.Camera
 
             SetOutputPhysicalParticipation(binding, true);
 
-            if (!ReferenceEquals(playerInput.camera, resolvedCamera))
-            {
-                playerInput.camera = resolvedCamera;
-            }
+            SetCamera(playerInput, resolvedCamera);
 
             _applied[playerSlotId] = new AppliedBinding(
                 playerInput,
@@ -448,13 +469,30 @@ namespace Immersive.Framework.Camera
                 return;
             }
 
-            if (applied.PlayerInput != null &&
-                ReferenceEquals(applied.PlayerInput.camera, applied.Camera))
-            {
-                applied.PlayerInput.camera = null;
-            }
+            ClearCamera(applied.PlayerInput, applied.Camera);
 
             _applied.Remove(playerSlotId);
+        }
+
+        internal static void SetCamera(
+            PlayerInput playerInput,
+            UnityEngine.Camera camera)
+        {
+            if (playerInput != null && !ReferenceEquals(playerInput.camera, camera))
+            {
+                playerInput.camera = camera;
+            }
+        }
+
+        internal static void ClearCamera(
+            PlayerInput playerInput,
+            UnityEngine.Camera ownedCamera)
+        {
+            if (playerInput != null &&
+                ReferenceEquals(playerInput.camera, ownedCamera))
+            {
+                playerInput.camera = null;
+            }
         }
     }
 }

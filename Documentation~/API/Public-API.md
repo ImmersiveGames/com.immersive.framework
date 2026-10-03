@@ -66,7 +66,7 @@ Guide: [Player Participation and Local Player](../Guides/Player-Usage.md). Scene
 | `CameraRigComposer` | Authoring/materialization component · Stable | Configures and materializes a local Cinemachine rig; it does not select an active camera or own the Unity Camera/Brain. |
 | `CameraDefinition`, `CameraOutputDefinition` | Assets · Experimental | Reusable Session Camera definition and explicit physical Output identity. |
 | `ActorCameraSubjectAuthoring` | Actor authoring component · Experimental | Supplies an explicit Observation Transform for an exact Actor occurrence. |
-| Session Camera Assignments on `GameApplicationAsset` | Session authoring · current implementation, Experimental boundary | Configure occurrence mode, membership/target policy and explicit Output mapping. The architecture decision remains Proposed while consolidation and Unity validation are pending. |
+| Session Camera Assignments on `GameApplicationAsset` | Session authoring · current implementation, Experimental boundary | Configure occurrence mode, membership/target policy and explicit Output mapping. Individual Assignments are the sole Player Slot → Output authority; `CameraSessionConfiguration` owns only physical Output capacity. IF-ADR-038 is Accepted; Unity validation remains pending. |
 
 There is no supported Camera Request/Presentation selection API in the current model. `SessionCameraAssignmentAuthoring` is serialized authoring data; its C# visibility alone does not make it a recommended runtime integration surface.
 

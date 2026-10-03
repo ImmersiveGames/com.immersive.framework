@@ -1,8 +1,8 @@
 # IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle
 
-Status: **Proposed — normative consolidation in progress**
+Status: **Accepted — Unity validation pending**
 Proposed: **2026-09-27**
-Last updated: **2026-09-30**
+Last updated: **2026-10-03**
 Type: architecture / Session Camera / Player membership / Output lifecycle  
 Supersedes as normative Camera architecture: **IF-ADR-032, IF-ADR-037**  
 Normative relationship: **This ADR defines the primary Session Camera model and the physical/spatial authority of the Player's Actor occurrence. Route and Activity do not own or select Camera. IF-ADR-023 is superseded; IF-ADR-032 and IF-ADR-037 remain superseded. Certifications are historical evidence only.**
@@ -54,6 +54,16 @@ Occurrence        ── exact physical destination ──> one Output
 
 The Framework owns primary-camera authoring/runtime contracts, Session assignment and occurrence lifecycle, target projection, Output routing and fallback coverage. Unity/Cinemachine adapters implement supported physical camera behavior. Game-owned additional cameras remain outside this assignment system and use their own game/Cinemachine control.
 
+`CameraSessionConfiguration` owns physical Output capacity only. The sole authored
+Player Slot → Output mapping is `SessionCameraAssignmentAuthoring` for
+`IndividualPerPlayer`; the Framework derives exact `PlayerInput.camera` associations
+from those Assignments. Session-scoped and SharedGroup Assignments produce no
+individual Player topology. A SharedGroup may have multiple Players on one Output.
+The Framework may enable or disable the `PlayerInputManager` split-screen regime
+according to Individual versus SharedGroup use; `PlayerInputManager` remains the
+owner of viewport geometry. Framework Camera code never writes `Camera.rect` or
+`Camera.pixelRect`.
+
 ### 2.1.1 Player Actor occurrence authority
 
 The exact current Actor occurrence is the physical and spatial authority for its
@@ -97,6 +107,14 @@ The Assignment explicitly declares occurrence mode/lifetime and, separately, mem
 
 An Assignment may reference a Definition also used by other Assignments. Each Session-scoped/shared occurrence is identified by Assignment + Output; each individual occurrence adds the exact PlayerOccurrence to that identity. An individual Assignment creates a separate occurrence for each included member; a shared-group Assignment creates one occurrence shared by all current members on that Output.
 
+For an Individual Assignment, `MemberOutputs` must map every configured member
+Slot to one unique Output declared by that Assignment. Output capacity itself is
+authored only on Camera Session. `PlayerInput.camera` is a runtime projection of
+these mappings and current physical Player Host evidence; it is cleared on Leave,
+replacement or shutdown. Conflicting Slot/Output mappings fail validation before
+they can become active. A SharedGroup has no per-Player mappings and does not
+request split-screen viewport geometry.
+
 ### 2.4 Membership, target sources and Subjects
 
 Assignments use explicit, typed Player Slot membership or another explicitly authored Session membership source. Membership policy is not implied by occurrence mode: a Session-scoped Assignment may have no Player membership, optional Player membership or authored membership. Runtime membership resolves each included Slot to its exact current Session Player occurrence. It must not use scene scans, hierarchy/name lookup, global Player lookup or string parsing. Join updates only Assignments whose membership policy includes that Player.
@@ -122,7 +140,7 @@ Every physical Camera Occurrence routes to exactly one exact Session Camera Outp
 
 An Output has exactly one configured active normal Assignment at a time. Session authoring/activation must reject overlapping active assignments to the same Output; there is no implicit winner, precedence or tie-break. The active Assignment may currently have no occurrence (for example, an Individual assignment with no included Player) or its occurrence may be invalid for presentation. A Player may participate in a shared group on one Output while another Output has a different assignment. A Player is not implicitly routed to every Output.
 
-The assignment mapping is explicit and typed. Missing Outputs, duplicate/conflicting mappings, duplicate Player memberships and invalid per-mode cardinality fail validation. Output count is authored Session capacity and is never inferred from current Player count. `PlayerInputManager` remains the authority for local split-screen count and physical viewport layout; Camera does not write `Camera.rect` or `pixelRect`.
+The assignment mapping is explicit and typed. Missing Outputs, duplicate/conflicting mappings, duplicate Player memberships and invalid per-mode cardinality fail validation. Output count is authored Session capacity and is never inferred from current Player count. The Framework selects the individual/shared split-screen regime from Assignment policy; `PlayerInputManager` computes physical viewport geometry. Camera code does not write `Camera.rect` or `Camera.pixelRect`.
 
 ### 2.6 Explicit active-assignment change
 
@@ -332,6 +350,9 @@ The implementation must prove at minimum:
 - Session/shared occurrence identity is Assignment + Output; individual occurrence identity is Assignment + exact PlayerOccurrence + Output, including fresh identity on Rejoin;
 - zero-member shared group remains alive; targetless-valid group stays normal, while target-required group uses fallback with exact diagnostics;
 - individual occurrences are distinct per Player and exact Output;
+- Individual Assignment P1→Output1 / P2→Output2 publishes the corresponding Camera to each exact `PlayerInput.camera`; Leave/Rejoin, Assignment replacement and Session shutdown release or refresh only the owned association;
+- SharedGroup with multiple Players creates no individual Player Output topology and does not force split-screen; SessionScoped zero-Player configuration creates no Player binding;
+- invalid or conflicting Assignment Slot/Output mappings fail before startup activation or replacement commit;
 - shared group has one occurrence per Assignment/Output and correct current Subject set through 0→1→N→N-1→0; occurrence identity and lifetime stay constant as membership changes;
 - Definition reuse creates independent mutable occurrences;
 - SceneProvided and ManagerProvisioned admission converge on the same membership behavior;

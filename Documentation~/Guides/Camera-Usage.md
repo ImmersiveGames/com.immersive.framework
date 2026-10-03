@@ -1,9 +1,9 @@
 # Camera Usage
 
-Status: **IF-ADR-038 Camera model in active implementation; package Camera/sample migration and Unity import/Play Mode validation pending.**
-Last updated: **2026-09-30**
+Status: **IF-ADR-038 Assignment-owned Player Output mapping in active implementation; Unity import/Play Mode validation pending.**
+Last updated: **2026-10-03**
 
-Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) is marked Proposed while normative consolidation is in progress. This guide describes the current authored model reflected by implementation and package documentation. This status is not Unity validation or promotion of Experimental Camera assets to Stable API.
+Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) is Accepted; Unity validation remains pending. This guide describes the current authored model reflected by implementation and package documentation. This status is not Unity validation or promotion of Experimental Camera assets to Stable API.
 
 ## Mental model
 
@@ -34,6 +34,8 @@ There is no supported Camera Request selection surface in the current model.
 - `GameApplicationAsset` owns Session Camera configuration: physical Output capacity/configuration and Session Camera Assignments.
 - Each `CameraOutputAuthoring` binds one explicit Unity Camera, its Cinemachine Brain and its independent Fallback Camera rig.
 - Assignment authoring explicitly maps Outputs and declares occurrence mode, Player membership and target policy. Output count and Player-to-Output associations are explicit; Player count does not create Camera Outputs.
+- `CameraSessionConfiguration` contains only physical Output prefabs. For `IndividualPerPlayer`, each Session Camera Assignment maps every member Slot to its Output. `PlayerCameraOutputIntegrationRuntime` derives `PlayerInput.camera` from that Assignment and current Player Host evidence. Do not author a second Player Slot → Output table.
+- `SharedGroup` and `SessionScoped` Assignments do not create individual Player Output bindings. Multiple Players may share one Output in `SharedGroup`, and zero-Player SessionScoped cameras remain valid without a Player binding.
 
 The Camera system/assets are not currently marked Stable as a whole. Check the Public API Reference for each surface’s maturity.
 
@@ -47,13 +49,13 @@ The Camera system/assets are not currently marked Stable as a whole. Check the P
 - The Output may show its current normal occurrence or temporary/required fallback coverage. Showing fallback does not deactivate or remove the configured Assignment. Zero members alone do not select fallback.
 - Only an explicit Session Camera Assignment change changes normal camera selection. Candidate preparation must succeed before replacement commits; failed preparation preserves the previous Assignment.
 
-Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. `PlayerInputManager` owns physical split-screen viewport layout; Camera Output assignment does not write viewport geometry.
+Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The Framework may choose the individual/shared split-screen regime. `PlayerInputManager` owns viewport geometry; Framework Camera code does not write `Camera.rect` or `Camera.pixelRect`.
 
 ## Setup outline
 
 1. On the Game Application, author explicit physical Camera Outputs and their fallback rigs.
 2. Create a `Camera Definition` and configure its rig behavior through a `CameraRigComposer`.
-3. Configure Session Camera Assignments on the Game Application, mapping each Assignment to explicit Outputs and choosing its target and membership policy.
+3. Configure Session Camera Assignments on the Game Application, mapping each Assignment to explicit Outputs and choosing its target and membership policy. For Individual mode, map each member Slot to its Output on that Assignment.
 4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
 5. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
 

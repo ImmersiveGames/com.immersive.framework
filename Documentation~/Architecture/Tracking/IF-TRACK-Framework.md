@@ -171,7 +171,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
 | 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
-| 038 | PROPOSED; source implementation through CAMERA-038-H present | Editor test sources exist; not executed in this update | CAMERA-038-J/K partial; serialized asset migration, Unity validation and recertification pending |
+| 038 | ACCEPTED; source implementation through CAMERA-038-L present | Assignment-owned Player Output projection and focused Editor test sources added; Unity validation pending | CAMERA-038-J/K/L partial; remaining serialized consumer migration, Unity validation and QA recertification pending |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -372,7 +372,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle has historical proof through `GameplayReady`; Actor occurrence now owns physical/spatial state and replacement pose. Unity recertification and sample migration remain pending.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-038 remains Proposed. Assignment/Occurrence/Fallback runtime cuts A-H are present in source; package-side Presentation/Request ownership is removed. Consumer/QA asset migration and Unity import/compile/runtime recertification remain pending. Group framing remains partial/deferred.
+3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L removes the duplicate Player Output authoring and derives `PlayerInput.camera` topology from Individual Assignments. The split-screen consumer sample has been migrated in source. Unity import/compile/runtime recertification and remaining consumer/QA asset migration are pending. Group framing remains partial/deferred.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

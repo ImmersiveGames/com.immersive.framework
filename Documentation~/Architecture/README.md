@@ -320,9 +320,10 @@ LocalPlayerHostAuthoring
 `LocalPlayerHostAuthoring` owns reusable Player infrastructure. The Actor occurrence
 root owns physical/spatial state; optional visual content is subordinate. Neither
 `VisualContentMount` nor `ActorProfile.VisualContentPrefab` is required architecture.
-Camera Presentation is a separate Camera concept. Player runtime ownership,
-placement, relocation and replacement pose now use the Actor occurrence; the
-remaining Camera/sample migration and Unity validation are pending.
+Player runtime ownership, placement, relocation and replacement pose now use the
+Actor occurrence. IF-ADR-038 is Accepted; Assignment-owned Player Output mapping
+is implemented in source, while broader consumer migration and Unity validation
+remain pending.
 
 ```text
 Scene-Provided
@@ -404,10 +405,10 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 
 ### Camera
 
-- IF-ADR-038 — **Normative target; Player runtime ownership migrated**. Remaining Camera implementation/sample migration and Unity validation are pending.
+- IF-ADR-038 — **Accepted; Unity validation pending**. Individual Session Camera Assignments are the sole Player Slot → Output authority; Camera Session owns physical Outputs only. The split-screen consumer sample has been migrated; broader consumer migration and Unity validation remain pending.
 - Former Camera ADRs 004, 004C, 022 and 026–031 are removed from the active ADR set after consolidation.
 - Assignment replacement is transactional; physical Output/Brain/rig materialization, Fallback coverage, Subject identity, and PlayerInputManager split layout remain.
-- Scene `CameraSharedComposition`, Presentation/Request selection, Route/Activity Camera overrides, and continuity runtimes are removed. Existing sample assets remain migration input for CAMERA-038-J.
+- Scene `CameraSharedComposition`, Presentation/Request selection, Route/Activity Camera overrides, and continuity runtimes are removed. The Character Selection Multiplayer Split Screen sample now authors Output mappings on its Individual Assignment; remaining serialized consumer assets remain migration input for CAMERA-038-J/K/L.
 - Historical Camera certification remains valid only for the dated boundaries it executed and must not be relabeled as IF-ADR-038 proof.
 
 ## Historical certification records

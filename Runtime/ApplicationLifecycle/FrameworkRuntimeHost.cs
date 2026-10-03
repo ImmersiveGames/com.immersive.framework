@@ -111,16 +111,17 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _sessionCameraMembershipRuntime.Dispose();
                     _sessionCameraMembershipRuntime = null;
                 }
-                return replaced;
+                return replaced && TryRefreshPlayerCameraOutputTopology(out issue);
             }
 
             if (candidate.AssignmentId == previousAssignmentId)
             {
-                return _sessionCameraAssignmentRuntime.TryReplaceAssignment(
+                bool replaced = _sessionCameraAssignmentRuntime.TryReplaceAssignment(
                     previousAssignmentId,
                     candidate,
                     Array.Empty<SessionCameraMemberState>(),
                     out issue);
+                return replaced && TryRefreshPlayerCameraOutputTopology(out issue);
             }
 
             if (!candidate.TryBuild(out SessionCameraAssignment assignment, out issue))
@@ -131,11 +132,12 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (assignment.MembershipPolicy == CameraMembershipPolicy.None)
             {
-                return _sessionCameraAssignmentRuntime.TryReplaceAssignment(
+                bool replaced = _sessionCameraAssignmentRuntime.TryReplaceAssignment(
                     previousAssignmentId,
                     candidate,
                     Array.Empty<SessionCameraMemberState>(),
                     out issue);
+                return replaced && TryRefreshPlayerCameraOutputTopology(out issue);
             }
 
             if (!_gameApplication.PlayerSessionEnabled)
@@ -175,7 +177,28 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 membership.Dispose();
             }
-            return success;
+            return success && TryRefreshPlayerCameraOutputTopology(out issue);
+        }
+
+        private bool TryRefreshPlayerCameraOutputTopology(out string issue)
+        {
+            issue = string.Empty;
+            if (_playerCameraOutputIntegrationRuntime == null)
+            {
+                return true;
+            }
+
+            if (_sessionCameraAssignmentRuntime == null ||
+                !_sessionCameraAssignmentRuntime.TryCreatePlayerOutputTopology(
+                    out PlayerCameraOutputTopology topology,
+                    out issue))
+            {
+                return false;
+            }
+
+            return _playerCameraOutputIntegrationRuntime.TrySetTopology(
+                topology,
+                out issue);
         }
 
         public SessionRuntimeState SessionState => _state.SessionState;
@@ -578,19 +601,6 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             CameraSessionConfiguration cameraSession =
                 _gameApplication.CameraSession;
-            if (!_gameApplication.PlayerSessionEnabled &&
-                cameraSession != null &&
-                cameraSession.PlayerOutputBindings.Count > 0)
-            {
-                var failed =
-                    FrameworkGameFlowStartResult.Failed(
-                        "GameApplication Camera Session Player Slot -> Output bindings require an enabled Player Session.");
-                _state =
-                    FrameworkRuntimeState.FromGameFlowResult(
-                        _gameApplication,
-                        failed);
-                return failed;
-            }
 
             _sessionCameraMembershipRuntime?.Dispose();
             _sessionCameraMembershipRuntime = null;
@@ -621,6 +631,22 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             _cameraOutputTopology =
                 _cameraSessionOutputMaterializationRuntime.Topology;
+
+            this.TryGetPlayerParticipationSnapshot(
+                out PlayerParticipationSnapshot playerParticipationSnapshot);
+            if (!SessionCameraAssignmentOutputProjection.TryCreate(
+                    _gameApplication.SessionCameraAssignments,
+                    _cameraOutputTopology,
+                    playerParticipationSnapshot,
+                    _gameApplication.PlayerSessionEnabled &&
+                    automaticPlayerSplitScreenEnabled,
+                    out PlayerCameraOutputTopology playerCameraOutputTopology,
+                    out cameraDiagnostic))
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
 
             if (!SessionCameraAssignmentRuntime.TryCreate(
                     _gameApplication.SessionCameraAssignments,
@@ -670,22 +696,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field(
                     "diagnostic",
                     cameraDiagnostic));
-
-            this.TryGetPlayerParticipationSnapshot(
-                out PlayerParticipationSnapshot playerParticipationSnapshot);
-            if (!PlayerCameraOutputBindingProjection.TryCreate(
-                    cameraSession.PlayerOutputBindings,
-                    _cameraOutputTopology,
-                    playerParticipationSnapshot,
-                    _gameApplication.PlayerSessionEnabled &&
-                    automaticPlayerSplitScreenEnabled,
-                    out PlayerCameraOutputTopology playerCameraOutputTopology,
-                    out cameraDiagnostic))
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(cameraDiagnostic);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
 
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);

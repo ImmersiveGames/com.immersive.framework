@@ -405,6 +405,31 @@ namespace Immersive.Framework.Camera
             }
         }
 
+        internal bool TryCreatePlayerOutputTopology(
+            out PlayerCameraOutputTopology topology,
+            out string issue)
+        {
+            var bindings = new List<PlayerCameraOutputBinding>();
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                IReadOnlyList<CameraPlayerOutputMapping> memberOutputs =
+                    _individualAssignments[index].Assignment.MemberOutputs;
+                for (int mappingIndex = 0; mappingIndex < memberOutputs.Count; mappingIndex++)
+                {
+                    CameraPlayerOutputMapping mapping = memberOutputs[mappingIndex];
+                    bindings.Add(new PlayerCameraOutputBinding(
+                        mapping.PlayerSlotId,
+                        mapping.OutputId));
+                }
+            }
+
+            return PlayerCameraOutputTopology.TryCreate(
+                bindings,
+                _outputTopology,
+                out topology,
+                out issue);
+        }
+
         internal bool TryReplaceAssignment(
             SessionCameraAssignmentId previousAssignmentId,
             SessionCameraAssignmentAuthoring candidateAuthoring,
@@ -444,6 +469,45 @@ namespace Immersive.Framework.Camera
             if (FindAssignment(candidateAssignment.Id) != null)
             {
                 issue = $"Candidate Assignment identity '{candidateAssignment.Id}' is already active.";
+                return false;
+            }
+
+            var candidateBindings = new List<PlayerCameraOutputBinding>();
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                IndividualAssignmentRuntime active = _individualAssignments[index];
+                if (active.Assignment.Id == previousAssignmentId)
+                {
+                    continue;
+                }
+
+                IReadOnlyList<CameraPlayerOutputMapping> mappings = active.Assignment.MemberOutputs;
+                for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
+                {
+                    candidateBindings.Add(new PlayerCameraOutputBinding(
+                        mappings[mappingIndex].PlayerSlotId,
+                        mappings[mappingIndex].OutputId));
+                }
+            }
+
+            if (candidateAssignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+            {
+                IReadOnlyList<CameraPlayerOutputMapping> mappings = candidateAssignment.MemberOutputs;
+                for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
+                {
+                    candidateBindings.Add(new PlayerCameraOutputBinding(
+                        mappings[mappingIndex].PlayerSlotId,
+                        mappings[mappingIndex].OutputId));
+                }
+            }
+
+            if (!PlayerCameraOutputTopology.TryCreate(
+                    candidateBindings,
+                    _outputTopology,
+                    out _,
+                    out issue))
+            {
+                issue = $"Candidate Assignment conflicts with active Individual Player Output mappings. {issue}";
                 return false;
             }
 

@@ -1,7 +1,7 @@
 # IF-ADR-038 — Session Player Camera Migration Plan
 
-Status: **Planned**  
-Date: **2026-09-28**  
+Status: **In progress — CAMERA-038-L source/sample changes implemented; Unity/QA validation pending**
+Date: **2026-10-03**
 Architecture authority: **IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle**
 
 ## Objective
@@ -194,6 +194,35 @@ Required coverage includes:
 
 Only after runtime, authoring, samples and QA are validated, remove obsolete Camera ADRs/guides/certification records identified by IF-ADR-038 from active documentation.
 
+### CAMERA-038-L — Assignment-owned Player Output topology consolidation
+
+Remove `CameraSessionConfiguration.PlayerOutputBindings` and
+`PlayerCameraOutputBindingAuthoring`. `CameraSessionConfiguration` owns physical
+Output capacity only. Derive the exact Player Slot → Output topology exclusively
+from `IndividualPerPlayer` Session Camera Assignments and use that projection for
+`PlayerInput.camera`; refresh it transactionally when an Assignment is replaced.
+SessionScoped and SharedGroup produce no individual Player binding. Multiple
+Players may share one Output in SharedGroup.
+
+Keep split-screen regime selection in the Framework and viewport geometry in
+`PlayerInputManager`; Framework camera code must not write `Camera.rect` or
+`Camera.pixelRect`. Automatic split-screen slot coverage is required only for
+Individual Assignment topology. Invalid, conflicting, or unavailable mappings
+fail before Assignment activation/replacement. Session shutdown clears exact
+`PlayerInput.camera` associations before releasing Outputs.
+
+Migrate serialized sample/QA GameApplication assets away from the removed
+configuration field and update `CharacterSelectionMultiplayerSplitScreen` to
+author two explicit Individual Slot-to-Output mappings on its Assignment. Remove
+Presentation-era sample data only where the active asset no longer has a consumer;
+do not recreate CameraRequest/Presentation surfaces.
+
+Required regression source covers P1→Output1/P2→Output2 and `PlayerInput.camera`,
+Join/Leave/Rejoin, SharedGroup with multiple Players on one Output and no
+individual topology, SessionScoped with zero Players, invalid/conflicting
+mappings, Assignment replacement and shutdown cleanup. Unity compile/import,
+Play Mode and QA remain manual gates.
+
 ## Execution gates
 
 - Assignment and Occurrence are separate concepts.
@@ -219,7 +248,8 @@ Only after runtime, authoring, samples and QA are validated, remove obsolete Cam
 9. CAMERA-038-I — Remove Camera Presentation / Request / GameFlow Camera ownership.
 10. CAMERA-038-J — Authoring, samples and assets.
 11. CAMERA-038-K — QA, regressions and documentation cleanup.
+12. CAMERA-038-L — Assignment-owned Player Output topology consolidation.
 
-`Player Actor occurrence authority → Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Camera Presentation/Request/GameFlow Camera ownership → authoring/samples → QA/documentation cleanup`
+`Player Actor occurrence authority → Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Camera Presentation/Request/GameFlow Camera ownership → authoring/samples → QA/documentation cleanup → Assignment-owned Player Output topology consolidation`
 
 Each cut must report **Implemented / Tested / Integrated / Validated** separately. Manual success is not sufficient for closure.

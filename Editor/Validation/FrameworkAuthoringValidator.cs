@@ -313,14 +313,6 @@ namespace Immersive.Framework.Editor.Validation
                     gameApplication);
             }
 
-            if (!gameApplication.PlayerSessionEnabled &&
-                configuration.PlayerOutputBindings.Count > 0)
-            {
-                report.AddError(
-                    "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.",
-                    gameApplication);
-            }
-
         }
 
         private static void ValidateSessionCameraAssignments(

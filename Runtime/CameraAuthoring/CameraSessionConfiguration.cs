@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
-using Immersive.Framework.PlayerSlots;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
@@ -10,8 +9,7 @@ namespace Immersive.Framework.CameraAuthoring
     /// <summary>
     /// Explicit application-authored physical Camera capacity for one Session.
     ///
-    /// The configuration owns only stable Session authoring: 1..N Output prefabs,
-    /// optional Player Slot -> Output bindings used for physical local-player routing.
+    /// The configuration owns only stable Session authoring: 1..N Output prefabs.
     /// Materialized occurrences and Player runtime state remain outside this object.
     /// </summary>
     [Serializable]
@@ -25,11 +23,6 @@ namespace Immersive.Framework.CameraAuthoring
         private List<GameObject> outputPrefabs =
             new List<GameObject>();
 
-        [SerializeField]
-        [Tooltip("Legacy Player Slot -> Camera Output bindings. These will be replaced by Assignment Output mappings in CAMERA-038-D/J.")]
-        private List<PlayerCameraOutputBindingAuthoring> playerOutputBindings =
-            new List<PlayerCameraOutputBindingAuthoring>();
-
         public IReadOnlyList<GameObject> OutputPrefabs
         {
             get
@@ -40,20 +33,6 @@ namespace Immersive.Framework.CameraAuthoring
                 }
 
                 return Array.Empty<GameObject>();
-            }
-        }
-
-        public IReadOnlyList<PlayerCameraOutputBindingAuthoring>
-            PlayerOutputBindings
-        {
-            get
-            {
-                if (playerOutputBindings != null)
-                {
-                    return playerOutputBindings;
-                }
-
-                return Array.Empty<PlayerCameraOutputBindingAuthoring>();
             }
         }
 
@@ -185,78 +164,6 @@ namespace Immersive.Framework.CameraAuthoring
             {
                 issue = exception.Message;
                 return false;
-            }
-
-            IReadOnlyList<PlayerCameraOutputBindingAuthoring> bindings =
-                PlayerOutputBindings;
-            var seenSlots = new HashSet<PlayerSlotId>();
-            for (int index = 0; index < bindings.Count; index++)
-            {
-                PlayerCameraOutputBindingAuthoring binding =
-                    bindings[index];
-                if (binding == null)
-                {
-                    issue =
-                        $"Camera Session Player Output Bindings[{index}] is missing.";
-                    return false;
-                }
-
-                var playerSlotProfile =
-                    binding.PlayerSlotProfile;
-                if (playerSlotProfile == null)
-                {
-                    issue =
-                        $"Camera Session Player Output binding at index '{index}' requires a valid PlayerSlotProfile.";
-                    return false;
-                }
-
-                if (!playerSlotProfile.TryGetPlayerSlotId(
-                        out PlayerSlotId playerSlotId,
-                        out string slotIssue))
-                {
-                    issue =
-                        $"Camera Session Player Output binding at index '{index}' requires a valid PlayerSlotProfile. {slotIssue}";
-                    return false;
-                }
-
-                if (!seenSlots.Add(playerSlotId))
-                {
-                    issue =
-                        $"Camera Session contains duplicate or conflicting Player Output bindings for Slot '{playerSlotId.StableText}'.";
-                    return false;
-                }
-
-                CameraOutputDefinition outputDefinition =
-                    binding.OutputDefinition;
-                if (outputDefinition == null ||
-                    !outputDefinition.HasValidId)
-                {
-                    issue =
-                        $"Camera Session Player Output binding for Slot '{playerSlotId.StableText}' requires a valid CameraOutputDefinition.";
-                    return false;
-                }
-
-                bool configuredOutput = false;
-                for (int outputIndex = 0;
-                     outputIndex < outputDefinitions.Count;
-                     outputIndex++)
-                {
-                    if (ReferenceEquals(
-                            outputDefinitions[outputIndex],
-                            outputDefinition))
-                    {
-                        configuredOutput = true;
-                        break;
-                    }
-                }
-
-                if (!configuredOutput)
-                {
-                    issue =
-                        $"Camera Session Player Output binding for Slot '{playerSlotId.StableText}' references Output '{outputDefinition.name}' which is not one of this Session's exact configured Output definitions.";
-                    return false;
-                }
-
             }
 
             issue = string.Empty;

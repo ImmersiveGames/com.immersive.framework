@@ -75,13 +75,6 @@ namespace Immersive.Framework.Bootstrap
                     $"Game Application Camera Session is invalid. {cameraSessionIssue}");
             }
 
-            if (!gameApplication.PlayerSessionEnabled &&
-                cameraSession.PlayerOutputBindings.Count > 0)
-            {
-                return FrameworkBootResult.Failed(
-                    "Game Application Camera Session Player Slot -> Output bindings require an enabled Player Session.");
-            }
-
             var startupRoute = gameApplication.StartupRoute;
             if (startupRoute == null)
             {

@@ -77,6 +77,60 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void IndividualAssignmentProjectsExactPlayerSlotsToOutputs()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
+
+            Assert.That(runtime.TryCreatePlayerOutputTopology(
+                out PlayerCameraOutputTopology topology,
+                out string issue), Is.True, issue);
+            Assert.That(topology.TryGetBinding(PlayerSlotId.Player1, out PlayerCameraOutputBinding first), Is.True);
+            Assert.That(topology.TryGetBinding(PlayerSlotId.Player2, out PlayerCameraOutputBinding second), Is.True);
+            Assert.That(first.OutputId, Is.EqualTo(fixture.OutputDefinitions[0].OutputId));
+            Assert.That(second.OutputId, Is.EqualTo(fixture.OutputDefinitions[1].OutputId));
+        }
+
+        [Test]
+        public void SharedAndSessionScopedAssignmentsDoNotProjectIndividualPlayerTopology()
+        {
+            Fixture sharedFixture = CreateSharedFixture();
+            SessionCameraAssignmentRuntime sharedRuntime = CreateSharedRuntime(sharedFixture);
+            Assert.That(sharedRuntime.TryCreatePlayerOutputTopology(
+                out PlayerCameraOutputTopology sharedTopology,
+                out string sharedIssue), Is.True, sharedIssue);
+            Assert.That(sharedTopology.BindingCount, Is.Zero);
+
+            Fixture sessionFixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                sessionFixture.Assignments, sessionFixture.Topology, sessionFixture.Root.transform,
+                out SessionCameraAssignmentRuntime sessionRuntime, out string sessionIssue), Is.True, sessionIssue);
+            _runtimes.Add(sessionRuntime);
+            Assert.That(sessionRuntime.TryCreatePlayerOutputTopology(
+                out PlayerCameraOutputTopology sessionTopology,
+                out string topologyIssue), Is.True, topologyIssue);
+            Assert.That(sessionTopology.BindingCount, Is.Zero);
+        }
+
+        [Test]
+        public void AssignmentsWithConflictingPlayerSlotOutputMappingsFailProjection()
+        {
+            Fixture fixture = CreateFixture(3, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentAuthoring first = CreateReplacementAuthoring(
+                fixture, "assignment.first", CameraOccurrenceMode.IndividualPerPlayer,
+                CameraTargetPolicy.NoSubject, new[] { 0 }, new[] { "player.1" });
+            SessionCameraAssignmentAuthoring conflicting = CreateReplacementAuthoring(
+                fixture, "assignment.conflicting", CameraOccurrenceMode.IndividualPerPlayer,
+                CameraTargetPolicy.NoSubject, new[] { 1 }, new[] { "player.1" });
+
+            Assert.That(SessionCameraAssignmentOutputProjection.TryCreate(
+                new[] { first, conflicting }, fixture.Topology, null, false,
+                out PlayerCameraOutputTopology topology, out string issue), Is.False);
+            Assert.That(topology, Is.Null);
+            Assert.That(issue, Does.Contain("duplicate or conflicting"));
+        }
+
+        [Test]
         public void ReusedDefinitionCreatesIndependentOccurrencesPerAssignmentAndOutput()
         {
             Fixture fixture = CreateFixture(2, CameraTargetPolicy.NoSubject, twoAssignments: true);
@@ -476,6 +530,15 @@ namespace Immersive.Framework.Camera.Tests
                 nextIndividual,
                 new[] { member },
                 out issue), Is.True, issue);
+
+            Assert.That(runtime.TryCreatePlayerOutputTopology(
+                out PlayerCameraOutputTopology replacementTopology,
+                out issue), Is.True, issue);
+            Assert.That(replacementTopology.TryGetBinding(
+                PlayerSlotId.Player1,
+                out PlayerCameraOutputBinding replacementBinding), Is.True);
+            Assert.That(replacementBinding.OutputId,
+                Is.EqualTo(fixture.OutputDefinitions[0].OutputId));
 
             Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
             Assert.That(runtime.Occurrences[0], Is.Not.SameAs(previousIndividual));

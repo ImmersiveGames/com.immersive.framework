@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
 {
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "CAMERA-028-D runtime Player Slot to Camera Output identity binding.")]
+        "CAMERA-038 derived Player Slot to Camera Output identity binding.")]
     internal readonly struct PlayerCameraOutputBinding
     {
         internal PlayerCameraOutputBinding(
@@ -24,12 +24,12 @@ namespace Immersive.Framework.Camera
     }
 
     /// <summary>
-    /// Immutable Session projection of explicit Player Slot to Camera Output identity.
+    /// Immutable runtime projection of Individual Session Camera Assignment mappings.
     /// It owns no Player, Output, Camera selection or physical layout authority.
     /// </summary>
     [FrameworkApiStatus(
         FrameworkApiStatus.Internal,
-        "CAMERA-028-D immutable Player Slot to Camera Output topology.")]
+        "CAMERA-038 immutable Assignment-derived Player Slot to Camera Output topology.")]
     internal sealed class PlayerCameraOutputTopology
     {
         private readonly PlayerCameraOutputBinding[] _bindings;
