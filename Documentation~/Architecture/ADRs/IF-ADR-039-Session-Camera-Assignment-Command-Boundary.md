@@ -1,6 +1,6 @@
 # IF-ADR-039 — Session Camera Assignment Command Boundary
 
-Status: **Proposed**
+Status: **Accepted — Unity validation pending**
 Proposed: **2026-10-03**
 Type: architecture / Session Camera / public command boundary
 Depends on: **IF-ADR-038**

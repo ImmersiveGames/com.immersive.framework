@@ -1,5 +1,6 @@
 using Immersive.Framework.Editor.Authoring;
 using Immersive.Framework.Editor.Settings;
+using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.RouteLifecycle;
