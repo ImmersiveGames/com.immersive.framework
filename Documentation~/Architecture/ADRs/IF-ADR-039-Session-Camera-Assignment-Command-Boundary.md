@@ -28,7 +28,7 @@ Supported intents:
 
 1. **Activate** — make an authored Session Camera Assignment active on its explicitly mapped Output(s) when those Outputs currently have no active normal Assignment.
 2. **Replace** — transactionally replace the currently active Assignment on the candidate's explicitly mapped Output(s).
-3. **Clear** — explicitly remove the current normal Assignment from explicitly authored Output(s), leaving those Outputs on their own Fallback Camera.
+3. **Clear** — explicitly remove one named active Assignment by `SessionCameraAssignmentId`, leaving all Outputs owned by that Assignment on their own Fallback Camera.
 
 Activation/replacement uses the existing IF-ADR-038 transaction contract:
 
@@ -55,7 +55,7 @@ The consumer supplies explicit intent and authored Camera identities. It does no
 - write `Camera.rect` / `pixelRect`;
 - own Assignment or Occurrence lifetime.
 
-A trigger may serialize an Assignment candidate for Activate/Replace or explicit Output definitions for Clear. Binding follows the existing explicit composition/binder pattern used by Route, Activity, Pause and Reset triggers.
+A trigger may serialize an Assignment candidate for Activate/Replace or an explicit Assignment identity for Clear. Binding follows the existing explicit composition/binder pattern used by Route, Activity, Pause and Reset triggers.
 
 The command result must expose success/failure and a diagnostic suitable for samples and QA.
 
@@ -79,7 +79,7 @@ This ADR does not introduce:
 - An Output has at most one active normal Assignment.
 - Activate fails if a targeted Output already has an active Assignment; callers use Replace for that transition.
 - Replace fails transactionally if the candidate cannot be prepared and preserves the previous Assignment.
-- Clear targets explicit Outputs and succeeds only through Session Camera authority.
+- Clear targets one explicit active Assignment identity and clears all Outputs owned by that Assignment through Session Camera authority.
 - Temporary transition fallback coverage never implies Clear.
 - Route/Activity changes alone never issue Camera commands.
 - SessionScoped, SharedGroup and IndividualPerPlayer retain the semantics defined by IF-ADR-038.
@@ -89,7 +89,7 @@ This ADR does not introduce:
 The first consumer proof is the GameFlow sample:
 
 ```text
-Hub / Basic C -> Clear Main Output -> Fallback
+Hub / Basic C -> Clear the sample-owned active Assignment -> Fallback
 Basic A       -> Activate/Replace Assignment A
 Basic B       -> Replace Assignment B
 ```
