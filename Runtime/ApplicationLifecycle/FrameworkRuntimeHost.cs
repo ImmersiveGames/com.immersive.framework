@@ -39,7 +39,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "Runtime implementation detail; not game-facing API.")]
-    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IPauseActivityLifecyclePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort, IResetTargetExecutionRuntimePort
+    internal sealed partial class FrameworkRuntimeHost : MonoBehaviour, IPauseRuntimePort, IPauseProductApplicationPort, IPauseActivityLifecyclePort, IRouteRuntimePort, IActivityRuntimePort, IRouteCycleResetRuntimePort, IActivityCycleResetRuntimePort, IActivityRestartRuntimePort, IResetTargetExecutionRuntimePort, ISessionCameraAssignmentCommandPort
     {
         private const string RuntimeHostName = "Immersive Framework Runtime";
         private const string PauseTransitionInProgressIssueCode = "pause.transition-in-progress";
@@ -87,6 +87,107 @@ namespace Immersive.Framework.ApplicationLifecycle
         private int _activityReadinessPresentationRevision;
 
         public FrameworkRuntimeState State => _state;
+
+        internal bool TryActivateSessionCameraAssignment(
+            SessionCameraAssignmentAuthoring candidate,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_sessionCameraAssignmentRuntime == null || candidate == null)
+            {
+                issue = "Session Camera Assignment activation requires a running Session runtime and explicit candidate.";
+                return false;
+            }
+
+            if (!candidate.TryBuild(out SessionCameraAssignment assignment, out issue))
+            {
+                issue = "Session Camera Assignment candidate is invalid. " + issue;
+                return false;
+            }
+
+            if (!_sessionCameraAssignmentRuntime.TryActivateAssignment(candidate, out issue))
+            {
+                return false;
+            }
+
+            if (assignment.MembershipPolicy == CameraMembershipPolicy.ExplicitPlayerSlots)
+            {
+                if (!_gameApplication.PlayerSessionEnabled ||
+                    !this.TryGetPlayerParticipationRuntime(
+                        out PlayerParticipationRuntimeContext playerSession) ||
+                    !this.TryGetPlayerPreparedActorOccurrenceSource(
+                        out IPlayerPreparedActorOccurrenceSource playerActors))
+                {
+                    _sessionCameraAssignmentRuntime.TryClearAssignment(assignment.Id, out _);
+                    issue = "Candidate membership requires the canonical Player Session and prepared Actor evidence.";
+                    return false;
+                }
+
+                if (!SessionCameraMembershipRuntime.TryCreate(
+                        _sessionCameraAssignmentRuntime,
+                        playerSession,
+                        playerActors,
+                        out SessionCameraMembershipRuntime membership,
+                        out string membershipIssue))
+                {
+                    _sessionCameraAssignmentRuntime.TryClearAssignment(assignment.Id, out _);
+                    issue = "Candidate membership activation failed. " + membershipIssue;
+                    return false;
+                }
+
+                _sessionCameraMembershipRuntime?.Dispose();
+                _sessionCameraMembershipRuntime = membership;
+            }
+
+            if (!TryRefreshPlayerCameraOutputTopology(out issue))
+            {
+                _sessionCameraAssignmentRuntime.TryClearAssignment(assignment.Id, out _);
+                return false;
+            }
+
+            return true;
+        }
+
+        internal bool TryClearSessionCameraAssignment(
+            SessionCameraAssignmentId assignmentId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_sessionCameraAssignmentRuntime == null)
+            {
+                issue = "Session Camera Assignment clear requires a running Session runtime.";
+                return false;
+            }
+
+            if (!_sessionCameraAssignmentRuntime.TryClearAssignment(assignmentId, out issue))
+            {
+                return false;
+            }
+
+            if (!_sessionCameraAssignmentRuntime.RequiresPlayerMembership)
+            {
+                _sessionCameraMembershipRuntime?.Dispose();
+                _sessionCameraMembershipRuntime = null;
+            }
+
+            return TryRefreshPlayerCameraOutputTopology(out issue);
+        }
+
+        bool ISessionCameraAssignmentCommandPort.TryActivate(
+            SessionCameraAssignmentAuthoring candidate,
+            out string issue) =>
+            TryActivateSessionCameraAssignment(candidate, out issue);
+
+        bool ISessionCameraAssignmentCommandPort.TryReplace(
+            SessionCameraAssignmentId previousAssignmentId,
+            SessionCameraAssignmentAuthoring candidate,
+            out string issue) =>
+            TryReplaceSessionCameraAssignment(previousAssignmentId, candidate, out issue);
+
+        bool ISessionCameraAssignmentCommandPort.TryClear(
+            SessionCameraAssignmentId assignmentId,
+            out string issue) =>
+            TryClearSessionCameraAssignment(assignmentId, out issue);
 
         internal bool TryReplaceSessionCameraAssignment(
             SessionCameraAssignmentId previousAssignmentId,
@@ -729,6 +830,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 var failed = FrameworkGameFlowStartResult.Failed(
                     globalActivityTriggerBinder.Message);
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+            SessionCameraAssignmentCommandTriggerBindingResult cameraCommandBinding =
+                SessionCameraAssignmentCommandTriggerBinder.TryBind(
+                    _globalUiSceneRuntime.PersistedRoots,
+                    this);
+            if (!cameraCommandBinding.Succeeded)
+            {
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    cameraCommandBinding.Message);
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }

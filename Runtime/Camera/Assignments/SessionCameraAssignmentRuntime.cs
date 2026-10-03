@@ -430,6 +430,277 @@ namespace Immersive.Framework.Camera
                 out issue);
         }
 
+        internal bool TryActivateAssignment(
+            SessionCameraAssignmentAuthoring candidateAuthoring,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_disposed)
+            {
+                issue = "A disposed Session Camera Assignment runtime cannot activate an Assignment.";
+                return false;
+            }
+
+            if (candidateAuthoring == null ||
+                !candidateAuthoring.TryBuild(out SessionCameraAssignment candidateAssignment, out issue))
+            {
+                issue = "Session Camera Assignment activation requires a valid explicit candidate. " + issue;
+                return false;
+            }
+
+            if (FindAssignment(candidateAssignment.Id) != null)
+            {
+                issue = $"Session Camera Assignment '{candidateAssignment.Id}' is already active.";
+                return false;
+            }
+
+            var candidateBindings = new List<PlayerCameraOutputBinding>();
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                IReadOnlyList<CameraPlayerOutputMapping> mappings =
+                    _individualAssignments[index].Assignment.MemberOutputs;
+                for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
+                {
+                    candidateBindings.Add(new PlayerCameraOutputBinding(
+                        mappings[mappingIndex].PlayerSlotId,
+                        mappings[mappingIndex].OutputId));
+                }
+            }
+
+            if (candidateAssignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
+            {
+                for (int index = 0; index < candidateAssignment.MemberOutputs.Count; index++)
+                {
+                    CameraPlayerOutputMapping mapping = candidateAssignment.MemberOutputs[index];
+                    candidateBindings.Add(new PlayerCameraOutputBinding(
+                        mapping.PlayerSlotId,
+                        mapping.OutputId));
+                }
+            }
+
+            if (!PlayerCameraOutputTopology.TryCreate(
+                    candidateBindings,
+                    _outputTopology,
+                    out _,
+                    out issue))
+            {
+                issue = "Candidate Assignment conflicts with active Individual Player Output mappings. " + issue;
+                return false;
+            }
+
+            CameraDefinition candidateDefinition = candidateAuthoring.Definition;
+            if (!candidateDefinition.TryValidateSessionCamera(
+                    candidateAssignment.TargetPolicy,
+                    out issue))
+            {
+                issue = $"Candidate Camera Definition '{candidateDefinition.name}' is invalid. {issue}";
+                return false;
+            }
+
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                CameraDefinition activeDefinition = _occurrences[index].Definition;
+                if (activeDefinition != null &&
+                    activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
+                    !ReferenceEquals(activeDefinition, candidateDefinition))
+                {
+                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
+                    return false;
+                }
+            }
+
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                CameraDefinition activeDefinition = _individualAssignments[index].Definition;
+                if (activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
+                    !ReferenceEquals(activeDefinition, candidateDefinition))
+                {
+                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
+                    return false;
+                }
+            }
+
+            if (!TryCreate(
+                    new[] { candidateAuthoring },
+                    _outputTopology,
+                    _sessionParent,
+                    out SessionCameraAssignmentRuntime activated,
+                    out issue))
+            {
+                return false;
+            }
+
+            _occurrences.AddRange(activated._occurrences);
+            for (int index = 0; index < activated._activeOutputs.Count; index++)
+            {
+                CameraOutputAuthoring output = activated._activeOutputs[index];
+                if (!_activeOutputs.Contains(output))
+                {
+                    _activeOutputs.Add(output);
+                }
+            }
+            _individualAssignments.AddRange(activated._individualAssignments);
+
+            activated._occurrences.Clear();
+            activated._activeOutputs.Clear();
+            activated._individualAssignments.Clear();
+            activated.Dispose();
+
+            issue = string.Empty;
+            return true;
+        }
+
+        internal bool TryClearAssignment(
+            SessionCameraAssignmentId assignmentId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (_disposed)
+            {
+                issue = "A disposed Session Camera Assignment runtime cannot clear an Assignment.";
+                return false;
+            }
+
+            SessionCameraAssignment assignment = FindAssignment(assignmentId);
+            if (assignment == null)
+            {
+                issue = $"Active Session Camera Assignment '{assignmentId}' was not found.";
+                return false;
+            }
+
+            var outputs = new Dictionary<CameraOutputId, CameraOutputAuthoring>();
+            var replacementOutputs = new Dictionary<CameraOutputId, ReplacementOutput>();
+            var snapshots = new Dictionary<CameraOutputId, CameraOutputSessionAssignmentSnapshot>();
+            var outputIds = new List<CameraOutputId>();
+            var attemptedOutputIds = new List<CameraOutputId>();
+
+            for (int index = 0; index < assignment.Outputs.Count; index++)
+            {
+                CameraOutputId outputId = assignment.Outputs[index].OutputId;
+                if (!_outputTopology.TryGetOutput(
+                        outputId,
+                        out CameraOutputAuthoring output,
+                        out issue) ||
+                    output.Session == null ||
+                    output.Session.OutputState.ActiveAssignmentId != assignmentId)
+                {
+                    issue = $"Active Assignment '{assignmentId}' lost its exact Output '{outputId}'. {issue}";
+                    return false;
+                }
+
+                CameraOutputSessionAssignmentSnapshot snapshot =
+                    output.Session.CaptureAssignmentSnapshot();
+                if (!output.Session.CanCommitAssignmentReplacement(
+                        snapshot,
+                        null,
+                        default,
+                        true,
+                        out issue))
+                {
+                    return false;
+                }
+
+                outputs.Add(outputId, output);
+                replacementOutputs.Add(outputId, new ReplacementOutput(output, null));
+                snapshots.Add(outputId, snapshot);
+                outputIds.Add(outputId);
+            }
+
+            try
+            {
+                for (int index = 0; index < outputIds.Count; index++)
+                {
+                    CameraOutputId outputId = outputIds[index];
+                    ReplacementOutput replacement = replacementOutputs[outputId];
+                    attemptedOutputIds.Add(outputId);
+                    CameraOccurrenceOutputResult applied =
+                        replacement.Output.Session.ApplyAssignmentCandidate(null, true);
+                    if (!applied.Succeeded)
+                    {
+                        issue = $"Clearing Assignment '{assignmentId}' failed on Output '{outputId}'. {applied.Diagnostic}";
+                        RollbackReplacementOutputs(
+                            attemptedOutputIds,
+                            replacementOutputs,
+                            snapshots,
+                            out string rollbackIssue);
+                        if (!string.IsNullOrEmpty(rollbackIssue))
+                        {
+                            issue += " Rollback: " + rollbackIssue;
+                        }
+                        return false;
+                    }
+                }
+
+                for (int index = 0; index < outputIds.Count; index++)
+                {
+                    CameraOutputId outputId = outputIds[index];
+                    ReplacementOutput replacement = replacementOutputs[outputId];
+                    if (!replacement.Output.Session.TryCommitAssignmentReplacement(
+                            snapshots[outputId],
+                            null,
+                            default,
+                            null,
+                            true,
+                            out issue))
+                    {
+                        issue = $"Clearing Assignment '{assignmentId}' could not commit on Output '{outputId}'. {issue}";
+                        RollbackReplacementOutputs(
+                            attemptedOutputIds,
+                            replacementOutputs,
+                            snapshots,
+                            out string rollbackIssue);
+                        if (!string.IsNullOrEmpty(rollbackIssue))
+                        {
+                            issue += " Rollback: " + rollbackIssue;
+                        }
+                        return false;
+                    }
+                }
+
+                var released = new List<SessionCameraOccurrence>();
+                for (int index = _occurrences.Count - 1; index >= 0; index--)
+                {
+                    SessionCameraOccurrence occurrence = _occurrences[index];
+                    if (occurrence.Assignment.Id != assignmentId)
+                    {
+                        continue;
+                    }
+
+                    _occurrences.RemoveAt(index);
+                    released.Add(occurrence);
+                }
+
+                _individualAssignments.RemoveAll(
+                    item => item.Assignment.Id == assignmentId);
+                _activeOutputs.RemoveAll(
+                    output => output != null && outputs.ContainsKey(output.OutputId));
+
+                for (int index = 0; index < released.Count; index++)
+                {
+                    SessionCameraOccurrence occurrence = released[index];
+                    occurrence.RelinquishSubjectFallbackCoverageAfterReplacement();
+                    DestroyObject(occurrence.Root);
+                }
+
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                RollbackReplacementOutputs(
+                    attemptedOutputIds,
+                    replacementOutputs,
+                    snapshots,
+                    out string rollbackIssue);
+                issue = $"Session Camera Assignment clear failed. {exception.GetType().Name}: {exception.Message}";
+                if (!string.IsNullOrEmpty(rollbackIssue))
+                {
+                    issue += " Rollback: " + rollbackIssue;
+                }
+                return false;
+            }
+        }
+
         internal bool TryReplaceAssignment(
             SessionCameraAssignmentId previousAssignmentId,
             SessionCameraAssignmentAuthoring candidateAuthoring,
