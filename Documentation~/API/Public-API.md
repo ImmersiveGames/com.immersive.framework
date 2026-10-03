@@ -67,8 +67,9 @@ Guide: [Player Participation and Local Player](../Guides/Player-Usage.md). Scene
 | `CameraDefinition`, `CameraOutputDefinition` | Assets · Experimental | Reusable Session Camera definition and explicit physical Output identity. |
 | `ActorCameraSubjectAuthoring` | Actor authoring component · Experimental | Supplies an explicit Observation Transform for an exact Actor occurrence. |
 | Session Camera Assignments on `GameApplicationAsset` | Session authoring · current implementation, Experimental boundary | Configure occurrence mode, membership/target policy and explicit Output mapping. Individual Assignments are the sole Player Slot → Output authority; `CameraSessionConfiguration` owns only physical Output capacity. IF-ADR-038 is Accepted; Unity validation remains pending. |
+| `SessionCameraAssignmentCommandTrigger` | Runtime request component · Experimental | Explicitly Activate, transactionally Replace, or Clear a Session Camera Assignment through Session Camera authority. It does not reintroduce CameraRequest, precedence or Route/Activity Camera ownership. |
 
-There is no supported Camera Request/Presentation selection API in the current model. `SessionCameraAssignmentAuthoring` is serialized authoring data; its C# visibility alone does not make it a recommended runtime integration surface.
+There is no Camera Request/Presentation arbitration API in the current model. Runtime Assignment mutation is exposed only through `SessionCameraAssignmentCommandTrigger`. `SessionCameraAssignmentAuthoring` remains serialized authoring data; its C# visibility alone does not make it a recommended direct runtime integration surface.
 
 Guide: [Camera Usage](../Guides/Camera-Usage.md).
 
@@ -141,3 +142,4 @@ Internal hosts, runtime modules, binders, binding results, token types and proje
 - [IF-ADR-015 — Player provisioning commands and observation](../Architecture/ADRs/IF-ADR-015-Player-Provisioning-Commands-and-Consumer-Observation-Surface.md)
 - [IF-ADR-019 — Session Player lifetime and Activity representation](../Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)
 - [IF-ADR-038 — Session Camera and Actor occurrence authority](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
+- [IF-ADR-039 — Session Camera Assignment command boundary](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md)
