@@ -61,32 +61,61 @@ namespace Immersive.Framework.Audio
             LastOperationResult = director.ClearActivityBgm(activityBgm, deferRefreshForActivityTransition);
         }
 
-        void IFrameworkBgmDirectorConsumer.AttachBgmDirector(FrameworkBgmDirector nextDirector)
+        bool IFrameworkBgmDirectorConsumer.TryAttachBgmDirector(
+            FrameworkBgmDirector nextDirector,
+            out bool wasAlreadyAttached,
+            out string issue)
         {
             if (nextDirector == null)
             {
-                return;
+                wasAlreadyAttached = false;
+                issue = "Activity BGM authoring requires a non-null FrameworkBgmDirector.";
+                return false;
             }
 
             if (director != null && !ReferenceEquals(director, nextDirector))
             {
+                wasAlreadyAttached = false;
+                issue = "Activity BGM authoring rejected a different FrameworkBgmDirector authority.";
                 Error(
-                    "Activity BGM authoring rejected a second FrameworkBgmDirector authority.",
+                    issue,
                     LogFields.Of(
                         LogFields.Field("currentDirector", director.name),
                         LogFields.Field("rejectedDirector", nextDirector.name)));
-                return;
+                return false;
             }
 
+            wasAlreadyAttached = ReferenceEquals(director, nextDirector);
             director = nextDirector;
+            issue = string.Empty;
+            return true;
         }
 
-        void IFrameworkBgmDirectorConsumer.DetachBgmDirector(FrameworkBgmDirector detachedDirector)
+        bool IFrameworkBgmDirectorConsumer.TryDetachBgmDirector(
+            FrameworkBgmDirector detachedDirector,
+            out string issue)
         {
-            if (ReferenceEquals(director, detachedDirector))
+            if (detachedDirector == null)
             {
-                director = null;
+                issue = "Activity BGM release requires the exact non-null FrameworkBgmDirector authority.";
+                return false;
             }
+
+            if (director == null)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            if (!ReferenceEquals(director, detachedDirector))
+            {
+                issue = "Activity BGM release rejected a foreign or stale FrameworkBgmDirector authority.";
+                return false;
+            }
+
+            director = null;
+            issue = string.Empty;
+            return true;
         }
 
         private void Error(string message, params LogField[] fields)

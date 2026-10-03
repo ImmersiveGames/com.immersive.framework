@@ -21,6 +21,7 @@ namespace Immersive.Framework.SceneLifecycle
         private const string SingleLoadMode = "Single";
         private const string AdditiveLoadMode = "Additive";
         private readonly ISceneLifecycleParticipant[] _participants;
+        private readonly List<ISceneLifecycleParticipant> _sessionParticipants = new();
         private readonly HashSet<SceneCompositionScope> _availableScopes = new();
 
         internal SceneLifecycleRuntime(params ISceneLifecycleParticipant[] participants)
@@ -570,7 +571,7 @@ namespace Immersive.Framework.SceneLifecycle
         private bool NotifySceneAvailable(Scene scene, out string issue)
         {
             issue = string.Empty;
-            if (_participants.Length == 0 || !scene.IsValid() || !scene.isLoaded)
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 return true;
             }
@@ -585,7 +586,7 @@ namespace Immersive.Framework.SceneLifecycle
         private bool NotifySceneReleasing(Scene scene, string reason, out string issue)
         {
             issue = string.Empty;
-            if (_participants.Length == 0 || !scene.IsValid() || !scene.isLoaded)
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 return true;
             }
@@ -611,7 +612,20 @@ namespace Immersive.Framework.SceneLifecycle
                     "Session composition requires an explicit live Session owner.");
             }
 
-            return NotifyAvailable(scope, roots);
+            List<ISceneLifecycleParticipant> discoveredParticipants =
+                CollectCompositionParticipants(roots);
+            ISceneLifecycleParticipant[] participants =
+                CreateParticipantSnapshot(discoveredParticipants);
+            SceneCompositionResult result = NotifyAvailable(scope, roots, participants);
+            if (result.Succeeded)
+            {
+                for (int index = 0; index < discoveredParticipants.Count; index++)
+                {
+                    _sessionParticipants.Add(discoveredParticipants[index]);
+                }
+            }
+
+            return result;
         }
 
         internal SceneCompositionResult ReleaseSessionScope(
@@ -628,12 +642,30 @@ namespace Immersive.Framework.SceneLifecycle
                     "Session composition release requires the exact live Session owner.");
             }
 
-            return NotifyReleasing(scope, roots, reason);
+            SceneCompositionResult result = NotifyReleasing(
+                scope,
+                roots,
+                reason,
+                CreateParticipantSnapshot());
+            if (result.Succeeded)
+            {
+                _sessionParticipants.Clear();
+            }
+
+            return result;
         }
 
         private SceneCompositionResult NotifyAvailable(
             SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots)
+        {
+            return NotifyAvailable(scope, roots, CreateParticipantSnapshot());
+        }
+
+        private SceneCompositionResult NotifyAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            IReadOnlyList<ISceneLifecycleParticipant> participants)
         {
             if (!scope.IsValid)
             {
@@ -643,11 +675,19 @@ namespace Immersive.Framework.SceneLifecycle
                     "Scene composition rejected an invalid scope.");
             }
 
+            if (participants == null || participants.Count == 0)
+            {
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    $"Scene Lifecycle composition completed for scope '{scope.Label}' with no participants.");
+            }
+
             bool wasAlreadyAvailable = _availableScopes.Contains(scope);
             var completedParticipants = new List<ISceneLifecycleParticipant>();
-            for (int i = 0; i < _participants.Length; i++)
+            for (int i = 0; i < participants.Count; i++)
             {
-                ISceneLifecycleParticipant participant = _participants[i];
+                ISceneLifecycleParticipant participant = participants[i];
                 if (participant == null)
                 {
                     continue;
@@ -699,6 +739,15 @@ namespace Immersive.Framework.SceneLifecycle
             IReadOnlyList<GameObject> roots,
             string reason)
         {
+            return NotifyReleasing(scope, roots, reason, CreateParticipantSnapshot());
+        }
+
+        private SceneCompositionResult NotifyReleasing(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            string reason,
+            IReadOnlyList<ISceneLifecycleParticipant> participants)
+        {
             if (!scope.IsValid)
             {
                 return SceneCompositionResult.Rejected(
@@ -707,10 +756,19 @@ namespace Immersive.Framework.SceneLifecycle
                     "Scene composition release rejected an invalid scope.");
             }
 
-            var issues = new List<string>();
-            for (int i = _participants.Length - 1; i >= 0; i--)
+            if (participants == null || participants.Count == 0)
             {
-                ISceneLifecycleParticipant participant = _participants[i];
+                _availableScopes.Remove(scope);
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Scene Lifecycle release completed for scope '{scope.Label}' with no participants.");
+            }
+
+            var issues = new List<string>();
+            for (int i = participants.Count - 1; i >= 0; i--)
+            {
+                ISceneLifecycleParticipant participant = participants[i];
                 if (participant == null)
                 {
                     continue;
@@ -752,6 +810,81 @@ namespace Immersive.Framework.SceneLifecycle
                 scope,
                 SceneCompositionOperation.Releasing,
                 $"Scene Lifecycle release completed for scope '{scope.Label}' reason='{reason.NormalizeTextOrFallback("scene-release")}'.");
+        }
+
+        private List<ISceneLifecycleParticipant> CollectCompositionParticipants(
+            IReadOnlyList<GameObject> roots)
+        {
+            var discovered = new List<ISceneLifecycleParticipant>();
+            if (roots == null)
+            {
+                return discovered;
+            }
+
+            var seen = new HashSet<ISceneLifecycleParticipant>();
+            ISceneLifecycleParticipant[] existing = CreateParticipantSnapshot();
+            for (int index = 0; index < existing.Length; index++)
+            {
+                if (existing[index] != null)
+                {
+                    seen.Add(existing[index]);
+                }
+            }
+
+            var seenRoots = new HashSet<GameObject>();
+            for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+            {
+                GameObject root = roots[rootIndex];
+                if (root == null || !seenRoots.Add(root))
+                {
+                    continue;
+                }
+
+                MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+                for (int index = 0; index < behaviours.Length; index++)
+                {
+                    if (behaviours[index] is ISceneLifecycleParticipant participant &&
+                        seen.Add(participant))
+                    {
+                        discovered.Add(participant);
+                    }
+                }
+            }
+
+            return discovered;
+        }
+
+        private ISceneLifecycleParticipant[] CreateParticipantSnapshot(
+            IReadOnlyList<ISceneLifecycleParticipant> additional = null)
+        {
+            var result = new List<ISceneLifecycleParticipant>();
+            var seen = new HashSet<ISceneLifecycleParticipant>();
+            AddParticipants(_participants, result, seen);
+            AddParticipants(_sessionParticipants, result, seen);
+            AddParticipants(additional, result, seen);
+            return result.ToArray();
+        }
+
+        private static void AddParticipants(
+            IReadOnlyList<ISceneLifecycleParticipant> candidates,
+            List<ISceneLifecycleParticipant> result,
+            HashSet<ISceneLifecycleParticipant> seen)
+        {
+            if (candidates == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                ISceneLifecycleParticipant candidate = candidates[index];
+                if (candidate != null &&
+                    (candidate is not UnityEngine.Object unityObject || unityObject != null) &&
+                    seen.Add(candidate))
+                {
+                    result.Add(candidate);
+                }
+            }
         }
     }
 }

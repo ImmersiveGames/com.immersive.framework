@@ -1,13 +1,18 @@
 namespace Immersive.Framework.Audio
 {
     /// <summary>
-    /// Internal attachment contract used by the persistent BGM authority to inject itself into
-    /// Route/Activity-scoped BGM bindings as scenes are loaded.
+    /// Internal attachment contract used by the Session-owned BGM authority to bind
+    /// Route/Activity consumers for explicit Scene Composition scopes.
     /// </summary>
     internal interface IFrameworkBgmDirectorConsumer
     {
-        void AttachBgmDirector(FrameworkBgmDirector director);
+        bool TryAttachBgmDirector(
+            FrameworkBgmDirector director,
+            out bool wasAlreadyAttached,
+            out string issue);
 
-        void DetachBgmDirector(FrameworkBgmDirector director);
+        bool TryDetachBgmDirector(
+            FrameworkBgmDirector director,
+            out string issue);
     }
 }

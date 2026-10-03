@@ -65,32 +65,61 @@ namespace Immersive.Framework.Audio
             LastOperationResult = director.ClearRouteBgm(routeBgm, policy);
         }
 
-        void IFrameworkBgmDirectorConsumer.AttachBgmDirector(FrameworkBgmDirector nextDirector)
+        bool IFrameworkBgmDirectorConsumer.TryAttachBgmDirector(
+            FrameworkBgmDirector nextDirector,
+            out bool wasAlreadyAttached,
+            out string issue)
         {
             if (nextDirector == null)
             {
-                return;
+                wasAlreadyAttached = false;
+                issue = "Route BGM binding requires a non-null FrameworkBgmDirector.";
+                return false;
             }
 
             if (director != null && !ReferenceEquals(director, nextDirector))
             {
+                wasAlreadyAttached = false;
+                issue = "Route BGM binding rejected a different FrameworkBgmDirector authority.";
                 Error(
-                    "Route BGM binding rejected a second FrameworkBgmDirector authority.",
+                    issue,
                     LogFields.Of(
                         LogFields.Field("currentDirector", director.name),
                         LogFields.Field("rejectedDirector", nextDirector.name)));
-                return;
+                return false;
             }
 
+            wasAlreadyAttached = ReferenceEquals(director, nextDirector);
             director = nextDirector;
+            issue = string.Empty;
+            return true;
         }
 
-        void IFrameworkBgmDirectorConsumer.DetachBgmDirector(FrameworkBgmDirector detachedDirector)
+        bool IFrameworkBgmDirectorConsumer.TryDetachBgmDirector(
+            FrameworkBgmDirector detachedDirector,
+            out string issue)
         {
-            if (ReferenceEquals(director, detachedDirector))
+            if (detachedDirector == null)
             {
-                director = null;
+                issue = "Route BGM release requires the exact non-null FrameworkBgmDirector authority.";
+                return false;
             }
+
+            if (director == null)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            if (!ReferenceEquals(director, detachedDirector))
+            {
+                issue = "Route BGM release rejected a foreign or stale FrameworkBgmDirector authority.";
+                return false;
+            }
+
+            director = null;
+            issue = string.Empty;
+            return true;
         }
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()

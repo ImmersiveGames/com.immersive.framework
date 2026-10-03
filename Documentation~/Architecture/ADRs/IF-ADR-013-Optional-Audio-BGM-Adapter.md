@@ -1,9 +1,9 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: **Accepted / Experimental — technical boundary certified; consumer gate proven**  
-Last updated: **2026-08-24**  
+Status: **Accepted / Experimental — Scene Composition migration implemented; Unity validation pending**
+Last updated: **2026-10-03**
 Package implementation: **Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1 + Startup Activity lifecycle completion**  
-Technical QA: **Certified — Audio QA 44/44**  
+Technical QA: **Prior baseline certified — Audio QA 44/44; rerun required after IF-ADR-040 binding migration**
 FIRSTGAME / Samples: **Proven — Game Flow contextual BGM + Minimal Game Route BGM + Player Provisioning Activity BGM**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014  
 External provider currently certified: `com.immersive.audio`
@@ -209,7 +209,7 @@ GlobalUiSceneRuntime / Persistent roots
 
 `ActivityFlowRuntime` owns deterministic completion emission. Route/Activity content discovery is not used to find the persistent Director.
 
-The existing BGM consumer injection path remains responsible for attaching the explicitly composed Director to Route/Activity BGM bindings. It is not used as a reverse discovery mechanism for lifecycle completion.
+The BGM consumer binding is coordinated by Framework Scene Lifecycle. The Session-scoped `FrameworkBgmDirector` participates through the feature-specific Audio composition adapter; `Available(scope, roots)` attaches it to `ActivityBgmAuthoring` / `RouteBgmAuthoring` under those roots, and `Releasing(scope, roots)` detaches it. Persistent Content roots discover and retain this participant for the Session lifetime; Session release also detaches any residual scene-scoped references. This dependency binding is separate from Route/Activity content entry/exit and is not used as a reverse discovery mechanism for lifecycle completion.
 
 ## Provider-confirmed execution evidence — IF-ADR-013A
 
@@ -251,6 +251,7 @@ Rejected Play/Release remains retryable because rejected intent does not overwri
 - No `FindObjectOfType`, global scene scan, reflection, polling, timeout, coroutine or arbitrary frame delay is used to close Startup Activity BGM ordering.
 - Persistent BGM continuity requires explicit composition of `FrameworkBgmDirector` and `AudioRuntimeHost` under a lifetime that survives transient Route/Activity scenes.
 - Framework Persistent Content is the canonical Framework-owned composition surface for that session/application lifetime.
+- Route/Activity BGM consumers are attached and detached by Scene Lifecycle using explicit scope roots; no scene-loaded listener or all-scenes scan runs in parallel.
 
 ## Accepted integration model
 
@@ -258,8 +259,9 @@ Rejected Play/Release remains retryable because rejected intent does not overwri
 Framework Persistent Content / Session lifetime
   FrameworkBgmDirector
   AudioRuntimeHost
+  Session composition participant
         ↑
-        │ explicit consumer injection
+        │ Available(scope, roots) / Releasing(scope, roots)
         │
 Transient Route / Activity content
   RouteBgmAuthoring
@@ -317,9 +319,9 @@ FAILED               0
 
 It must not be relabeled as proof of the later Startup Activity lifecycle/wiring cut.
 
-## Current certification — Startup Activity lifecycle cut — 2026-08-24
+## Prior certification — Startup Activity lifecycle cut — 2026-08-24
 
-The current Audio QA run proves the present contract:
+This Audio QA run predates the IF-ADR-040 BGM binding migration. It remains historical evidence for the Activity/Route intent and sticky-presentation contracts, but does not certify the new Scene Lifecycle attach/release path. Re-run Audio QA after Unity import and EditMode validation of the composition migration.
 
 ```text
 Core Audio         7/7 PASS
@@ -407,7 +409,7 @@ Package: Implemented
 Route/Activity authoring: independent
 Startup Activity ordering: lifecycle-completion driven
 Persistent completion wiring: explicit via FrameworkRuntimeHost -> ActivityFlowRuntime
-QA: Certified — Audio QA 44/44
+QA: Prior baseline 44/44; rerun required after IF-ADR-040 BGM binding migration
 Consumer evidence: Game Flow + Minimal Game + Player Provisioning
 Status: Accepted / Experimental
 Next: optional explicit product-maturity promotion decision
@@ -432,6 +434,6 @@ Same confirmed cue is NoChange and must not restart provider playback.
 Applied and Released require provider-confirmed execution.
 Rejected provider operations preserve previous confirmed presentation and remain retryable.
 Explicit Silence is the only normal lifecycle intent that releases BGM to silence.
-Current Audio QA certification is 44/44 PASS.
+The last pre-IF-ADR-040 Audio QA baseline was 44/44 PASS; rerun after the Scene Composition binding migration.
 API maturity remains Experimental until a separate explicit promotion cut changes it.
 ```

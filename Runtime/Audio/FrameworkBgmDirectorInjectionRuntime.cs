@@ -1,100 +1,221 @@
 using System;
+using System.Collections.Generic;
+using Immersive.Framework.SceneLifecycle;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Audio
 {
     /// <summary>
-    /// Same-assembly, explicit scene injection owned by one FrameworkBgmDirector.
-    /// It does not expose a global/static authority and does not make the director persistent.
-    /// Persistence remains the responsibility of the Framework Persistent Content composition.
+    /// Audio-specific composition participant for the Session-owned BGM Director.
+    /// It discovers only consumers beneath the roots supplied by Scene Lifecycle.
     /// </summary>
-    internal sealed class FrameworkBgmDirectorInjectionRuntime : IDisposable
+    internal sealed class FrameworkBgmDirectorInjectionRuntime
     {
         private readonly FrameworkBgmDirector _director;
-        private bool _disposed;
+        private readonly Dictionary<SceneCompositionScope, List<IFrameworkBgmDirectorConsumer>>
+            _boundConsumersByScope = new();
 
         internal FrameworkBgmDirectorInjectionRuntime(FrameworkBgmDirector director)
         {
-            this._director = director != null
+            _director = director != null
                 ? director
                 : throw new ArgumentNullException(nameof(director));
-
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-            InjectAllLoadedScenes();
         }
 
-        public void Dispose()
+        public SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
         {
-            if (_disposed)
+            List<IFrameworkBgmDirectorConsumer> consumers = CollectConsumers(roots);
+            var newlyAttached = new List<IFrameworkBgmDirectorConsumer>();
+            var issues = new List<string>();
+
+            for (int index = 0; index < consumers.Count; index++)
             {
-                return;
-            }
-
-            _disposed = true;
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-            DetachAllLoadedScenes();
-        }
-
-        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            InjectScene(scene);
-        }
-
-        private void InjectAllLoadedScenes()
-        {
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-            {
-                InjectScene(SceneManager.GetSceneAt(i));
-            }
-        }
-
-        private void DetachAllLoadedScenes()
-        {
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-            {
-                DetachScene(SceneManager.GetSceneAt(i));
-            }
-        }
-
-        private void InjectScene(Scene scene)
-        {
-            if (!scene.IsValid() || !scene.isLoaded)
-            {
-                return;
-            }
-
-            foreach (GameObject root in scene.GetRootGameObjects())
-            {
-                MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
-                for (int i = 0; i < behaviours.Length; i++)
+                IFrameworkBgmDirectorConsumer consumer = consumers[index];
+                if (!consumer.TryAttachBgmDirector(
+                        _director,
+                        out bool wasAlreadyAttached,
+                        out string issue))
                 {
-                    if (behaviours[i] is IFrameworkBgmDirectorConsumer consumer)
+                    issues.Add($"consumer='{GetConsumerName(consumer)}' issue='{Normalize(issue)}'.");
+                }
+                else if (!wasAlreadyAttached)
+                {
+                    newlyAttached.Add(consumer);
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                var rollbackIssues = new List<string>();
+                for (int index = newlyAttached.Count - 1; index >= 0; index--)
+                {
+                    if (!newlyAttached[index].TryDetachBgmDirector(_director, out string issue))
                     {
-                        consumer.AttachBgmDirector(_director);
+                        rollbackIssues.Add(
+                            $"consumer='{GetConsumerName(newlyAttached[index])}' rollback='{Normalize(issue)}'.");
+                    }
+                }
+
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    $"BGM Director composition rejected. consumers='{consumers.Count}' rejected='{issues.Count}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}");
+            }
+
+            if (_boundConsumersByScope.TryGetValue(
+                    scope,
+                    out List<IFrameworkBgmDirectorConsumer> scopeConsumers))
+            {
+                for (int index = 0; index < consumers.Count; index++)
+                {
+                    AddUnique(scopeConsumers, consumers[index]);
+                }
+            }
+            else
+            {
+                _boundConsumersByScope.Add(scope, consumers);
+            }
+
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Available,
+                $"BGM Director composition completed. consumers='{consumers.Count}' newlyAttached='{newlyAttached.Count}' idempotent='{consumers.Count - newlyAttached.Count}'.");
+        }
+
+        public SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            string reason)
+        {
+            List<IFrameworkBgmDirectorConsumer> consumers = scope.Kind == SceneCompositionScopeKind.Session
+                ? CollectAllBoundConsumers(roots)
+                : _boundConsumersByScope.TryGetValue(
+                        scope,
+                        out List<IFrameworkBgmDirectorConsumer> boundConsumers)
+                    ? boundConsumers
+                    : CollectConsumers(roots);
+            var issues = new List<string>();
+            for (int index = consumers.Count - 1; index >= 0; index--)
+            {
+                if (!IsAlive(consumers[index]))
+                {
+                    continue;
+                }
+
+                if (!consumers[index].TryDetachBgmDirector(_director, out string issue))
+                {
+                    issues.Add($"consumer='{GetConsumerName(consumers[index])}' issue='{Normalize(issue)}'.");
+                }
+            }
+
+            string diagnostic = issues.Count == 0
+                ? $"BGM Director composition released. consumers='{consumers.Count}' reason='{Normalize(reason)}'."
+                : $"BGM Director composition release rejected. consumers='{consumers.Count}' rejected='{issues.Count}'. {string.Join(" ", issues)}";
+            if (issues.Count == 0)
+            {
+                if (scope.Kind == SceneCompositionScopeKind.Session)
+                {
+                    _boundConsumersByScope.Clear();
+                }
+                else
+                {
+                    _boundConsumersByScope.Remove(scope);
+                }
+            }
+
+            return issues.Count == 0
+                ? SceneCompositionResult.Completed(scope, SceneCompositionOperation.Releasing, diagnostic)
+                : SceneCompositionResult.Rejected(scope, SceneCompositionOperation.Releasing, diagnostic);
+        }
+
+        private static List<IFrameworkBgmDirectorConsumer> CollectConsumers(
+            IReadOnlyList<GameObject> roots)
+        {
+            var consumers = new List<IFrameworkBgmDirectorConsumer>();
+            var seenRoots = new HashSet<GameObject>();
+            var seenConsumers = new HashSet<IFrameworkBgmDirectorConsumer>();
+            if (roots == null)
+            {
+                return consumers;
+            }
+
+            for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+            {
+                GameObject root = roots[rootIndex];
+                if (root == null || !seenRoots.Add(root))
+                {
+                    continue;
+                }
+
+                MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+                for (int index = 0; index < behaviours.Length; index++)
+                {
+                    if (behaviours[index] != null &&
+                        behaviours[index] is IFrameworkBgmDirectorConsumer consumer &&
+                        seenConsumers.Add(consumer))
+                    {
+                        consumers.Add(consumer);
                     }
                 }
             }
+
+            return consumers;
         }
 
-        private void DetachScene(Scene scene)
+        private List<IFrameworkBgmDirectorConsumer> CollectAllBoundConsumers(
+            IReadOnlyList<GameObject> sessionRoots)
         {
-            if (!scene.IsValid() || !scene.isLoaded)
+            List<IFrameworkBgmDirectorConsumer> consumers = CollectConsumers(sessionRoots);
+            foreach (KeyValuePair<SceneCompositionScope, List<IFrameworkBgmDirectorConsumer>> pair in
+                     _boundConsumersByScope)
+            {
+                for (int index = 0; index < pair.Value.Count; index++)
+                {
+                    AddUnique(consumers, pair.Value[index]);
+                }
+            }
+
+            return consumers;
+        }
+
+        private static void AddUnique(
+            List<IFrameworkBgmDirectorConsumer> consumers,
+            IFrameworkBgmDirectorConsumer candidate)
+        {
+            if (!IsAlive(candidate))
             {
                 return;
             }
 
-            foreach (GameObject root in scene.GetRootGameObjects())
+            for (int index = 0; index < consumers.Count; index++)
             {
-                MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
-                for (int i = 0; i < behaviours.Length; i++)
+                if (ReferenceEquals(consumers[index], candidate))
                 {
-                    if (behaviours[i] is IFrameworkBgmDirectorConsumer consumer)
-                    {
-                        consumer.DetachBgmDirector(_director);
-                    }
+                    return;
                 }
             }
+
+            consumers.Add(candidate);
         }
+
+        private static bool IsAlive(IFrameworkBgmDirectorConsumer consumer)
+        {
+            if (consumer is Component component)
+            {
+                return component != null;
+            }
+
+            return consumer != null;
+        }
+
+        private static string GetConsumerName(IFrameworkBgmDirectorConsumer consumer) =>
+            consumer is Component component && component != null
+                ? component.name
+                : consumer?.GetType().Name ?? "<null>";
+
+        private static string Normalize(string value) =>
+            string.IsNullOrWhiteSpace(value) ? "unknown" : value.Trim();
     }
 }

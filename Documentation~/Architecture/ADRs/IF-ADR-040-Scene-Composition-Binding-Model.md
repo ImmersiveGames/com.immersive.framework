@@ -22,6 +22,8 @@ The common internal scope distinguishes a loaded Scene from the owning Session. 
 
 Each feature keeps its own authority, participant, binder, ports, validation and diagnostics. The common result carries the scope, operation, success/status and diagnostic. Discovery is limited to the roots passed by composition. A binder must be idempotent for the same authority, reject a different authority, detach explicitly and idempotently, and roll back newly acquired bindings if its local bind pass fails.
 
+Feature-specific participants may be components under Persistent Content roots. `SceneLifecycleRuntime` discovers those participants only during Session-scope composition and retains them for the Session lifetime, so optional feature assemblies can participate without adding their types to Framework Core. The retained participants receive later managed Scene scopes and are released with Persistent Content. This is participant discovery from explicit composition roots, not consumer binding or a global scan.
+
 No universal binder, service locator, global scan, `FindObjectOfType`, or parallel scene-loaded scanner is introduced. Persistent Content is a scope, not a separate binding mechanism.
 
 ## Ownership and lifetime
@@ -34,9 +36,11 @@ No universal binder, service locator, global scan, `FindObjectOfType`, or parall
 
 ## Initial migration boundary
 
-The common model covers Pause request/surface bindings, Reset subject/request bindings, Camera command triggers, Route/Activity request triggers, CycleReset triggers and ActivityRestart triggers.
+The common model covers Pause request/surface bindings, Reset subject/request bindings, Camera command triggers, Route/Activity request triggers, CycleReset triggers, ActivityRestart triggers and Audio BGM Director injection.
 
-Player Host/Actor/current-context binding, Player provisioning, Activity/Route content ownership, Loading/Transition, and Audio remain on their current lifecycles for this cut. Their differences require separate migration decisions; they do not justify a universal binder. Audio may adopt the same composition shape later while retaining Audio-specific injection and runtime ownership.
+Player Host/Actor/current-context binding, Player provisioning, Activity/Route content ownership and Loading/Transition remain outside this migration. `SceneProvidedLocalPlayerAuthoring` is an admission candidate and later conflict-evidence surface, not only a scene consumer. Its Session admission runtime intentionally discovers candidates from already-loaded scenes, handles scenes loaded outside Framework Scene Lifecycle, and provides lazy binding when a candidate invokes its API before reconciliation. Replacing this with managed-scene roots alone would miss valid admission/conflict candidates. The separate `UnityLocalPlayerProvisioningBackend` scene-loaded callback is also retained: it defers `PlayerInputManager.onPlayerJoined` callbacks received before Unity marks the source scene loaded. These are Player admission/provisioning contracts, not parallel consumers of the Scene Composition Binding Model.
+
+Audio keeps its feature-specific consumer contract and BGM authority. `FrameworkBgmDirector` is discovered as a Session-lifetime composition participant from Persistent Content roots; it attaches/detaches `ActivityBgmAuthoring` and `RouteBgmAuthoring` only for the roots of each Available/Releasing scope. Session release also clears any residual scene-scoped consumer references before the authority ends. This dependency binding remains separate from Activity/Route BGM intent lifecycle and does not change sticky presentation policy.
 
 `SessionCameraAssignmentCommandTrigger` remains an optional Unity adapter. Activate/Replace/Clear semantics remain owned by the Session Camera command authority. This ADR does not add Route/Activity Camera fields or Camera arbitration.
 

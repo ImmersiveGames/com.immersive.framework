@@ -28,7 +28,6 @@ namespace Immersive.Framework.Audio
         [SerializeField] private bool logTransitions = true;
 
         private FrameworkLogger _logger;
-        private FrameworkBgmDirectorInjectionRuntime _injectionRuntime;
         private BgmIntent _pendingIntent;
         private BgmIntent _currentRouteIntent = BgmIntent.None("no-active-route");
         private bool _awaitingStartupActivityEntry;
@@ -65,18 +64,13 @@ namespace Immersive.Framework.Audio
 
         private void OnEnable()
         {
-            if (!Application.isPlaying)
+            if (!Application.isPlaying ||
+                GetComponent<FrameworkBgmDirectorSceneLifecycleParticipant>() != null)
             {
                 return;
             }
 
-            _injectionRuntime ??= new FrameworkBgmDirectorInjectionRuntime(this);
-        }
-
-        private void OnDisable()
-        {
-            _injectionRuntime?.Dispose();
-            _injectionRuntime = null;
+            gameObject.AddComponent<FrameworkBgmDirectorSceneLifecycleParticipant>();
         }
 
         public FrameworkBgmOperationResult SetRouteBgm(AudioBgmCueAsset cue)
