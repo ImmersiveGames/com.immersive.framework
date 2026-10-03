@@ -25,7 +25,7 @@ Camera Output (Unity Camera + Cinemachine Brain)
 
 Subjects are supplied by the current Actor occurrence. Camera configuration defines rig behavior. The Session Assignment determines membership, target policy, occurrence mode and Output mapping. Each physical Output presents one normal occurrence or its Fallback Camera.
 
-There is no supported Camera Request selection surface in the current model.
+There is no CameraRequest/precedence selection surface. Runtime Assignment changes use the explicit `SessionCameraAssignmentCommandTrigger` boundary defined by IF-ADR-039.
 
 ## Supported composition
 
@@ -47,7 +47,7 @@ The Camera system/assets are not currently marked Stable as a whole. Check the P
 - Actor replacement updates the current Subject on the existing Camera occurrence. It does not, by itself, replace the Assignment or recreate the occurrence.
 - A new Route or Activity does not request a Camera and does not select a replacement. The configured Session Assignment and its occurrence remain. Route/Activity participation may temporarily make an Actor Subject ineligible.
 - The Output may show its current normal occurrence or temporary/required fallback coverage. Showing fallback does not deactivate or remove the configured Assignment. Zero members alone do not select fallback.
-- Only an explicit Session Camera Assignment change changes normal camera selection. Candidate preparation must succeed before replacement commits; failed preparation preserves the previous Assignment.
+- Only an explicit Session Camera Assignment command changes normal camera selection. `Activate` starts an Assignment on free Outputs, `Replace` transactionally swaps an explicitly identified active Assignment, and `Clear` removes an explicitly identified active Assignment so its Outputs remain on Fallback. Candidate preparation must succeed before replacement commits; failed preparation preserves the previous Assignment.
 
 Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The Framework may choose the individual/shared split-screen regime. `PlayerInputManager` owns viewport geometry; Framework Camera code does not write `Camera.rect` or `Camera.pixelRect`.
 
@@ -57,7 +57,8 @@ Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The
 2. Create a `Camera Definition` and configure its rig behavior through a `CameraRigComposer`.
 3. Configure Session Camera Assignments on the Game Application, mapping each Assignment to explicit Outputs and choosing its target and membership policy. For Individual mode, map each member Slot to its Output on that Assignment.
 4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
-5. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
+5. When gameplay needs to change the active Assignment at runtime, author a `SessionCameraAssignmentCommandTrigger` in explicitly bound Persistent Content and use `Activate`, `Replace` or `Clear`. Route/Activity assets remain Camera-free.
+6. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
 
 The concrete Output prefab and assignment settings must match the intended one-Output, shared or per-Player design. See IF-ADR-038 for cardinality and failure details.
 
@@ -70,6 +71,7 @@ The concrete Output prefab and assignment settings must match the intended one-O
 - Expecting a group rig to choose a follow/look-at subject automatically.
 - Treating an Actor Profile or Actor root as a substitute for explicit Subject authoring.
 - Relying on an old Camera Request/Presentation sample without migrating it to the current Assignment model.
+- Adding Camera fields back to Route/Activity instead of issuing an explicit Session Camera Assignment command from game-owned flow/presentation composition.
 
 ## Public surfaces
 
@@ -78,4 +80,5 @@ See the [Public API Reference](../API/Public-API.md#camera). Session Camera Defi
 ## Related architecture
 
 - [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
+- [IF-ADR-039 — Session Camera Assignment Command Boundary](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md)
 - [IF-ADR-019 — Session Player lifetime and Activity representation](../Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)
