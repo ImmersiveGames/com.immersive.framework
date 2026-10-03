@@ -157,7 +157,7 @@ namespace Immersive.Framework.CameraAuthoring
 
             try
             {
-                CameraDefinitionValidation.ValidateOutputs(
+                CameraOutputDefinitionValidation.ValidateOutputs(
                     outputDefinitions);
             }
             catch (InvalidOperationException exception)

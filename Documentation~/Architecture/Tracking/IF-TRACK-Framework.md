@@ -323,7 +323,7 @@ Certification and reconciliation records:
 ## Current Camera and Actor occurrence target — IF-ADR-038 — 2026-09-30
 
 ~~~text
-CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+SessionCameraAssignmentAsset (Rig Prefab + policy) -> Occurrence -> Membership / Subject -> Output
 Fallback is separate.
 ~~~
 

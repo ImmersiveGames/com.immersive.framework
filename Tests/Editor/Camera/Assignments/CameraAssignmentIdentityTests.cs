@@ -8,42 +8,54 @@ using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Immersive.Framework.Camera.Tests
 {
     public sealed class CameraAssignmentIdentityTests
     {
+        private readonly List<UnityEngine.Object> _created = new List<UnityEngine.Object>();
+
+        [TearDown]
+        public void TearDown()
+        {
+            for (int index = _created.Count - 1; index >= 0; index--)
+                if (_created[index] != null) UnityEngine.Object.DestroyImmediate(_created[index]);
+            _created.Clear();
+        }
+
         [Test]
         public void StableIds_UseValueEquality()
         {
-            Assert.That(new CameraDefinitionId("definition.a"), Is.EqualTo(new CameraDefinitionId("definition.a")));
             Assert.That(new SessionCameraAssignmentId("assignment.a"), Is.EqualTo(new SessionCameraAssignmentId("assignment.a")));
             Assert.That(new CameraOutputId("output.a"), Is.EqualTo(new CameraOutputId("output.a")));
         }
 
         [Test]
-        public void NewAssignmentAuthoring_GeneratesUniqueStableIdAndKeepsItWhenReordered()
+        public void NewAssignmentAssets_GenerateUniqueStableIdAndKeepItWhenReordered()
         {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            var first = new SessionCameraAssignmentAuthoring();
-            var second = new SessionCameraAssignmentAuthoring();
-            string firstId = (string)typeof(SessionCameraAssignmentAuthoring)
+            var first = ScriptableObject.CreateInstance<SessionCameraAssignmentAsset>();
+            var second = ScriptableObject.CreateInstance<SessionCameraAssignmentAsset>();
+            _created.Add(first);
+            _created.Add(second);
+            string firstId = (string)typeof(SessionCameraAssignmentAsset)
                 .GetField("assignmentId", flags).GetValue(first);
-            string secondId = (string)typeof(SessionCameraAssignmentAuthoring)
+            string secondId = (string)typeof(SessionCameraAssignmentAsset)
                 .GetField("assignmentId", flags).GetValue(second);
 
             Assert.That(Guid.TryParseExact(firstId, "N", out _), Is.True);
             Assert.That(Guid.TryParseExact(secondId, "N", out _), Is.True);
             Assert.That(firstId, Is.Not.EqualTo(secondId));
 
-            typeof(SessionCameraAssignmentAuthoring)
+            typeof(SessionCameraAssignmentAsset)
                 .GetField("targetPolicy", flags)
                 .SetValue(first, CameraTargetPolicy.MemberActorTargets);
-            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+            Assert.That(typeof(SessionCameraAssignmentAsset)
                 .GetField("assignmentId", flags).GetValue(first),
                 Is.EqualTo(firstId));
 
-            var assignments = new List<SessionCameraAssignmentAuthoring>
+            var assignments = new List<SessionCameraAssignmentAsset>
             {
                 first,
                 second
@@ -51,10 +63,10 @@ namespace Immersive.Framework.Camera.Tests
             assignments.Reverse();
 
             Assert.That(assignments[1], Is.SameAs(first));
-            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+            Assert.That(typeof(SessionCameraAssignmentAsset)
                 .GetField("assignmentId", flags).GetValue(assignments[1]),
                 Is.EqualTo(firstId));
-            Assert.That(typeof(SessionCameraAssignmentAuthoring)
+            Assert.That(typeof(SessionCameraAssignmentAsset)
                 .GetField("assignmentId", flags).GetValue(assignments[0]),
                 Is.EqualTo(secondId));
         }
@@ -79,12 +91,10 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void ReusedDefinition_DoesNotShareOccurrenceIdentityOrStateAcrossAssignments()
+        public void ReusedRigPrefab_DoesNotShareOccurrenceIdentityOrStateAcrossAssignments()
         {
-            var definition = new CameraDefinitionId("definition.shared");
             var firstAssignment = CameraOccurrenceIdentity.ForSessionOrShared(new SessionCameraAssignmentId("assignment.a"), new CameraOutputId("output.a"));
             var secondAssignment = CameraOccurrenceIdentity.ForSessionOrShared(new SessionCameraAssignmentId("assignment.b"), new CameraOutputId("output.a"));
-            Assert.That(definition, Is.EqualTo(new CameraDefinitionId("definition.shared")));
             Assert.That(firstAssignment, Is.Not.EqualTo(secondAssignment));
 
             var occurrenceState = new Dictionary<CameraOccurrenceIdentity, string>
@@ -102,13 +112,13 @@ namespace Immersive.Framework.Camera.Tests
         {
             var output = new CameraOutputMapping(new CameraOutputId("output.a"));
             var individualWithoutMembership = new SessionCameraAssignment(
-                new SessionCameraAssignmentId("assignment.a"), new CameraDefinitionId("definition.a"),
+                new SessionCameraAssignmentId("assignment.a"),
                 CameraOccurrenceMode.IndividualPerPlayer, CameraMembershipPolicy.None,
                 CameraTargetPolicy.NoSubject, new[] { output });
             Assert.That(individualWithoutMembership.TryValidate(out _), Is.False);
 
             var duplicateOutputs = new SessionCameraAssignment(
-                new SessionCameraAssignmentId("assignment.b"), new CameraDefinitionId("definition.a"),
+                new SessionCameraAssignmentId("assignment.b"),
                 CameraOccurrenceMode.SharedGroup, CameraMembershipPolicy.ExplicitPlayerSlots,
                 CameraTargetPolicy.MemberActorTargets, new[] { output, output }, new[] { PlayerSlotId.Player1 });
             Assert.That(duplicateOutputs.TryValidate(out _), Is.False);
@@ -118,7 +128,7 @@ namespace Immersive.Framework.Camera.Tests
         public void ModeDoesNotImplyMembershipOrTargetPolicy()
         {
             var assignment = new SessionCameraAssignment(
-                new SessionCameraAssignmentId("assignment.a"), new CameraDefinitionId("definition.a"),
+                new SessionCameraAssignmentId("assignment.a"),
                 CameraOccurrenceMode.SessionScoped, CameraMembershipPolicy.None,
                 CameraTargetPolicy.NoSubject, new[] { new CameraOutputMapping(new CameraOutputId("output.a")) });
             Assert.That(assignment.TryValidate(out _), Is.True);

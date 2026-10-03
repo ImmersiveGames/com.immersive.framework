@@ -38,7 +38,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             string identityIssue = binding.OutputDefinition == null
                 ? "Assign an Output Definition asset."
-                : CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(binding.OutputDefinition);
+                : CameraOutputDefinitionIdentityEditorUtility.ValidateLocalIdentity(binding.OutputDefinition);
             if (identityIssue != null) issues.Add(identityIssue);
 
             if (binding.UnityCamera == null)

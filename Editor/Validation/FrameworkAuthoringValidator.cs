@@ -320,11 +320,11 @@ namespace Immersive.Framework.Editor.Validation
             GameApplicationAsset gameApplication)
         {
             var identities = new HashSet<SessionCameraAssignmentId>();
-            IReadOnlyList<SessionCameraAssignmentAuthoring> assignments =
-                gameApplication.SessionCameraAssignments;
+            IReadOnlyList<SessionCameraAssignmentAsset> assignments =
+                gameApplication.StartupCameraAssignments;
             for (int index = 0; index < assignments.Count; index++)
             {
-                SessionCameraAssignmentAuthoring authored = assignments[index];
+                SessionCameraAssignmentAsset authored = assignments[index];
                 if (authored == null)
                 {
                     report.AddError(
@@ -350,23 +350,6 @@ namespace Immersive.Framework.Editor.Validation
                     continue;
                 }
 
-                foreach (string guid in AssetDatabase.FindAssets("t:GameApplicationAsset"))
-                {
-                    string path = AssetDatabase.GUIDToAssetPath(guid);
-                    GameApplicationAsset other = AssetDatabase.LoadAssetAtPath<GameApplicationAsset>(path);
-                    if (other == null || ReferenceEquals(other, gameApplication))
-                        continue;
-                    foreach (SessionCameraAssignmentAuthoring candidate in other.SessionCameraAssignments)
-                    {
-                        if (candidate == null || !candidate.AssignmentId.IsValid ||
-                            !candidate.AssignmentId.Equals(id))
-                            continue;
-                        report.AddError(
-                            $"Session Camera Assignment ID '{id}' is duplicated by asset '{path}'.",
-                            gameApplication);
-                        break;
-                    }
-                }
             }
         }
 

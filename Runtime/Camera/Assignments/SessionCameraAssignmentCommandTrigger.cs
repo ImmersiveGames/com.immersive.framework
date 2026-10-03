@@ -10,17 +10,16 @@ namespace Immersive.Framework.Camera
     public sealed class SessionCameraAssignmentCommandTrigger : MonoBehaviour
     {
         [SerializeField] private SessionCameraAssignmentCommandKind command = SessionCameraAssignmentCommandKind.Activate;
-        [SerializeField] private SessionCameraAssignmentAuthoring assignment;
-        [SerializeField, Tooltip("Required by Replace. Exact currently active Assignment identity expected to be replaced.")]
-        private string previousAssignmentId;
-        [SerializeField, Tooltip("Required by Clear. Exact currently active Assignment identity to remove.")]
-        private string clearAssignmentId;
+        [SerializeField] private SessionCameraAssignmentAsset assignment;
+        [SerializeField, Tooltip("Required by Replace. Exact currently active Assignment asset expected to be replaced.")]
+        private SessionCameraAssignmentAsset previousAssignment;
 
         private ISessionCameraAssignmentCommandPort _runtime;
         private string _bindingDiagnostic = "Session Camera Assignment command runtime is not bound.";
 
         public SessionCameraAssignmentCommandKind Command => command;
-        public SessionCameraAssignmentAuthoring Assignment => assignment;
+        public SessionCameraAssignmentAsset Assignment => assignment;
+        public SessionCameraAssignmentAsset PreviousAssignment => previousAssignment;
         public bool HasRuntimeBinding => _runtime != null;
         public string RuntimeBindingDiagnostic => _bindingDiagnostic;
         public bool LastCommandSucceeded { get; private set; }
@@ -71,23 +70,21 @@ namespace Immersive.Framework.Camera
                     LastDiagnostic = LastCommandSucceeded ? "Session Camera Assignment activated." : activateIssue;
                     return;
                 case SessionCameraAssignmentCommandKind.Replace:
-                    var previousId = new SessionCameraAssignmentId(previousAssignmentId);
-                    if (!previousId.IsValid)
+                    if (previousAssignment == null)
                     {
-                        LastDiagnostic = "Session Camera Assignment Replace requires an explicit previous Assignment identity.";
+                        LastDiagnostic = "Session Camera Assignment Replace requires an explicit previous Assignment asset.";
                         return;
                     }
-                    LastCommandSucceeded = _runtime.TryReplace(previousId, assignment, out string replaceIssue);
+                    LastCommandSucceeded = _runtime.TryReplace(previousAssignment, assignment, out string replaceIssue);
                     LastDiagnostic = LastCommandSucceeded ? "Session Camera Assignment replaced." : replaceIssue;
                     return;
                 case SessionCameraAssignmentCommandKind.Clear:
-                    var clearId = new SessionCameraAssignmentId(clearAssignmentId);
-                    if (!clearId.IsValid)
+                    if (assignment == null)
                     {
-                        LastDiagnostic = "Session Camera Assignment Clear requires an explicit Assignment identity.";
+                        LastDiagnostic = "Session Camera Assignment Clear requires an explicit Assignment asset.";
                         return;
                     }
-                    LastCommandSucceeded = _runtime.TryClear(clearId, out string clearIssue);
+                    LastCommandSucceeded = _runtime.TryClear(assignment, out string clearIssue);
                     LastDiagnostic = LastCommandSucceeded ? "Session Camera Assignment cleared." : clearIssue;
                     return;
                 default:

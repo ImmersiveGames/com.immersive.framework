@@ -10,7 +10,7 @@ namespace Immersive.Framework.Camera
     internal static class SessionCameraAssignmentOutputProjection
     {
         internal static bool TryCreate(
-            IReadOnlyList<SessionCameraAssignmentAuthoring> assignments,
+            IReadOnlyList<SessionCameraAssignmentAsset> assignments,
             CameraOutputSessionTopology outputs,
             PlayerParticipationSnapshot playerSession,
             bool requireCompleteSlotCoverage,
@@ -24,13 +24,14 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            assignments ??= Array.Empty<SessionCameraAssignmentAuthoring>();
+            assignments ??= Array.Empty<SessionCameraAssignmentAsset>();
             var bindings = new List<PlayerCameraOutputBinding>();
             var outputDefinitions = new List<CameraOutputDefinition>();
             bool hasIndividualAssignment = false;
+            diagnostic = string.Empty;
             for (int index = 0; index < assignments.Count; index++)
             {
-                SessionCameraAssignmentAuthoring authored = assignments[index];
+                SessionCameraAssignmentAsset authored = assignments[index];
                 if (authored == null)
                 {
                     diagnostic = $"Session Camera Assignments[{index}] is missing and cannot produce Player Output topology.";
@@ -83,7 +84,7 @@ namespace Immersive.Framework.Camera
 
             try
             {
-                CameraDefinitionValidation.ValidateOutputs(outputDefinitions);
+                CameraOutputDefinitionValidation.ValidateOutputs(outputDefinitions);
             }
             catch (InvalidOperationException exception)
             {

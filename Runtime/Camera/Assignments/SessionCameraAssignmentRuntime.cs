@@ -20,14 +20,12 @@ namespace Immersive.Framework.Camera
 
         internal SessionCameraOccurrence(
             SessionCameraAssignment assignment,
-            CameraDefinition definition,
             CameraOccurrenceIdentity identity,
             GameObject root,
             CameraRigComposer composer,
             CameraOutputAuthoring output)
         {
             Assignment = assignment;
-            Definition = definition;
             Identity = identity;
             Root = root;
             Composer = composer;
@@ -37,7 +35,6 @@ namespace Immersive.Framework.Camera
         }
 
         internal SessionCameraAssignment Assignment { get; }
-        internal CameraDefinition Definition { get; }
         internal CameraOccurrenceIdentity Identity { get; }
         internal GameObject Root { get; }
         internal CameraRigComposer Composer { get; }
@@ -300,16 +297,16 @@ namespace Immersive.Framework.Camera
         {
             internal IndividualAssignmentRuntime(
                 SessionCameraAssignment assignment,
-                CameraDefinition definition,
+                GameObject rigPrefab,
                 Dictionary<PlayerSlotId, CameraOutputAuthoring> outputsBySlot)
             {
                 Assignment = assignment;
-                Definition = definition;
+                RigPrefab = rigPrefab;
                 OutputsBySlot = outputsBySlot;
             }
 
             internal SessionCameraAssignment Assignment { get; }
-            internal CameraDefinition Definition { get; }
+            internal GameObject RigPrefab { get; }
             internal Dictionary<PlayerSlotId, CameraOutputAuthoring> OutputsBySlot { get; }
         }
 
@@ -431,7 +428,7 @@ namespace Immersive.Framework.Camera
         }
 
         internal bool TryActivateAssignment(
-            SessionCameraAssignmentAuthoring candidateAuthoring,
+            SessionCameraAssignmentAsset candidateAuthoring,
             out string issue)
         {
             issue = string.Empty;
@@ -486,38 +483,6 @@ namespace Immersive.Framework.Camera
             {
                 issue = "Candidate Assignment conflicts with active Individual Player Output mappings. " + issue;
                 return false;
-            }
-
-            CameraDefinition candidateDefinition = candidateAuthoring.Definition;
-            if (!candidateDefinition.TryValidateSessionCamera(
-                    candidateAssignment.TargetPolicy,
-                    out issue))
-            {
-                issue = $"Candidate Camera Definition '{candidateDefinition.name}' is invalid. {issue}";
-                return false;
-            }
-
-            for (int index = 0; index < _occurrences.Count; index++)
-            {
-                CameraDefinition activeDefinition = _occurrences[index].Definition;
-                if (activeDefinition != null &&
-                    activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
-                    !ReferenceEquals(activeDefinition, candidateDefinition))
-                {
-                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
-                    return false;
-                }
-            }
-
-            for (int index = 0; index < _individualAssignments.Count; index++)
-            {
-                CameraDefinition activeDefinition = _individualAssignments[index].Definition;
-                if (activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
-                    !ReferenceEquals(activeDefinition, candidateDefinition))
-                {
-                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
-                    return false;
-                }
             }
 
             if (!TryCreate(
@@ -713,7 +678,7 @@ namespace Immersive.Framework.Camera
 
         internal bool TryReplaceAssignment(
             SessionCameraAssignmentId previousAssignmentId,
-            SessionCameraAssignmentAuthoring candidateAuthoring,
+            SessionCameraAssignmentAsset candidateAuthoring,
             IReadOnlyList<SessionCameraMemberState> currentMembers,
             out string issue)
         {
@@ -790,34 +755,6 @@ namespace Immersive.Framework.Camera
             {
                 issue = $"Candidate Assignment conflicts with active Individual Player Output mappings. {issue}";
                 return false;
-            }
-
-            CameraDefinition candidateDefinition = candidateAuthoring.Definition;
-            if (!candidateDefinition.TryValidateSessionCamera(candidateAssignment.TargetPolicy, out issue))
-            {
-                issue = $"Candidate Camera Definition '{candidateDefinition.name}' is invalid. {issue}";
-                return false;
-            }
-            for (int index = 0; index < _occurrences.Count; index++)
-            {
-                CameraDefinition activeDefinition = _occurrences[index].Definition;
-                if (activeDefinition != null &&
-                    activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
-                    !ReferenceEquals(activeDefinition, candidateDefinition))
-                {
-                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
-                    return false;
-                }
-            }
-            for (int index = 0; index < _individualAssignments.Count; index++)
-            {
-                CameraDefinition activeDefinition = _individualAssignments[index].Definition;
-                if (activeDefinition.DefinitionId == candidateAssignment.DefinitionId &&
-                    !ReferenceEquals(activeDefinition, candidateDefinition))
-                {
-                    issue = $"Camera Definition identity collision '{candidateAssignment.DefinitionId}' references different assets.";
-                    return false;
-                }
             }
 
             var previousOutputs = new Dictionary<CameraOutputId, CameraOutputAuthoring>();
@@ -947,7 +884,7 @@ namespace Immersive.Framework.Camera
 
                     var individual = new IndividualAssignmentRuntime(
                         candidateAssignment,
-                        candidateDefinition,
+                        candidateAuthoring.RigPrefab,
                         outputsBySlot);
                     candidateIndividualRuntime = individual;
                     foreach (SessionCameraMemberState member in candidateMembersById.Values)
@@ -1000,7 +937,7 @@ namespace Immersive.Framework.Camera
                             mapping.Key);
                         if (!TryMaterializeReplacementOccurrence(
                                 candidateAssignment,
-                                candidateDefinition,
+                                candidateAuthoring.RigPrefab,
                                 mapping.Value,
                                 identity,
                                 stagingRoot.transform,
@@ -1480,7 +1417,7 @@ namespace Immersive.Framework.Camera
 
         private static bool TryMaterializeReplacementOccurrence(
             SessionCameraAssignment assignment,
-            CameraDefinition definition,
+            GameObject rigPrefab,
             CameraOutputAuthoring output,
             CameraOccurrenceIdentity identity,
             Transform stagingParent,
@@ -1491,10 +1428,10 @@ namespace Immersive.Framework.Camera
             GameObject instance = null;
             try
             {
-                instance = Object.Instantiate(definition.RigPrefab, stagingParent, false);
+                instance = Object.Instantiate(rigPrefab, stagingParent, false);
                 if (instance == null)
                 {
-                    issue = $"Camera Definition '{definition.name}' Rig Prefab instantiation returned null.";
+                    issue = "Session Camera Assignment Rig Prefab instantiation returned null.";
                     return false;
                 }
                 instance.SetActive(false);
@@ -1529,7 +1466,6 @@ namespace Immersive.Framework.Camera
                 composer.CinemachineCamera.enabled = false;
                 occurrence = new SessionCameraOccurrence(
                     assignment,
-                    definition,
                     identity,
                     instance,
                     composer,
@@ -1602,12 +1538,12 @@ namespace Immersive.Framework.Camera
             try
             {
                 instance = Object.Instantiate(
-                    individual.Definition.RigPrefab,
+                    individual.RigPrefab,
                     stagingParent,
                     false);
                 if (instance == null)
                 {
-                    issue = $"Camera Definition '{individual.Definition.name}' Rig Prefab instantiation returned null.";
+                    issue = $"Session Camera Assignment Rig Prefab instantiation returned null.";
                     return false;
                 }
                 instance.SetActive(false);
@@ -1643,7 +1579,6 @@ namespace Immersive.Framework.Camera
                 composer.CinemachineCamera.enabled = false;
                 occurrence = new SessionCameraOccurrence(
                     individual.Assignment,
-                    individual.Definition,
                     identity,
                     instance,
                     composer,
@@ -1682,7 +1617,7 @@ namespace Immersive.Framework.Camera
         }
 
         internal static bool TryCreate(
-            IReadOnlyList<SessionCameraAssignmentAuthoring> authoredAssignments,
+            IReadOnlyList<SessionCameraAssignmentAsset> authoredAssignments,
             CameraOutputSessionTopology outputs,
             Transform sessionParent,
             out SessionCameraAssignmentRuntime runtime,
@@ -1695,7 +1630,7 @@ namespace Immersive.Framework.Camera
                 return false;
             }
 
-            authoredAssignments ??= Array.Empty<SessionCameraAssignmentAuthoring>();
+            authoredAssignments ??= Array.Empty<SessionCameraAssignmentAsset>();
             if (authoredAssignments.Count == 0)
             {
                 runtime = new SessionCameraAssignmentRuntime(
@@ -1709,7 +1644,6 @@ namespace Immersive.Framework.Camera
             }
 
             var assignments = new List<SessionCameraAssignment>(authoredAssignments.Count);
-            var definitionsById = new Dictionary<CameraDefinitionId, CameraDefinition>();
             var assignmentIds = new HashSet<SessionCameraAssignmentId>();
             var usedOutputIds = new HashSet<CameraOutputId>();
             var individualAssignments = new List<IndividualAssignmentRuntime>();
@@ -1717,7 +1651,7 @@ namespace Immersive.Framework.Camera
 
             for (int index = 0; index < authoredAssignments.Count; index++)
             {
-                SessionCameraAssignmentAuthoring authored = authoredAssignments[index];
+                SessionCameraAssignmentAsset authored = authoredAssignments[index];
                 if (authored == null)
                 {
                     issue = $"Session Camera Assignments[{index}] is missing.";
@@ -1746,22 +1680,6 @@ namespace Immersive.Framework.Camera
                     issue = $"Session Camera Assignment identity '{assignment.Id}' is duplicated.";
                     return false;
                 }
-
-                CameraDefinition definition = authored.Definition;
-                if (!definition.TryValidateSessionCamera(assignment.TargetPolicy, out issue))
-                {
-                    issue = $"Camera Definition '{definition.name}' is invalid for a Session camera. {issue}";
-                    return false;
-                }
-
-                CameraDefinitionId definitionId = definition.DefinitionId;
-                if (definitionsById.TryGetValue(definitionId, out CameraDefinition previousDefinition) &&
-                    !ReferenceEquals(previousDefinition, definition))
-                {
-                    issue = $"Camera Definition identity collision '{definitionId}' references different assets.";
-                    return false;
-                }
-                definitionsById[definitionId] = definition;
 
                 IReadOnlyList<CameraOutputDefinition> mappings = authored.OutputDefinitions;
                 var outputsBySlot = new Dictionary<PlayerSlotId, CameraOutputAuthoring>();
@@ -1810,7 +1728,7 @@ namespace Immersive.Framework.Camera
                     }
                     individualAssignments.Add(new IndividualAssignmentRuntime(
                         assignment,
-                        definition,
+                        authored.RigPrefab,
                         outputsBySlot));
                 }
 
@@ -1828,13 +1746,12 @@ namespace Immersive.Framework.Camera
 
                 for (int index = 0; index < authoredAssignments.Count; index++)
                 {
-                    SessionCameraAssignmentAuthoring authored = authoredAssignments[index];
+                    SessionCameraAssignmentAsset authored = authoredAssignments[index];
                     SessionCameraAssignment assignment = assignments[index];
                     if (assignment.OccurrenceMode == CameraOccurrenceMode.IndividualPerPlayer)
                     {
                         continue;
                     }
-                    CameraDefinition definition = authored.Definition;
                     IReadOnlyList<CameraOutputDefinition> mappings = authored.OutputDefinitions;
                     for (int mappingIndex = 0; mappingIndex < mappings.Count; mappingIndex++)
                     {
@@ -1842,12 +1759,12 @@ namespace Immersive.Framework.Camera
                         outputs.TryGetOutput(outputDefinition.OutputId, out CameraOutputAuthoring output, out _);
 
                         GameObject instance = Object.Instantiate(
-                            definition.RigPrefab,
+                            authored.RigPrefab,
                             stagingRoot.transform,
                             false);
                         if (instance == null)
                         {
-                            issue = $"Camera Definition '{definition.name}' Rig Prefab instantiation returned null.";
+                            issue = $"Session Camera Assignment '{assignment.Id}' Rig Prefab instantiation returned null.";
                             DestroyOccurrences(candidates);
                             return false;
                         }
@@ -1889,7 +1806,6 @@ namespace Immersive.Framework.Camera
                             outputDefinition.OutputId);
                         candidates.Add(new SessionCameraOccurrence(
                             assignment,
-                            definition,
                             identity,
                             instance,
                             composer,
@@ -2112,7 +2028,7 @@ namespace Immersive.Framework.Camera
 
         internal bool TryReplaceAssignment(
             SessionCameraAssignmentId previousAssignmentId,
-            SessionCameraAssignmentAuthoring candidateAuthoring,
+            SessionCameraAssignmentAsset candidateAuthoring,
             out string issue)
         {
             issue = string.Empty;

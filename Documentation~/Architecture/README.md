@@ -271,7 +271,7 @@ Current normative Camera authority:
 [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ~~~text
-CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+SessionCameraAssignmentAsset (Rig Prefab + policy) -> Occurrence -> Membership / Subject -> Output
 Fallback is separate.
 ~~~
 

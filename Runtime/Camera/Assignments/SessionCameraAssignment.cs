@@ -46,20 +46,19 @@ namespace Immersive.Framework.Camera
         private readonly PlayerSlotId[] _memberSlots;
         private readonly CameraPlayerOutputMapping[] _memberOutputs;
 
-        public SessionCameraAssignment(SessionCameraAssignmentId id, CameraDefinitionId definitionId,
+        public SessionCameraAssignment(SessionCameraAssignmentId id,
             CameraOccurrenceMode occurrenceMode, CameraMembershipPolicy membershipPolicy,
             CameraTargetPolicy targetPolicy, IReadOnlyList<CameraOutputMapping> outputs,
             IReadOnlyList<PlayerSlotId> memberSlots = null,
             IReadOnlyList<CameraPlayerOutputMapping> memberOutputs = null)
         {
-            Id = id; DefinitionId = definitionId; OccurrenceMode = occurrenceMode;
+            Id = id; OccurrenceMode = occurrenceMode;
             MembershipPolicy = membershipPolicy; TargetPolicy = targetPolicy;
             _outputs = Copy(outputs); _memberSlots = Copy(memberSlots);
             _memberOutputs = Copy(memberOutputs);
         }
 
         public SessionCameraAssignmentId Id { get; }
-        public CameraDefinitionId DefinitionId { get; }
         public CameraOccurrenceMode OccurrenceMode { get; }
         public CameraMembershipPolicy MembershipPolicy { get; }
         public CameraTargetPolicy TargetPolicy { get; }
@@ -70,7 +69,7 @@ namespace Immersive.Framework.Camera
 
         public bool TryValidate(out string issue)
         {
-            if (!Id.IsValid || !DefinitionId.IsValid) issue = "Assignment and Definition identities are required.";
+            if (!Id.IsValid) issue = "Assignment identity is required.";
             else if (OccurrenceMode != CameraOccurrenceMode.SessionScoped && OccurrenceMode != CameraOccurrenceMode.IndividualPerPlayer && OccurrenceMode != CameraOccurrenceMode.SharedGroup) issue = "Occurrence mode must be explicit.";
             else if (MembershipPolicy != CameraMembershipPolicy.None && MembershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots) issue = "Membership policy must be explicit.";
             else if (TargetPolicy != CameraTargetPolicy.NoSubject && TargetPolicy != CameraTargetPolicy.ExplicitWorldTarget && TargetPolicy != CameraTargetPolicy.MemberActorTargets) issue = "Target policy must be explicit.";

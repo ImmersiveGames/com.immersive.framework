@@ -62,8 +62,8 @@ namespace Immersive.Framework.Authoring
         [Header("Session Camera Assignments")]
         [SerializeField]
         [Tooltip("New Session-scoped Camera Assignments. This cut supports targetless Fixed Definitions with no Player membership; these occurrences start with the Session and remain unchanged by Join.")]
-        private List<SessionCameraAssignmentAuthoring> sessionCameraAssignments =
-            new List<SessionCameraAssignmentAuthoring>();
+        private List<SessionCameraAssignmentAsset> startupCameraAssignments =
+            new List<SessionCameraAssignmentAsset>();
 
         [SerializeField]
         [Tooltip("Concrete scene composition retained for the application lifetime. The scene is authored manually; the framework validates and consumes it without creating or repairing content.")]
@@ -123,9 +123,9 @@ namespace Immersive.Framework.Authoring
             cameraSession != null &&
             cameraSession.HasOutputs;
 
-        public IReadOnlyList<SessionCameraAssignmentAuthoring> SessionCameraAssignments =>
-            sessionCameraAssignments ?? (IReadOnlyList<SessionCameraAssignmentAuthoring>)
-                Array.Empty<SessionCameraAssignmentAuthoring>();
+        public IReadOnlyList<SessionCameraAssignmentAsset> StartupCameraAssignments =>
+            startupCameraAssignments ?? (IReadOnlyList<SessionCameraAssignmentAsset>)
+                Array.Empty<SessionCameraAssignmentAsset>();
 
         public PersistentContentComposition PersistentContent =>
             persistentContent;

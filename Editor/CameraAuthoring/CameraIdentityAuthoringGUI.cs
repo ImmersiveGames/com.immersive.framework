@@ -23,7 +23,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             var definition = property.objectReferenceValue as ScriptableObject;
             CameraIdentityAuthoringGUI.DrawIssue(definition == null
                 ? "Assign an exact " + label + " asset."
-                : CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition));
+                : CameraOutputDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition));
         }
     }
 }

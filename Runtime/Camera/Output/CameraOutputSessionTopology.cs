@@ -49,7 +49,7 @@ namespace Immersive.Framework.Camera
                 definitions.Add(authored != null ? authored.OutputDefinition : null);
             try
             {
-                CameraDefinitionValidation.ValidateOutputs(definitions);
+                CameraOutputDefinitionValidation.ValidateOutputs(definitions);
             }
             catch (InvalidOperationException exception)
             {

@@ -13,9 +13,7 @@ The current primary Camera flow is:
 Actor occurrence
   └─ explicit Camera Subject (ObservationTransform)
        ↓
-Camera Definition / Rig configuration
-       ↓
-Session Camera Assignment
+Session Camera Assignment asset (Rig Prefab + policy)
        ↓
 Camera Occurrence for an exact Output
        ↓
@@ -30,7 +28,7 @@ There is no CameraRequest/precedence selection surface. Runtime Assignment chang
 ## Supported composition
 
 - `ActorCameraSubjectAuthoring` explicitly supplies the Actor’s observation Transform. It may differ from the Actor root and must belong to that exact Actor occurrence. Camera does not infer a root or search by hierarchy/name.
-- `CameraDefinition` references reusable rig configuration. A `CameraRigComposer` owns the concrete rig configuration and materializes the supported Cinemachine rig locally.
+- `SessionCameraAssignmentAsset` directly references a reusable Rig Prefab. A `CameraRigComposer` on that prefab owns concrete rig configuration and materializes the supported Cinemachine rig locally.
 - `GameApplicationAsset` owns Session Camera configuration: physical Output capacity/configuration and Session Camera Assignments.
 - Each `CameraOutputAuthoring` binds one explicit Unity Camera, its Cinemachine Brain and its independent Fallback Camera rig.
 - Assignment authoring explicitly maps Outputs and declares occurrence mode, Player membership and target policy. Output count and Player-to-Output associations are explicit; Player count does not create Camera Outputs.
@@ -54,8 +52,8 @@ Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The
 ## Setup outline
 
 1. On the Game Application, author explicit physical Camera Outputs and their fallback rigs.
-2. Create a `Camera Definition` and configure its rig behavior through a `CameraRigComposer`.
-3. Configure Session Camera Assignments on the Game Application, mapping each Assignment to explicit Outputs and choosing its target and membership policy. For Individual mode, map each member Slot to its Output on that Assignment.
+2. Create a `Session Camera Assignment` asset, reference a Rig Prefab with `CameraRigComposer`, then set occurrence, membership and target policies and explicit Outputs. For Individual mode, map each member Slot to its Output on that Assignment.
+3. Reference reusable Assignment assets in the Game Application startup list or in Session Camera command triggers. The asset owns its generated Assignment identity; consumers do not type IDs.
 4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
 5. When gameplay needs to change the active Assignment at runtime, author a `SessionCameraAssignmentCommandTrigger` in explicitly bound Persistent Content and use `Activate`, `Replace` or `Clear`. Route/Activity assets remain Camera-free.
 6. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
@@ -75,7 +73,7 @@ The concrete Output prefab and assignment settings must match the intended one-O
 
 ## Public surfaces
 
-See the [Public API Reference](../API/Public-API.md#camera). Session Camera Definition and related authoring are Experimental/current implementation surfaces; Output authoring and rig composition have separately declared API status.
+See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assignment and related authoring are Experimental/current implementation surfaces; Output authoring and rig composition have separately declared API status.
 
 ## Related architecture
 

@@ -41,7 +41,7 @@ namespace Immersive.Framework.Camera
         {
             try
             {
-                CameraDefinitionValidation.ValidateOutputs(new[] { outputDefinition });
+                CameraOutputDefinitionValidation.ValidateOutputs(new[] { outputDefinition });
                 if (_session != null &&
                     (!ReferenceEquals(outputDefinition, _initializedDefinition) || _session.OutputId != OutputId))
                     throw new InvalidOperationException(

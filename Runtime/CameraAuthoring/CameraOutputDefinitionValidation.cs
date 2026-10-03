@@ -5,7 +5,7 @@ using Immersive.Framework.Camera;
 namespace Immersive.Framework.CameraAuthoring
 {
     /// <summary>Validates an explicit definition scope without resolving assets through IDs.</summary>
-    public static class CameraDefinitionValidation
+    public static class CameraOutputDefinitionValidation
     {
         public static void ValidateOutputs(IEnumerable<CameraOutputDefinition> definitions)
         {

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
-    public static class CameraDefinitionIdentityEditorUtility
+    public static class CameraOutputDefinitionIdentityEditorUtility
     {
         public static bool HasCollision(ScriptableObject definition) => FindCollision(definition) != null;
 
@@ -56,11 +56,10 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private static void EnsureSupportedDefinition(ScriptableObject definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
-            if (!(definition is CameraOutputDefinition) &&
-                !(definition is CameraDefinition))
+            if (!(definition is CameraOutputDefinition))
             {
                 throw new ArgumentException(
-                    "Expected a supported Camera definition.",
+                    "Expected a Camera Output definition.",
                     nameof(definition));
             }
         }
@@ -70,7 +69,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             return definition switch
             {
                 CameraOutputDefinition output => output.HasValidId,
-                CameraDefinition camera => camera.HasValidId,
                 _ => false
             };
         }

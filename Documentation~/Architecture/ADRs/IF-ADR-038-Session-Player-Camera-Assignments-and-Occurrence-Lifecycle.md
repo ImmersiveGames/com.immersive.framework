@@ -1,6 +1,6 @@
 # IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle
 
-Status: **Accepted — Unity validation pending**
+Status: **Accepted — Assignment asset model; Unity validation pending**
 Proposed: **2026-09-27**
 Last updated: **2026-10-03**
 Type: architecture / Session Camera / Player membership / Output lifecycle  
@@ -13,7 +13,7 @@ The Session needs a primary camera system that works before Players join, can fo
 
 The architecture must separate reusable camera configuration, Session assignment, runtime occurrence, occurrence lifetime, Player membership, current target Subjects and physical Outputs. In particular:
 
-- one Definition may be reused by multiple assignments and runtime occurrences;
+- one Rig Prefab may be reused by multiple Assignment assets and runtime occurrences;
 - a Session camera may be valid with zero Players and may remain active after Players join;
 - individual cameras have independent occurrences per Player;
 - a shared group camera has one occurrence per assignment and Output, with membership that changes over time;
@@ -24,12 +24,11 @@ Existing Camera Presentations, Camera Requests and Route/Activity selection desc
 
 ## 2. Decision
 
-**The Session owns Camera Definitions, Camera Assignments, Camera Occurrences, Camera Outputs and one Fallback Camera per Output.** An Assignment independently declares occurrence mode/lifetime, membership policy, target sources and explicit Output destinations. A runtime occurrence is never inferred from Player count alone.
+**The Session owns Session Camera Assignment assets, Camera Occurrences, Camera Outputs and one Fallback Camera per Output.** Each Assignment asset directly references its Rig Prefab and independently declares occurrence mode/lifetime, membership policy, target sources and explicit Output destinations. Reusing a Rig Prefab does not share mutable occurrence state. A runtime occurrence is never inferred from Player count alone.
 
 ```text
 Session
-├── Camera Definitions (reusable configuration)
-├── Camera Assignments (active configuration and occurrence policy)
+├── Session Camera Assignment assets (reusable authored configuration and occurrence policy)
 ├── Camera Occurrences (mutable runtime state)
 └── Camera Outputs
     └── Fallback Camera
@@ -43,19 +42,18 @@ Occurrence        ── exact physical destination ──> one Output
 
 | Concept | Owns / declares | Does not own |
 |---|---|---|
-| **Camera Definition** | Reusable primary-camera configuration: supported camera behavior, target requirements, group/framing policy and presentation materialization intent. | Runtime membership, current Subjects, Output identity, occurrence state or Player identity. |
-| **Session Camera Assignment** | A Definition reference, occurrence mode, lifetime, Player membership policy, target-source policy and explicit Output mapping. Session is the authority that activates, replaces and ends assignments. | Mutable rig state shared across occurrences or implicit Player-count-based camera switching. |
-| **Camera Occurrence** | One live instance with mode-specific identity: Assignment + Output for Session-scoped/shared, or Assignment + exact PlayerOccurrence + Output for individual; owns its materialized primary rig, current membership/Subject projection, validity and teardown. | Definition authoring, physical Output ownership or global Player discovery. |
+| **Session Camera Assignment asset** | Stable Assignment identity, direct Rig Prefab reference, occurrence mode/lifetime, Player membership policy, target-source policy and explicit Output mapping. Consumers reference the asset and never type its ID. | Mutable rig state shared across occurrences or implicit Player-count-based camera switching. |
+| **Camera Occurrence** | One live instance with mode-specific identity: Assignment + Output for Session-scoped/shared, or Assignment + exact PlayerOccurrence + Output for individual; owns its materialized primary rig, current membership/Subject projection, validity and teardown. | Assignment authoring, physical Output ownership or global Player discovery. |
 | **Player membership** | Whether an exact joined Session Player occurrence participates in an assignment and can contribute its current Actor target. | Camera occurrence lifetime except where the assignment explicitly selects Individual per Player. |
 | **Camera Subject** | Typed evidence for one current target occurrence, including its observation/framing data as required. | Player membership, camera selection, Output routing or lifetime authority. |
 | **Camera Output** | One physical Unity Camera/Brain destination, its channel isolation, active primary occurrence routing and one Fallback Camera. | Player identity, membership policy, group selection or split-screen layout. |
-| **Activity / Route** | Participation policy that can make a Player's Actor target eligible or ineligible. | Player/Camera/Output ownership, Camera Assignment, Definition or occurrence selection. |
+| **Activity / Route** | Participation policy that can make a Player's Actor target eligible or ineligible. | Player/Camera/Output ownership, Camera Assignment or occurrence selection. |
 | **Game / Cinemachine** | Camera behavior details and additional gameplay cameras outside the primary Session Camera assignment system. | Session membership, Player occurrence identity or Framework Output ownership. |
 
 The Framework owns primary-camera authoring/runtime contracts, Session assignment and occurrence lifecycle, target projection, Output routing and fallback coverage. Unity/Cinemachine adapters implement supported physical camera behavior. Game-owned additional cameras remain outside this assignment system and use their own game/Cinemachine control.
 
 `CameraSessionConfiguration` owns physical Output capacity only. The sole authored
-Player Slot → Output mapping is `SessionCameraAssignmentAuthoring` for
+Player Slot → Output mapping is the `SessionCameraAssignmentAsset` for
 `IndividualPerPlayer`; the Framework derives exact `PlayerInput.camera` associations
 from those Assignments. Session-scoped and SharedGroup Assignments produce no
 individual Player topology. A SharedGroup may have multiple Players on one Output.
@@ -93,11 +91,11 @@ Session-scoped or Shared group: Assignment + Output (within the owning Session)
 Individual per Player:          Assignment + exact PlayerOccurrence + Output
 ```
 
-Each identity is fresh for each new runtime lifetime. Stable Definition, Assignment, Slot or Output IDs do not substitute for runtime occurrence identity. Definition reuse creates independent occurrence state.
+Each identity is fresh for each new runtime lifetime. Stable Assignment, Slot or Output IDs do not substitute for runtime occurrence identity. Reusing a Rig Prefab creates independent occurrence state.
 
 ### 2.3 Assignment modes and occurrence lifetime
 
-The Assignment explicitly declares occurrence mode/lifetime and, separately, membership/target policy. A Definition does not imply either. These modes specify occurrence cardinality/lifetime only; they do not imply that Player membership or Actor Subjects exist. Session-scoped and Shared group occurrences both live for the Assignment lifetime; “Shared group” additionally describes a shared membership/Subject set, not a lifetime that starts or ends with the group size.
+The Assignment explicitly declares occurrence mode/lifetime and, separately, membership/target policy. A Rig Prefab does not imply either. These modes specify occurrence cardinality/lifetime only; they do not imply that Player membership or Actor Subjects exist. Session-scoped and Shared group occurrences both live for the Assignment lifetime; “Shared group” additionally describes a shared membership/Subject set, not a lifetime that starts or ends with the group size.
 
 | Mode | Occurrence cardinality | Lifetime | Zero-members behavior |
 |---|---|---|---|
@@ -105,7 +103,7 @@ The Assignment explicitly declares occurrence mode/lifetime and, separately, mem
 | **Individual per Player** | One occurrence per Assignment + exact PlayerOccurrence + mapped Output included by membership policy. | From that Player's successful admission/membership until Leave, reassignment or Session shutdown. Rejoin creates a new occurrence. | No individual occurrences exist when membership is empty. An explicitly selected Assignment can therefore have no current normal occurrence; Output coverage is determined separately below. |
 | **Shared group** | One occurrence per Assignment and mapped Output, regardless of member count. | Assignment lifetime within the Session, independent of Join/Leave and current group size. | Occurrence remains with empty membership. It is valid if its camera behavior supports the available targets, including zero Subjects; otherwise that Output uses its fallback while the occurrence remains diagnosable and recoverable. |
 
-An Assignment may reference a Definition also used by other Assignments. Each Session-scoped/shared occurrence is identified by Assignment + Output; each individual occurrence adds the exact PlayerOccurrence to that identity. An individual Assignment creates a separate occurrence for each included member; a shared-group Assignment creates one occurrence shared by all current members on that Output.
+Different Assignment assets may reference the same Rig Prefab. Each Session-scoped/shared occurrence is identified by Assignment + Output; each individual occurrence adds the exact PlayerOccurrence to that identity. An individual Assignment creates a separate occurrence for each included member; a shared-group Assignment creates one occurrence shared by all current members on that Output.
 
 For an Individual Assignment, `MemberOutputs` must map every configured member
 Slot to one unique Output declared by that Assignment. Output capacity itself is
@@ -119,7 +117,7 @@ request split-screen viewport geometry.
 
 Assignments use explicit, typed Player Slot membership or another explicitly authored Session membership source. Membership policy is not implied by occurrence mode: a Session-scoped Assignment may have no Player membership, optional Player membership or authored membership. Runtime membership resolves each included Slot to its exact current Session Player occurrence. It must not use scene scans, hierarchy/name lookup, global Player lookup or string parsing. Join updates only Assignments whose membership policy includes that Player.
 
-Target sources are declared by the Definition/Assignment and may include:
+Target sources are declared by the Assignment and implemented by its Rig Prefab's `CameraRigComposer`; they may include:
 
 - no Subject for a camera behavior valid without targets, such as a fixed authored view;
 - an explicit Session/world target source with its own materialization/content lifetime;
@@ -132,7 +130,7 @@ An Actor-backed Camera Subject belongs to the exact current Actor occurrence. Th
 
 Activity/Route participation is projected separately from membership. A Player may remain assigned/member while its Actor target is temporarily ineligible. The ineligible Subject is excluded from the occurrence's target set; the Assignment and occurrence remain unchanged. On policy recovery, the current exact Subject can rejoin the target set.
 
-For group behavior, the Definition states whether zero, one or multiple Subjects are supported and its framing requirements. Only current eligible Subjects contribute to group framing. A missing Actor target is not silently substituted. If the current set is below the Definition's minimum valid target count, the occurrence remains alive but invalid for presentation; the Output uses Fallback Camera and diagnostics identify the missing/insufficient target condition. If the Definition supports the current set, including an empty set, it remains the normal camera.
+For group behavior, the `CameraRigComposer` behavior states whether zero, one or multiple Subjects are supported and its framing requirements. Only current eligible Subjects contribute to group framing. A missing Actor target is not silently substituted. If the current set is below the rig's minimum valid target count, the occurrence remains alive but invalid for presentation; the Output uses Fallback Camera and diagnostics identify the missing/insufficient target condition. If the rig supports the current set, including an empty set, it remains the normal camera.
 
 ### 2.5 Outputs and cardinality
 
@@ -148,7 +146,7 @@ Only Session Camera authority may change the configured active normal Assignment
 
 An explicit change is transactional per affected Output:
 
-1. Validate the requested Assignment, Definition, Output mappings, membership and target-source configuration.
+1. Validate the requested Assignment asset, Rig Prefab, Output mappings, membership and target-source configuration.
 2. Prepare and validate the new occurrence(s) required by current membership, including rig/materialization and required target evidence, while the current normal occurrence remains current. Zero candidate occurrences is valid for an Individual Assignment with no included Players.
 3. If preparation fails, release only the failed candidate and preserve the previous configured active Assignment and its occurrence. If no valid normal occurrence is currently presentable, the Output shows its Fallback Camera without clearing or replacing that Assignment.
 4. Once required candidates are ready, atomically make the new Assignment configured active. Route its valid normal occurrence to the Output when one exists; otherwise keep Fallback coverage until membership creates a valid occurrence.
@@ -160,7 +158,7 @@ The transaction is scoped per Output. A multi-Output change must report each Out
 
 Each Output separately tracks (1) its configured active normal Assignment, (2) the valid normal Occurrence currently presented, if any, and (3) whether Fallback Camera is currently covering the Output. These states are not interchangeable. In particular, fallback coverage does not deactivate, replace or remove the configured active Assignment or destroy its live occurrence. The active Assignment can have no occurrence yet, or an occurrence can remain alive but temporarily not presentable.
 
-Each Output owns one Fallback Camera that is prepared before normal camera activation. It is technical coverage, not a normal Session camera Definition/Assignment and not a request competing with normal cameras.
+Each Output owns one Fallback Camera that is prepared before normal camera activation. It is technical coverage, not a normal Session Camera Assignment and not a request competing with normal cameras.
 
 Fallback assumes the physical Output only when:
 
@@ -178,13 +176,13 @@ When a transition ends or a required condition recovers, Output routing returns 
 
 ### 3.1 Session startup and boot
 
-1. Validate Session Camera Definitions, Assignments, Output capacity, Output mappings, fallback rigs, occurrence modes and authored membership.
+1. Validate Session Camera Assignment assets and their Rig Prefabs, Output capacity, Output mappings, fallback rigs, occurrence modes and authored membership.
 2. Materialize each Output and its Fallback Camera first; each Output has a valid physical camera path before normal content is ready.
 3. Materialize the normal Session-scoped and shared-group occurrences required by configured active Assignments, even when there are zero Players. Session-scoped occurrence creation does not add implicit Player membership. Individual occurrences wait for their exact Player membership.
 4. Present each valid normal occurrence on its Output. Until one is presentable, fallback covers that Output while the configured active Assignment remains recorded.
 5. A zero-Player Session is a normal state. It may present a valid Session-scoped or zero-target-capable group camera indefinitely; Player count does not change the Assignment or select fallback.
 
-Invalid required Session authoring fails Session Camera initialization with typed diagnostics. It does not silently synthesize a Definition, Output, Subject or alternate Assignment.
+Invalid required Session authoring fails Session Camera initialization with typed diagnostics. It does not silently synthesize an Assignment, Output, Subject or alternate camera.
 
 ### 3.2 Join, admission and provisioning origin
 
@@ -194,7 +192,7 @@ On successful admission, Session Player membership is reconciled against configu
 - create an individual occurrence for each active Individual Assignment that explicitly includes that Player and Output;
 - do not add Player membership to a Session-scoped Assignment merely because the Assignment is Session-scoped; it may have no members and use a Scene/World target or no Subject;
 - if Join creates a valid occurrence for the configured active Assignment on an Output currently covered by fallback, present that occurrence and end fallback coverage without changing the Assignment;
-- validate target evidence independently from Player membership. A Player with no Actor/target may remain joined; affected occurrences become target-invalid only when their Definition requires that target.
+- validate target evidence independently from Player membership. A Player with no Actor/target may remain joined; affected occurrences become target-invalid only when their Assignment Rig Prefab requires that target.
 
 SceneProvided candidates remain externally owned before successful adoption. ManagerProvisioned candidates remain under the provisioning authority before commit. After successful admission, both origins use the same Player occurrence identity and Camera membership rules. Admission failure leaves no committed membership or individual occurrence; candidate cleanup follows the original provisioning ownership contract.
 
@@ -234,7 +232,7 @@ Entering, leaving or replacing an Activity/Route changes only its participation 
 - target-set changes reconcile against exact current Player/Actor occurrences;
 - fallback may cover an Output during an explicit loading/transition interval, then routing returns to the same valid occurrence.
 
-No Route/Activity asset declares Camera Definitions, Assignments, selections, requests or Output mappings.
+No Route/Activity asset declares Session Camera Assignments, selections, requests or Output mappings.
 
 ### 3.6 Restart and Reset
 
@@ -258,28 +256,25 @@ GameApplication / Session Camera Configuration
     Output Definition
     Output Prefab
     Fallback Camera Rig
-  Camera Definitions
-    reusable primary-camera behavior/configuration
-    target requirements and group framing rules
-  Camera Assignments
-    Definition
-    Session-scoped | Individual per Player | Shared group
-    lifetime (fixed by mode unless a specific authored Session lifetime is needed)
+  Session Camera Assignment assets
+    Assignment identity
+    Rig Prefab / CameraRigComposer
+    occurrence mode and lifetime
+    membership policy and target requirements
     explicit Player Slot membership/source
-    target source and required Subject cardinality
     explicit Output mapping
   Configured active normal Assignment per Output
   Current Output presentation state (runtime): normal occurrence or Fallback coverage
 ```
 
-Definitions contain reusable intent; Assignments contain Session policy; runtime state is never serialized back into either. Each Output has exactly one authored fallback. Assignment membership and Output topology are validated before Session startup. Player Slots in individual assignments map explicitly to Outputs; group assignments explicitly identify the group and shared Output(s). A multi-Output assignment produces separate occurrences per Output.
+Session Camera Assignment assets contain reusable intent and Session policy, including their Rig Prefab; runtime state is never serialized back into them. Reuse is expressed by referencing the same Rig Prefab from distinct Assignment assets. Each Output has exactly one authored fallback. Assignment membership and Output topology are validated before Session startup. Player Slots in individual assignments map explicitly to Outputs; group assignments explicitly identify the group and shared Output(s). A multi-Output assignment produces separate occurrences per Output.
 
 Authoring must make occurrence mode, targetless validity, minimum group size, membership source and initial Output route visible. It must not expose CameraRequest precedence, pending selection, Route/Activity camera fields or mutable runtime tokens as designer intent.
 
 ## 5. Invariants and failure semantics
 
-- Session is the sole owner of Definitions, Assignments, Occurrences, Outputs and Fallback Cameras.
-- Definition reuse never shares mutable occurrence state.
+- Session is the sole owner of active Assignments, Occurrences, Outputs and Fallback Cameras.
+- Rig Prefab reuse never shares mutable occurrence state.
 - Occurrence lifetime follows its explicit Assignment mode, not membership policy, Player count, Activity/Route lifetime or Subject count.
 - Session-scoped mode does not imply Player membership; Join updates only Assignments whose independent membership policy includes that Player.
 - Configured active Assignment, currently presented normal Occurrence and temporary Fallback coverage are separate Output states. Fallback coverage never deactivates or replaces the Assignment.
@@ -289,7 +284,7 @@ Authoring must make occurrence mode, targetless validity, minimum group size, me
 - Only Session Camera authority changes an Output's configured active normal Assignment.
 - A successful replacement is prepared before the current occurrence is released; failed preparation preserves the current valid occurrence.
 - Membership and target projection use typed identities and exact occurrence/revision evidence. No cross-domain ID comparison or string-derived identity is allowed.
-- Missing required Definition, Assignment, Output, Fallback, membership source, target or rig fails clearly. No arbitrary Output, Player, Subject, Definition or camera is selected as fallback.
+- Missing required Assignment asset, Rig Prefab, Output, Fallback, membership source or target fails clearly. No arbitrary Output, Player, Subject or camera is selected as fallback.
 - Fallback covers physical image validity only. It does not make an invalid Assignment or Actor target valid/readied.
 - Activity/Route policy may change target eligibility but cannot acquire or release Session camera ownership.
 - RuntimeContent scope teardown cannot destroy a Session-owned occurrence or retain a dead Activity/Route scope for camera continuity.
@@ -302,7 +297,7 @@ Failure results identify Session, Assignment, Occurrence, Player occurrence, Act
 
 ### Accepted
 
-- Session-authored reusable Camera Definitions and explicit Camera Assignments.
+- Session-authored reusable Assignment assets with direct Rig Prefab references.
 - Session-scoped cameras without Player membership or Subject requirement.
 - Individual per-Player and shared-group occurrence modes.
 - Membership and target updates independent of Route/Activity ownership.
@@ -312,20 +307,20 @@ Failure results identify Session, Assignment, Occurrence, Player occurrence, Act
 
 ### Rejected
 
-- Player occurrence as owner of the Camera Definition, Assignment or Session/shared occurrence.
+- Player occurrence as owner of the Assignment or Session/shared occurrence.
 - Player count as a camera-selection rule or fallback trigger.
 - Route/Activity-owned or selected cameras.
 - CameraRequest, precedence, winner arbitration, pending selections or a parallel request system for primary Session cameras.
-- Scene/hierarchy/name/global searches to discover Players, Actors, Subjects, Definitions or Outputs.
+- Scene/hierarchy/name/global searches to discover Players, Actors, Subjects, Assignments or Outputs.
 - One shared mutable rig instance across multiple physical Outputs.
 - Treating Fallback Camera as the normal camera for an empty Session.
 - Framework ownership of game-specific cutscene, boss, vehicle, PiP or other additional cameras.
 
 ## 7. Current implementation coverage
 
-The current package contains the Session Camera runtime path through Assignment replacement: `GameApplicationAsset` authors Session Outputs and Assignments; `FrameworkRuntimeHost` materializes Outputs, creates Assignment occurrences, integrates Player membership and routes transition coverage through Output Fallback. Runtime contracts distinguish Definition, Assignment, mode-specific Occurrence identity, membership, Subject evidence, Output routing and temporary Fallback coverage. Session-scoped, Individual and Shared Group paths and transactional replacement have Editor test sources.
+The current package contains the Session Camera runtime path through Assignment replacement: `GameApplicationAsset` references Session Assignment assets and physical Outputs; `FrameworkRuntimeHost` materializes Outputs, creates Assignment occurrences, integrates Player membership and routes transition coverage through Output Fallback. Runtime contracts distinguish Assignment, mode-specific Occurrence identity, membership, Subject evidence, Output routing and temporary Fallback coverage. Session-scoped, Individual and Shared Group paths and transactional replacement have Editor test sources.
 
-The package-side Camera Presentation / CameraRequest / Route-Activity selection runtime is absent. Migration is incomplete outside the package: QAFramework and planet-devourer still contain serialized assets referring to former Presentation fields/types, while the planet-devourer Getting Started MinimalGame contains the inspected new Definition/Assignment authoring. Editor test source is present but was not executed for this status update. Unity import/compile, Play Mode, consumer migration and Camera QA recertification remain open gates. Group framing remains partial/deferred. See the mutable cut-by-cut status in [IF-TRACK-Framework](../Tracking/IF-TRACK-Framework.md).
+The package-side Camera Presentation / CameraRequest / Route-Activity selection runtime is absent. Session Camera Assignment assets directly own Rig Prefab references; Definition and DefinitionId are removed as domain concepts. `CameraOutputDefinition` remains the identity of physical Output destinations. Consumer asset migration and Unity import/compile, Play Mode and Camera QA recertification remain open gates. Group framing remains partial/deferred. See [IF-TRACK-Framework](../Tracking/IF-TRACK-Framework.md) for mutable status.
 
 ## 8. Historical documentation to remove after migration
 
@@ -354,7 +349,7 @@ The implementation must prove at minimum:
 - SharedGroup with multiple Players creates no individual Player Output topology and does not force split-screen; SessionScoped zero-Player configuration creates no Player binding;
 - invalid or conflicting Assignment Slot/Output mappings fail before startup activation or replacement commit;
 - shared group has one occurrence per Assignment/Output and correct current Subject set through 0→1→N→N-1→0; occurrence identity and lifetime stay constant as membership changes;
-- Definition reuse creates independent mutable occurrences;
+- Rig Prefab reuse across Assignment assets creates independent mutable occurrences;
 - SceneProvided and ManagerProvisioned admission converge on the same membership behavior;
 - Leave/Rejoin uses fresh Player/Subject occurrences and leaves no stale target or camera resource;
 - Actor replacement preserves Assignment/Occurrence and reassociates group and individual targets;
@@ -368,4 +363,4 @@ Unity import/compile, Play Mode and QA certification are manual validation gates
 
 ## 10. Decision status
 
-This ADR records the proposed canonical architecture. Runtime/API names, exact serialized shapes and adapter contracts must be designed within these ownership and lifecycle invariants. Acceptance requires review of the implementation boundary and its authoring/QA plan; historical acceptance of the replaced Camera model does not accept this ADR.
+This ADR records the accepted canonical architecture. Runtime/API names and serialized asset shapes follow the Assignment-owned model above. Acceptance does not certify Unity import, runtime behavior or QA; those implementation gates remain open and are tracked separately. Historical acceptance of the replaced Camera model does not validate this ADR's implementation.

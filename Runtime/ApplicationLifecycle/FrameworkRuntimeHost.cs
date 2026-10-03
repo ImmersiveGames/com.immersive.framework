@@ -89,7 +89,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         public FrameworkRuntimeState State => _state;
 
         internal bool TryActivateSessionCameraAssignment(
-            SessionCameraAssignmentAuthoring candidate,
+            SessionCameraAssignmentAsset candidate,
             out string issue)
         {
             issue = string.Empty;
@@ -149,17 +149,17 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
         internal bool TryClearSessionCameraAssignment(
-            SessionCameraAssignmentId assignmentId,
+            SessionCameraAssignmentAsset assignment,
             out string issue)
         {
             issue = string.Empty;
-            if (_sessionCameraAssignmentRuntime == null)
+            if (_sessionCameraAssignmentRuntime == null || assignment == null)
             {
-                issue = "Session Camera Assignment clear requires a running Session runtime.";
+                issue = "Session Camera Assignment clear requires a running Session runtime and an explicit Assignment asset.";
                 return false;
             }
 
-            if (!_sessionCameraAssignmentRuntime.TryClearAssignment(assignmentId, out issue))
+            if (!_sessionCameraAssignmentRuntime.TryClearAssignment(assignment.AssignmentId, out issue))
             {
                 return false;
             }
@@ -174,24 +174,32 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
         bool ISessionCameraAssignmentCommandPort.TryActivate(
-            SessionCameraAssignmentAuthoring candidate,
+            SessionCameraAssignmentAsset candidate,
             out string issue) =>
             TryActivateSessionCameraAssignment(candidate, out issue);
 
         bool ISessionCameraAssignmentCommandPort.TryReplace(
-            SessionCameraAssignmentId previousAssignmentId,
-            SessionCameraAssignmentAuthoring candidate,
-            out string issue) =>
-            TryReplaceSessionCameraAssignment(previousAssignmentId, candidate, out issue);
+            SessionCameraAssignmentAsset previousAssignment,
+            SessionCameraAssignmentAsset candidate,
+            out string issue)
+        {
+            if (previousAssignment == null)
+            {
+                issue = "Session Camera Assignment Replace requires an explicit previous Assignment asset.";
+                return false;
+            }
+
+            return TryReplaceSessionCameraAssignment(previousAssignment.AssignmentId, candidate, out issue);
+        }
 
         bool ISessionCameraAssignmentCommandPort.TryClear(
-            SessionCameraAssignmentId assignmentId,
+            SessionCameraAssignmentAsset assignment,
             out string issue) =>
-            TryClearSessionCameraAssignment(assignmentId, out issue);
+            TryClearSessionCameraAssignment(assignment, out issue);
 
         internal bool TryReplaceSessionCameraAssignment(
             SessionCameraAssignmentId previousAssignmentId,
-            SessionCameraAssignmentAuthoring candidate,
+            SessionCameraAssignmentAsset candidate,
             out string issue)
         {
             issue = string.Empty;
@@ -736,7 +744,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             this.TryGetPlayerParticipationSnapshot(
                 out PlayerParticipationSnapshot playerParticipationSnapshot);
             if (!SessionCameraAssignmentOutputProjection.TryCreate(
-                    _gameApplication.SessionCameraAssignments,
+                    _gameApplication.StartupCameraAssignments,
                     _cameraOutputTopology,
                     playerParticipationSnapshot,
                     _gameApplication.PlayerSessionEnabled &&
@@ -750,7 +758,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             }
 
             if (!SessionCameraAssignmentRuntime.TryCreate(
-                    _gameApplication.SessionCameraAssignments,
+                    _gameApplication.StartupCameraAssignments,
                     _cameraOutputTopology,
                     transform,
                     out _sessionCameraAssignmentRuntime,

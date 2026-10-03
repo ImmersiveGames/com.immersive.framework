@@ -113,13 +113,29 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void AssignmentAssetRequiresRigPrefabAndCompatibleTargetPolicy()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentAsset authored = fixture.Assignments[0];
+
+            SetField(authored, "rigPrefab", null);
+            Assert.That(authored.TryBuild(out _, out string missingRigIssue), Is.False);
+            Assert.That(missingRigIssue, Does.Contain("Rig Prefab"));
+
+            SetField(authored, "rigPrefab", fixture.RigPrefab);
+            SetField(authored, "targetPolicy", CameraTargetPolicy.MemberActorTargets);
+            Assert.That(authored.TryBuild(out _, out string targetIssue), Is.False);
+            Assert.That(targetIssue, Does.Contain("does not consume"));
+        }
+
+        [Test]
         public void AssignmentsWithConflictingPlayerSlotOutputMappingsFailProjection()
         {
             Fixture fixture = CreateFixture(3, CameraTargetPolicy.NoSubject);
-            SessionCameraAssignmentAuthoring first = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset first = CreateReplacementAuthoring(
                 fixture, "assignment.first", CameraOccurrenceMode.IndividualPerPlayer,
                 CameraTargetPolicy.NoSubject, new[] { 0 }, new[] { "player.1" });
-            SessionCameraAssignmentAuthoring conflicting = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset conflicting = CreateReplacementAuthoring(
                 fixture, "assignment.conflicting", CameraOccurrenceMode.IndividualPerPlayer,
                 CameraTargetPolicy.NoSubject, new[] { 1 }, new[] { "player.1" });
 
@@ -131,7 +147,7 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void ReusedDefinitionCreatesIndependentOccurrencesPerAssignmentAndOutput()
+        public void ReusedRigPrefabCreatesIndependentOccurrencesPerAssignmentAndOutput()
         {
             Fixture fixture = CreateFixture(2, CameraTargetPolicy.NoSubject, twoAssignments: true);
             Assert.That(SessionCameraAssignmentRuntime.TryCreate(
@@ -140,7 +156,7 @@ namespace Immersive.Framework.Camera.Tests
             _runtimes.Add(runtime);
 
             Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
-            Assert.That(runtime.Occurrences[0].Definition, Is.SameAs(runtime.Occurrences[1].Definition));
+            Assert.That(fixture.Assignments[0].RigPrefab, Is.SameAs(fixture.Assignments[1].RigPrefab));
             Assert.That(runtime.Occurrences[0].Identity, Is.Not.EqualTo(runtime.Occurrences[1].Identity));
             Assert.That(runtime.Occurrences[0].Composer, Is.Not.SameAs(runtime.Occurrences[1].Composer));
             Assert.That(runtime.Occurrences[0].Root, Is.Not.SameAs(runtime.Occurrences[1].Root));
@@ -246,7 +262,6 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(fixture.Outputs.All(output =>
                 !output.Session.OutputState.IsFallbackCovering), Is.True);
             Assert.That(originalOccurrences[0].Composer, Is.Not.SameAs(originalOccurrences[1].Composer));
-            Assert.That(originalOccurrences[0].Definition, Is.SameAs(originalOccurrences[1].Definition));
 
             PlayerOccurrenceId firstPlayer = PlayerOccurrenceId.Create(
                 "session.shared", 1, PlayerSlotId.Player1);
@@ -399,7 +414,7 @@ namespace Immersive.Framework.Camera.Tests
         {
             Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
             Assert.That(SessionCameraAssignmentRuntime.TryCreate(
-                System.Array.Empty<SessionCameraAssignmentAuthoring>(),
+                System.Array.Empty<SessionCameraAssignmentAsset>(),
                 fixture.Topology,
                 fixture.Root.transform,
                 out SessionCameraAssignmentRuntime runtime,
@@ -434,7 +449,7 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraOccurrence original = runtime.Occurrences[0];
             CameraOutputSession output = fixture.Outputs[0].Session;
 
-            SessionCameraAssignmentAuthoring candidate =
+            SessionCameraAssignmentAsset candidate =
                 CreateReplacementAuthoring(
                     fixture,
                     "assignment.activation-conflict",
@@ -470,7 +485,7 @@ namespace Immersive.Framework.Camera.Tests
                 out string issue), Is.True, issue);
             Assert.That(runtime.Occurrences[0], Is.SameAs(original));
 
-            SessionCameraAssignmentAuthoring invalid = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset invalid = CreateReplacementAuthoring(
                 fixture,
                 "assignment.invalid-candidate",
                 CameraOccurrenceMode.IndividualPerPlayer,
@@ -492,7 +507,7 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(output.Applicator.AppliedCamera, Is.SameAs(originalCamera));
             Assert.That(output.OutputState.IsFallbackCovering, Is.False);
 
-            SessionCameraAssignmentAuthoring nextSession = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset nextSession = CreateReplacementAuthoring(
                 fixture,
                 "assignment.session-next",
                 CameraOccurrenceMode.SessionScoped,
@@ -535,7 +550,7 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraMemberState[] currentMembers = runtime.Occurrences[0].Members.ToArray();
             SessionCameraOccurrence[] previous = runtime.Occurrences.ToArray();
 
-            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset candidate = CreateReplacementAuthoring(
                 fixture,
                 "assignment.shared-next",
                 CameraOccurrenceMode.SharedGroup,
@@ -577,7 +592,7 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraMemberState member = runtime.Occurrences[0].Members[0];
             SessionCameraOccurrence previousIndividual = runtime.Occurrences[0];
 
-            SessionCameraAssignmentAuthoring nextIndividual = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset nextIndividual = CreateReplacementAuthoring(
                 fixture,
                 "assignment.individual-next",
                 CameraOccurrenceMode.IndividualPerPlayer,
@@ -607,7 +622,7 @@ namespace Immersive.Framework.Camera.Tests
                     player,
                     fixture.OutputDefinitions[0].OutputId)));
 
-            SessionCameraAssignmentAuthoring nextShared = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset nextShared = CreateReplacementAuthoring(
                 fixture,
                 "assignment.individual-to-shared",
                 CameraOccurrenceMode.SharedGroup,
@@ -646,7 +661,7 @@ namespace Immersive.Framework.Camera.Tests
             int existingComposerCount = fixture.Root.GetComponentsInChildren<CameraRigComposer>(true).Length;
             CinemachineBrain secondBrain = fixture.Outputs[1].GetComponent<CinemachineBrain>();
             secondBrain.ChannelMask = (OutputChannels)3;
-            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset candidate = CreateReplacementAuthoring(
                 fixture,
                 "assignment.two-output-candidate",
                 CameraOccurrenceMode.SessionScoped,
@@ -677,7 +692,7 @@ namespace Immersive.Framework.Camera.Tests
             Fixture fixture = CreateSharedFixture();
             SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
             SessionCameraOccurrence previousSecondOutput = runtime.Occurrences[1];
-            SessionCameraAssignmentAuthoring candidate = CreateReplacementAuthoring(
+            SessionCameraAssignmentAsset candidate = CreateReplacementAuthoring(
                 fixture,
                 "assignment.shared-to-single-output",
                 CameraOccurrenceMode.SharedGroup,
@@ -838,7 +853,7 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
-        public void IndividualPlayersHaveIndependentOccurrencesAndDefinitionState()
+        public void IndividualPlayersHaveIndependentOccurrencesFromSharedRigPrefab()
         {
             Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
             SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
@@ -862,7 +877,6 @@ namespace Immersive.Framework.Camera.Tests
             SessionCameraOccurrence second = runtime.Occurrences.Single(item =>
                 item.Identity.PlayerOccurrenceId == playerTwo);
             Assert.That(first.Identity, Is.Not.EqualTo(second.Identity));
-            Assert.That(first.Definition, Is.SameAs(second.Definition));
             Assert.That(first.Composer, Is.Not.SameAs(second.Composer));
             Assert.That(first.Root, Is.Not.SameAs(second.Root));
 
@@ -964,7 +978,7 @@ namespace Immersive.Framework.Camera.Tests
         {
             Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
             SessionCameraAssignmentRuntime runtime = CreateIndividualRuntime(fixture);
-            CameraRigComposer prefabComposer = fixture.Definition.RigPrefab
+            CameraRigComposer prefabComposer = fixture.RigPrefab
                 .GetComponentInChildren<CameraRigComposer>(true);
             Object.DestroyImmediate(prefabComposer);
             PlayerOccurrenceId player = PlayerOccurrenceId.Create(
@@ -992,7 +1006,6 @@ namespace Immersive.Framework.Camera.Tests
             secondSlot = PlayerSlotId.Player2;
             var assignment = new SessionCameraAssignment(
                 new SessionCameraAssignmentId("assignment.members"),
-                new CameraDefinitionId("definition.members"),
                 CameraOccurrenceMode.SharedGroup,
                 CameraMembershipPolicy.ExplicitPlayerSlots,
                 CameraTargetPolicy.MemberActorTargets,
@@ -1002,7 +1015,6 @@ namespace Immersive.Framework.Camera.Tests
             _created.Add(root);
             return new SessionCameraOccurrence(
                 assignment,
-                null,
                 CameraOccurrenceIdentity.ForSessionOrShared(
                     assignment.Id,
                     new CameraOutputId("output.members")),
@@ -1014,7 +1026,7 @@ namespace Immersive.Framework.Camera.Tests
         private Fixture CreateSharedFixture()
         {
             Fixture fixture = CreateFixture(2, CameraTargetPolicy.MemberActorTargets);
-            SessionCameraAssignmentAuthoring assignment = fixture.Assignments[0];
+            SessionCameraAssignmentAsset assignment = fixture.Assignments[0];
             SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SharedGroup);
             SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
             SetField(assignment, "outputDefinitions",
@@ -1027,12 +1039,12 @@ namespace Immersive.Framework.Camera.Tests
 
             var followBehavior = ScriptableObject.CreateInstance<FollowCameraRigBehaviorDefinition>();
             _created.Add(followBehavior);
-            SetField(fixture.Definition.RigPrefab.GetComponent<CameraRigComposer>(),
+            SetField(fixture.RigPrefab.GetComponent<CameraRigComposer>(),
                 "behaviorDefinition", followBehavior);
             return fixture;
         }
 
-        private SessionCameraAssignmentAuthoring CreateReplacementAuthoring(
+        private SessionCameraAssignmentAsset CreateReplacementAuthoring(
             Fixture fixture,
             string assignmentId,
             CameraOccurrenceMode occurrenceMode,
@@ -1040,9 +1052,10 @@ namespace Immersive.Framework.Camera.Tests
             int[] outputIndexes,
             string[] memberSlotIds)
         {
-            var assignment = new SessionCameraAssignmentAuthoring();
+            var assignment = ScriptableObject.CreateInstance<SessionCameraAssignmentAsset>();
+            _created.Add(assignment);
             SetField(assignment, "assignmentId", assignmentId);
-            SetField(assignment, "definition", fixture.Definition);
+            SetField(assignment, "rigPrefab", fixture.RigPrefab);
             SetField(assignment, "occurrenceMode", occurrenceMode);
             SetField(assignment, "membershipPolicy", memberSlotIds != null
                 ? CameraMembershipPolicy.ExplicitPlayerSlots
@@ -1127,7 +1140,7 @@ namespace Immersive.Framework.Camera.Tests
         private Fixture CreateIndividualFixture(CameraTargetPolicy targetPolicy)
         {
             Fixture fixture = CreateFixture(2, targetPolicy);
-            SessionCameraAssignmentAuthoring assignment = fixture.Assignments[0];
+            SessionCameraAssignmentAsset assignment = fixture.Assignments[0];
             SetField(assignment, "occurrenceMode", CameraOccurrenceMode.IndividualPerPlayer);
             SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
             SetField(assignment, "outputDefinitions",
@@ -1141,7 +1154,7 @@ namespace Immersive.Framework.Camera.Tests
             {
                 var followBehavior = ScriptableObject.CreateInstance<FollowCameraRigBehaviorDefinition>();
                 _created.Add(followBehavior);
-                SetField(fixture.Definition.RigPrefab.GetComponent<CameraRigComposer>(),
+                SetField(fixture.RigPrefab.GetComponent<CameraRigComposer>(),
                     "behaviorDefinition", followBehavior);
             }
 
@@ -1172,11 +1185,7 @@ namespace Immersive.Framework.Camera.Tests
         {
             var root = new GameObject("Session Camera Test");
             _created.Add(root);
-            var definition = ScriptableObject.CreateInstance<CameraDefinition>();
-            _created.Add(definition);
-            SetField(definition, "stableId", "11111111111111111111111111111111");
             GameObject rigPrefab = CreateRig("Normal Rig", out _);
-            SetField(definition, "rigPrefab", rigPrefab);
 
             var outputs = new CameraOutputAuthoring[outputCount];
             var outputDefinitions = new CameraOutputDefinition[outputCount];
@@ -1210,13 +1219,14 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(CameraOutputSessionTopology.TryCreate(outputs, out CameraOutputSessionTopology topology, out string topologyIssue), Is.True, topologyIssue);
             _runtimes.Add(topology);
 
-            var assignments = new List<SessionCameraAssignmentAuthoring>();
+            var assignments = new List<SessionCameraAssignmentAsset>();
             int assignmentCount = twoAssignments ? 2 : 1;
             for (int index = 0; index < assignmentCount; index++)
             {
-                var assignment = new SessionCameraAssignmentAuthoring();
+                var assignment = ScriptableObject.CreateInstance<SessionCameraAssignmentAsset>();
+                _created.Add(assignment);
                 SetField(assignment, "assignmentId", "assignment." + index);
-                SetField(assignment, "definition", definition);
+                SetField(assignment, "rigPrefab", rigPrefab);
                 SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SessionScoped);
                 SetField(assignment, "membershipPolicy", CameraMembershipPolicy.None);
                 SetField(assignment, "targetPolicy", targetPolicy);
@@ -1224,7 +1234,7 @@ namespace Immersive.Framework.Camera.Tests
                 assignments.Add(assignment);
             }
 
-            return new Fixture(root, topology, outputs, outputDefinitions, definition, assignments,
+            return new Fixture(root, topology, outputs, outputDefinitions, rigPrefab, assignments,
                 new SessionCameraAssignmentId("assignment.0"));
         }
 
@@ -1250,14 +1260,14 @@ namespace Immersive.Framework.Camera.Tests
         {
             internal Fixture(GameObject root, CameraOutputSessionTopology topology,
                 CameraOutputAuthoring[] outputs, CameraOutputDefinition[] outputDefinitions,
-                CameraDefinition definition, List<SessionCameraAssignmentAuthoring> assignments,
+                GameObject rigPrefab, List<SessionCameraAssignmentAsset> assignments,
                 SessionCameraAssignmentId assignmentId)
             {
                 Root = root;
                 Topology = topology;
                 Outputs = outputs;
                 OutputDefinitions = outputDefinitions;
-                Definition = definition;
+                RigPrefab = rigPrefab;
                 Assignments = assignments;
                 AssignmentId = assignmentId;
             }
@@ -1266,8 +1276,8 @@ namespace Immersive.Framework.Camera.Tests
             internal CameraOutputSessionTopology Topology { get; }
             internal CameraOutputAuthoring[] Outputs { get; }
             internal CameraOutputDefinition[] OutputDefinitions { get; }
-            internal CameraDefinition Definition { get; }
-            internal List<SessionCameraAssignmentAuthoring> Assignments { get; }
+            internal GameObject RigPrefab { get; }
+            internal List<SessionCameraAssignmentAsset> Assignments { get; }
             internal SessionCameraAssignmentId AssignmentId { get; }
         }
     }

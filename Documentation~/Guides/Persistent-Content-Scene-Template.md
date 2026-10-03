@@ -47,7 +47,7 @@ Persistent Content is not the authority for Camera topology or normal gameplay C
 Target Camera ownership is:
 
 ~~~text
-CameraDefinition -> Assignment -> Occurrence -> Membership / Subject -> Output
+SessionCameraAssignmentAsset (Rig Prefab + policy) -> Occurrence -> Membership / Subject -> Output
 Fallback remains separate.
 ~~~
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
@@ -25,12 +26,13 @@ namespace Immersive.Framework.CameraAuthoring
         }
     }
 
-    /// <summary>Authoring for a Session Camera Assignment.</summary>
-    [Serializable]
-    public sealed class SessionCameraAssignmentAuthoring
+    /// <summary>Reusable authored configuration and policy for a Session Camera Assignment.</summary>
+    [CreateAssetMenu(fileName = "Session Camera Assignment", menuName = "Immersive Framework/Camera/Session Camera Assignment", order = 20)]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment asset authoring.")]
+    public sealed class SessionCameraAssignmentAsset : ScriptableObject
     {
-        [SerializeField, Tooltip("Unique stable identity for this Session Camera Assignment.")] private string assignmentId;
-        [SerializeField] private CameraDefinition definition;
+        [SerializeField, HideInInspector] private string assignmentId;
+        [SerializeField] private GameObject rigPrefab;
         [SerializeField] private CameraOccurrenceMode occurrenceMode = CameraOccurrenceMode.SessionScoped;
         [SerializeField] private CameraMembershipPolicy membershipPolicy = CameraMembershipPolicy.None;
         [SerializeField] private CameraTargetPolicy targetPolicy = CameraTargetPolicy.NoSubject;
@@ -38,13 +40,13 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private List<CameraOutputDefinition> outputDefinitions = new List<CameraOutputDefinition>();
         [SerializeField] private List<SessionCameraMemberOutputAuthoring> individualMemberOutputMappings = new List<SessionCameraMemberOutputAuthoring>();
 
-        public SessionCameraAssignmentAuthoring()
+        public SessionCameraAssignmentAsset()
         {
             assignmentId = Guid.NewGuid().ToString("N");
         }
 
         public SessionCameraAssignmentId AssignmentId => new SessionCameraAssignmentId(assignmentId);
-        public CameraDefinition Definition => definition;
+        public GameObject RigPrefab => rigPrefab;
         public IReadOnlyList<CameraOutputDefinition> OutputDefinitions =>
             outputDefinitions ?? (IReadOnlyList<CameraOutputDefinition>)Array.Empty<CameraOutputDefinition>();
 
@@ -57,9 +59,50 @@ namespace Immersive.Framework.CameraAuthoring
                 return false;
             }
 
-            if (definition == null || !definition.HasValidId)
+            if (rigPrefab == null)
             {
-                issue = "Session Camera Assignment requires an exact Camera Definition with a valid identity.";
+                issue = "Session Camera Assignment requires an explicit Rig Prefab.";
+                return false;
+            }
+
+            CameraRigComposer[] composers = rigPrefab.GetComponentsInChildren<CameraRigComposer>(true);
+            if (composers.Length != 1 || composers[0] == null)
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' must contain exactly one CameraRigComposer. Found '{composers.Length}'.";
+                return false;
+            }
+            if (rigPrefab.GetComponentInChildren<CameraOutputAuthoring>(true) != null)
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' must not contain CameraOutputAuthoring.";
+                return false;
+            }
+            if (composers[0].BehaviorDefinition is GroupCameraRigBehaviorDefinition)
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' cannot use Group behavior in the current Session membership cut; shared Group projection is deferred.";
+                return false;
+            }
+            if (!composers[0].TryValidateForApply(out issue))
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' is invalid. {issue}";
+                return false;
+            }
+            if (composers[0].CinemachineCamera == null)
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' must contain its materialized CinemachineCamera.";
+                return false;
+            }
+            if (targetPolicy == CameraTargetPolicy.NoSubject &&
+                (composers[0].EffectiveFollowRequirement != CameraTargetRequirement.NotUsed ||
+                 composers[0].EffectiveLookAtRequirement != CameraTargetRequirement.NotUsed))
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' requires a Subject but its Target Policy is NoSubject.";
+                return false;
+            }
+            if (targetPolicy == CameraTargetPolicy.MemberActorTargets &&
+                composers[0].EffectiveFollowRequirement == CameraTargetRequirement.NotUsed &&
+                composers[0].EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed)
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' does not consume the Assignment's member Actor Subjects.";
                 return false;
             }
 
@@ -168,7 +211,6 @@ namespace Immersive.Framework.CameraAuthoring
 
             assignment = new SessionCameraAssignment(
                 AssignmentId,
-                definition.DefinitionId,
                 occurrenceMode,
                 membershipPolicy,
                 targetPolicy,

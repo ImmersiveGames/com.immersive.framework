@@ -13,7 +13,7 @@ namespace Immersive.Framework.Camera
     /// physical Camera Outputs and their Fallback cameras.
     ///
     /// Channel identity is occurrence-local routing state. It is not serialized
-    /// into CameraOutputDefinition or CameraDefinition.
+    /// into CameraOutputDefinition or SessionCameraAssignmentAsset.
     /// </summary>
     internal static class CameraCinemachineOutputChannelIsolation
     {

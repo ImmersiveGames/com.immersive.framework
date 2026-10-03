@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
     [CustomEditor(typeof(CameraOutputDefinition))]
-    internal sealed class CameraOutputDefinitionEditor : CameraDefinitionEditor
+    internal sealed class CameraOutputDefinitionEditor : CameraOutputDefinitionEditorBase
     {
         protected override void DrawDefinitionFields()
         {
@@ -13,25 +13,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         }
     }
 
-    [CustomEditor(typeof(CameraDefinition))]
-    internal sealed class SessionCameraDefinitionEditor : CameraDefinitionEditor
-    {
-        protected override void DrawDefinitionFields()
-        {
-            EditorGUILayout.PropertyField(
-                serializedObject.FindProperty("rigPrefab"),
-                new GUIContent(
-                    "Rig Prefab",
-                    "Reusable prefab containing the authored Camera Rig. Session Assignments create independent runtime instances."));
-        }
-
-        protected override string ValidateDefinitionConfiguration() =>
-            ((CameraDefinition)target).TryValidateSessionCamera(out string issue)
-                ? null
-                : issue;
-    }
-
-    internal abstract class CameraDefinitionEditor : UnityEditor.Editor
+    internal abstract class CameraOutputDefinitionEditorBase : UnityEditor.Editor
     {
         private bool _advanced;
         private bool _validationOutdated = true;
@@ -49,7 +31,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 return;
 
             EditorGUILayout.HelpBox(
-                "Share this exact definition asset through typed references. Its description is intent; its stable ID is technical evidence.",
+                "Reference this exact Output asset from Session Camera Assignments. Its stable ID identifies the physical destination.",
                 MessageType.Info);
 
             DrawDefinitionFields();
@@ -66,7 +48,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (definition == null)
                 return;
             string localIdentityIssue =
-                CameraDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition);
+                CameraOutputDefinitionIdentityEditorUtility.ValidateLocalIdentity(definition);
             if (localIdentityIssue != null)
             {
                 EditorGUILayout.HelpBox(localIdentityIssue, MessageType.Error);
@@ -91,7 +73,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             {
                 if (GUILayout.Button("Generate Stable Identity"))
                 {
-                    CameraDefinitionIdentityEditorUtility
+                    CameraOutputDefinitionIdentityEditorUtility
                         .GenerateMissingId(definition);
                     _validationOutdated = true;
                     if (!IsCurrentTargetValid(inspectedTarget, current))
@@ -104,7 +86,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 if (!IsCurrentTargetValid(inspectedTarget, current))
                     return;
                 _lastValidationIssue =
-                    CameraDefinitionIdentityEditorUtility.Validate(definition);
+                    CameraOutputDefinitionIdentityEditorUtility.Validate(definition);
                 if (!IsCurrentTargetValid(inspectedTarget, current))
                     return;
                 _identityCollision = _lastValidationIssue != null &&
@@ -121,7 +103,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (!_validationOutdated && _identityCollision &&
                 GUILayout.Button("Repair Collision — New Identity for This Definition"))
             {
-                CameraDefinitionIdentityEditorUtility.RepairCollision(definition);
+                CameraOutputDefinitionIdentityEditorUtility.RepairCollision(definition);
                 if (!IsCurrentTargetValid(inspectedTarget, current))
                     return;
                 _identityCollision = false;

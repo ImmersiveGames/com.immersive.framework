@@ -1,6 +1,6 @@
 # IF-ADR-038 — Session Player Camera Migration Plan
 
-Status: **In progress — CAMERA-038-L source/sample changes implemented; Unity/QA validation pending**
+Status: **In progress — CAMERA-038-M Assignment asset migration authored in Framework and core consumers; GameFlow command integration and Unity/QA validation pending**
 Date: **2026-10-03**
 Architecture authority: **IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle**
 
@@ -56,11 +56,10 @@ Actor validity or lifecycle contract requires a separate Actor Presentation.
 Required validation includes affected automated tests and manual SceneProvided /
 ManagerProvisioned Unity validation in the implementation phase.
 
-### CAMERA-038-B — Core Definition / Assignment / Occurrence
+### CAMERA-038-B — Core Assignment / Occurrence
 
 Create the minimum domain model for:
 
-- Camera Definition;
 - Session Camera Assignment;
 - occurrence mode/lifetime;
 - membership policy;
@@ -75,7 +74,7 @@ Identity rules:
 
 Keep mode, membership and target policy independent. Prefer plain C# domain types. Do not integrate with Game Flow or migrate assets yet. Do not create a Presentation compatibility facade.
 
-Tests must cover identity/equality, distinct Player occurrences, Definition reuse without shared mutable runtime identity/state, and relevant invalid configurations.
+Tests must cover identity/equality, distinct Player occurrences, shared Rig Prefab reuse without shared mutable runtime identity/state, and relevant invalid configurations.
 
 ### CAMERA-038-C — Outputs and Fallback
 
@@ -101,7 +100,7 @@ Prove the product requirement through Character Selection:
 - the camera is normal Session Camera, not Fallback;
 - Join does not implicitly select or replace the Assignment/Occurrence.
 
-Support targetless, Fixed and explicit Session/World target sources as required by the Definition.
+Support targetless, Fixed and explicit Session/World target sources as required by the Assignment's Rig Prefab.
 
 ### CAMERA-038-E — Membership and Subjects
 
@@ -164,7 +163,7 @@ No runtime compatibility facade.
 
 Create the Session authoring flow:
 
-`Session → Definitions / Assignments / Outputs / Fallback`.
+`Session → Assignment assets / Outputs / Fallback`.
 
 Migrate active Framework and planet-devourer assets/samples directly. Do not retain old serialized properties as aliases.
 
@@ -181,7 +180,7 @@ Required coverage includes:
 - zero-Player Session camera and Character Selection;
 - targetless Session camera;
 - individual and shared modes;
-- Definition reuse;
+- Rig Prefab reuse across distinct Assignment assets;
 - SceneProvided / ManagerProvisioned convergence;
 - Join / Leave / Rejoin;
 - Actor replacement;
@@ -238,7 +237,7 @@ Play Mode and QA remain manual gates.
 ## Sequence
 
 1. CAMERA-038-A — Player Actor occurrence authority migration.
-2. CAMERA-038-B — Core Definition / Assignment / Occurrence.
+2. CAMERA-038-B — Core Assignment / Occurrence.
 3. CAMERA-038-C — Outputs and Fallback.
 4. CAMERA-038-D — Session-scoped camera with zero Players.
 5. CAMERA-038-E — Membership and Subjects.
@@ -249,7 +248,44 @@ Play Mode and QA remain manual gates.
 10. CAMERA-038-J — Authoring, samples and assets.
 11. CAMERA-038-K — QA, regressions and documentation cleanup.
 12. CAMERA-038-L — Assignment-owned Player Output topology consolidation.
+13. CAMERA-038-M — Session Camera Assignment asset authority and Definition removal.
 
-`Player Actor occurrence authority → Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Camera Presentation/Request/GameFlow Camera ownership → authoring/samples → QA/documentation cleanup → Assignment-owned Player Output topology consolidation`
+`Player Actor occurrence authority → Core domain → Outputs/Fallback → zero-Player Session camera → membership/Subjects → Individual → Shared group → Assignment transaction → remove Camera Presentation/Request/GameFlow Camera ownership → authoring/samples → QA/documentation cleanup → Assignment-owned Player Output topology consolidation → Assignment asset authoring and Definition removal`
+
+### CAMERA-038-M — Session Camera Assignment asset authority and Definition removal
+
+Replace inline `SessionCameraAssignmentAuthoring` values and the reusable
+`CameraDefinition` asset with `SessionCameraAssignmentAsset : ScriptableObject`.
+The Assignment asset owns a generated technical `AssignmentId`, direct
+`RigPrefab`, occurrence/membership/target policies, member Slots, Output
+references and Individual Slot-to-Output mappings. Consumers reference the
+asset; they do not type identity values. A Rig Prefab can be referenced by
+multiple Assignment assets, while each Assignment creates independent mutable
+runtime occurrences.
+
+Remove `CameraDefinition` and `CameraDefinitionId` without a runtime
+compatibility layer. Migrate target/rig validation to the Assignment asset and
+remove Definition-ID collision checks. Keep `CameraOutputDefinition` and its
+identity as the physical Output destination contract.
+
+`GameApplicationAsset` stores startup Assignment asset references. Command
+triggers use asset references for Activate, Previous + candidate for Replace,
+and the target asset for Clear. Preserve stable AssignmentIds in migrated
+serialized data; generate IDs during asset creation and keep them out of normal
+consumer editing. Assignment ID uniqueness is scoped to a Session, allowing the
+same Assignment asset to be referenced by different Game Applications.
+
+Migrate Framework tests, validators, Inspectors, docs, MinimalGame, Character
+Selection, CharacterSelectionMultiplayerSplitScreen, GameFlow A/B and QA-NEW-004.
+The GameFlow proof must exercise Hub→fallback, Activate A, Replace A→B,
+Replace B→A, and Clear→fallback through explicit authored triggers; do not add
+Camera fields to Route/Activity or write Output viewport geometry.
+
+Required tests include invalid Rig Prefab and incompatible target policy,
+independent occurrences for a shared Rig Prefab, startup/fallback, Activate,
+Replace A↔B, failed replacement preserving the prior Assignment, Clear then
+Activate, Individual Output mappings and `PlayerInput.camera`, SharedGroup with
+no individual topology, SessionScoped with zero Players, and shutdown cleanup.
+Unity compile/import, EditMode, Play Mode and QA remain manual validation gates.
 
 Each cut must report **Implemented / Tested / Integrated / Validated** separately. Manual success is not sufficient for closure.

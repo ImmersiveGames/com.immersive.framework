@@ -122,7 +122,6 @@ namespace Immersive.Framework.Camera.Tests
             string assignmentId = "assignment.main") =>
             new SessionCameraAssignment(
                 new SessionCameraAssignmentId(assignmentId),
-                new CameraDefinitionId("definition.main"),
                 CameraOccurrenceMode.SessionScoped,
                 CameraMembershipPolicy.None,
                 CameraTargetPolicy.NoSubject,
