@@ -4,6 +4,7 @@ using Immersive.Framework.Diagnostics;
 using Immersive.Logging.Records;
 using Immersive.Framework.Common;
 using Immersive.Framework.ApiStatus;
+using Immersive.Framework.SceneLifecycle;
 
 namespace Immersive.Framework.Pause
 {
@@ -22,8 +23,8 @@ namespace Immersive.Framework.Pause
     internal sealed class PauseSurfaceRuntime
     {
         private readonly IPauseSurfaceAdapter[] _baselineAdapters;
-        private readonly Dictionary<ulong, IPauseSurfaceAdapter[]> _sceneContributions =
-            new Dictionary<ulong, IPauseSurfaceAdapter[]>();
+        private readonly Dictionary<SceneCompositionScope, IPauseSurfaceAdapter[]> _sceneContributions =
+            new Dictionary<SceneCompositionScope, IPauseSurfaceAdapter[]>();
         private readonly string _surfaceLabel;
         private readonly FrameworkLogger _logger;
 
@@ -72,8 +73,7 @@ namespace Immersive.Framework.Pause
         }
 
         /// <summary>
-        /// Replaces the contribution of adapters owned by one lifecycle-scoped scene (Route
-        /// Primary, RouteContent or ActivityContent), identified by its Unity scene handle. The
+        /// Replaces the contribution of adapters owned by one lifecycle scope. The
         /// caller (a Scene Lifecycle participant) is the only one that decides when this content
         /// is currently valid; this method does not re-derive that validity itself. If the scene
         /// is re-notified as available (e.g. an idempotent "already loaded" re-entry), the prior
@@ -84,7 +84,7 @@ namespace Immersive.Framework.Pause
         /// request.
         /// </summary>
         internal void SetSceneContribution(
-            ulong sceneOwnerId,
+            SceneCompositionScope scope,
             IReadOnlyList<IPauseSurfaceAdapter> adapters,
             PauseSnapshot currentSnapshot,
             string source,
@@ -93,11 +93,11 @@ namespace Immersive.Framework.Pause
             IPauseSurfaceAdapter[] copy = CopyAdapters(adapters);
             if (copy.Length == 0)
             {
-                _sceneContributions.Remove(sceneOwnerId);
+                _sceneContributions.Remove(scope);
                 return;
             }
 
-            _sceneContributions[sceneOwnerId] = copy;
+            _sceneContributions[scope] = copy;
 
             if (!currentSnapshot.IsValid)
             {
@@ -124,9 +124,9 @@ namespace Immersive.Framework.Pause
         /// (idempotent). Never keeps a reference to adapters from a scene that has left its
         /// lifecycle.
         /// </summary>
-        internal void ReleaseSceneContribution(ulong sceneOwnerId)
+        internal void ReleaseSceneContribution(SceneCompositionScope scope)
         {
-            _sceneContributions.Remove(sceneOwnerId);
+            _sceneContributions.Remove(scope);
         }
 
         public PauseSurfaceApplicationResult ApplySnapshot(PauseSnapshot snapshot, string source, string reason)

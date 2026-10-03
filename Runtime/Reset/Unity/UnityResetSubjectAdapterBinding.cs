@@ -33,6 +33,7 @@ namespace Immersive.Framework.Reset.Unity
             int idempotent = 0;
             int rejected = 0;
             var issues = new List<string>();
+            var newlyBound = new List<UnityResetSubjectAdapter>();
             for (int index = 0; index < adapters.Count; index++)
             {
                 UnityResetSubjectAdapter adapter = adapters[index];
@@ -48,6 +49,7 @@ namespace Immersive.Framework.Reset.Unity
                     else
                     {
                         bound++;
+                        newlyBound.Add(adapter);
                     }
 
                     continue;
@@ -60,16 +62,39 @@ namespace Immersive.Framework.Reset.Unity
                     $"adapter='{adapter.name}' scene='{scene}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
             }
 
-            return rejected > 0
-                ? UnityResetSubjectAdapterBindingResult.Rejected(
+            if (rejected > 0)
+            {
+                var rollbackIssues = new List<string>();
+                for (int index = newlyBound.Count - 1; index >= 0; index--)
+                {
+                    UnityResetSubjectAdapter adapter = newlyBound[index];
+                    bool registrationReleased = !adapter.IsRegistered ||
+                        adapter.ClearRegistration("composition-bind-rollback");
+                    if (!registrationReleased)
+                    {
+                        rollbackIssues.Add($"adapter='{adapter.name}' rollback='registration-release-failed'.");
+                        continue;
+                    }
+
+                    if (!adapter.TryUnbindResetRegistrationRuntime(
+                            resetRegistrationRuntime,
+                            out string rollbackIssue))
+                    {
+                        rollbackIssues.Add($"adapter='{adapter.name}' rollback='{rollbackIssue.NormalizeTextOrFallback("unknown")}'.");
+                    }
+                }
+
+                return UnityResetSubjectAdapterBindingResult.Rejected(
                     "RejectedAdapterBinding",
-                    $"Unity Reset Subject Adapter binding failed. roots='{rootCount}' adapters='{adapters.Count}' bound='{bound}' idempotent='{idempotent}' rejected='{rejected}'. {string.Join(" ", issues)}",
+                    $"Unity Reset Subject Adapter binding failed. roots='{rootCount}' adapters='{adapters.Count}' bound='{bound}' idempotent='{idempotent}' rejected='{rejected}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}",
                     rootCount,
                     adapters.Count,
                     bound,
                     idempotent,
-                    rejected)
-                : UnityResetSubjectAdapterBindingResult.Completed(
+                    rejected);
+            }
+
+            return UnityResetSubjectAdapterBindingResult.Completed(
                     rootCount,
                     adapters.Count,
                     bound,

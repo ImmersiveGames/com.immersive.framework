@@ -33,11 +33,6 @@ namespace Immersive.Framework.RouteLifecycle
         private readonly RouteSceneCompositionRuntime _routeSceneCompositionRuntime;
         private readonly ContentReleaseRuntime _contentReleaseRuntime;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
-        private readonly IRouteRuntimePort _routeRuntime;
-        private readonly IActivityRuntimePort _activityRuntime;
-        private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
-        private readonly IActivityCycleResetRuntimePort _activityCycleResetRuntime;
-        private readonly IActivityRestartRuntimePort _activityRestartRuntime;
         private readonly CycleResetRuntime _cycleResetRuntime = new CycleResetRuntime();
         private readonly EventBus<RouteEnteredEvent> _routeEnteredEvents = new EventBus<RouteEnteredEvent>();
         private readonly EventBus<RouteExitedEvent> _routeExitedEvents = new EventBus<RouteExitedEvent>();
@@ -54,27 +49,13 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal RouteLifecycleRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            IRouteRuntimePort routeRuntime,
-            IActivityRuntimePort activityRuntime,
-            IRouteCycleResetRuntimePort routeCycleResetRuntime,
-            IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime = null)
         {
             _sceneLifecycleRuntime = sceneLifecycleRuntime ?? new SceneLifecycleRuntime();
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            _routeRuntime = routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime));
-            _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
-            _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
-            _activityCycleResetRuntime = activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime));
-            _activityRestartRuntime = activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime));
             _activityFlowRuntime = new ActivityFlowRuntime(
                 _runtimeContentRuntime,
-                _sceneLifecycleRuntime,
-                _activityRuntime,
-                _routeCycleResetRuntime,
-                _activityCycleResetRuntime,
-                _activityRestartRuntime);
+                _sceneLifecycleRuntime);
             _routeSceneCompositionRuntime = new RouteSceneCompositionRuntime(_sceneLifecycleRuntime);
             _contentReleaseRuntime = new ContentReleaseRuntime(_sceneLifecycleRuntime);
             _activityFlowRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
@@ -377,56 +358,6 @@ namespace Immersive.Framework.RouteLifecycle
             if (routeSceneCompositionResult.Failed || routeSceneCompositionResult.HasBlockingIssues)
             {
                 return RouteLifecycleStartResult.Failed(routeSceneCompositionResult.ToDiagnosticString());
-            }
-
-            RouteRequestTriggerBinderResult routeTriggerBinder =
-                RouteRequestTriggerBinder.TryBind(
-                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
-                    _routeRuntime);
-            if (!routeTriggerBinder.Succeeded)
-            {
-                return RouteLifecycleStartResult.Failed(
-                    routeTriggerBinder.Message);
-            }
-
-            ActivityRequestTriggerBinderResult activityTriggerBinder =
-                ActivityRequestTriggerBinder.TryBind(
-                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
-                    _activityRuntime);
-            if (!activityTriggerBinder.Succeeded)
-            {
-                return RouteLifecycleStartResult.Failed(
-                    activityTriggerBinder.Message);
-            }
-
-            RouteCycleResetTriggerBindingResult routeCycleResetTriggerBinding =
-                RouteCycleResetTriggerBinding.TryBind(
-                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
-                    _routeCycleResetRuntime);
-            if (!routeCycleResetTriggerBinding.Succeeded)
-            {
-                return RouteLifecycleStartResult.Failed(
-                    routeCycleResetTriggerBinding.Message);
-            }
-
-            ActivityCycleResetTriggerBinderResult activityCycleResetTriggerBinder =
-                ActivityCycleResetTriggerBinder.TryBind(
-                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
-                    _activityCycleResetRuntime);
-            if (!activityCycleResetTriggerBinder.Succeeded)
-            {
-                return RouteLifecycleStartResult.Failed(
-                    activityCycleResetTriggerBinder.Message);
-            }
-
-            ActivityRestartTriggerBinderResult activityRestartTriggerBinder =
-                ActivityRestartTriggerBinder.TryBind(
-                    ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult),
-                    _activityRestartRuntime);
-            if (!activityRestartTriggerBinder.Succeeded)
-            {
-                return RouteLifecycleStartResult.Failed(
-                    activityRestartTriggerBinder.Message);
             }
 
             if (!TryPrepareRouteResettableRegistration(

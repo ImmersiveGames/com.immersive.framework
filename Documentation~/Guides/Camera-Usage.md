@@ -55,7 +55,7 @@ Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The
 2. Create a `Session Camera Assignment` asset, reference a Rig Prefab with `CameraRigComposer`, then set occurrence, membership and target policies and explicit Outputs. For Individual mode, map each member Slot to its Output on that Assignment.
 3. Reference reusable Assignment assets in the Game Application startup list or in Session Camera command triggers. The asset owns its generated Assignment identity; consumers do not type IDs.
 4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
-5. When gameplay needs to change the active Assignment at runtime, author a `SessionCameraAssignmentCommandTrigger` in explicitly bound Persistent Content and use `Activate`, `Replace` or `Clear`. Route/Activity assets remain Camera-free.
+5. When gameplay needs to change the active Assignment at runtime, use the Session Camera command boundary with `Activate`, `Replace` or `Clear`. `SessionCameraAssignmentCommandTrigger` is an optional scene adapter for Inspector and UnityEvent workflows; it binds in Persistent Content and managed Route/Activity additive scenes through SceneLifecycle. Route/Activity assets remain Camera-free.
 6. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
 
 The concrete Output prefab and assignment settings must match the intended one-Output, shared or per-Player design. See IF-ADR-038 for cardinality and failure details.
@@ -79,4 +79,5 @@ See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assi
 
 - [IF-ADR-038 — Session Player Camera Assignments and Occurrence Lifecycle](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [IF-ADR-039 — Session Camera Assignment Command Boundary](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md)
+- [IF-ADR-040 — Scene Composition Binding Model](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md)
 - [IF-ADR-019 — Session Player lifetime and Activity representation](../Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)

@@ -11,7 +11,6 @@ using Immersive.Framework.CycleReset;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.Loading;
-using Immersive.Framework.Pause;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.TransitionEffects;
 using Immersive.Logging.Records;
@@ -38,7 +37,6 @@ namespace Immersive.Framework.GlobalUi
     {
         private readonly ITransitionEffectAdapter[] _transitionAdapters;
         private readonly ILoadingSurfaceAdapter[] _loadingAdapters;
-        private readonly IPauseSurfaceAdapter[] _pauseAdapters;
         private readonly GameObject[] _persistedRoots;
         private readonly IReadOnlyList<GameObject> _persistedRootsView;
 
@@ -48,7 +46,6 @@ namespace Immersive.Framework.GlobalUi
             IReadOnlyList<GameObject> persistedRoots,
             IReadOnlyList<ITransitionEffectAdapter> transitionAdapters,
             IReadOnlyList<ILoadingSurfaceAdapter> loadingAdapters,
-            IReadOnlyList<IPauseSurfaceAdapter> pauseAdapters,
             bool hasBlockingConfigurationIssue,
             string blockingConfigurationMessage,
             string message)
@@ -67,8 +64,6 @@ namespace Immersive.Framework.GlobalUi
                 FrameworkCollectionCopy.ToArrayOrEmpty(transitionAdapters);
             _loadingAdapters =
                 FrameworkCollectionCopy.ToArrayOrEmpty(loadingAdapters);
-            _pauseAdapters =
-                FrameworkCollectionCopy.ToArrayOrEmpty(pauseAdapters);
             HasBlockingConfigurationIssue =
                 hasBlockingConfigurationIssue;
             BlockingConfigurationMessage =
@@ -90,9 +85,6 @@ namespace Immersive.Framework.GlobalUi
         public int LoadingAdapterCount =>
             _loadingAdapters.Length;
 
-        public int PauseAdapterCount =>
-            _pauseAdapters.Length;
-
         public bool HasBlockingConfigurationIssue { get; }
 
         public string BlockingConfigurationMessage { get; }
@@ -105,65 +97,8 @@ namespace Immersive.Framework.GlobalUi
         public IReadOnlyList<ILoadingSurfaceAdapter> LoadingAdapters =>
             _loadingAdapters;
 
-        public IReadOnlyList<IPauseSurfaceAdapter> PauseAdapters =>
-            _pauseAdapters;
-
         internal IReadOnlyList<GameObject> PersistedRoots =>
             _persistedRootsView;
-
-        internal GlobalUiPauseRequestTriggerBindingResult
-            TryBindPauseRequestTriggers(
-                IPauseProductRequestPort pauseProductRequest)
-        {
-            return TryBindPauseRequestTriggers(
-                _persistedRoots,
-                pauseProductRequest);
-        }
-
-        internal RouteRequestTriggerBinderResult
-            TryBindRouteRequestTriggers(
-                IRouteRuntimePort routeRuntime)
-        {
-            return RouteRequestTriggerBinder.TryBind(
-                _persistedRoots,
-                routeRuntime);
-        }
-
-        internal ActivityRequestTriggerBinderResult
-            TryBindActivityRequestTriggers(
-                IActivityRuntimePort activityRuntime)
-        {
-            return ActivityRequestTriggerBinder.TryBind(
-                _persistedRoots,
-                activityRuntime);
-        }
-
-        internal RouteCycleResetTriggerBindingResult
-            TryBindRouteCycleResetTriggers(
-                IRouteCycleResetRuntimePort routeCycleResetRuntime)
-        {
-            return RouteCycleResetTriggerBinding.TryBind(
-                _persistedRoots,
-                routeCycleResetRuntime);
-        }
-
-        internal ActivityCycleResetTriggerBinderResult
-            TryBindActivityCycleResetTriggers(
-                IActivityCycleResetRuntimePort activityCycleResetRuntime)
-        {
-            return ActivityCycleResetTriggerBinder.TryBind(
-                _persistedRoots,
-                activityCycleResetRuntime);
-        }
-
-        internal ActivityRestartTriggerBinderResult
-            TryBindActivityRestartTriggers(
-                IActivityRestartRuntimePort activityRestartRuntime)
-        {
-            return ActivityRestartTriggerBinder.TryBind(
-                _persistedRoots,
-                activityRestartRuntime);
-        }
 
         internal int AttachActivityEntryCompletionReceivers(
             GameFlowRuntime gameFlowRuntime)
@@ -203,92 +138,6 @@ namespace Immersive.Framework.GlobalUi
             }
 
             return attachedCount;
-        }
-
-        internal static GlobalUiPauseRequestTriggerBindingResult
-            TryBindPauseRequestTriggers(
-                IReadOnlyList<GameObject> persistentRoots,
-                IPauseProductRequestPort pauseProductRequest)
-        {
-            int rootCount =
-                CountRoots(persistentRoots);
-
-            if (pauseProductRequest == null)
-            {
-                return GlobalUiPauseRequestTriggerBindingResult.Rejected(
-                    "RejectedMissingPauseProductRequest",
-                    $"Persistent Content Pause request trigger binding requires a Pause product request port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.",
-                    rootCount,
-                    0,
-                    0,
-                    0,
-                    0);
-            }
-
-            List<PauseRequestTrigger> triggers =
-                CollectPauseRequestTriggers(persistentRoots);
-
-            if (triggers.Count == 0)
-            {
-                return GlobalUiPauseRequestTriggerBindingResult.OptionalAbsent(
-                    rootCount);
-            }
-
-            int boundCount = 0;
-            int idempotentCount = 0;
-            int rejectedCount = 0;
-            var issues = new List<string>();
-
-            for (int index = 0;
-                 index < triggers.Count;
-                 index++)
-            {
-                PauseRequestTrigger trigger =
-                    triggers[index];
-                bool wasBound =
-                    trigger.HasPauseProductRequestBinding;
-
-                if (trigger.TryBindPauseProductRequest(
-                        pauseProductRequest,
-                        out string issue))
-                {
-                    if (wasBound)
-                    {
-                        idempotentCount++;
-                    }
-                    else
-                    {
-                        boundCount++;
-                    }
-
-                    continue;
-                }
-
-                rejectedCount++;
-                string sceneName =
-                    trigger.gameObject.scene.name
-                        .NormalizeTextOrFallback("<unknown>");
-                issues.Add(
-                    $"trigger='{trigger.name}' scene='{sceneName}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
-            }
-
-            if (rejectedCount > 0)
-            {
-                return GlobalUiPauseRequestTriggerBindingResult.Rejected(
-                    "RejectedTriggerBinding",
-                    $"Persistent Content Pause request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}",
-                    rootCount,
-                    triggers.Count,
-                    boundCount,
-                    idempotentCount,
-                    rejectedCount);
-            }
-
-            return GlobalUiPauseRequestTriggerBindingResult.Completed(
-                rootCount,
-                triggers.Count,
-                boundCount,
-                idempotentCount);
         }
 
         internal bool TryResolveCameraSessionEnvironment(
@@ -464,9 +313,6 @@ namespace Immersive.Framework.GlobalUi
                 CollectAdapters<ITransitionEffectAdapter>(persistedRoots);
             List<ILoadingSurfaceAdapter> loadingAdapters =
                 CollectAdapters<ILoadingSurfaceAdapter>(persistedRoots);
-            List<IPauseSurfaceAdapter> pauseAdapters =
-                CollectAdapters<IPauseSurfaceAdapter>(persistedRoots);
-
             AsyncOperation unloadOperation =
                 SceneManager.UnloadSceneAsync(scene);
             if (unloadOperation != null)
@@ -496,10 +342,7 @@ namespace Immersive.Framework.GlobalUi
                         transitionAdapters.Count),
                     LogFields.Field(
                         "loadingAdapterCount",
-                        loadingAdapters.Count),
-                    LogFields.Field(
-                        "pauseAdapterCount",
-                        pauseAdapters.Count)));
+                        loadingAdapters.Count)));
 
             return new GlobalUiSceneRuntime(
                 containerScene,
@@ -507,7 +350,6 @@ namespace Immersive.Framework.GlobalUi
                 persistedRoots,
                 transitionAdapters,
                 loadingAdapters,
-                pauseAdapters,
                 false,
                 string.Empty,
                 "Persistent Content loaded and retained for the application lifetime.");
@@ -528,7 +370,6 @@ namespace Immersive.Framework.GlobalUi
                 Array.Empty<GameObject>(),
                 Array.Empty<ITransitionEffectAdapter>(),
                 Array.Empty<ILoadingSurfaceAdapter>(),
-                Array.Empty<IPauseSurfaceAdapter>(),
                 true,
                 message,
                 message);
@@ -573,72 +414,6 @@ namespace Immersive.Framework.GlobalUi
             }
 
             return adapters;
-        }
-
-        private static List<PauseRequestTrigger>
-            CollectPauseRequestTriggers(
-                IReadOnlyList<GameObject> roots)
-        {
-            var triggers =
-                new List<PauseRequestTrigger>();
-            var seen =
-                new HashSet<PauseRequestTrigger>();
-
-            if (roots == null)
-            {
-                return triggers;
-            }
-
-            for (int rootIndex = 0;
-                 rootIndex < roots.Count;
-                 rootIndex++)
-            {
-                GameObject root = roots[rootIndex];
-                if (root == null)
-                {
-                    continue;
-                }
-
-                PauseRequestTrigger[] candidates =
-                    root.GetComponentsInChildren<PauseRequestTrigger>(true);
-
-                for (int candidateIndex = 0;
-                     candidateIndex < candidates.Length;
-                     candidateIndex++)
-                {
-                    PauseRequestTrigger candidate =
-                        candidates[candidateIndex];
-                    if (candidate != null &&
-                        seen.Add(candidate))
-                    {
-                        triggers.Add(candidate);
-                    }
-                }
-            }
-
-            return triggers;
-        }
-
-        private static int CountRoots(
-            IReadOnlyList<GameObject> roots)
-        {
-            if (roots == null)
-            {
-                return 0;
-            }
-
-            int count = 0;
-            for (int index = 0;
-                 index < roots.Count;
-                 index++)
-            {
-                if (roots[index] != null)
-                {
-                    count++;
-                }
-            }
-
-            return count;
         }
 
         private List<T> FindAll<T>()

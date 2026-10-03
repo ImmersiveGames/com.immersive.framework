@@ -215,62 +215,6 @@ namespace Immersive.Framework.ActivityFlow
                     resolvedReason);
                 PrepareStableObjectBindings(runtimeEnterResult.Owner, sceneCompositionResult);
 
-                ActivityRequestTriggerBinderResult activityTriggerBinder =
-                    TryBindActivityRequestTriggers(sceneCompositionResult);
-                if (!activityTriggerBinder.Succeeded)
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        activityTriggerBinder.Message,
-                        activityOperationResult);
-                }
-
-                RouteCycleResetTriggerBindingResult routeCycleResetTriggerBinding =
-                    TryBindRouteCycleResetTriggers(sceneCompositionResult);
-                if (!routeCycleResetTriggerBinding.Succeeded)
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        routeCycleResetTriggerBinding.Message,
-                        activityOperationResult);
-                }
-
-                ActivityCycleResetTriggerBinderResult activityCycleResetTriggerBinder =
-                    TryBindActivityCycleResetTriggers(sceneCompositionResult);
-                if (!activityCycleResetTriggerBinder.Succeeded)
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        activityCycleResetTriggerBinder.Message,
-                        activityOperationResult);
-                }
-
-                ActivityRestartTriggerBinderResult activityRestartTriggerBinder =
-                    TryBindActivityRestartTriggers(sceneCompositionResult);
-                if (!activityRestartTriggerBinder.Succeeded)
-                {
-                    return await FailBeforeCommitAsync(
-                        transaction,
-                        nextActivity,
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        activityRestartTriggerBinder.Message,
-                        activityOperationResult);
-                }
-
                 ActivityActivationGateResult activationGate =
                     beforeActivation != null
                         ? beforeActivation()

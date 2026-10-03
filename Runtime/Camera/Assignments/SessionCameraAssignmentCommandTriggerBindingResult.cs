@@ -28,15 +28,22 @@ namespace Immersive.Framework.Camera
         internal static SessionCameraAssignmentCommandTriggerBindingResult OptionalAbsent(int rootCount) =>
             new SessionCameraAssignmentCommandTriggerBindingResult(
                 true, "OptionalAbsent",
-                $"Session Camera Assignment command binding found no authored triggers in '{rootCount}' explicit roots.",
+                $"Session Camera command binding found no authored consumers in '{rootCount}' explicit roots.",
                 rootCount, 0, 0, 0, 0);
 
         internal static SessionCameraAssignmentCommandTriggerBindingResult Completed(
             int rootCount, int triggerCount, int boundCount, int idempotentCount) =>
             new SessionCameraAssignmentCommandTriggerBindingResult(
                 true, "Bound",
-                $"Session Camera Assignment command binding completed. roots='{rootCount}' triggers='{triggerCount}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='0'.",
+                $"Session Camera command binding completed. roots='{rootCount}' consumers='{triggerCount}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='0'.",
                 rootCount, triggerCount, boundCount, idempotentCount, 0);
+
+        internal static SessionCameraAssignmentCommandTriggerBindingResult Released(
+            int rootCount, int triggerCount, int releasedCount) =>
+            new SessionCameraAssignmentCommandTriggerBindingResult(
+                true, "Released",
+                $"Session Camera command release completed. roots='{rootCount}' consumers='{triggerCount}' released='{releasedCount}' rejected='0'.",
+                rootCount, triggerCount, releasedCount, 0, 0);
 
         internal static SessionCameraAssignmentCommandTriggerBindingResult Rejected(
             string status, string message, int rootCount, int triggerCount,

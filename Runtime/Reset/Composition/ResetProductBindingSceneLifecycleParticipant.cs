@@ -6,7 +6,6 @@ using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Logging.Records;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Reset.Composition
 {
@@ -17,104 +16,138 @@ namespace Immersive.Framework.Reset.Composition
     internal sealed class ResetProductBindingSceneLifecycleParticipant : ISceneLifecycleParticipant
     {
         private readonly IResetRegistrationRuntimePort _resetRegistrationRuntime;
-        private readonly IResetTargetExecutionRuntimePort _resetTargetExecutionRuntime;
         private readonly HashSet<UnityResetSubjectAdapter> _subjectAdapters = new();
         private readonly FrameworkLogger _logger;
 
         internal ResetProductBindingSceneLifecycleParticipant(
-            IResetRegistrationRuntimePort resetRegistrationRuntime,
-            IResetTargetExecutionRuntimePort resetTargetExecutionRuntime)
+            IResetRegistrationRuntimePort resetRegistrationRuntime)
         {
             this._resetRegistrationRuntime = resetRegistrationRuntime ?? throw new ArgumentNullException(nameof(resetRegistrationRuntime));
-            this._resetTargetExecutionRuntime = resetTargetExecutionRuntime ?? throw new ArgumentNullException(nameof(resetTargetExecutionRuntime));
             _logger = FrameworkLogger.Create<ResetProductBindingSceneLifecycleParticipant>();
         }
 
-        public bool OnSceneAvailable(Scene scene, IReadOnlyList<GameObject> roots, out string diagnostic)
+        public SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
         {
             UnityResetSubjectAdapterBindingResult adapterBinding = UnityResetSubjectAdapterBinding.TryBind(roots, _resetRegistrationRuntime);
-            bool requestBindingSucceeded = ResetRequestTriggerBinder.TryBind(
-                roots, _resetTargetExecutionRuntime, out int requestTriggerCount, out string requestDiagnostic);
+            if (!adapterBinding.Succeeded)
+            {
+                string failure = BuildAvailableDiagnostic(scope, adapterBinding, default);
+                _logger.Error("Reset Subject Scene Lifecycle composition rejected.", LogFields.Of(
+                    LogFields.Field("operation", "SceneAvailable"),
+                    LogFields.Field("scope", scope.Label),
+                    LogFields.Field("issue", failure)));
+                return SceneCompositionResult.Rejected(scope, SceneCompositionOperation.Available, failure);
+            }
             CollectSubjectAdapters(roots);
             RegistrationSummary registration = RefreshSubjectRegistrations("scene-available");
 
-            diagnostic = BuildAvailableDiagnostic(scene, adapterBinding, registration)
-                + $" resetRequestTriggers='{requestTriggerCount}' requestBinding='{requestDiagnostic}'";
-            if (!adapterBinding.Succeeded || !requestBindingSucceeded)
-            {
-                _logger.Error("Reset Scene Lifecycle composition rejected.", LogFields.Of(
-                    LogFields.Field("operation", "SceneAvailable"),
-                    LogFields.Field("scene", SceneLabel(scene)),
-                    LogFields.Field("issue", diagnostic)));
-                return false;
-            }
+            string diagnostic = BuildAvailableDiagnostic(scope, adapterBinding, registration);
 
-            bool hasAuthoredSurfaces = adapterBinding.AdapterCount > 0
-                || requestTriggerCount > 0;
+            bool hasAuthoredSurfaces = adapterBinding.AdapterCount > 0;
             if (!hasAuthoredSurfaces)
             {
                 _logger.Debug("Reset Scene Lifecycle composition found no authored Reset surfaces.", LogFields.Of(
                     LogFields.Field("operation", "SceneAvailable"),
-                    LogFields.Field("scene", SceneLabel(scene))));
-                return true;
+                    LogFields.Field("scope", scope.Label)));
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    diagnostic);
             }
 
             _logger.Info("Reset Scene Lifecycle composition completed.", LogFields.Of(
                 LogFields.Field("operation", "SceneAvailable"),
-                LogFields.Field("scene", SceneLabel(scene)),
+                LogFields.Field("scope", scope.Label),
                 LogFields.Field("subjectAdapters", adapterBinding.AdapterCount),
                 LogFields.Field("newSubjectAdapters", adapterBinding.BoundCount),
                 LogFields.Field("idempotentSubjectAdapters", adapterBinding.IdempotentCount),
                 LogFields.Field("deferredSubjectAdapters", registration.DeferredSubjects),
                 LogFields.Field("rejectedSubjectAdapters", adapterBinding.RejectedCount),
                 LogFields.Field("activeRegisteredSubjects", registration.RegisteredSubjects),
-                LogFields.Field("activeRegisteredParticipants", registration.RegisteredParticipants),
-                LogFields.Field("resetRequestTriggers", requestTriggerCount)));
-            return true;
+                LogFields.Field("activeRegisteredParticipants", registration.RegisteredParticipants)));
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Available,
+                diagnostic);
         }
 
-        public bool OnSceneReleasing(Scene scene, IReadOnlyList<GameObject> roots, string reason, out string diagnostic)
+        public SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            string reason)
         {
             List<UnityResetSubjectAdapter> adapters = CollectAdapters(roots);
             int releasedSubjects = 0;
             int releasedParticipants = 0;
+            var releaseIssues = new List<string>();
             for (int index = 0; index < adapters.Count; index++)
             {
                 UnityResetSubjectAdapter adapter = adapters[index];
-                if (!adapter.IsRegistered)
+                if (adapter.IsRegistered)
+                {
+                    int participantCount = adapter.RegisteredParticipantCount;
+                    if (adapter.ClearRegistration("scope-lifecycle-release:" + reason.NormalizeTextOrFallback("scope-release")))
+                    {
+                        releasedSubjects++;
+                        releasedParticipants += participantCount;
+                    }
+                    else
+                    {
+                        releaseIssues.Add($"subjectAdapter='{adapter.name}' registration release failed.");
+                    }
+                }
+
+                if (adapter.TryUnbindResetRegistrationRuntime(
+                        _resetRegistrationRuntime,
+                        out string detachIssue))
                 {
                     _subjectAdapters.Remove(adapter);
-                    continue;
                 }
-
-                int participantCount = adapter.RegisteredParticipantCount;
-                if (adapter.ClearRegistration("scene-lifecycle-release:" + reason.NormalizeTextOrFallback("scene-release")))
+                else
                 {
-                    releasedSubjects++;
-                    releasedParticipants += participantCount;
+                    releaseIssues.Add($"subjectAdapter='{adapter.name}' detach='{detachIssue}'.");
                 }
-
-                _subjectAdapters.Remove(adapter);
             }
 
-            diagnostic = $"Reset Scene Lifecycle release completed. scene='{SceneLabel(scene)}' subjectAdapters='{adapters.Count}' registeredSubjectsReleased='{releasedSubjects}' registeredParticipantsReleased='{releasedParticipants}'.";
+            string diagnostic = $"Reset Subject Scene Lifecycle release {(releaseIssues.Count == 0 ? "completed" : "failed")}. scope='{scope.Label}' subjectAdapters='{adapters.Count}' registeredSubjectsReleased='{releasedSubjects}' registeredParticipantsReleased='{releasedParticipants}'.";
+            if (releaseIssues.Count > 0)
+            {
+                diagnostic += " " + string.Join(" ", releaseIssues);
+                _logger.Error("Reset Scene Lifecycle release failed.", LogFields.Of(
+                    LogFields.Field("operation", "ScopeReleasing"),
+                    LogFields.Field("scope", scope.Label),
+                    LogFields.Field("issue", diagnostic)));
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    diagnostic);
+            }
+
             if (releasedSubjects == 0 && releasedParticipants == 0)
             {
                 _logger.Debug("Reset Scene Lifecycle release completed with no state changes.", LogFields.Of(
-                    LogFields.Field("operation", "SceneReleasing"),
-                    LogFields.Field("scene", SceneLabel(scene)),
-                    LogFields.Field("reason", reason.NormalizeTextOrFallback("scene-release"))));
-                return true;
+                    LogFields.Field("operation", "ScopeReleasing"),
+                    LogFields.Field("scope", scope.Label),
+                    LogFields.Field("reason", reason.NormalizeTextOrFallback("scope-release"))));
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    diagnostic);
             }
 
             _logger.Info("Reset Scene Lifecycle release completed.", LogFields.Of(
-                LogFields.Field("operation", "SceneReleasing"),
-                LogFields.Field("scene", SceneLabel(scene)),
-                LogFields.Field("reason", reason.NormalizeTextOrFallback("scene-release")),
+                LogFields.Field("operation", "ScopeReleasing"),
+                LogFields.Field("scope", scope.Label),
+                LogFields.Field("reason", reason.NormalizeTextOrFallback("scope-release")),
                 LogFields.Field("subjectAdapters", adapters.Count),
                 LogFields.Field("registeredSubjectsReleased", releasedSubjects),
                 LogFields.Field("registeredParticipantsReleased", releasedParticipants)));
-            return true;
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Releasing,
+                diagnostic);
         }
 
         internal void RefreshSubjectRegistrationsForCurrentOwners(string reason)
@@ -199,10 +232,8 @@ namespace Immersive.Framework.Reset.Composition
             return adapters;
         }
 
-        private static string BuildAvailableDiagnostic(Scene scene, UnityResetSubjectAdapterBindingResult adapterBinding, RegistrationSummary registration) =>
-            $"Reset Scene Lifecycle composition completed. operation='SceneAvailable' scene='{SceneLabel(scene)}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' activeRegisteredSubjects='{registration.RegisteredSubjects}' activeRegisteredParticipants='{registration.RegisteredParticipants}'.";
-
-        private static string SceneLabel(Scene scene) => scene.IsValid() ? scene.name.NormalizeTextOrFallback("<unnamed>") : "<invalid>";
+        private static string BuildAvailableDiagnostic(SceneCompositionScope scope, UnityResetSubjectAdapterBindingResult adapterBinding, RegistrationSummary registration) =>
+            $"Reset Scene Lifecycle composition completed. operation='Available' scope='{scope.Label}' subjectAdapters='{adapterBinding.AdapterCount}' newSubjectAdapters='{adapterBinding.BoundCount}' idempotentSubjectAdapters='{adapterBinding.IdempotentCount}' rejectedSubjectAdapters='{adapterBinding.RejectedCount}' activeRegisteredSubjects='{registration.RegisteredSubjects}' activeRegisteredParticipants='{registration.RegisteredParticipants}'.";
 
         private readonly struct RegistrationSummary
         {

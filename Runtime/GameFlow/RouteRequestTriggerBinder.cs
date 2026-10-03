@@ -24,6 +24,7 @@ namespace Immersive.Framework.GameFlow
             int idempotentCount = 0;
             int rejectedCount = 0;
             var issues = new List<string>();
+            var newlyBound = new List<RouteRequestTrigger>();
             for (int index = 0; index < triggers.Count; index++)
             {
                 RouteRequestTrigger trigger = triggers[index];
@@ -31,6 +32,7 @@ namespace Immersive.Framework.GameFlow
                 if (trigger.TryBindRouteRuntime(routeRuntime, out string issue))
                 {
                     if (wasBound) idempotentCount++; else boundCount++;
+                    if (!wasBound) newlyBound.Add(trigger);
                     continue;
                 }
 
@@ -41,10 +43,39 @@ namespace Immersive.Framework.GameFlow
 
             if (rejectedCount > 0)
             {
-                return RouteRequestTriggerBinderResult.Rejected("RejectedTriggerBinding", $"Route request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}", rootCount, triggers.Count, boundCount, idempotentCount, rejectedCount);
+                var rollbackIssues = new List<string>();
+                for (int index = newlyBound.Count - 1; index >= 0; index--)
+                    if (!newlyBound[index].TryReleaseRouteRuntime(routeRuntime, out string rollbackIssue))
+                        rollbackIssues.Add($"trigger='{newlyBound[index].name}' rollback='{rollbackIssue}'.");
+                return RouteRequestTriggerBinderResult.Rejected("RejectedTriggerBinding", $"Route request trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}", rootCount, triggers.Count, boundCount, idempotentCount, rejectedCount);
             }
 
             return RouteRequestTriggerBinderResult.Completed(rootCount, triggers.Count, boundCount, idempotentCount);
+        }
+
+        internal static bool TryRelease(
+            IReadOnlyList<GameObject> roots,
+            IRouteRuntimePort routeRuntime,
+            out int triggerCount,
+            out string diagnostic)
+        {
+            List<RouteRequestTrigger> triggers = CollectTriggers(roots);
+            triggerCount = triggers.Count;
+            if (routeRuntime == null)
+            {
+                diagnostic = "Route request trigger release requires the exact Route runtime port.";
+                return false;
+            }
+
+            var issues = new List<string>();
+            for (int index = triggers.Count - 1; index >= 0; index--)
+                if (!triggers[index].TryReleaseRouteRuntime(routeRuntime, out string issue))
+                    issues.Add($"trigger='{triggers[index].name}' issue='{issue}'.");
+
+            diagnostic = issues.Count == 0
+                ? $"Route request trigger release completed. triggers='{triggerCount}'."
+                : $"Route request trigger release failed. triggers='{triggerCount}' rejected='{issues.Count}'. {string.Join(" ", issues)}";
+            return issues.Count == 0;
         }
 
         private static List<RouteRequestTrigger> CollectTriggers(IReadOnlyList<GameObject> roots)

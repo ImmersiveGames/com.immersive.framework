@@ -33,6 +33,7 @@ namespace Immersive.Framework.GameFlow
             int idempotentCount = 0;
             int rejectedCount = 0;
             var issues = new List<string>();
+            var newlyBound = new List<ActivityRequestTrigger>();
             for (int index = 0; index < triggers.Count; index++)
             {
                 ActivityRequestTrigger trigger = triggers[index];
@@ -46,6 +47,7 @@ namespace Immersive.Framework.GameFlow
                     else
                     {
                         boundCount++;
+                        newlyBound.Add(trigger);
                     }
 
                     continue;
@@ -60,9 +62,13 @@ namespace Immersive.Framework.GameFlow
 
             if (rejectedCount > 0)
             {
+                var rollbackIssues = new List<string>();
+                for (int index = newlyBound.Count - 1; index >= 0; index--)
+                    if (!newlyBound[index].TryReleaseActivityRuntime(activityRuntime, out string rollbackIssue))
+                        rollbackIssues.Add($"trigger='{newlyBound[index].name}' rollback='{rollbackIssue}'.");
                 return ActivityRequestTriggerBinderResult.Rejected(
                     "RejectedTriggerBinding",
-                    $"Activity request trigger binder failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}",
+                    $"Activity request trigger binder failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}",
                     rootCount,
                     triggers.Count,
                     boundCount,
@@ -75,6 +81,31 @@ namespace Immersive.Framework.GameFlow
                 triggers.Count,
                 boundCount,
                 idempotentCount);
+        }
+
+        internal static bool TryRelease(
+            IReadOnlyList<GameObject> roots,
+            IActivityRuntimePort activityRuntime,
+            out int triggerCount,
+            out string diagnostic)
+        {
+            List<ActivityRequestTrigger> triggers = CollectTriggers(roots);
+            triggerCount = triggers.Count;
+            if (activityRuntime == null)
+            {
+                diagnostic = "Activity request trigger release requires the exact Activity runtime port.";
+                return false;
+            }
+
+            var issues = new List<string>();
+            for (int index = triggers.Count - 1; index >= 0; index--)
+                if (!triggers[index].TryReleaseActivityRuntime(activityRuntime, out string issue))
+                    issues.Add($"trigger='{triggers[index].name}' issue='{issue}'.");
+
+            diagnostic = issues.Count == 0
+                ? $"Activity request trigger release completed. triggers='{triggerCount}'."
+                : $"Activity request trigger release failed. triggers='{triggerCount}' rejected='{issues.Count}'. {string.Join(" ", issues)}";
+            return issues.Count == 0;
         }
 
         private static List<ActivityRequestTrigger> CollectTriggers(

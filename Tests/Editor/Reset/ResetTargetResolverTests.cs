@@ -277,6 +277,57 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsFalse(trigger.IsRequestInFlight);
         }
 
+        [Test]
+        public void RequestTrigger_ScopeBindingIsIdempotent_RejectsForeignAuthority_AndDetachesExplicitly()
+        {
+            GameObject root = Create("RequestRoot");
+            ResetRequestTrigger trigger = root.AddComponent<ResetRequestTrigger>();
+            var authority = new RecordingRuntime();
+            var foreignAuthority = new RecordingRuntime();
+
+            Assert.IsTrue(ResetRequestTriggerBinder.TryBind(new[] { root }, authority, out _, out string bindIssue), bindIssue);
+            Assert.IsTrue(ResetRequestTriggerBinder.TryBind(new[] { root }, authority, out _, out string reentryIssue), reentryIssue);
+            Assert.IsFalse(ResetRequestTriggerBinder.TryBind(new[] { root }, foreignAuthority, out _, out _));
+            Assert.IsTrue(trigger.HasRuntimeBinding);
+            Assert.IsFalse(trigger.TryUnbind(foreignAuthority, out _));
+            Assert.IsTrue(ResetRequestTriggerBinder.TryRelease(new[] { root }, authority, out _, out string releaseIssue), releaseIssue);
+            Assert.IsFalse(trigger.HasRuntimeBinding);
+            Assert.IsTrue(ResetRequestTriggerBinder.TryRelease(new[] { root }, authority, out _, out _));
+        }
+
+        [Test]
+        public void SubjectAdapter_ResetRegistrationPortDetachesExplicitlyAndIdempotently()
+        {
+            UnityResetSubjectAdapter adapter = Create("SubjectAdapter").AddComponent<UnityResetSubjectAdapter>();
+            var runtime = new FakeResetRegistrationRuntime();
+            Assert.IsTrue(adapter.TryBindResetRegistrationRuntime(runtime, out string bindIssue), bindIssue);
+            Assert.IsTrue(adapter.HasResetRegistrationRuntimeBinding);
+            Assert.IsTrue(adapter.TryUnbindResetRegistrationRuntime(runtime, out string releaseIssue), releaseIssue);
+            Assert.IsFalse(adapter.HasResetRegistrationRuntimeBinding);
+            Assert.IsTrue(adapter.TryUnbindResetRegistrationRuntime(runtime, out _));
+        }
+
+        private sealed class FakeResetRegistrationRuntime : IResetRegistrationRuntimePort
+        {
+            public bool TryResolveCurrentResetOwner(ResetSubjectScope scope, out RuntimeContentOwner owner, out string issue)
+            {
+                owner = default;
+                issue = string.Empty;
+                return false;
+            }
+
+            public ResetRegistryOperationResult RegisterResetSubject(ResetSubject subject, Object owner, string source, string reason) => default;
+
+            public ResetRegistryOperationResult RegisterRuntimeResetSubject(string authoredPrefix, ResetSubjectScope scope,
+                RuntimeContentOwner owner, Object ownerObject, string displayName, string diagnosticTag, string source, string reason) => default;
+
+            public ResetRegistryOperationResult RegisterResetParticipant(ResetRegistrationHandle subjectHandle,
+                IResetParticipant participant, Object owner, string source, string reason) => default;
+
+            public ResetRegistryOperationResult UnregisterResetRegistration(ResetRegistrationHandle handle,
+                Object owner, string source, string reason) => default;
+        }
+
         private IReadOnlyList<RuntimeContentOwner> CurrentOwners() => new[] { _activity, _route };
 
         private void Register(RuntimeContentOwner owner, params GameObject[] roots)

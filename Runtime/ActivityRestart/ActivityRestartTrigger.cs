@@ -103,6 +103,32 @@ namespace Immersive.Framework.ActivityRestart
             return false;
         }
 
+        internal bool TryReleaseActivityRestartRuntime(IActivityRestartRuntimePort expectedRuntime, out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Activity Restart release requires the exact non-null bound port.";
+                _activityRestartRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            if (_activityRestartRuntime == null)
+            {
+                issue = string.Empty;
+                _activityRestartRuntimeBindingDiagnostic = "Activity Restart runtime port is already released.";
+                return true;
+            }
+            if (!ReferenceEquals(_activityRestartRuntime, expectedRuntime))
+            {
+                issue = "Activity Restart release rejected a foreign or stale port.";
+                _activityRestartRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            _activityRestartRuntime = null;
+            issue = string.Empty;
+            _activityRestartRuntimeBindingDiagnostic = "Activity Restart runtime port was released by composition lifecycle.";
+            return true;
+        }
+
         [ContextMenu("Request Activity Restart")]
         public async void RequestActivityRestart()
         {

@@ -33,6 +33,7 @@ namespace Immersive.Framework.ActivityRestart
             int idempotent = 0;
             int rejected = 0;
             var issues = new List<string>();
+            var newlyBound = new List<ActivityRestartTrigger>();
             for (int index = 0; index < triggers.Count; index++)
             {
                 ActivityRestartTrigger trigger = triggers[index];
@@ -46,6 +47,7 @@ namespace Immersive.Framework.ActivityRestart
                     else
                     {
                         bound++;
+                        newlyBound.Add(trigger);
                     }
 
                     continue;
@@ -56,16 +58,46 @@ namespace Immersive.Framework.ActivityRestart
                 issues.Add($"trigger='{trigger.name}' scene='{scene}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
             }
 
-            return rejected > 0
-                ? ActivityRestartTriggerBinderResult.Rejected(
+            if (rejected > 0)
+            {
+                var rollbackIssues = new List<string>();
+                for (int index = newlyBound.Count - 1; index >= 0; index--)
+                    if (!newlyBound[index].TryReleaseActivityRestartRuntime(activityRestartRuntime, out string issue))
+                        rollbackIssues.Add($"trigger='{newlyBound[index].name}' rollback='{issue}'.");
+                return ActivityRestartTriggerBinderResult.Rejected(
                     "RejectedTriggerBinding",
-                    $"Activity Restart trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{bound}' idempotent='{idempotent}' rejected='{rejected}'. {string.Join(" ", issues)}",
+                    $"Activity Restart trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{bound}' idempotent='{idempotent}' rejected='{rejected}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}",
                     rootCount,
                     triggers.Count,
                     bound,
                     idempotent,
-                    rejected)
-                : ActivityRestartTriggerBinderResult.Completed(rootCount, triggers.Count, bound, idempotent);
+                    rejected);
+            }
+
+            return ActivityRestartTriggerBinderResult.Completed(rootCount, triggers.Count, bound, idempotent);
+        }
+
+        internal static bool TryRelease(
+            IReadOnlyList<GameObject> roots,
+            IActivityRestartRuntimePort runtime,
+            out int triggerCount,
+            out string diagnostic)
+        {
+            List<ActivityRestartTrigger> triggers = CollectTriggers(roots);
+            triggerCount = triggers.Count;
+            if (runtime == null)
+            {
+                diagnostic = "Activity Restart trigger release requires the exact runtime port.";
+                return false;
+            }
+            var issues = new List<string>();
+            for (int index = triggers.Count - 1; index >= 0; index--)
+                if (!triggers[index].TryReleaseActivityRestartRuntime(runtime, out string issue))
+                    issues.Add($"trigger='{triggers[index].name}' issue='{issue}'.");
+            diagnostic = issues.Count == 0
+                ? $"Activity Restart trigger release completed. triggers='{triggerCount}'."
+                : $"Activity Restart trigger release failed. rejected='{issues.Count}'. {string.Join(" ", issues)}";
+            return issues.Count == 0;
         }
 
         private static List<ActivityRestartTrigger> CollectTriggers(IReadOnlyList<GameObject> roots)

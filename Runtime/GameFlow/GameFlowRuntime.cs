@@ -118,11 +118,6 @@ namespace Immersive.Framework.GameFlow
             _transitionOrchestrator = transitionOrchestrator ?? throw new ArgumentNullException(nameof(transitionOrchestrator));
             _routeLifecycleRuntime = new RouteLifecycleRuntime(
                 runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime)),
-                routeRuntime ?? throw new ArgumentNullException(nameof(routeRuntime)),
-                activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime)),
-                routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime)),
-                activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime)),
-                activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime)),
                 sceneLifecycleRuntime);
             _routeLifecycleRuntime.SubscribeActivityReadinessUpdates(HandleActivityReadinessUpdate);
         }

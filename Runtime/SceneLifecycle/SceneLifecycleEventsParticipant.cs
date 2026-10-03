@@ -12,29 +12,43 @@ namespace Immersive.Framework.SceneLifecycle
     /// </summary>
     internal sealed class SceneLifecycleEventsParticipant : ISceneLifecycleParticipant
     {
-        public bool OnSceneAvailable(
-            Scene scene,
-            IReadOnlyList<GameObject> roots,
-            out string diagnostic)
+        public SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
         {
-            return Dispatch(roots, scene, "Available", true, out diagnostic);
+            if (scope.Kind != SceneCompositionScopeKind.Scene)
+            {
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    "Scene lifecycle event components apply only to Scene scopes.");
+            }
+
+            return Dispatch(roots, scope.Scene, "Available", true, scope);
         }
 
-        public bool OnSceneReleasing(
-            Scene scene,
+        public SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots,
-            string reason,
-            out string diagnostic)
+            string reason)
         {
-            return Dispatch(roots, scene, "Releasing", false, out diagnostic);
+            if (scope.Kind != SceneCompositionScopeKind.Scene)
+            {
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    "Scene lifecycle event components apply only to Scene scopes.");
+            }
+
+            return Dispatch(roots, scope.Scene, "Releasing", false, scope);
         }
 
-        private static bool Dispatch(
+        private static SceneCompositionResult Dispatch(
             IReadOnlyList<GameObject> roots,
             Scene scene,
             string phase,
             bool available,
-            out string diagnostic)
+            SceneCompositionScope scope)
         {
             List<SceneLifecycleEvents> events = Collect(roots);
             for (int index = 0; index < events.Count; index++)
@@ -52,15 +66,21 @@ namespace Immersive.Framework.SceneLifecycle
                 }
                 catch (Exception exception)
                 {
-                    diagnostic =
+                    string diagnostic =
                         $"Scene Lifecycle Events callback failed. phase='{phase}' scene='{SceneLabel(scene)}' object='{events[index].name.NormalizeTextOrFallback("<unnamed>")}' exception='{exception.GetType().Name}' message='{exception.Message.NormalizeTextOrFallback("<empty>")}'.";
-                    return false;
+                    return SceneCompositionResult.Rejected(
+                        scope,
+                        available ? SceneCompositionOperation.Available : SceneCompositionOperation.Releasing,
+                        diagnostic);
                 }
             }
 
-            diagnostic =
+            string completedDiagnostic =
                 $"Scene Lifecycle Events callback completed. phase='{phase}' scene='{SceneLabel(scene)}' receiverCount='{events.Count}'.";
-            return true;
+            return SceneCompositionResult.Completed(
+                scope,
+                available ? SceneCompositionOperation.Available : SceneCompositionOperation.Releasing,
+                completedDiagnostic);
         }
 
         private static List<SceneLifecycleEvents> Collect(IReadOnlyList<GameObject> roots)

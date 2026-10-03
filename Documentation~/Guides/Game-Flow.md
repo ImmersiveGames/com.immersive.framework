@@ -27,6 +27,8 @@ GameApplication / Session
 5. Place `RouteRequestTrigger` or `ActivityRequestTrigger` in a scene whose lifetime should own that request surface.
 6. Connect the trigger’s public request method to a UnityEvent or UI control.
 
+Route/Activity request, Cycle Reset and Activity Restart triggers are bound and detached by SceneLifecycle for managed Scene scopes. Persistent Content receives the same feature-specific participants under the Session scope. See [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
+
 `RouteRequestTrigger` requests its configured target Route. `ActivityRequestTrigger` requests its configured target Activity; its clear operation removes the current Activity while leaving the Route current. Triggers bind to the exact active scene/runtime scope and are released with that scene.
 
 ## Runtime behavior and ownership

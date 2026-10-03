@@ -148,6 +148,44 @@ namespace Immersive.Framework.Reset.Unity
             return false;
         }
 
+        internal bool TryUnbindResetRegistrationRuntime(
+            IResetRegistrationRuntimePort expectedRuntime,
+            out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Reset registration release requires the exact non-null bound runtime port.";
+                _resetRegistrationRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_resetRegistrationRuntime == null)
+            {
+                issue = string.Empty;
+                _resetRegistrationRuntimeBindingDiagnostic = "Reset registration runtime is already released.";
+                return true;
+            }
+
+            if (!ReferenceEquals(_resetRegistrationRuntime, expectedRuntime))
+            {
+                issue = "Reset registration release rejected a foreign or stale runtime port.";
+                _resetRegistrationRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (IsRegistered)
+            {
+                issue = "Reset registration runtime cannot be released while its subject remains registered.";
+                _resetRegistrationRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            _resetRegistrationRuntime = null;
+            issue = string.Empty;
+            _resetRegistrationRuntimeBindingDiagnostic = "Reset registration runtime was released by composition lifecycle.";
+            return true;
+        }
+
         private void OnEnable()
         {
             if (registerOnEnable)

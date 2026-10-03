@@ -85,6 +85,32 @@ namespace Immersive.Framework.CycleReset
             return false;
         }
 
+        internal bool TryReleaseActivityCycleResetRuntime(IActivityCycleResetRuntimePort expectedRuntime, out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Activity Cycle Reset release requires the exact non-null bound port.";
+                _activityCycleResetRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            if (_activityCycleResetRuntime == null)
+            {
+                issue = string.Empty;
+                _activityCycleResetRuntimeBindingDiagnostic = "Activity Cycle Reset runtime port is already released.";
+                return true;
+            }
+            if (!ReferenceEquals(_activityCycleResetRuntime, expectedRuntime))
+            {
+                issue = "Activity Cycle Reset release rejected a foreign or stale port.";
+                _activityCycleResetRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            _activityCycleResetRuntime = null;
+            issue = string.Empty;
+            _activityCycleResetRuntimeBindingDiagnostic = "Activity Cycle Reset runtime port was released by composition lifecycle.";
+            return true;
+        }
+
         [ContextMenu("Request Activity Cycle Reset")]
         public async void RequestActivityCycleReset()
         {

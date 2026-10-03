@@ -102,6 +102,34 @@ namespace Immersive.Framework.CycleReset
             return false;
         }
 
+        internal bool TryReleaseRouteCycleResetRuntime(
+            IRouteCycleResetRuntimePort expectedRuntime,
+            out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Route Cycle Reset release requires the exact non-null bound port.";
+                _routeCycleResetRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            if (_routeCycleResetRuntime == null)
+            {
+                issue = string.Empty;
+                _routeCycleResetRuntimeBindingDiagnostic = "Route Cycle Reset runtime port is already released.";
+                return true;
+            }
+            if (!ReferenceEquals(_routeCycleResetRuntime, expectedRuntime))
+            {
+                issue = "Route Cycle Reset release rejected a foreign or stale port.";
+                _routeCycleResetRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+            _routeCycleResetRuntime = null;
+            issue = string.Empty;
+            _routeCycleResetRuntimeBindingDiagnostic = "Route Cycle Reset runtime port was released by composition lifecycle.";
+            return true;
+        }
+
         [ContextMenu("Request Route Cycle Reset")]
         public async void RequestRouteCycleReset()
         {

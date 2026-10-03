@@ -59,6 +59,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseSurfaceSceneLifecycleParticipant _pauseSurfaceSceneLifecycleParticipant;
         private SceneLifecycleRuntime _sceneLifecycleRuntime;
         private ResetProductBindingSceneLifecycleParticipant _resetProductBindingSceneLifecycleParticipant;
+        private bool _persistentContentScopeComposed;
         private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
         private PauseActivityBindingRuntimeContext _pauseActivityBindingRuntime;
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingModule;
@@ -809,49 +810,26 @@ namespace Immersive.Framework.ApplicationLifecycle
             _loadingSurfaceRuntime = CreateLoadingSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceRuntime = CreatePauseSurfaceRuntime(_globalUiSceneRuntime);
             _pauseSurfaceSceneLifecycleParticipant?.SetSurfaceRuntime(_pauseSurfaceRuntime);
-            GlobalUiPauseRequestTriggerBindingResult pauseRequestTriggerBinding =
-                _globalUiSceneRuntime.TryBindPauseRequestTriggers(
-                    _pauseProductBindingRuntime);
-            if (!pauseRequestTriggerBinding.Succeeded)
+            SceneCompositionResult persistentContentComposition =
+                _sceneLifecycleRuntime.ComposeSessionScope(
+                    this,
+                    _globalUiSceneRuntime.PersistedRoots);
+            if (!persistentContentComposition.Succeeded)
             {
+                SceneCompositionResult releaseResult =
+                    _sceneLifecycleRuntime.ReleaseSessionScope(
+                        this,
+                        _globalUiSceneRuntime.PersistedRoots,
+                        "persistent-content-composition-rollback");
                 var failed = FrameworkGameFlowStartResult.Failed(
-                    pauseRequestTriggerBinding.Message);
+                    persistentContentComposition.Diagnostic +
+                    (releaseResult.Succeeded ? string.Empty : " " + releaseResult.Diagnostic));
                 _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
                 return failed;
             }
+            _persistentContentScopeComposed = true;
             IRouteRuntimePort routeRuntimePort = this;
-            RouteRequestTriggerBinderResult globalRouteTriggerBinder =
-                _globalUiSceneRuntime.TryBindRouteRequestTriggers(
-                    routeRuntimePort);
-            if (!globalRouteTriggerBinder.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    globalRouteTriggerBinder.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
             IActivityRuntimePort activityRuntimePort = this;
-            ActivityRequestTriggerBinderResult globalActivityTriggerBinder =
-                _globalUiSceneRuntime.TryBindActivityRequestTriggers(
-                    activityRuntimePort);
-            if (!globalActivityTriggerBinder.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityTriggerBinder.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
-            SessionCameraAssignmentCommandTriggerBindingResult cameraCommandBinding =
-                SessionCameraAssignmentCommandTriggerBinder.TryBind(
-                    _globalUiSceneRuntime.PersistedRoots,
-                    this);
-            if (!cameraCommandBinding.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    cameraCommandBinding.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
             var transitionOrchestrator = CreateTransitionOrchestrator(
                 _globalUiSceneRuntime,
@@ -1020,39 +998,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             ApplyPauseActivityLifecyclePort();
             ApplyResettableOwnerRegistration();
             ApplyStableObjectBindings();
-            IRouteCycleResetRuntimePort routeCycleResetRuntimePort = this;
-            RouteCycleResetTriggerBindingResult globalRouteCycleResetTriggerBinding =
-                _globalUiSceneRuntime.TryBindRouteCycleResetTriggers(
-                    routeCycleResetRuntimePort);
-            if (!globalRouteCycleResetTriggerBinding.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    globalRouteCycleResetTriggerBinding.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
-            IActivityCycleResetRuntimePort activityCycleResetRuntimePort = this;
-            ActivityCycleResetTriggerBinderResult globalActivityCycleResetTriggerBinder =
-                _globalUiSceneRuntime.TryBindActivityCycleResetTriggers(
-                    activityCycleResetRuntimePort);
-            if (!globalActivityCycleResetTriggerBinder.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityCycleResetTriggerBinder.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
-            IActivityRestartRuntimePort activityRestartRuntimePort = this;
-            ActivityRestartTriggerBinderResult globalActivityRestartTriggerBinder =
-                _globalUiSceneRuntime.TryBindActivityRestartTriggers(
-                    activityRestartRuntimePort);
-            if (!globalActivityRestartTriggerBinder.Succeeded)
-            {
-                var failed = FrameworkGameFlowStartResult.Failed(
-                    globalActivityRestartTriggerBinder.Message);
-                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
-                return failed;
-            }
             ApplyPlayerActivityLifecycleAdmissionRuntime();
             ApplySceneLocalPlayerAdmissionRuntime();
 
@@ -1949,14 +1894,20 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _pauseProductBindingRuntime);
             _resetProductBindingSceneLifecycleParticipant =
                 new ResetProductBindingSceneLifecycleParticipant(
-                    (IResetRegistrationRuntimePort)this,
-                    (IResetTargetExecutionRuntimePort)this);
+                    (IResetRegistrationRuntimePort)this);
             _pauseSurfaceSceneLifecycleParticipant =
                 new PauseSurfaceSceneLifecycleParticipant(_pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
                 _pauseSurfaceSceneLifecycleParticipant,
                 _resetProductBindingSceneLifecycleParticipant,
+                new ResetRequestTriggerSceneLifecycleParticipant(this),
+                new SessionCameraAssignmentCommandSceneLifecycleParticipant(this),
+                new RouteRequestSceneLifecycleParticipant(this),
+                new ActivityRequestSceneLifecycleParticipant(this),
+                new RouteCycleResetSceneLifecycleParticipant(this),
+                new ActivityCycleResetSceneLifecycleParticipant(this),
+                new ActivityRestartSceneLifecycleParticipant(this),
                 new SceneLifecycleEventsParticipant());
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
             _state = FrameworkRuntimeState.Empty(application);
@@ -2161,7 +2112,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             return PauseSurfaceRuntime.Create(
                 _logger,
-                globalUiSceneRuntime != null ? globalUiSceneRuntime.PauseAdapters : Array.Empty<IPauseSurfaceAdapter>(),
+                Array.Empty<IPauseSurfaceAdapter>(),
                 globalUiSceneRuntime != null ? globalUiSceneRuntime.Label : string.Empty);
         }
 
@@ -3454,6 +3405,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnApplicationQuit()
         {
+            ReleasePersistentContentScope("application-quit");
             _sessionCameraMembershipRuntime?.Dispose();
             _sessionCameraMembershipRuntime = null;
             _sessionCameraAssignmentRuntime?.Dispose();
@@ -3462,6 +3414,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            ReleasePersistentContentScope("framework-runtime-host-destroy");
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
@@ -3478,6 +3431,30 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseTimeScaleRuntime?.RestoreIfCaptured("framework-runtime-host-destroy");
 
 
+        }
+
+        private void ReleasePersistentContentScope(string reason)
+        {
+            if (!_persistentContentScopeComposed ||
+                _sceneLifecycleRuntime == null ||
+                _globalUiSceneRuntime == null)
+            {
+                return;
+            }
+
+            SceneCompositionResult result = _sceneLifecycleRuntime.ReleaseSessionScope(
+                this,
+                _globalUiSceneRuntime.PersistedRoots,
+                reason);
+            if (!result.Succeeded)
+            {
+                _logger?.Error(
+                    "Persistent Content composition release failed.",
+                    LogFields.Field("diagnostic", result.Diagnostic));
+                return;
+            }
+
+            _persistentContentScopeComposed = false;
         }
 
         private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)

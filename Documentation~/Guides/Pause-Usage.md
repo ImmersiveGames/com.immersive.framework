@@ -27,7 +27,7 @@ The binding belongs to the admitted Session Local Player Host lifetime. Activity
 
 Add a `PauseRequestTrigger` to a scene that lives as long as the UI/request needs it. Connect one of its public methods—request Pause, request Resume or toggle—to the UI Button/UnityEvent.
 
-A trigger can be authored in Persistent Content, Route content or Activity content. Its request binding is injected for that exact scope and released when that scene scope unloads. A UI request without Player input is an explicit Application-only request path; it does not create a Player or change action maps.
+A trigger can be authored in Persistent Content, Route content or Activity content. SceneLifecycle injects its request port from the explicit roots for the Scene scope; Persistent Content uses the same participant under the Session scope and releases it at shutdown. Additive Route/Activity scenes detach when released and can bind again if composition is compensated. A UI request without Player input is an explicit Application-only request path; it does not create a Player or change action maps. See [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
 
 ## Activity requirement
 

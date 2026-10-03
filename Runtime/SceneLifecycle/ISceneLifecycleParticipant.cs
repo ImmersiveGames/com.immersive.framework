@@ -6,7 +6,13 @@ namespace Immersive.Framework.SceneLifecycle
 {
     internal interface ISceneLifecycleParticipant
     {
-        bool OnSceneAvailable(Scene scene, IReadOnlyList<GameObject> roots, out string diagnostic);
-        bool OnSceneReleasing(Scene scene, IReadOnlyList<GameObject> roots, string reason, out string diagnostic);
+        SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots);
+
+        SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            string reason);
     }
 }

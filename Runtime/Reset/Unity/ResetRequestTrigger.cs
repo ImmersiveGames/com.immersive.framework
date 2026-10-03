@@ -24,6 +24,7 @@ namespace Immersive.Framework.Reset.Unity
 
         public ResetTarget Target { get => target; set => target = value; }
         public bool IsRequestInFlight => _requestInFlight;
+        internal bool HasRuntimeBinding => _runtime != null;
         public ResetSelectionResolution LastResolution => _lastResolution;
         public ResetExecutionResult LastResult => _lastResult;
         public string RuntimeBindingDiagnostic => _bindingDiagnostic;
@@ -52,6 +53,32 @@ private void RequestResetFromContextMenu()
             issue = "Reset request trigger rejected a different runtime port for the current lifetime.";
             _bindingDiagnostic = issue;
             return false;
+        }
+
+        internal bool TryUnbind(IResetTargetExecutionRuntimePort expectedRuntime, out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Reset request release requires the exact non-null bound runtime port.";
+                _bindingDiagnostic = issue;
+                return false;
+            }
+            if (_runtime == null)
+            {
+                issue = string.Empty;
+                _bindingDiagnostic = "Reset request runtime is already released.";
+                return true;
+            }
+            if (!ReferenceEquals(_runtime, expectedRuntime))
+            {
+                issue = "Reset request release rejected a foreign or stale runtime port.";
+                _bindingDiagnostic = issue;
+                return false;
+            }
+            _runtime = null;
+            issue = string.Empty;
+            _bindingDiagnostic = "Reset request runtime was released by composition lifecycle.";
+            return true;
         }
 
         [ContextMenu("Request Reset")]

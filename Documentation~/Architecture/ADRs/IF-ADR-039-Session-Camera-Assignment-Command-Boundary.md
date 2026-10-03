@@ -44,7 +44,7 @@ Clear is an explicit Session Camera mutation, not temporary fallback coverage. A
 
 ## 3. Consumer boundary
 
-The Framework exposes a game-facing command port plus an optional Unity trigger/authoring adapter.
+The Framework exposes a game-facing command port and a scene-local consumer injection contract, plus an optional Unity trigger/authoring adapter.
 
 The consumer supplies explicit intent through references to authored Assignment assets. It does not:
 
@@ -55,7 +55,7 @@ The consumer supplies explicit intent through references to authored Assignment 
 - write `Camera.rect` / `pixelRect`;
 - own Assignment or Occurrence lifetime.
 
-A trigger serializes an Assignment asset for Activate, an expected Previous Assignment asset plus candidate Assignment asset for Replace, or the active Assignment asset for Clear. No consumer-authored identity string is required. Binding follows the existing explicit composition/binder pattern used by Route, Activity, Pause and Reset triggers.
+A consumer implementing `ISessionCameraAssignmentCommandConsumer` receives the exact public `ISessionCameraAssignmentCommandPort` for the scope lifetime. Gameplay code can issue commands directly; contextual composition can make a decision from Route/Activity state and use the same port without adding Camera fields to those assets. `SessionCameraAssignmentCommandTrigger` is an optional consumer for Inspector and UnityEvent workflows. It serializes an Assignment asset for Activate, an expected Previous Assignment asset plus candidate Assignment asset for Replace, or the active Assignment asset for Clear. No consumer-authored identity string is required. Trigger binding follows the Scene Composition Binding Model in IF-ADR-040.
 
 The command result must expose success/failure and a diagnostic suitable for samples and QA.
 

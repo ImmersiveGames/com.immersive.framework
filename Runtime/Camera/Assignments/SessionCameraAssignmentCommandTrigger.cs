@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Camera/Session Camera Assignment Command Trigger")]
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-039 game-facing Session Camera Assignment command boundary.")]
-    public sealed class SessionCameraAssignmentCommandTrigger : MonoBehaviour
+    public sealed class SessionCameraAssignmentCommandTrigger : MonoBehaviour, ISessionCameraAssignmentCommandConsumer
     {
         [SerializeField] private SessionCameraAssignmentCommandKind command = SessionCameraAssignmentCommandKind.Activate;
         [SerializeField] private SessionCameraAssignmentAsset assignment;
@@ -24,6 +24,9 @@ namespace Immersive.Framework.Camera
         public string RuntimeBindingDiagnostic => _bindingDiagnostic;
         public bool LastCommandSucceeded { get; private set; }
         public string LastDiagnostic { get; private set; } = "No Session Camera Assignment command has executed.";
+
+        public bool IsBoundToSessionCameraAssignmentCommands(
+            ISessionCameraAssignmentCommandPort commands) => ReferenceEquals(_runtime, commands);
 
         internal bool TryBind(ISessionCameraAssignmentCommandPort runtime, out string issue)
         {
@@ -53,6 +56,45 @@ namespace Immersive.Framework.Camera
             _bindingDiagnostic = issue;
             return false;
         }
+
+        public bool TryBindSessionCameraAssignmentCommands(
+            ISessionCameraAssignmentCommandPort commands,
+            out string issue) => TryBind(commands, out issue);
+
+        internal bool TryRelease(
+            ISessionCameraAssignmentCommandPort expectedRuntime,
+            out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Session Camera Assignment command release requires the exact non-null bound runtime port.";
+                _bindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_runtime == null)
+            {
+                issue = string.Empty;
+                _bindingDiagnostic = "Session Camera Assignment command runtime is already released.";
+                return true;
+            }
+
+            if (!ReferenceEquals(_runtime, expectedRuntime))
+            {
+                issue = "Session Camera Assignment command release rejected a foreign or stale runtime port.";
+                _bindingDiagnostic = issue;
+                return false;
+            }
+
+            _runtime = null;
+            issue = string.Empty;
+            _bindingDiagnostic = "Session Camera Assignment command runtime was released by composition lifecycle.";
+            return true;
+        }
+
+        public bool TryReleaseSessionCameraAssignmentCommands(
+            ISessionCameraAssignmentCommandPort expectedCommands,
+            out string issue) => TryRelease(expectedCommands, out issue);
 
         public void Execute()
         {

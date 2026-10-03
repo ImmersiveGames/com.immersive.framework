@@ -84,6 +84,8 @@ A nested Resettable remains an independent executable subject. Invalid/null refe
 
 Use `ResetRequestTrigger` as the single Reset request surface.
 
+Its Reset execution port and scene-authored Reset Subject adapters are composed from each managed Scene's explicit roots. Persistent Content uses the same bind/release participants for the Session lifetime; scene release detaches request and registration ports before unload. See [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
+
 | Target kind | Reference mode | Payload |
 |---|---|---|
 | Object | Direct | Typed `Resettable` reference |

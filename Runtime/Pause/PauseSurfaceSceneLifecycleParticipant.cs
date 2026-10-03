@@ -5,7 +5,6 @@ using Immersive.Framework.Diagnostics;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Logging.Records;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Pause
 {
@@ -13,11 +12,10 @@ namespace Immersive.Framework.Pause
     /// API status: Internal. IF-ADR-005 Cut C. Scene Lifecycle participant that discovers
     /// IPauseSurfaceAdapter components from Route Primary, RouteContent and ActivityContent
     /// scenes, symmetrically to how PauseProductBindingSceneLifecycleParticipant already
-    /// discovers PlayerPauseInput/PauseRequestTrigger from the same scenes. It is intentionally
-    /// a separate participant: Pause Surface lifecycle is not mixed with PlayerPauseInput
-    /// binding lifecycle. Persistent Content is not discovered here; it remains the fixed
-    /// baseline collected once at boot by GlobalUiSceneRuntime/FrameworkRuntimeHost, since it is
-    /// never loaded/unloaded through SceneLifecycleRuntime.
+    /// discovers request triggers from the same scene roots. It is intentionally
+    /// a separate participant: Pause Surface lifecycle is not mixed with Player Pause input
+    /// binding lifecycle. Persistent Content uses a Session composition scope and is released
+    /// explicitly at Session shutdown.
     /// </summary>
     internal sealed class PauseSurfaceSceneLifecycleParticipant : ISceneLifecycleParticipant
     {
@@ -44,16 +42,17 @@ namespace Immersive.Framework.Pause
             _surfaceRuntime = surfaceRuntime;
         }
 
-        public bool OnSceneAvailable(
-            Scene scene,
-            IReadOnlyList<GameObject> roots,
-            out string diagnostic)
+        public SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
         {
-            diagnostic = string.Empty;
             PauseSurfaceRuntime surfaceRuntime = _surfaceRuntime;
             if (surfaceRuntime == null)
             {
-                return true;
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    $"Pause surface target is not initialized for scope '{scope.Label}'.");
             }
 
             List<IPauseSurfaceAdapter> adapters = Collect(roots);
@@ -61,35 +60,37 @@ namespace Immersive.Framework.Pause
             _pauseSnapshotSource.TryGetPauseSnapshot(out currentSnapshot);
 
             surfaceRuntime.SetSceneContribution(
-                scene.handle.GetRawData(),
+                scope,
                 adapters,
                 currentSnapshot,
                 nameof(PauseSurfaceSceneLifecycleParticipant),
-                "scene-available");
+                "scope-available");
 
             if (adapters.Count > 0)
             {
-                diagnostic =
-                    $"Pause surface scene contribution registered. scene='{SceneLabel(scene)}' adapters='{adapters.Count}'.";
                 _logger.Debug(
                     "Pause surface scene contribution registered.",
                     LogFields.Of(
-                        LogFields.Field("scene", SceneLabel(scene)),
+                        LogFields.Field("scope", scope.Label),
                         LogFields.Field("adapterCount", adapters.Count)));
             }
 
-            return true;
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Available,
+                $"Pause surface contribution composed for scope '{scope.Label}' adapters='{adapters.Count}'.");
         }
 
-        public bool OnSceneReleasing(
-            Scene scene,
+        public SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots,
-            string reason,
-            out string diagnostic)
+            string reason)
         {
-            diagnostic = string.Empty;
-            _surfaceRuntime?.ReleaseSceneContribution(scene.handle.GetRawData());
-            return true;
+            _surfaceRuntime?.ReleaseSceneContribution(scope);
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Releasing,
+                $"Pause surface contribution released for scope '{scope.Label}' reason='{reason.NormalizeTextOrFallback("scope-release")}'.");
         }
 
         private static List<IPauseSurfaceAdapter> Collect(
@@ -124,9 +125,5 @@ namespace Immersive.Framework.Pause
             return result;
         }
 
-        private static string SceneLabel(Scene scene) =>
-            scene.IsValid()
-                ? scene.name.NormalizeTextOrFallback("<unnamed>")
-                : "<invalid>";
     }
 }

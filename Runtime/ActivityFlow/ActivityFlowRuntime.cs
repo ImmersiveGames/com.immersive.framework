@@ -40,10 +40,6 @@ namespace Immersive.Framework.ActivityFlow
         private PauseActivityBindingRuntimeHostModule _pauseActivityBindingLifecycle;
         private IPauseActivityLifecyclePort _pauseActivityLifecyclePort;
         private readonly RuntimeContentRuntime _runtimeContentRuntime;
-        private readonly IActivityRuntimePort _activityRuntime;
-        private readonly IRouteCycleResetRuntimePort _routeCycleResetRuntime;
-        private readonly IActivityCycleResetRuntimePort _activityCycleResetRuntime;
-        private readonly IActivityRestartRuntimePort _activityRestartRuntime;
         private readonly EventBus<ActivityEnteredEvent> _activityEnteredEvents = new EventBus<ActivityEnteredEvent>();
         private readonly EventBus<ActivityExitedEvent> _activityExitedEvents = new EventBus<ActivityExitedEvent>();
         private readonly EventBus<ActivityReadinessUpdate> _activityReadinessUpdates = new EventBus<ActivityReadinessUpdate>();
@@ -58,18 +54,10 @@ namespace Immersive.Framework.ActivityFlow
 
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
-            SceneLifecycleRuntime sceneLifecycleRuntime,
-            IActivityRuntimePort activityRuntime,
-            IRouteCycleResetRuntimePort routeCycleResetRuntime,
-            IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime)
+            SceneLifecycleRuntime sceneLifecycleRuntime)
             : this(
                 runtimeContentRuntime,
                 sceneLifecycleRuntime,
-                activityRuntime,
-                routeCycleResetRuntime,
-                activityCycleResetRuntime,
-                activityRestartRuntime,
                 EmptyActivityContentExecutionParticipantSource.Instance)
         {
         }
@@ -77,17 +65,9 @@ namespace Immersive.Framework.ActivityFlow
         internal ActivityFlowRuntime(
             RuntimeContentRuntime runtimeContentRuntime,
             SceneLifecycleRuntime sceneLifecycleRuntime,
-            IActivityRuntimePort activityRuntime,
-            IRouteCycleResetRuntimePort routeCycleResetRuntime,
-            IActivityCycleResetRuntimePort activityCycleResetRuntime,
-            IActivityRestartRuntimePort activityRestartRuntime,
             IActivityContentExecutionParticipantSource activityContentExecutionParticipantSource)
         {
             _runtimeContentRuntime = runtimeContentRuntime ?? throw new ArgumentNullException(nameof(runtimeContentRuntime));
-            _activityRuntime = activityRuntime ?? throw new ArgumentNullException(nameof(activityRuntime));
-            _routeCycleResetRuntime = routeCycleResetRuntime ?? throw new ArgumentNullException(nameof(routeCycleResetRuntime));
-            _activityCycleResetRuntime = activityCycleResetRuntime ?? throw new ArgumentNullException(nameof(activityCycleResetRuntime));
-            _activityRestartRuntime = activityRestartRuntime ?? throw new ArgumentNullException(nameof(activityRestartRuntime));
             _activitySceneCompositionRuntime = new ActivitySceneCompositionRuntime(sceneLifecycleRuntime ?? throw new ArgumentNullException(nameof(sceneLifecycleRuntime)));
             _activityOperationPlanner = new ActivityOperationPlanner(_activitySceneCompositionRuntime);
             _activityContentExecutionParticipantSource = activityContentExecutionParticipantSource ?? EmptyActivityContentExecutionParticipantSource.Instance;
@@ -744,38 +724,6 @@ namespace Immersive.Framework.ActivityFlow
         {
             var plan = ActivitySceneCompositionPlan.FromActivity(activity, source, reason);
             return ActivitySceneCompositionResult.FromPlan(plan, source, reason);
-        }
-
-        private ActivityRequestTriggerBinderResult TryBindActivityRequestTriggers(
-            ActivitySceneCompositionResult compositionResult)
-        {
-            return ActivityRequestTriggerBinder.TryBind(
-                ResolveMaterializedActivitySceneRoots(compositionResult),
-                _activityRuntime);
-        }
-
-        private RouteCycleResetTriggerBindingResult TryBindRouteCycleResetTriggers(
-            ActivitySceneCompositionResult compositionResult)
-        {
-            return RouteCycleResetTriggerBinding.TryBind(
-                ResolveMaterializedActivitySceneRoots(compositionResult),
-                _routeCycleResetRuntime);
-        }
-
-        private ActivityCycleResetTriggerBinderResult TryBindActivityCycleResetTriggers(
-            ActivitySceneCompositionResult compositionResult)
-        {
-            return ActivityCycleResetTriggerBinder.TryBind(
-                ResolveMaterializedActivitySceneRoots(compositionResult),
-                _activityCycleResetRuntime);
-        }
-
-        private ActivityRestartTriggerBinderResult TryBindActivityRestartTriggers(
-            ActivitySceneCompositionResult compositionResult)
-        {
-            return ActivityRestartTriggerBinder.TryBind(
-                ResolveMaterializedActivitySceneRoots(compositionResult),
-                _activityRestartRuntime);
         }
 
         private static IReadOnlyList<GameObject> ResolveMaterializedActivitySceneRoots(

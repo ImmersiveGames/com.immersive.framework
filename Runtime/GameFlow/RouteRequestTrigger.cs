@@ -108,6 +108,37 @@ namespace Immersive.Framework.GameFlow
             return false;
         }
 
+        internal bool TryReleaseRouteRuntime(
+            IRouteRuntimePort expectedRuntime,
+            out string issue)
+        {
+            if (expectedRuntime == null)
+            {
+                issue = "Route runtime release requires the exact non-null bound port.";
+                _routeRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            if (_routeRuntime == null)
+            {
+                issue = string.Empty;
+                _routeRuntimeBindingDiagnostic = "Route runtime port is already released.";
+                return true;
+            }
+
+            if (!ReferenceEquals(_routeRuntime, expectedRuntime))
+            {
+                issue = "Route runtime release rejected a foreign or stale port.";
+                _routeRuntimeBindingDiagnostic = issue;
+                return false;
+            }
+
+            _routeRuntime = null;
+            issue = string.Empty;
+            _routeRuntimeBindingDiagnostic = "Route runtime port was released by composition lifecycle.";
+            return true;
+        }
+
         public async void RequestRoute()
         {
             EnsureLogger();

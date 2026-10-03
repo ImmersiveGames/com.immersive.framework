@@ -21,6 +21,7 @@ namespace Immersive.Framework.SceneLifecycle
         private const string SingleLoadMode = "Single";
         private const string AdditiveLoadMode = "Additive";
         private readonly ISceneLifecycleParticipant[] _participants;
+        private readonly HashSet<SceneCompositionScope> _availableScopes = new();
 
         internal SceneLifecycleRuntime(params ISceneLifecycleParticipant[] participants)
         {
@@ -574,15 +575,11 @@ namespace Immersive.Framework.SceneLifecycle
                 return true;
             }
             IReadOnlyList<GameObject> roots = scene.GetRootGameObjects();
-            for (int i = 0; i < _participants.Length; i++)
-            {
-                if (_participants[i] != null && !_participants[i].OnSceneAvailable(scene, roots, out issue))
-                {
-                    issue = $"Scene Lifecycle composition rejected scene '{scene.name}'. {issue}";
-                    return false;
-                }
-            }
-            return true;
+            SceneCompositionResult result = NotifyAvailable(
+                SceneCompositionScope.ForScene(scene),
+                roots);
+            issue = result.Diagnostic;
+            return result.Succeeded;
         }
 
         private bool NotifySceneReleasing(Scene scene, string reason, out string issue)
@@ -593,15 +590,168 @@ namespace Immersive.Framework.SceneLifecycle
                 return true;
             }
             IReadOnlyList<GameObject> roots = scene.GetRootGameObjects();
+            SceneCompositionResult result = NotifyReleasing(
+                SceneCompositionScope.ForScene(scene),
+                roots,
+                reason);
+            issue = result.Diagnostic;
+            return result.Succeeded;
+        }
+
+        internal SceneCompositionResult ComposeSessionScope(
+            UnityEngine.Object sessionOwner,
+            IReadOnlyList<GameObject> roots)
+        {
+            SceneCompositionScope scope = SceneCompositionScope.ForSession(sessionOwner);
+            if (!scope.IsValid)
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    "Session composition requires an explicit live Session owner.");
+            }
+
+            return NotifyAvailable(scope, roots);
+        }
+
+        internal SceneCompositionResult ReleaseSessionScope(
+            UnityEngine.Object sessionOwner,
+            IReadOnlyList<GameObject> roots,
+            string reason)
+        {
+            SceneCompositionScope scope = SceneCompositionScope.ForSession(sessionOwner);
+            if (!scope.IsValid)
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    "Session composition release requires the exact live Session owner.");
+            }
+
+            return NotifyReleasing(scope, roots, reason);
+        }
+
+        private SceneCompositionResult NotifyAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
+        {
+            if (!scope.IsValid)
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    "Scene composition rejected an invalid scope.");
+            }
+
+            bool wasAlreadyAvailable = _availableScopes.Contains(scope);
+            var completedParticipants = new List<ISceneLifecycleParticipant>();
             for (int i = 0; i < _participants.Length; i++)
             {
-                if (_participants[i] != null && !_participants[i].OnSceneReleasing(scene, roots, reason, out issue))
+                ISceneLifecycleParticipant participant = _participants[i];
+                if (participant == null)
                 {
-                    issue = $"Scene Lifecycle release rejected scene '{scene.name}'. {issue}";
-                    return false;
+                    continue;
+                }
+
+                SceneCompositionResult participantResult =
+                    participant.OnSceneAvailable(scope, roots);
+                if (!participantResult.Succeeded ||
+                    !participantResult.Scope.Equals(scope) ||
+                    participantResult.Operation != SceneCompositionOperation.Available)
+                {
+                    string issue = participantResult.Diagnostic.NormalizeTextOrFallback(
+                        "Participant rejected scene composition.");
+                    var rollbackIssues = new List<string>();
+                    for (int rollbackIndex = wasAlreadyAvailable ? -1 : completedParticipants.Count - 1;
+                         rollbackIndex >= 0;
+                         rollbackIndex--)
+                    {
+                        ISceneLifecycleParticipant completed = completedParticipants[rollbackIndex];
+                        SceneCompositionResult rollback = completed.OnSceneReleasing(
+                            scope, roots, "composition-bind-rollback");
+                        if (!rollback.Succeeded)
+                            rollbackIssues.Add($"participant='{completed.GetType().Name}' {rollback.Diagnostic}");
+                    }
+                    return SceneCompositionResult.Rejected(
+                        scope,
+                        SceneCompositionOperation.Available,
+                        $"Scene Lifecycle composition rejected scope '{scope.Label}' at participant '{participant.GetType().Name}'. {issue}" +
+                        (wasAlreadyAvailable
+                            ? " Reentry rollback was limited to the failing feature's local bind pass."
+                            : rollbackIssues.Count == 0
+                                ? " Rollback='Succeeded'."
+                                : $" Rollback='Failed'. {string.Join(" | ", rollbackIssues)}"));
+                }
+
+                completedParticipants.Add(participant);
+            }
+
+            _availableScopes.Add(scope);
+
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Available,
+                $"Scene Lifecycle composition completed for scope '{scope.Label}'.");
+        }
+
+        private SceneCompositionResult NotifyReleasing(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots,
+            string reason)
+        {
+            if (!scope.IsValid)
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    "Scene composition release rejected an invalid scope.");
+            }
+
+            var issues = new List<string>();
+            for (int i = _participants.Length - 1; i >= 0; i--)
+            {
+                ISceneLifecycleParticipant participant = _participants[i];
+                if (participant == null)
+                {
+                    continue;
+                }
+
+                SceneCompositionResult participantResult =
+                    participant.OnSceneReleasing(scope, roots, reason);
+                if (!participantResult.Succeeded ||
+                    !participantResult.Scope.Equals(scope) ||
+                    participantResult.Operation != SceneCompositionOperation.Releasing)
+                {
+                    string issue = participantResult.Diagnostic.NormalizeTextOrFallback(
+                        "Participant rejected scene release.");
+                    issues.Add($"participant='{participant.GetType().Name}' {issue}");
                 }
             }
-            return true;
+
+            if (issues.Count > 0)
+            {
+                string compensation = string.Empty;
+                if (scope.Kind == SceneCompositionScopeKind.Scene)
+                {
+                    _availableScopes.Remove(scope);
+                    SceneCompositionResult restored = NotifyAvailable(scope, roots);
+                    compensation = restored.Succeeded
+                        ? " Composition was restored because the Scene remains loaded."
+                        : $" Composition restoration failed: {restored.Diagnostic}";
+                }
+
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Scene Lifecycle release rejected scope '{scope.Label}'. {string.Join(" | ", issues)}{compensation}");
+            }
+
+            _availableScopes.Remove(scope);
+
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Releasing,
+                $"Scene Lifecycle release completed for scope '{scope.Label}' reason='{reason.NormalizeTextOrFallback("scene-release")}'.");
         }
     }
 }

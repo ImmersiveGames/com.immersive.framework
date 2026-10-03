@@ -67,9 +67,10 @@ Guide: [Player Participation and Local Player](../Guides/Player-Usage.md). Scene
 | `SessionCameraAssignmentAsset`, `CameraOutputDefinition` | Assets · Experimental | Session Camera policy with a direct Rig Prefab reference, and explicit physical Output identity. |
 | `ActorCameraSubjectAuthoring` | Actor authoring component · Experimental | Supplies an explicit Observation Transform for an exact Actor occurrence. |
 | `GameApplicationAsset.StartupCameraAssignments` and `SessionCameraAssignmentAsset` | Session authoring · current implementation, Experimental boundary | Configure occurrence mode, membership/target policy, Rig Prefab and explicit Output mapping. Assignment assets are the sole Player Slot → Output authority; `CameraSessionConfiguration` owns only physical Output capacity. IF-ADR-038 is Accepted; Unity validation remains pending. |
-| `SessionCameraAssignmentCommandTrigger` | Runtime request component · Experimental | Explicitly Activate, transactionally Replace, or Clear a Session Camera Assignment through Session Camera authority. It does not reintroduce CameraRequest, precedence or Route/Activity Camera ownership. |
+| `SessionCameraAssignmentCommandTrigger` | Runtime request component · Experimental | Optional Inspector/UnityEvent adapter for explicitly activating, transactionally replacing, or clearing a Session Camera Assignment through Session Camera authority. It can bind in Persistent Content and managed Route/Activity additive scenes through SceneLifecycle. It does not reintroduce CameraRequest, precedence or Route/Activity Camera ownership. |
+| `ISessionCameraAssignmentCommandPort`, `ISessionCameraAssignmentCommandConsumer` | Runtime command/injection contract · Experimental | The Session command port exposes Activate/Replace/Clear independently of UI. Scene-local gameplay components can implement the consumer contract and receive the exact port for their composition lifetime; the optional Trigger uses the same contract. |
 
-There is no Camera Request/Presentation arbitration API in the current model. Runtime Assignment mutation is exposed only through `SessionCameraAssignmentCommandTrigger`. Consumers reference Assignment assets; their generated IDs are not manually authored integration inputs.
+There is no Camera Request/Presentation arbitration API in the current model. Activate/Replace/Clear belong to the Session Camera command contract and are not UI-specific. Gameplay components receive the public port through `ISessionCameraAssignmentCommandConsumer`; the Trigger is one optional UnityEvent adapter implementing that contract. Consumers reference Assignment assets; their generated IDs are not manually authored integration inputs. Composition binding follows [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
 
 Guide: [Camera Usage](../Guides/Camera-Usage.md).
 
@@ -133,7 +134,7 @@ Guide: [Logging Usage](../Guides/Logging-Usage.md).
 
 ## Types not recommended for direct game use
 
-Internal hosts, runtime modules, binders, binding results, token types and projection/evidence structures exist to implement lifecycle and diagnostics. They are not a second authoring or gameplay API. For example, use `PauseRequestTrigger` and the supported Pause components rather than wiring against internal Global UI binding results such as `GlobalUiPauseRequestTriggerBindingResult`. Do not infer support solely from a type being declared `public`.
+Internal hosts, runtime modules, binders, binding results, token types and projection/evidence structures exist to implement lifecycle and diagnostics. They are not a second authoring or gameplay API. Use the supported feature-specific command/request contracts and adapters; do not infer support solely from a type being declared `public`.
 
 ## Related architecture
 
@@ -143,3 +144,4 @@ Internal hosts, runtime modules, binders, binding results, token types and proje
 - [IF-ADR-019 — Session Player lifetime and Activity representation](../Architecture/ADRs/IF-ADR-019-Session-Player-Lifetime-and-Activity-Representation-Authority.md)
 - [IF-ADR-038 — Session Camera and Actor occurrence authority](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [IF-ADR-039 — Session Camera Assignment command boundary](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md)
+- [IF-ADR-040 — Scene Composition Binding Model](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md)

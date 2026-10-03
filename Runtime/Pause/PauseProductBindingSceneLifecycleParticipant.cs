@@ -5,7 +5,6 @@ using Immersive.Framework.Diagnostics;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Logging.Records;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Pause
 {
@@ -40,10 +39,9 @@ namespace Immersive.Framework.Pause
                     PauseProductBindingSceneLifecycleParticipant>();
         }
 
-        public bool OnSceneAvailable(
-            Scene scene,
-            IReadOnlyList<GameObject> roots,
-            out string diagnostic)
+        public SceneCompositionResult OnSceneAvailable(
+            SceneCompositionScope scope,
+            IReadOnlyList<GameObject> roots)
         {
             List<PauseRequestTrigger> triggers =
                 Collect<PauseRequestTrigger>(roots);
@@ -59,20 +57,23 @@ namespace Immersive.Framework.Pause
                 {
                     string rollback =
                         RollbackAvailable(newlyBound);
-                    diagnostic =
+                    string diagnostic =
                         $"Pause Scene Lifecycle rejected request trigger. " +
-                        $"scene='{SceneLabel(scene)}' " +
+                        $"scope='{scope.Label}' " +
                         $"component='{ObjectLabel(trigger)}' " +
                         $"issue='{issue.NormalizeTextOrFallback("unknown")}' " +
                         rollback;
                     LogFailure(
-                        scene,
+                        scope,
                         "SceneAvailable",
                         trigger,
                         issue,
                         rollback,
                         triggers.Count);
-                    return false;
+                    return SceneCompositionResult.Rejected(
+                        scope,
+                        SceneCompositionOperation.Available,
+                        diagnostic);
                 }
 
                 if (!wasBound)
@@ -81,25 +82,27 @@ namespace Immersive.Framework.Pause
                 }
             }
 
-            diagnostic =
+            string completedDiagnostic =
                 $"Pause Scene Lifecycle composition completed. " +
-                $"scene='{SceneLabel(scene)}' " +
+                $"scope='{scope.Label}' " +
                 $"requestTriggers='{triggers.Count}' " +
                 $"newRequestTriggers='{newlyBound.Count}'.";
             LogSuccess(
-                scene,
+                scope,
                 "SceneAvailable",
                 triggers.Count,
                 newlyBound.Count,
                 string.Empty);
-            return true;
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Available,
+                completedDiagnostic);
         }
 
-        public bool OnSceneReleasing(
-            Scene scene,
+        public SceneCompositionResult OnSceneReleasing(
+            SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots,
-            string reason,
-            out string diagnostic)
+            string reason)
         {
             List<PauseRequestTrigger> triggers =
                 Collect<PauseRequestTrigger>(roots);
@@ -120,35 +123,41 @@ namespace Immersive.Framework.Pause
 
             if (issues.Count > 0)
             {
-                diagnostic =
+                string diagnostic =
                     $"Pause Scene Lifecycle release failed. " +
-                    $"scene='{SceneLabel(scene)}' " +
+                    $"scope='{scope.Label}' " +
                     $"requestTriggers='{triggers.Count}'. " +
                     string.Join(" ", issues);
                 _logger.Error(
                     "Pause Scene Lifecycle release failed.",
                     LogFields.Of(
                         LogFields.Field("operation", "SceneReleasing"),
-                        LogFields.Field("scene", SceneLabel(scene)),
+                        LogFields.Field("scope", scope.Label),
                         LogFields.Field(
                             "reason",
                             reason.NormalizeTextOrFallback("scene-release")),
                         LogFields.Field("requestTriggers", triggers.Count),
                         LogFields.Field("issues", string.Join(" ", issues))));
-                return false;
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    diagnostic);
             }
 
-            diagnostic =
+            string completedDiagnostic =
                 $"Pause Scene Lifecycle release completed. " +
-                $"scene='{SceneLabel(scene)}' " +
+                $"scope='{scope.Label}' " +
                 $"requestTriggers='{triggers.Count}'.";
             LogSuccess(
-                scene,
+                scope,
                 "SceneReleasing",
                 triggers.Count,
                 0,
                 reason);
-            return true;
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Releasing,
+                completedDiagnostic);
         }
 
         private string RollbackAvailable(
@@ -173,7 +182,7 @@ namespace Immersive.Framework.Pause
         }
 
         private void LogSuccess(
-            Scene scene,
+            SceneCompositionScope scope,
             string operation,
             int triggerCount,
             int newTriggerCount,
@@ -188,7 +197,7 @@ namespace Immersive.Framework.Pause
                 "Pause Scene Lifecycle composition completed.",
                 LogFields.Of(
                     LogFields.Field("operation", operation),
-                    LogFields.Field("scene", SceneLabel(scene)),
+                    LogFields.Field("scope", scope.Label),
                     LogFields.Field("requestTriggers", triggerCount),
                     LogFields.Field("newRequestTriggers", newTriggerCount),
                     LogFields.Field(
@@ -197,7 +206,7 @@ namespace Immersive.Framework.Pause
         }
 
         private void LogFailure(
-            Scene scene,
+            SceneCompositionScope scope,
             string operation,
             Component component,
             string issue,
@@ -208,7 +217,7 @@ namespace Immersive.Framework.Pause
                 "Pause Scene Lifecycle composition failed.",
                 LogFields.Of(
                     LogFields.Field("operation", operation),
-                    LogFields.Field("scene", SceneLabel(scene)),
+                    LogFields.Field("scope", scope.Label),
                     LogFields.Field("component", ObjectLabel(component)),
                     LogFields.Field("requestTriggers", triggerCount),
                     LogFields.Field(
@@ -256,11 +265,6 @@ namespace Immersive.Framework.Pause
 
             return result;
         }
-
-        private static string SceneLabel(Scene scene) =>
-            scene.IsValid()
-                ? scene.name.NormalizeTextOrFallback("<unnamed>")
-                : "<invalid>";
 
         private static string ObjectLabel(Component component) =>
             component != null

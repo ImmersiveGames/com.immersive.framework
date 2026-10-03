@@ -6,73 +6,95 @@ namespace Immersive.Framework.CycleReset
 {
     internal static class RouteCycleResetTriggerBinding
     {
-        internal static RouteCycleResetTriggerBindingResult TryBind(IReadOnlyList<GameObject> roots, IRouteCycleResetRuntimePort routeCycleResetRuntime)
+        internal static RouteCycleResetTriggerBindingResult TryBind(
+            IReadOnlyList<GameObject> roots,
+            IRouteCycleResetRuntimePort runtime)
         {
             int rootCount = CountUniqueRoots(roots);
-            if (routeCycleResetRuntime == null)
-            {
-                return RouteCycleResetTriggerBindingResult.Rejected("RejectedMissingRouteCycleResetRuntime", $"Route Cycle Reset trigger binding requires a Route Cycle Reset runtime port. roots='{rootCount}' triggers='0' bound='0' idempotent='0' rejected='0'.", rootCount, 0, 0, 0, 0);
-            }
+            if (runtime == null)
+                return RouteCycleResetTriggerBindingResult.Rejected(
+                    "RejectedMissingRouteCycleResetRuntime",
+                    "Route Cycle Reset trigger binding requires a non-null runtime port.",
+                    rootCount, 0, 0, 0, 0);
 
             List<RouteCycleResetTrigger> triggers = CollectTriggers(roots);
-            if (triggers.Count == 0)
-            {
-                return RouteCycleResetTriggerBindingResult.OptionalAbsent(rootCount);
-            }
-
-            int boundCount = 0;
-            int idempotentCount = 0;
-            int rejectedCount = 0;
+            int bound = 0;
+            int idempotent = 0;
+            var newlyBound = new List<RouteCycleResetTrigger>();
             var issues = new List<string>();
             for (int index = 0; index < triggers.Count; index++)
             {
                 RouteCycleResetTrigger trigger = triggers[index];
                 bool wasBound = trigger.HasRouteCycleResetRuntimeBinding;
-                if (trigger.TryBindRouteCycleResetRuntime(routeCycleResetRuntime, out string issue))
+                if (trigger.TryBindRouteCycleResetRuntime(runtime, out string issue))
                 {
-                    if (wasBound) idempotentCount++; else boundCount++;
+                    if (wasBound) idempotent++;
+                    else { bound++; newlyBound.Add(trigger); }
                     continue;
                 }
-
-                rejectedCount++;
-                string sceneName = trigger.gameObject.scene.name.NormalizeTextOrFallback("<unknown>");
-                issues.Add($"trigger='{trigger.name}' scene='{sceneName}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
+                issues.Add($"trigger='{trigger.name}' issue='{issue.NormalizeTextOrFallback("unknown")}'.");
             }
 
-            return rejectedCount > 0
-                ? RouteCycleResetTriggerBindingResult.Rejected("RejectedTriggerBinding", $"Route Cycle Reset trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{boundCount}' idempotent='{idempotentCount}' rejected='{rejectedCount}'. {string.Join(" ", issues)}", rootCount, triggers.Count, boundCount, idempotentCount, rejectedCount)
-                : RouteCycleResetTriggerBindingResult.Completed(rootCount, triggers.Count, boundCount, idempotentCount);
+            if (issues.Count == 0)
+                return RouteCycleResetTriggerBindingResult.Completed(rootCount, triggers.Count, bound, idempotent);
+
+            var rollbackIssues = new List<string>();
+            for (int index = newlyBound.Count - 1; index >= 0; index--)
+                if (!newlyBound[index].TryReleaseRouteCycleResetRuntime(runtime, out string issue))
+                    rollbackIssues.Add($"trigger='{newlyBound[index].name}' rollback='{issue}'.");
+            return RouteCycleResetTriggerBindingResult.Rejected(
+                "RejectedTriggerBinding",
+                $"Route Cycle Reset trigger binding failed. roots='{rootCount}' triggers='{triggers.Count}' bound='{bound}' idempotent='{idempotent}' rejected='{issues.Count}' rollback='{(rollbackIssues.Count == 0 ? "Succeeded" : "Failed")}'. {string.Join(" ", issues)} {string.Join(" ", rollbackIssues)}",
+                rootCount, triggers.Count, bound, idempotent, issues.Count);
+        }
+
+        internal static bool TryRelease(
+            IReadOnlyList<GameObject> roots,
+            IRouteCycleResetRuntimePort runtime,
+            out int triggerCount,
+            out string diagnostic)
+        {
+            List<RouteCycleResetTrigger> triggers = CollectTriggers(roots);
+            triggerCount = triggers.Count;
+            if (runtime == null)
+            {
+                diagnostic = "Route Cycle Reset trigger release requires the exact runtime port.";
+                return false;
+            }
+            var issues = new List<string>();
+            for (int index = triggers.Count - 1; index >= 0; index--)
+                if (!triggers[index].TryReleaseRouteCycleResetRuntime(runtime, out string issue))
+                    issues.Add($"trigger='{triggers[index].name}' issue='{issue}'.");
+            diagnostic = issues.Count == 0
+                ? $"Route Cycle Reset trigger release completed. triggers='{triggerCount}'."
+                : $"Route Cycle Reset trigger release failed. rejected='{issues.Count}'. {string.Join(" ", issues)}";
+            return issues.Count == 0;
         }
 
         private static List<RouteCycleResetTrigger> CollectTriggers(IReadOnlyList<GameObject> roots)
         {
-            var triggers = new List<RouteCycleResetTrigger>();
+            var result = new List<RouteCycleResetTrigger>();
             var seenRoots = new HashSet<GameObject>();
             var seenTriggers = new HashSet<RouteCycleResetTrigger>();
-            if (roots == null) return triggers;
+            if (roots == null) return result;
             for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
             {
                 GameObject root = roots[rootIndex];
                 if (root == null || !seenRoots.Add(root)) continue;
                 RouteCycleResetTrigger[] candidates = root.GetComponentsInChildren<RouteCycleResetTrigger>(true);
-                for (int candidateIndex = 0; candidateIndex < candidates.Length; candidateIndex++)
-                {
-                    RouteCycleResetTrigger candidate = candidates[candidateIndex];
-                    if (candidate != null && seenTriggers.Add(candidate)) triggers.Add(candidate);
-                }
+                for (int index = 0; index < candidates.Length; index++)
+                    if (candidates[index] != null && seenTriggers.Add(candidates[index])) result.Add(candidates[index]);
             }
-            return triggers;
+            return result;
         }
 
         private static int CountUniqueRoots(IReadOnlyList<GameObject> roots)
         {
-            var uniqueRoots = new HashSet<GameObject>();
-            if (roots == null) return 0;
-            for (int index = 0; index < roots.Count; index++)
-            {
-                if (roots[index] != null) uniqueRoots.Add(roots[index]);
-            }
-            return uniqueRoots.Count;
+            var result = new HashSet<GameObject>();
+            if (roots != null)
+                for (int index = 0; index < roots.Count; index++)
+                    if (roots[index] != null) result.Add(roots[index]);
+            return result.Count;
         }
     }
 }
