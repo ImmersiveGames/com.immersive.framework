@@ -573,6 +573,7 @@ namespace Immersive.Framework.Camera
             var snapshots = new Dictionary<CameraOutputId, CameraOutputSessionAssignmentSnapshot>();
             var outputIds = new List<CameraOutputId>();
             var attemptedOutputIds = new List<CameraOutputId>();
+            bool assignmentStateCommitted = false;
 
             for (int index = 0; index < assignment.Outputs.Count; index++)
             {
@@ -657,6 +658,8 @@ namespace Immersive.Framework.Camera
                     }
                 }
 
+                assignmentStateCommitted = true;
+
                 var released = new List<SessionCameraOccurrence>();
                 for (int index = _occurrences.Count - 1; index >= 0; index--)
                 {
@@ -687,6 +690,13 @@ namespace Immersive.Framework.Camera
             }
             catch (Exception exception)
             {
+                if (assignmentStateCommitted)
+                {
+                    issue =
+                        $"Session Camera Assignment clear committed, but post-commit cleanup failed. {exception.GetType().Name}: {exception.Message}";
+                    return true;
+                }
+
                 RollbackReplacementOutputs(
                     attemptedOutputIds,
                     replacementOutputs,
