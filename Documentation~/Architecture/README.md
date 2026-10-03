@@ -403,6 +403,10 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 - IF-ADR-024 — Accepted / reconciled / implemented for Manager-Provisioned V1; public `RequestReplacePreparedActor(...)` positive path certified by Full Player QA 16/16. Scene-Provided prepared physical replacement remains deferred.
 
+### Composition binding
+
+- IF-ADR-040 — **Accepted; implementation pending**. Scene-local runtime binding converges on explicit composition scopes and root sets with symmetric Available/Releasing semantics. SceneLifecycle coordinates Framework-managed scene scopes; Persistent Content is treated as a Session-lifetime composition scope. Authorities and binders remain feature-specific; Player occurrence/context binding and other non-scene-owned relationships remain explicit exceptions.
+
 ### Camera
 
 - IF-ADR-038 — **Accepted; Unity validation pending**. Individual Session Camera Assignments are the sole Player Slot → Output authority; Camera Session owns physical Outputs only. The split-screen consumer sample has been migrated; broader consumer migration and Unity validation remain pending.
