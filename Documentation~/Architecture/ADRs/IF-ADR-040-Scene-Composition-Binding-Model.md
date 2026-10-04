@@ -1,6 +1,6 @@
 # IF-ADR-040 — Scene Composition Binding Model
 
-Status: **Accepted — Unity validation pending**  
+Status: **Accepted — Implemented / Integrated / Validated**  
 Proposed: **2026-10-03**  
 Type: architecture / runtime composition / lifecycle  
 Depends on: **IF-ADR-001, IF-ADR-008, IF-ADR-039**
@@ -56,4 +56,26 @@ Audio keeps its feature-specific consumer contract and BGM authority. `Framework
 
 Route/Activity post-composition trigger passes and Persistent Content trigger passes are removed where SceneLifecycle now owns binding. Tests must cover first bind, reentry, release, release/compensation/rebind, authority conflict, local rollback, Session shutdown and feature regressions.
 
-Unity compile/import and EditMode/QA validation remain required before this decision is considered validated.
+## Validation closure — 2026-10-03
+
+The current migration boundary is validated.
+
+Phase 1 evidence:
+
+- Unity compile/import: PASS;
+- Framework EditMode suite: 155/155 PASS;
+- Camera QA-NEW-004: 9/9 PASS;
+- Pause, Route/Activity request and Reset smoke coverage: PASS.
+
+Phase 2 / Audio evidence:
+
+- Audio Scene Composition EditMode coverage: 5/5 PASS;
+- QA-NEW-005 Audio/BGM Continuity: 12/12 PASS;
+- terminal cleanup: `BaselineRestored`;
+- no temporary Route/Activity scenes remained loaded;
+- no Route/Activity consumers remained bound or were destroyed while bound;
+- `firstDivergence=''` and `cleanupIssue=''`.
+
+`SceneProvidedLocalPlayerAuthoring` remains intentionally outside this model for the admission/candidate-discovery reasons recorded above. This is a documented exception, not an unfinished migration item.
+
+The accepted scope of IF-ADR-040 is therefore implemented, integrated and validated. Future features may adopt this composition protocol when their ownership/lifetime matches it; this ADR does not require unrelated lifetime models to converge on Scene Composition.

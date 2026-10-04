@@ -262,33 +262,26 @@ A missing optional `AudioRuntimeHost` produces `OptionalAuthorityUnavailable`; d
 
 ## Current certification
 
-Current canonical Audio QA result after the Startup Activity lifecycle cut:
+Current post-IF-ADR-040 certification:
 
 ```text
-Core Audio         7/7 PASS
-Framework BGM     28/28 PASS
-ADR-013A            5/5 PASS
-Audio continuity    4/4 PASS
-TOTAL              44/44 PASS
-FAILED               0
+Audio Scene Composition EditMode   5/5 PASS
+QA-NEW-005 Audio/BGM Continuity   12/12 PASS
+cleanup                            BaselineRestored
 ```
 
-Focused Startup Activity proof:
+QA-NEW-005 covers the current Session-owned director binding/release path together with real Route/Activity lifecycle, sticky confirmed presentation, explicit Silence, Startup Activity resolution and provider-confirmed logical results. The final run reported no temporary scenes, no bound/destroyed-stale consumers, no first divergence and no cleanup issue.
 
-```text
-startup-activity-neutral-baseline
-  PASS
+The former Audio QA `44/44` from 2026-08-24 remains historical pre-IF-ADR-040 evidence. It is not relabeled as current coverage and QA-NEW-005 does not claim case-for-case equivalence.
 
-startup-route-is-deferred
-  PASS
-  provider remains without RouteCue presentation
+To run the current Play Mode certification in QAFramework:
 
-startup-activity-prevents-route-transient-play
-  PASS
-  ActivityCue Applied directly
-```
+1. run **Immersive Framework > QA > QA-NEW-005 > Configure Audio BGM Continuity**;
+2. select `GameApplication_QaNew005` in `ImmersiveFrameworkSettings`;
+3. open `Assets/QA-NEW-005/Scenes/QA_NEW_005_Persistent.unity`;
+4. enter a fresh Play Mode session and wait for `[QA-NEW-005] ... cases='12/12' cleanup='BaselineRestored'`.
 
-The earlier 2026-08-19 `30/30` certification remains historical evidence for BGM-CONTINUITY-1 and must not be relabeled as proof of this later lifecycle cut.
+The certification proves the public logical/provider-confirmed contract. It does not claim physical fade/crossfade timing or unobservable transient playback history.
 
 ## Consumer examples currently proven
 
@@ -332,4 +325,4 @@ ADR-013 remains `Experimental` as API maturity governance. Runtime behavior, cur
 - Different cue transitions through the provider.
 - Explicit Silence is the normal lifecycle intent that stops BGM.
 - Rejected provider operations preserve previous confirmed state.
-- Run canonical Audio QA from Framework bootstrap/QA Hub.
+- Run the current QAFramework `QA-NEW-005 — Audio/BGM Continuity` certification.

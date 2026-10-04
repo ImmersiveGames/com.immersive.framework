@@ -158,7 +158,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 010 | ACCEPTED / IMPLEMENTED | feature-owned | current |
 | 011 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness/progress certified | consumer proof PASS |
 | 012 | ACCEPTED / RECONCILED / IMPLEMENTED | Player aggregate 27/27 | current |
-| 013 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED | Audio/BGM certified | consumer gate PASS; maturity remains Experimental |
+| 013 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED / VALIDATED | QA-NEW-005 12/12 PASS post-IF-ADR-040; historical 44/44 retained | consumer gate PASS; maturity remains Experimental |
 | 014 | ACCEPTED / IMPLEMENTED | certified | current |
 | 015 | ACCEPTED / RECONCILED / IMPLEMENTED | public surface aggregate + Manager functional 14/14 | Observer + 8 explicit commands current |
 | 016 | ACCEPTED / IMPLEMENTED | Player aggregate 27/27 | ResolveConfiguredDefault + LeaveUnresolved current |
@@ -374,7 +374,7 @@ Historical records:
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
 3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L removes the duplicate Player Output authoring and derives `PlayerInput.camera` topology from Individual Assignments. The split-screen consumer sample has been migrated in source. Unity import/compile/runtime recertification and remaining consumer/QA asset migration are pending. Group framing remains partial/deferred.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
-5. **Audio** — BGM technical + consumer integration proven; API maturity promotion is separate.
+5. **Audio** — IF-ADR-040 Audio composition migration validated: EditMode 5/5 + QA-NEW-005 12/12 with `BaselineRestored`; historical 44/44 remains pre-migration evidence. Consumer integration is proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
 7. **Editor/Product Surface** — continue feature-owned Inspector/workflow evidence under ADR-010.
 

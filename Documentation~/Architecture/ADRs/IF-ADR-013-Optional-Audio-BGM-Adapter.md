@@ -1,9 +1,9 @@
 # IF-ADR-013 — Optional Audio BGM Adapter
 
-Status: **Accepted / Experimental — Scene Composition migration implemented; Unity validation pending**
+Status: **Accepted / Experimental — Scene Composition migration implemented and validated**
 Last updated: **2026-10-03**
 Package implementation: **Implemented — IF-ADR-013A + BGM-CONTINUITY-1 + BGM-ROUTE-POLICY-1 + Startup Activity lifecycle completion**  
-Technical QA: **Prior baseline certified — Audio QA 44/44; rerun required after IF-ADR-040 binding migration**
+Technical QA: **Current post-IF-ADR-040 certification — QA-NEW-005 12/12 PASS; historical Audio QA 44/44 retained as prior baseline**
 FIRSTGAME / Samples: **Proven — Game Flow contextual BGM + Minimal Game Route BGM + Player Provisioning Activity BGM**  
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-006, IF-ADR-008, IF-ADR-010, IF-ADR-014  
 External provider currently certified: `com.immersive.audio`
@@ -321,7 +321,7 @@ It must not be relabeled as proof of the later Startup Activity lifecycle/wiring
 
 ## Prior certification — Startup Activity lifecycle cut — 2026-08-24
 
-This Audio QA run predates the IF-ADR-040 BGM binding migration. It remains historical evidence for the Activity/Route intent and sticky-presentation contracts, but does not certify the new Scene Lifecycle attach/release path. Re-run Audio QA after Unity import and EditMode validation of the composition migration.
+This Audio QA run predates the IF-ADR-040 BGM binding migration. It remains historical evidence for the Activity/Route intent and sticky-presentation contracts, but does not certify the later Scene Lifecycle attach/release path.
 
 ```text
 Core Audio         7/7 PASS
@@ -362,6 +362,24 @@ Activity entry completion
   -> pending Route intent applied
   -> RouteMusic confirmed
 ```
+
+## Current post-IF-ADR-040 certification — 2026-10-03
+
+The Scene Composition migration is certified by focused EditMode composition coverage plus a new Play Mode integration harness in QAFramework.
+
+```text
+Audio Scene Composition EditMode   5/5 PASS
+QA-NEW-005 Audio/BGM Continuity   12/12 PASS
+cleanup                            BaselineRestored
+firstDivergence                    <none>
+cleanupIssue                       <none>
+```
+
+QA-NEW-005 proves the current public integration path: Session-owned director composition, Route/Activity attach and release across managed scene lifetimes, Route/Activity intent dispatch, sticky confirmed presentation, explicit Silence, Startup Activity resolution, provider-confirmed logical results, and terminal cleanup with no stale temporary consumers/scenes.
+
+The historical 44/44 remains valid dated evidence for the pre-IF-ADR-040 implementation. QA-NEW-005 is intentionally not a case-for-case recreation and does not relabel itself as 44/44.
+
+The current certification does not claim physical fade/crossfade timing or an unobservable frame-by-frame playback history; those remain outside the public Framework evidence surface.
 
 ## Consumer evidence
 
@@ -409,7 +427,7 @@ Package: Implemented
 Route/Activity authoring: independent
 Startup Activity ordering: lifecycle-completion driven
 Persistent completion wiring: explicit via FrameworkRuntimeHost -> ActivityFlowRuntime
-QA: Prior baseline 44/44; rerun required after IF-ADR-040 BGM binding migration
+QA: Current QA-NEW-005 12/12 PASS post-IF-ADR-040; historical 44/44 retained as prior baseline
 Consumer evidence: Game Flow + Minimal Game + Player Provisioning
 Status: Accepted / Experimental
 Next: optional explicit product-maturity promotion decision
@@ -434,6 +452,6 @@ Same confirmed cue is NoChange and must not restart provider playback.
 Applied and Released require provider-confirmed execution.
 Rejected provider operations preserve previous confirmed presentation and remain retryable.
 Explicit Silence is the only normal lifecycle intent that releases BGM to silence.
-The last pre-IF-ADR-040 Audio QA baseline was 44/44 PASS; rerun after the Scene Composition binding migration.
+The pre-IF-ADR-040 Audio QA baseline remains 44/44 PASS; the current post-migration integration certification is QA-NEW-005 12/12 PASS with BaselineRestored cleanup.
 API maturity remains Experimental until a separate explicit promotion cut changes it.
 ```
