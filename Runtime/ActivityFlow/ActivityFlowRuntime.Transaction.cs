@@ -337,6 +337,11 @@ namespace Immersive.Framework.ActivityFlow
                     contentTransition);
                 transaction.MarkTargetContentEntered(
                     "Target scene-content Enter callbacks completed after participant Enter.");
+                NotifyRouteActivityTransitionCommitted(
+                    previousActivity,
+                    nextActivity,
+                    resolvedSource,
+                    resolvedReason);
                 PublishActivityEnteredFact(
                     nextActivity,
                     previousActivity,
@@ -615,6 +620,11 @@ namespace Immersive.Framework.ActivityFlow
                     contentTransition);
                 transaction.MarkTargetContentEntered(
                     "No-active-Activity scene content state was enforced.");
+                NotifyRouteActivityTransitionCommitted(
+                    previousActivity,
+                    null,
+                    resolvedSource,
+                    resolvedReason);
 
                 contentResult =
                     _activityContentRuntime.CompleteActivityContentTransition(

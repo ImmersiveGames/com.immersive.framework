@@ -29,6 +29,7 @@ namespace Immersive.Framework.ActivityFlow
     internal sealed partial class ActivityFlowRuntime
     {
         private readonly ActivityContentRuntime _activityContentRuntime = new ActivityContentRuntime();
+        private readonly RouteActivityTransitionObserverDispatcher _routeActivityTransitionObserverDispatcher = new RouteActivityTransitionObserverDispatcher();
         private RouteContentDiscoveryScope _routeContentDiscoveryScope;
         private readonly ActivityContentExecutionRuntime _activityContentExecutionRuntime = new ActivityContentExecutionRuntime();
         private readonly ActivityReadinessParticipantSource _activityReadinessParticipantSource = new ActivityReadinessParticipantSource();
@@ -430,6 +431,20 @@ namespace Immersive.Framework.ActivityFlow
         internal void SetRouteContentDiscoveryScope(RouteContentDiscoveryScope scope)
         {
             _routeContentDiscoveryScope = scope;
+        }
+
+        private void NotifyRouteActivityTransitionCommitted(
+            ActivityAsset previousActivity,
+            ActivityAsset currentActivity,
+            string source,
+            string reason)
+        {
+            _routeActivityTransitionObserverDispatcher.Dispatch(
+                _routeContentDiscoveryScope,
+                previousActivity,
+                currentActivity,
+                source,
+                reason);
         }
 
         internal void SetPauseActivityBindingLifecycle(

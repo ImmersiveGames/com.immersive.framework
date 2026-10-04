@@ -18,6 +18,7 @@ namespace Immersive.Framework.ObjectEntry
             RouteAsset route,
             FrameworkIdentityKey routeOwnerIdentity,
             RouteSceneCompositionResult routeSceneCompositionResult,
+            RouteContentDiscoveryScope routeContentDiscoveryScope,
             ActivityAsset activity,
             FrameworkIdentityKey activityOwnerIdentity,
             ActivityContentDiscoveryScope activityContentDiscoveryScope,
@@ -27,6 +28,7 @@ namespace Immersive.Framework.ObjectEntry
             Route = route;
             RouteOwnerIdentity = routeOwnerIdentity;
             RouteSceneCompositionResult = routeSceneCompositionResult;
+            RouteContentDiscoveryScope = routeContentDiscoveryScope;
             Activity = activity;
             ActivityOwnerIdentity = activityOwnerIdentity;
             ActivityContentDiscoveryScope = activityContentDiscoveryScope;
@@ -40,6 +42,8 @@ namespace Immersive.Framework.ObjectEntry
         internal FrameworkIdentityKey RouteOwnerIdentity { get; }
 
         internal RouteSceneCompositionResult RouteSceneCompositionResult { get; }
+
+        internal RouteContentDiscoveryScope RouteContentDiscoveryScope { get; }
 
         internal ActivityAsset Activity { get; }
 
@@ -75,6 +79,12 @@ namespace Immersive.Framework.ObjectEntry
             if (!RouteSceneCompositionResult.Succeeded || RouteSceneCompositionResult.LoadedCount == 0)
             {
                 issue = "Scoped Object Entry collection requires successful Route scene composition with at least one loaded scene.";
+                return false;
+            }
+
+            if (!ReferenceEquals(RouteContentDiscoveryScope.Route, Route))
+            {
+                issue = "Scoped Object Entry collection requires the discovery scope for the exact active Route.";
                 return false;
             }
 

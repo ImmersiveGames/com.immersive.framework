@@ -22,13 +22,17 @@ namespace Immersive.Framework.SceneLifecycle
         {
             var components = new List<T>();
             var seen = new HashSet<T>();
-            IReadOnlyList<RouteContentDiscoveryScene> scenes = scope.RouteOwnedScenes;
-            for (int i = 0; i < scenes.Count; i++)
+            IReadOnlyList<GameObject> roots = scope.RouteOwnedRoots;
+            for (int i = 0; i < roots.Count; i++)
             {
-                RouteContentDiscoveryScene scene = scenes[i];
-                AddComponentsInLoadedScene(
-                    scene.ScenePath,
-                    scene.SceneName,
+                GameObject root = roots[i];
+                if (root == null)
+                {
+                    continue;
+                }
+
+                AddDistinct(
+                    root.GetComponentsInChildren<T>(true),
                     components,
                     seen);
             }

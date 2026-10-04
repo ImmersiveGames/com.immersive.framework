@@ -31,6 +31,7 @@ Guide: [Getting Started](../Guides/Getting-Started.md), [Persistent Content Scen
 | `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | Define Route identity/content/startup Activity and Activity content/participation/readiness/transition policy. |
 | `RouteContentProfileAsset`, `ActivityContentProfileAsset` | Profiles · Stable | Declare content owned by their Route or Activity scope. |
 | `RouteRequestTrigger`, `ActivityRequestTrigger` | Request components · Stable | Request a Route, request an Activity or clear the Activity from an authored scene/UI event. |
+| `RouteActivityTransitionContext`, `IRouteActivityTransitionObserver` | Lifecycle observer · Experimental | Read-only, Route-scoped observation of one committed Activity transition, including previous/current Activity, source and reason. It cannot request or control Activity Flow. |
 
 Guide: [Game Flow](../Guides/Game-Flow.md); [Activity Readiness](../Guides/Activity-Readiness.md).
 
@@ -145,3 +146,4 @@ Internal hosts, runtime modules, binders, binding results, token types and proje
 - [IF-ADR-038 — Session Camera and Actor occurrence authority](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 - [IF-ADR-039 — Session Camera Assignment command boundary](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md)
 - [IF-ADR-040 — Scene Composition Binding Model](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md)
+- [IF-ADR-041 — Route-Scoped Activity Transition Observation](../Architecture/ADRs/IF-ADR-041-Route-Scoped-Activity-Transition-Observation.md)

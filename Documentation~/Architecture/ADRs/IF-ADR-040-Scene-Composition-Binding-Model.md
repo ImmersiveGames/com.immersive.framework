@@ -22,6 +22,8 @@ The common internal scope distinguishes a loaded Scene from the owning Session. 
 
 Each feature keeps its own authority, participant, binder, ports, validation and diagnostics. The common result carries the scope, operation, success/status and diagnostic. Discovery is limited to the roots passed by composition. A binder must be idempotent for the same authority, reject a different authority, detach explicitly and idempotently, and roll back newly acquired bindings if its local bind pass fails.
 
+Route-scoped `IRouteActivityTransitionObserver` instances use the already composed Route roots and remain alive with that Route composition. ActivityFlow directly delivers committed transition facts to those observers; this observation callback is read-only and does not bind an ActivityFlow command or authority. Route exit delivers the final transition to Activity None before Route roots are released. See IF-ADR-041 for the lifecycle extension.
+
 Feature-specific participants may be components under Persistent Content roots. `SceneLifecycleRuntime` discovers those participants only during Session-scope composition and retains them for the Session lifetime, so optional feature assemblies can participate without adding their types to Framework Core. The retained participants receive later managed Scene scopes and are released with Persistent Content. This is participant discovery from explicit composition roots, not consumer binding or a global scan.
 
 No universal binder, service locator, global scan, `FindObjectOfType`, or parallel scene-loaded scanner is introduced. Persistent Content is a scope, not a separate binding mechanism.

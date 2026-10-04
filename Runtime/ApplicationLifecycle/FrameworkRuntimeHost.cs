@@ -1859,6 +1859,10 @@ namespace Immersive.Framework.ApplicationLifecycle
             ActivityContentDiscoveryScope activityScope = default;
             RouteLifecycleRuntime routeLifecycleRuntime =
                 _gameFlowRuntime?.CurrentRouteLifecycleRuntime;
+            RouteContentDiscoveryScope routeScope = default;
+            routeLifecycleRuntime?.TryCreateCurrentRouteContentDiscoveryScope(
+                _state.CurrentRoute,
+                out routeScope);
             ActivityFlowRuntime activityFlowRuntime =
                 routeLifecycleRuntime?.CurrentActivityFlowRuntime;
             bool hasActivityScope = activity != null &&
@@ -1874,6 +1878,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _state.CurrentRoute,
                 _state.RouteState.RouteIdentity,
                 _state.RouteSceneCompositionResult,
+                routeScope,
                 activity,
                 _state.ActivityState.ActivityIdentity,
                 activityScope,

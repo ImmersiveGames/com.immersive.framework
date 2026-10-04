@@ -378,7 +378,9 @@ namespace Immersive.Framework.RouteLifecycle
                 routeSceneCompositionResult,
                 source,
                 reason);
-            var routeContentDiscoveryScope = RouteContentDiscoveryScope.FromCompositionResult(routeSceneCompositionResult);
+            var routeContentDiscoveryScope = RouteContentDiscoveryScope.FromCompositionResult(
+                routeSceneCompositionResult,
+                ResolveMaterializedRouteSceneRoots(routeSceneCompositionResult));
             _activityFlowRuntime.SetRouteContentDiscoveryScope(routeContentDiscoveryScope);
             var routeContentEnterResult = _routeContentRuntime.EnterRouteContent(routeContentDiscoveryScope, previousRoute, source, reason);
 

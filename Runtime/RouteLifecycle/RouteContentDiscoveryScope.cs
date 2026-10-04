@@ -1,17 +1,23 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.Authoring;
+using UnityEngine;
 
 namespace Immersive.Framework.RouteLifecycle
 {
     internal readonly struct RouteContentDiscoveryScope
     {
         private readonly RouteContentDiscoveryScene[] _routeOwnedScenes;
+        private readonly GameObject[] _routeOwnedRoots;
 
-        internal RouteContentDiscoveryScope(RouteAsset route, IReadOnlyList<RouteContentDiscoveryScene> routeOwnedScenes)
+        internal RouteContentDiscoveryScope(
+            RouteAsset route,
+            IReadOnlyList<RouteContentDiscoveryScene> routeOwnedScenes,
+            IReadOnlyList<GameObject> routeOwnedRoots)
         {
             Route = route;
             _routeOwnedScenes = CopyScenes(routeOwnedScenes);
+            _routeOwnedRoots = CopyRoots(routeOwnedRoots, _routeOwnedScenes);
         }
 
         internal RouteAsset Route { get; }
@@ -19,7 +25,12 @@ namespace Immersive.Framework.RouteLifecycle
         internal IReadOnlyList<RouteContentDiscoveryScene> RouteOwnedScenes =>
             _routeOwnedScenes ?? Array.Empty<RouteContentDiscoveryScene>();
 
-        internal static RouteContentDiscoveryScope FromCompositionResult(RouteSceneCompositionResult result)
+        internal IReadOnlyList<GameObject> RouteOwnedRoots =>
+            _routeOwnedRoots ?? Array.Empty<GameObject>();
+
+        internal static RouteContentDiscoveryScope FromCompositionResult(
+            RouteSceneCompositionResult result,
+            IReadOnlyList<GameObject> routeOwnedRoots)
         {
             var scenes = new List<RouteContentDiscoveryScene>();
             var sceneKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -35,7 +46,7 @@ namespace Immersive.Framework.RouteLifecycle
                 scenes.Add(new RouteContentDiscoveryScene(entry));
             }
 
-            return new RouteContentDiscoveryScope(result.Route, scenes);
+            return new RouteContentDiscoveryScope(result.Route, scenes, routeOwnedRoots);
         }
 
         private static RouteContentDiscoveryScene[] CopyScenes(IReadOnlyList<RouteContentDiscoveryScene> scenes)
@@ -52,6 +63,61 @@ namespace Immersive.Framework.RouteLifecycle
             }
 
             return copy;
+        }
+
+        private static GameObject[] CopyRoots(
+            IReadOnlyList<GameObject> roots,
+            IReadOnlyList<RouteContentDiscoveryScene> ownedScenes)
+        {
+            if (roots == null || roots.Count == 0 || ownedScenes == null || ownedScenes.Count == 0)
+            {
+                return Array.Empty<GameObject>();
+            }
+
+            var copy = new List<GameObject>(roots.Count);
+            for (int i = 0; i < roots.Count; i++)
+            {
+                GameObject root = roots[i];
+                if (root == null || !BelongsToOwnedRouteScene(root, ownedScenes))
+                {
+                    continue;
+                }
+
+                copy.Add(root);
+            }
+
+            return copy.ToArray();
+        }
+
+        private static bool BelongsToOwnedRouteScene(
+            GameObject root,
+            IReadOnlyList<RouteContentDiscoveryScene> ownedScenes)
+        {
+            if (root == null || !root.scene.IsValid() || !root.scene.isLoaded)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < ownedScenes.Count; i++)
+            {
+                RouteContentDiscoveryScene ownedScene = ownedScenes[i];
+                if (!string.IsNullOrWhiteSpace(ownedScene.ScenePath))
+                {
+                    if (string.Equals(root.scene.path, ownedScene.ScenePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (string.Equals(root.scene.name, ownedScene.SceneName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool AddSceneKey(HashSet<string> sceneKeys, string scenePath, string sceneName)

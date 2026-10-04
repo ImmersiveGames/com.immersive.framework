@@ -110,9 +110,7 @@ namespace Immersive.Framework.ObjectEntry
         private static IReadOnlyList<ObjectEntryDeclaration> CollectScopedSceneDeclarations(
             ObjectEntryScopedCollectionContext context)
         {
-            RouteContentDiscoveryScope scope =
-                RouteContentDiscoveryScope.FromCompositionResult(
-                    context.RouteSceneCompositionResult);
+            RouteContentDiscoveryScope scope = context.RouteContentDiscoveryScope;
             var result = new List<ObjectEntryDeclaration>(SceneCompositionComponentQuery.GetComponents<ObjectEntryDeclaration>(scope));
             if (context.HasActiveActivity)
                 result.AddRange(SceneCompositionComponentQuery.GetActivityOwnedComponents<ObjectEntryDeclaration>(context.ActivityContentDiscoveryScope, context.Activity));

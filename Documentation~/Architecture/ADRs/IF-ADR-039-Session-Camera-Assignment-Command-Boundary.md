@@ -1,6 +1,6 @@
 # IF-ADR-039 — Session Camera Assignment Command Boundary
 
-Status: **Accepted — Implemented / Tested / Integrated / Validated**
+Status: **Accepted — command boundary implemented; Route observer consumer migration integrated, validation pending**
 Proposed: **2026-10-03**
 Type: architecture / Session Camera / public command boundary
 Depends on: **IF-ADR-038**
@@ -86,7 +86,7 @@ This ADR does not introduce:
 
 ## 6. Initial consumer proof
 
-The first consumer proof is the GameFlow sample. The sample owns the transition-to-command decision through an Activity-context adapter; Activity/Route assets remain Camera-free.
+The GameFlow sample owns the transition-to-command decision through one Route-scoped observer using IF-ADR-041; Activity/Route assets remain Camera-free. The command boundary remains the only path to Session Camera Assignment state.
 
 ```text
 Session boot / Hub       -> Fallback; no Clear command
@@ -99,11 +99,11 @@ A/B -> Hub               -> source Activity Exit clears A/B -> Fallback
 C -> Hub                 -> no command
 ```
 
-A and B use distinct Fixed Rig Prefabs referenced directly by `CameraAssignment_GameFlow_A` and `CameraAssignment_GameFlow_B`. The sample derives the exact previous/next Assignment from `ActivityContentLifecycleContext`; it does not read Camera state globally. Basic C remains content-less and requires no Camera adapter.
+A and B use distinct Fixed Rig Prefabs referenced directly by `CameraAssignment_GameFlow_A` and `CameraAssignment_GameFlow_B`. The sample derives the exact previous/current Assignment from `RouteActivityTransitionContext`; it does not read Camera state globally. Basic C remains content-less and requires no Activity-scene adapter.
 
 ## 7. Validation
 
-Closed evidence — 2026-10-04:
+Prior command-boundary evidence — 2026-10-04 (does not validate the IF-ADR-041 consumer migration):
 
 - Framework EditMode aggregate: **163/163 PASS**;
 - Camera Editor tests: **74/74 PASS**;
@@ -117,9 +117,9 @@ Disposition:
 
 ```text
 Implemented  YES
-Tested       YES
-Integrated   YES
-Validated    YES
+Tested       command boundary evidence remains valid; observer migration pending EditMode execution
+Integrated   Route-scoped GameFlow adapter authored; Unity consumer run pending
+Validated    prior command-boundary evidence only; this migration is not validated
 ```
 
-The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status; this closure certifies the IF-ADR-039 command boundary and its initial GameFlow consumer proof.
+The previous evidence certifies the command boundary and its original Activity-context consumer. The IF-ADR-041 Route-observer migration is integrated in authoring but still requires EditMode and Unity consumer validation. The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status.

@@ -1,0 +1,18 @@
+{
+  "name": "Immersive.Framework.RouteLifecycle.Editor.Tests",
+  "rootNamespace": "Immersive.Framework.RouteLifecycle.Tests",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [ "Editor" ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [ "nunit.framework.dll" ],
+  "autoReferenced": false,
+  "defineConstraints": [ "UNITY_INCLUDE_TESTS" ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
