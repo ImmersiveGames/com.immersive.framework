@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; Reset consumer proof PASS; IF-ADR-039 command boundary implemented; IF-ADR-041 GameFlow integration authored with validation pending; broader Camera/Player validation tracked separately**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
 Last updated: **2026-10-04**
 
@@ -172,8 +172,8 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
 | 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
 | 038 | ACCEPTED; current Assignment/Output model implemented | Camera Editor 74/74 PASS; IF-ADR-039 GameFlow command consumer Play Mode PASS | broader IF-ADR-038 recertification remains separately scoped |
-| 039 | ACCEPTED / COMMAND BOUNDARY IMPLEMENTED / PRIOR EVIDENCE RETAINED | Framework EditMode 163/163; Camera 74/74; prior Activity-context GameFlow Play Mode PASS | IF-ADR-041 Route-observer consumer migration requires revalidation |
-| 041 | ACCEPTED / IMPLEMENTATION PRESENT / EDITMODE PENDING / UNITY VALIDATION PENDING | EditMode coverage authored for startup, A->B ordering/exactly-once, A->None and Route release; not run | GameFlow adapter authored once in `SCN_GameFlow_Basic` |
+| 039 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle 6/6; Camera 74/74; Route-scoped GameFlow Play Mode PASS | command boundary and migrated consumer proof closed |
+| 041 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle observer 6/6; GameFlow `Hub -> A -> B -> A -> C -> B -> Hub` Play Mode PASS | one Route-scoped adapter in `SCN_GameFlow_Basic`; ActivityFlow remains authority |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
