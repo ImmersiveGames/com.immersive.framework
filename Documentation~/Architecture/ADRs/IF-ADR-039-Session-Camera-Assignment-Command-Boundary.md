@@ -1,6 +1,6 @@
 # IF-ADR-039 — Session Camera Assignment Command Boundary
 
-Status: **Accepted — Unity validation pending**
+Status: **Accepted — Implemented / Tested / Integrated / Validated**
 Proposed: **2026-10-03**
 Type: architecture / Session Camera / public command boundary
 Depends on: **IF-ADR-038**
@@ -86,27 +86,40 @@ This ADR does not introduce:
 
 ## 6. Initial consumer proof
 
-The first consumer proof is the GameFlow sample:
+The first consumer proof is the GameFlow sample. The sample owns the transition-to-command decision through an Activity-context adapter; Activity/Route assets remain Camera-free.
 
 ```text
-Hub / Basic C -> Clear the sample-owned active Assignment -> Fallback
-Basic A       -> Activate/Replace Assignment A
-Basic B       -> Replace Assignment B
+Session boot / Hub       -> Fallback; no Clear command
+Hub -> Basic A           -> Activate A
+A -> B                   -> Replace A -> B
+B -> A                   -> Replace B -> A
+A/B -> C                 -> source Activity Exit clears A/B -> Fallback
+C -> A/B                 -> Activate A/B
+A/B -> Hub               -> source Activity Exit clears A/B -> Fallback
+C -> Hub                 -> no command
 ```
 
-A and B use distinct Fixed Rig Prefabs referenced directly by `CameraAssignment_GameFlow_A` and `CameraAssignment_GameFlow_B` assets. The sample owns the decision to issue these commands; Activity assets themselves remain Camera-free. Basic C clears the active referenced Assignment and returns its Outputs to fallback.
+A and B use distinct Fixed Rig Prefabs referenced directly by `CameraAssignment_GameFlow_A` and `CameraAssignment_GameFlow_B`. The sample derives the exact previous/next Assignment from `ActivityContentLifecycleContext`; it does not read Camera state globally. Basic C remains content-less and requires no Camera adapter.
 
 ## 7. Validation
 
-Required evidence:
+Closed evidence — 2026-10-04:
 
-- Activate from no Assignment to a valid SessionScoped Assignment;
-- Replace A -> B without winner gap;
-- failed Replace preserves A;
-- Clear B -> Fallback and clears normal Assignment state;
-- Activate again after Clear;
-- temporary transition fallback does not clear the Assignment;
-- no Route/Activity Camera authoring is introduced;
-- Session shutdown remains clean.
+- Framework EditMode aggregate: **163/163 PASS**;
+- Camera Editor tests: **74/74 PASS**;
+- regression coverage proves Activate, Replace and Clear while temporary Fallback coverage is owned;
+- GameFlow Play Mode proves Hub -> A, A -> B, B -> A, A/B -> C, C -> A/B and A/B -> Hub with `blockingIssues=0`;
+- the covered Hub -> A path closes with Assignment A active and its normal occurrence restored when transition coverage releases;
+- C and Hub close with no active normal Assignment;
+- no Route/Activity Camera fields, CameraRequest, global Camera lookup or UI-owned Camera decision were introduced.
 
-Report Implemented / Tested / Integrated / Validated separately.
+Disposition:
+
+```text
+Implemented  YES
+Tested       YES
+Integrated   YES
+Validated    YES
+```
+
+The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status; this closure certifies the IF-ADR-039 command boundary and its initial GameFlow consumer proof.

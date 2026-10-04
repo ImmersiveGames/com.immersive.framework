@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; IF-ADR-035 Reset scenarios 1-8 manually validated in planet-devourer; Camera/Player validation pending**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; Reset consumer proof PASS; IF-ADR-039 Camera command boundary consumer-validated; broader Camera/Player validation tracked separately**
 
-Last updated: **2026-10-02**
+Last updated: **2026-10-04**
 
 ## Authority and status model
 
@@ -171,7 +171,8 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
 | 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
-| 038 | ACCEPTED; source implementation through CAMERA-038-L present | Assignment-owned Player Output projection and focused Editor test sources added; Unity validation pending | CAMERA-038-J/K/L partial; remaining serialized consumer migration, Unity validation and QA recertification pending |
+| 038 | ACCEPTED; current Assignment/Output model implemented | Camera Editor 74/74 PASS; IF-ADR-039 GameFlow command consumer Play Mode PASS | broader IF-ADR-038 recertification remains separately scoped |
+| 039 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 163/163; Camera 74/74; GameFlow Activate/Replace/Clear Play Mode PASS | command boundary and initial consumer proof closed |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 

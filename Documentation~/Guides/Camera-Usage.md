@@ -1,9 +1,9 @@
 # Camera Usage
 
-Status: **IF-ADR-038 Assignment-owned Player Output mapping in active implementation; Unity import/Play Mode validation pending.**
+Status: **IF-ADR-038 Assignment-owned model active; IF-ADR-039 command boundary integrated and GameFlow consumer-validated.**
 Last updated: **2026-10-03**
 
-Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) is Accepted; Unity validation remains pending. This guide describes the current authored model reflected by implementation and package documentation. This status is not Unity validation or promotion of Experimental Camera assets to Stable API.
+Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) and [IF-ADR-039](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md) are Accepted. The IF-ADR-039 command boundary is implemented, Editor-tested and consumer-validated in GameFlow; broader IF-ADR-038 recertification remains separately scoped. This does not promote Experimental Camera assets to Stable API.
 
 ## Mental model
 
@@ -23,7 +23,7 @@ Camera Output (Unity Camera + Cinemachine Brain)
 
 Subjects are supplied by the current Actor occurrence. Camera configuration defines rig behavior. The Session Assignment determines membership, target policy, occurrence mode and Output mapping. Each physical Output presents one normal occurrence or its Fallback Camera.
 
-There is no CameraRequest/precedence selection surface. Runtime Assignment changes use the explicit `SessionCameraAssignmentCommandTrigger` boundary defined by IF-ADR-039.
+There is no CameraRequest/precedence selection surface. Runtime Assignment changes use the explicit `ISessionCameraAssignmentCommandPort` boundary defined by IF-ADR-039. `SessionCameraAssignmentCommandTrigger` is only an optional Inspector/UnityEvent adapter.
 
 ## Supported composition
 
@@ -55,10 +55,27 @@ Additional gameplay cameras such as cutscenes remain game/Cinemachine-owned. The
 2. Create a `Session Camera Assignment` asset, reference a Rig Prefab with `CameraRigComposer`, then set occurrence, membership and target policies and explicit Outputs. For Individual mode, map each member Slot to its Output on that Assignment.
 3. Reference reusable Assignment assets in the Game Application startup list or in Session Camera command triggers. The asset owns its generated Assignment identity; consumers do not type IDs.
 4. On each Actor occurrence that will be a camera target, author `ActorCameraSubjectAuthoring` and set the intended `ObservationTransform`.
-5. When gameplay needs to change the active Assignment at runtime, use the Session Camera command boundary with `Activate`, `Replace` or `Clear`. `SessionCameraAssignmentCommandTrigger` is an optional scene adapter for Inspector and UnityEvent workflows; it binds in Persistent Content and managed Route/Activity additive scenes through SceneLifecycle. Route/Activity assets remain Camera-free.
+5. When gameplay needs to change the active Assignment at runtime, use the Session Camera command boundary with `Activate`, `Replace` or `Clear`. `SessionCameraAssignmentCommandTrigger` is an optional scene adapter for Inspector and UnityEvent workflows. Any scene-local component may instead implement `ISessionCameraAssignmentCommandConsumer` and receive the same exact command port through SceneLifecycle. Binding applies to Session roots and managed Route/Activity scene scopes, including Route primary scenes and additive Activity scenes. Route/Activity assets remain Camera-free.
 6. Validate Camera authoring through the owning Inspector. Confirm every required Output mapping and fallback is explicit.
 
 The concrete Output prefab and assignment settings must match the intended one-Output, shared or per-Player design. See IF-ADR-038 for cardinality and failure details.
+
+## Current command-boundary proof
+
+GameFlow validates the contextual composition path without giving Camera ownership to Route or Activity:
+
+```text
+Hub -> A     Activate A
+A -> B       Replace A -> B
+B -> A       Replace B -> A
+A/B -> C     Clear source -> Fallback
+C -> A/B     Activate destination
+A/B -> Hub   Clear source -> Fallback
+```
+
+The sample adapter derives the exact previous/next Assignment from `ActivityContentLifecycleContext`, implements `ISessionCameraAssignmentCommandConsumer`, and never reads current Camera state globally. Activity C remains content-less. Covered transitions keep Fallback presentation independent from the configured active Assignment.
+
+Validation evidence: Framework EditMode **163/163 PASS**, Camera Editor **74/74 PASS**, and GameFlow Play Mode PASS for the command sequence above.
 
 ## Common mistakes
 
