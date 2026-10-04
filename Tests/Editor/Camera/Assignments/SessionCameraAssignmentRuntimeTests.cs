@@ -442,6 +442,112 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void ActivateDuringTemporaryFallbackCoverageCommitsAssignmentAndPresentsAfterRelease()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            Assert.That(SessionCameraAssignmentRuntime.TryCreate(
+                System.Array.Empty<SessionCameraAssignmentAsset>(),
+                fixture.Topology,
+                fixture.Root.transform,
+                out SessionCameraAssignmentRuntime runtime,
+                out string issue), Is.True, issue);
+            _runtimes.Add(runtime);
+
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            var coverageOwner = new CameraOutputFallbackCoverageOwnerId("test.activate.coverage");
+            Assert.That(output.CoverWithFallback(coverageOwner).Succeeded, Is.True);
+
+            Assert.That(runtime.TryActivateAssignment(
+                fixture.Assignments[0],
+                out issue), Is.True, issue);
+
+            Assert.That(output.IsFallbackCoverageActive, Is.True);
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(fixture.AssignmentId));
+            Assert.That(output.OutputState.HasRetainedNormalOccurrence, Is.True);
+            Assert.That(output.OutputState.HasPresentedNormalOccurrence, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(output.Applicator.HasAppliedFallback, Is.True);
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+
+            Assert.That(output.ReleaseFallbackCoverage(coverageOwner).Succeeded, Is.True);
+            Assert.That(output.IsFallbackCoverageActive, Is.False);
+            Assert.That(output.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(runtime.Occurrences[0].Identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.Applicator.AppliedCamera,
+                Is.EqualTo(runtime.Occurrences[0].Composer.CinemachineCamera));
+        }
+
+        [Test]
+        public void ReplaceDuringTemporaryFallbackCoverageCommitsCandidateAndPresentsAfterRelease()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            var coverageOwner = new CameraOutputFallbackCoverageOwnerId("test.replace.coverage");
+            Assert.That(output.CoverWithFallback(coverageOwner).Succeeded, Is.True);
+
+            SessionCameraAssignmentAsset candidate = CreateReplacementAuthoring(
+                fixture,
+                "assignment.covered-replacement",
+                CameraOccurrenceMode.SessionScoped,
+                CameraTargetPolicy.NoSubject,
+                new[] { 0 },
+                null);
+
+            Assert.That(runtime.TryReplaceAssignment(
+                fixture.AssignmentId,
+                candidate,
+                System.Array.Empty<SessionCameraMemberState>(),
+                out string issue), Is.True, issue);
+
+            var expectedAssignment =
+                new SessionCameraAssignmentId("assignment.covered-replacement");
+            Assert.That(output.IsFallbackCoverageActive, Is.True);
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(expectedAssignment));
+            Assert.That(output.OutputState.HasRetainedNormalOccurrence, Is.True);
+            Assert.That(output.OutputState.HasPresentedNormalOccurrence, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(output.Applicator.HasAppliedFallback, Is.True);
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0].Assignment.Id, Is.EqualTo(expectedAssignment));
+
+            Assert.That(output.ReleaseFallbackCoverage(coverageOwner).Succeeded, Is.True);
+            Assert.That(output.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(runtime.Occurrences[0].Identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.Applicator.AppliedCamera,
+                Is.EqualTo(runtime.Occurrences[0].Composer.CinemachineCamera));
+        }
+
+        [Test]
+        public void ClearDuringTemporaryFallbackCoverageEndsAssignmentAndRemainsFallbackAfterRelease()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            var coverageOwner = new CameraOutputFallbackCoverageOwnerId("test.clear.coverage");
+            Assert.That(output.CoverWithFallback(coverageOwner).Succeeded, Is.True);
+
+            Assert.That(runtime.TryClearAssignment(
+                fixture.AssignmentId,
+                out string issue), Is.True, issue);
+
+            Assert.That(output.IsFallbackCoverageActive, Is.True);
+            Assert.That(output.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(output.OutputState.HasRetainedNormalOccurrence, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(output.Applicator.HasAppliedFallback, Is.True);
+            Assert.That(runtime.Occurrences, Is.Empty);
+
+            Assert.That(output.ReleaseFallbackCoverage(coverageOwner).Succeeded, Is.True);
+            Assert.That(output.IsFallbackCoverageActive, Is.False);
+            Assert.That(output.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(output.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(output.Applicator.HasAppliedFallback, Is.True);
+        }
+
+        [Test]
         public void ActivateRejectsOccupiedOutputAndPreservesCurrentAssignment()
         {
             Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);

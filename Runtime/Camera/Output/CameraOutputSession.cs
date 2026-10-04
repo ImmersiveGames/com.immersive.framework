@@ -118,7 +118,8 @@ namespace Immersive.Framework.Camera
                     "Assignment replacement requires the concrete Camera Output applicator.");
             }
 
-            return fallbackCovering
+            bool keepFallbackPresentation = fallbackCovering || IsFallbackCoverageActive;
+            return keepFallbackPresentation
                 ? _applicator.ApplyFallbackCoverage(_fallbackRig.Composer)
                 : _applicator.ApplySessionOccurrence(composer);
         }
@@ -131,11 +132,12 @@ namespace Immersive.Framework.Camera
             bool fallbackCovering,
             out string issue)
         {
+            bool keepFallbackPresentation = fallbackCovering || IsFallbackCoverageActive;
             if (!_outputState.TryCommitReplacement(
                     expected.OutputState,
                     assignment,
                     occurrence,
-                    fallbackCovering,
+                    keepFallbackPresentation,
                     out issue))
             {
                 return false;
@@ -215,13 +217,6 @@ namespace Immersive.Framework.Camera
             CameraOccurrenceIdentity occurrence,
             CameraRigComposer occurrenceComposer)
         {
-            if (_fallbackCoverageOwners.Count > 0)
-            {
-                return CameraOccurrenceOutputResult.Rejected(
-                    _applicator.AppliedCamera,
-                    "A normal Session Camera Occurrence cannot be applied while temporary Fallback coverage is owned.");
-            }
-
             if (!_outputState.CanPresentNormalOccurrence(occurrence, out string issue))
             {
                 return CameraOccurrenceOutputResult.Rejected(
@@ -234,6 +229,19 @@ namespace Immersive.Framework.Camera
                 return CameraOccurrenceOutputResult.Rejected(
                     _applicator.AppliedCamera,
                     "Session Camera Occurrence application requires the concrete Output applicator.");
+            }
+
+            if (_fallbackCoverageOwners.Count > 0)
+            {
+                if (!_outputState.TryRetainNormalOccurrence(occurrence, out issue))
+                {
+                    return CameraOccurrenceOutputResult.Rejected(
+                        _applicator.AppliedCamera,
+                        "Session Camera Occurrence could not be retained under temporary Fallback coverage. " + issue);
+                }
+
+                _presentedNormalRig = CameraRigReference.FromComposer(occurrenceComposer);
+                return CameraOccurrenceOutputResult.Preserved(_applicator.AppliedCamera);
             }
 
             CameraOccurrenceOutputResult applyResult =

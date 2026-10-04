@@ -231,6 +231,15 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
+        internal bool TryRetainNormalOccurrence(CameraOccurrenceIdentity occurrence, out string issue)
+        {
+            if (!CanPresentNormalOccurrence(occurrence, out issue)) return false;
+            _normalOccurrence = occurrence;
+            IsFallbackCovering = true;
+            issue = string.Empty;
+            return true;
+        }
+
         public bool TryPresentNormalOccurrence(CameraOccurrenceIdentity occurrence, out string issue)
         {
             if (!CanPresentNormalOccurrence(occurrence, out issue)) return false;
