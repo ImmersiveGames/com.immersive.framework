@@ -78,6 +78,12 @@ Phase 2 / Audio evidence:
 - no Route/Activity consumers remained bound or were destroyed while bound;
 - `firstDivergence=''` and `cleanupIssue=''`.
 
+Route-scoped Activity transition observation added by IF-ADR-041 is also validated:
+
+- Framework EditMode aggregate: **169/169 PASS**;
+- RouteLifecycle observer coverage: **6/6 PASS**;
+- GameFlow Play Mode proves one observer retained by the Route composition across A/B/C and released with the Route, while Camera commands remain feature-owned.
+
 `SceneProvidedLocalPlayerAuthoring` remains intentionally outside this model for the admission/candidate-discovery reasons recorded above. This is a documented exception, not an unfinished migration item.
 
 The accepted scope of IF-ADR-040 is therefore implemented, integrated and validated. Future features may adopt this composition protocol when their ownership/lifetime matches it; this ADR does not require unrelated lifetime models to converge on Scene Composition.
