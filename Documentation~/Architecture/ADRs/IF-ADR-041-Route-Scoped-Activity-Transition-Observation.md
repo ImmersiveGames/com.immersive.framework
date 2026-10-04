@@ -1,6 +1,6 @@
 # IF-ADR-041 — Route-Scoped Activity Transition Observation
 
-Status: **Accepted — implementation present; EditMode execution pending**
+Status: **Accepted — Implemented / Tested / Integrated / Validated**
 Proposed: **2026-10-03**
 Type: architecture / Activity Flow / Route composition
 Depends on: **IF-ADR-001, IF-ADR-039, IF-ADR-040**
@@ -25,7 +25,7 @@ Observers are discovered from explicit Route composition roots and follow the bi
 - **Observer:** reads the committed transition and applies its own sample/game policy; it has no Activity Flow authority.
 - **Session Camera:** remains the single writer of Session Camera Assignment state. A Route observer may consume the existing command port but does not own Camera state.
 
-## Minimal public API proposal
+## Public API
 
 Add an immutable context and one read-only receiver contract:
 
@@ -53,7 +53,7 @@ namespace Immersive.Framework.RouteLifecycle
 
 ## Scope
 
-The GameFlow sample will host one observer and Session Camera command consumer in `SCN_GameFlow_Basic`, authored for `Route_BasicFlow`. It maps Previous/Current Activity to Assignment A/B/none and emits Activate, Replace, Clear or no command. The Route selects no Camera and owns no Assignment; this is sample policy, and Session Camera remains authoritative.
+The GameFlow sample hosts one observer and Session Camera command consumer in `SCN_GameFlow_Basic`, authored for `Route_BasicFlow`. It maps Previous/Current Activity to Assignment A/B/none and emits Activate, Replace, Clear or no command. The Route selects no Camera and owns no Assignment; this is sample policy, and Session Camera remains authoritative.
 
 ## Consequences
 
@@ -69,10 +69,25 @@ The GameFlow sample will host one observer and Session Camera command consumer i
 - Activity Flow command, veto, polling or subscription/event-bus APIs for the observer.
 - Camera-specific transition callbacks or changes to the Session Camera command port.
 
-## Current implementation coverage
+## Validation closure — 2026-10-04
 
-- Public immutable context and read-only observer contract added.
+- Public immutable context and read-only observer contract are implemented.
 - ActivityFlow dispatches after Activity content Exit/Enter callbacks and before Activity finalization/release.
 - Route clear dispatches `CurrentActivity == null` before Route content Exit and Route composition release.
-- EditMode tests added for startup entry ordering, A->B exactly-once ordering after Activity Exit/Enter, A->None delivery while the Route root remains loaded, and no delivery after Route contribution release. Unity execution remains pending.
-- GameFlow adapter moved to one Route contribution in `SCN_GameFlow_Basic`; A/B scene copies removed.
+- Framework EditMode aggregate: **169/169 PASS**.
+- RouteLifecycle observer coverage: **6/6 PASS**, including startup delivery, A->B ordering/exactly-once, A->None while the Route composition remains alive, and no delivery after Route-root release.
+- Camera Editor regression suite remains **74/74 PASS**.
+- GameFlow Play Mode validated the single Route-scoped adapter through the executed path `Hub -> A -> B -> A -> C -> B -> Hub`, with every Route/Activity request completing with `blockingIssues=0`.
+- Runtime Camera state matched policy at the transition boundaries: Hub->A closed with Assignment A active; A->C closed with no active normal Assignment; C->B restored Assignment B; B->Hub closed with no active normal Assignment.
+- Activity C remains content-less and has no Camera adapter; the policy persists because the observer lifetime is Route-scoped.
+
+Disposition:
+
+```text
+Implemented  YES
+Tested       YES — Framework EditMode 169/169; RouteLifecycle 6/6
+Integrated   YES — one Route-scoped GameFlow adapter in SCN_GameFlow_Basic
+Validated    YES — Unity Play Mode consumer proof completed
+```
+
+This closure validates the IF-ADR-041 lifecycle observation contract and its initial GameFlow consumer. It does not broaden Route authority: ActivityFlow remains the transition owner and Session Camera remains the sole writer of Assignment state.
