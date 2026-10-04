@@ -76,9 +76,20 @@ namespace Immersive.Framework.CameraAuthoring
                 issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' must not contain CameraOutputAuthoring.";
                 return false;
             }
-            if (composers[0].BehaviorDefinition is GroupCameraRigBehaviorDefinition)
+            bool usesGroupBehavior =
+                composers[0].BehaviorDefinition is GroupCameraRigBehaviorDefinition;
+            if (usesGroupBehavior &&
+                (occurrenceMode != CameraOccurrenceMode.SharedGroup ||
+                 membershipPolicy != CameraMembershipPolicy.ExplicitPlayerSlots ||
+                 targetPolicy != CameraTargetPolicy.MemberActorTargets))
             {
-                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' cannot use Group behavior in the current Session membership cut; shared Group projection is deferred.";
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' uses Group behavior, which requires SharedGroup occurrence mode, ExplicitPlayerSlots membership, and MemberActorTargets.";
+                return false;
+            }
+            if (usesGroupBehavior &&
+                !CameraGroupProvenance.Validate(composers[0], true, out issue))
+            {
+                issue = $"Session Camera Assignment Rig Prefab '{rigPrefab.name}' has invalid Group materialization. {issue}";
                 return false;
             }
             if (!composers[0].TryValidateForApply(out issue))

@@ -331,6 +331,118 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void SharedGroupProjectsZeroToTwoToZeroSubjectsAndKeepsOccurrence()
+        {
+            Fixture fixture = CreateSharedGroupFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+            CinemachineTargetGroup group = occurrence.Composer.FrameworkOwnedGroupTargetGroup;
+
+            Assert.That(group.Targets, Is.Empty);
+            Assert.That(fixture.Outputs.All(output => output.Session.OutputState.IsFallbackCovering), Is.True);
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow, Is.SameAs(group.transform));
+
+            PlayerOccurrenceId firstPlayer = PlayerOccurrenceId.Create(
+                "shared-group-sequence", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId secondPlayer = PlayerOccurrenceId.Create(
+                "shared-group-sequence", 1, PlayerSlotId.Player2);
+            CameraSubject firstSubject = CreateSubject("Group First", 1.25f);
+            CameraSubject secondSubject = CreateSubject("Group Second", 0f);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                firstPlayer, PlayerSlotId.Player1, firstSubject, out string issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(1));
+            Assert.That(group.Targets[0].Object, Is.SameAs(firstSubject.Observation));
+            Assert.That(group.Targets[0].Radius, Is.EqualTo(1.25f));
+            Assert.That(group.Targets[0].Weight, Is.EqualTo(occurrence.Composer.GroupMemberWeight));
+            Assert.That(fixture.Outputs.All(output => !output.Session.OutputState.IsFallbackCovering), Is.True);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                secondPlayer, PlayerSlotId.Player2, secondSubject, out issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(2));
+            Assert.That(group.Targets.Select(target => target.Object),
+                Is.EquivalentTo(new[] { firstSubject.Observation, secondSubject.Observation }));
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                secondPlayer, PlayerSlotId.Player2, secondSubject, out issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(2));
+            Assert.That(group.Targets.Single(target => target.Object == secondSubject.Observation).Radius,
+                Is.EqualTo(occurrence.Composer.GroupMemberRadius));
+
+            Assert.That(runtime.RemovePlayerOccurrence(firstPlayer, out issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(1));
+            Assert.That(group.Targets[0].Object, Is.SameAs(secondSubject.Observation));
+            Assert.That(runtime.RemovePlayerOccurrence(secondPlayer, out issue), Is.True, issue);
+            Assert.That(group.Targets, Is.Empty);
+            Assert.That(fixture.Outputs.All(output => output.Session.OutputState.IsFallbackCovering), Is.True);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
+        }
+
+        [Test]
+        public void SharedGroupRejoinAndActorReplacementProjectOnlyCurrentSubjects()
+        {
+            Fixture fixture = CreateSharedGroupFixture();
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            CinemachineTargetGroup group = occurrence.Composer.FrameworkOwnedGroupTargetGroup;
+            PlayerOccurrenceId firstJoin = PlayerOccurrenceId.Create(
+                "shared-group-rejoin", 1, PlayerSlotId.Player1);
+            PlayerOccurrenceId rejoin = PlayerOccurrenceId.Create(
+                "shared-group-rejoin", 2, PlayerSlotId.Player1);
+            CameraSubject oldSubject = CreateSubject("Old Actor Subject", 0.75f);
+            CameraSubject rejoinedSubject = CreateSubject("Rejoined Actor Subject", 1.5f);
+            CameraSubject replacementSubject = CreateSubject("Replacement Actor Subject", 2f);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                firstJoin, PlayerSlotId.Player1, oldSubject, out string issue), Is.True, issue);
+            Assert.That(runtime.RemovePlayerOccurrence(firstJoin, out issue), Is.True, issue);
+            Assert.That(group.Targets, Is.Empty);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                rejoin, PlayerSlotId.Player1, rejoinedSubject, out issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(1));
+            Assert.That(group.Targets[0].Object, Is.SameAs(rejoinedSubject.Observation));
+            Assert.That(fixture.Outputs.All(output => !output.Session.OutputState.IsFallbackCovering), Is.True);
+
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                rejoin, PlayerSlotId.Player1, replacementSubject, out issue), Is.True, issue);
+            Assert.That(group.Targets, Has.Count.EqualTo(1));
+            Assert.That(group.Targets[0].Object, Is.SameAs(replacementSubject.Observation));
+            Assert.That(group.Targets[0].Radius, Is.EqualTo(2f));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+        }
+
+        [Test]
+        public void GroupAssignmentAuthoringAcceptsOnlySharedExplicitActorMembership()
+        {
+            Fixture fixture = CreateSharedGroupFixture();
+            SessionCameraAssignmentAsset assignment = fixture.Assignments[0];
+            Assert.That(assignment.TryBuild(out _, out string validIssue), Is.True, validIssue);
+
+            SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SessionScoped);
+            Assert.That(assignment.TryBuild(out _, out string sessionGroupIssue), Is.False);
+            StringAssert.Contains("SharedGroup", sessionGroupIssue);
+
+            SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SharedGroup);
+            SetField(assignment, "membershipPolicy", CameraMembershipPolicy.None);
+            SetField(assignment, "memberSlots", new List<PlayerSlotProfile>());
+            Assert.That(assignment.TryBuild(out _, out string noMembershipIssue), Is.False);
+            StringAssert.Contains("ExplicitPlayerSlots", noMembershipIssue);
+
+            SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
+            SetField(assignment, "memberSlots", new List<PlayerSlotProfile>
+            {
+                CreatePlayerSlotProfile("player.1", "Shared Player One"),
+                CreatePlayerSlotProfile("player.2", "Shared Player Two")
+            });
+            SetField(assignment, "targetPolicy", CameraTargetPolicy.NoSubject);
+            Assert.That(assignment.TryBuild(out _, out string noTargetIssue), Is.False);
+            StringAssert.Contains("MemberActorTargets", noTargetIssue);
+        }
+
+        [Test]
         public void SharedRejoinUsesNewPlayerOccurrenceAndProviderOriginIsIrrelevant()
         {
             Fixture fixture = CreateSharedFixture();
@@ -1150,6 +1262,34 @@ namespace Immersive.Framework.Camera.Tests
             return fixture;
         }
 
+        private Fixture CreateSharedGroupFixture()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.MemberActorTargets);
+            SessionCameraAssignmentAsset assignment = fixture.Assignments[0];
+            SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SharedGroup);
+            SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);
+            SetField(assignment, "outputDefinitions",
+                new List<CameraOutputDefinition>(fixture.OutputDefinitions));
+            SetField(assignment, "memberSlots", new List<PlayerSlotProfile>
+            {
+                CreatePlayerSlotProfile("player.1", "Shared Player One"),
+                CreatePlayerSlotProfile("player.2", "Shared Player Two")
+            });
+
+            var groupBehavior = ScriptableObject.CreateInstance<GroupCameraRigBehaviorDefinition>();
+            _created.Add(groupBehavior);
+            CameraRigComposer composer = fixture.RigPrefab.GetComponent<CameraRigComposer>();
+            SetField(composer, "behaviorDefinition", groupBehavior);
+            var groupRoot = new GameObject("Group Target Group");
+            groupRoot.transform.SetParent(fixture.RigPrefab.transform, false);
+            _created.Add(groupRoot);
+            CinemachineTargetGroup group = groupRoot.AddComponent<CinemachineTargetGroup>();
+            CinemachineGroupFraming framing = composer.CinemachineCamera.gameObject
+                .AddComponent<CinemachineGroupFraming>();
+            composer.EditorSetGroupMaterialization(group, framing);
+            return fixture;
+        }
+
         private SessionCameraAssignmentAsset CreateReplacementAuthoring(
             Fixture fixture,
             string assignmentId,
@@ -1216,12 +1356,18 @@ namespace Immersive.Framework.Camera.Tests
 
         private CameraSubject CreateSubject(string name)
         {
+            return CreateSubject(name, 0f);
+        }
+
+        private CameraSubject CreateSubject(string name, float framingRadius)
+        {
             var root = new GameObject(name);
             _created.Add(root);
             return new CameraSubject(
                 new CameraSubjectId("subject." + name.Replace(' ', '.').ToLowerInvariant()),
                 root.transform,
-                name);
+                name,
+                framingRadius);
         }
 
         private SessionCameraAssignmentRuntime CreateIndividualRuntime(Fixture fixture)

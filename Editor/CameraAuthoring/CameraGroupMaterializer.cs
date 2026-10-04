@@ -32,10 +32,20 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 framing = useUndo
                     ? Undo.AddComponent<CinemachineGroupFraming>(cameraObject)
                     : cameraObject.AddComponent<CinemachineGroupFraming>();
-                framing.enabled = false;
                 report.MarkCreated("group:group-framing");
             }
+
+            if (useUndo) Undo.RecordObject(framing, "Configure Group Framing");
+            framing.enabled = true;
+            framing.FramingSize = composer.GroupFramingSize;
+            framing.Damping = composer.GroupDamping;
+            framing.FovRange = composer.GroupFovRange;
+            framing.DollyRange = composer.GroupDollyRange;
+            framing.OrthoSizeRange = composer.GroupOrthoSizeRange;
+
             composer.EditorSetGroupMaterialization(group, framing);
+            EditorUtility.SetDirty(framing);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(framing);
             EditorUtility.SetDirty(composer);
             PrefabUtility.RecordPrefabInstancePropertyModifications(composer);
         }

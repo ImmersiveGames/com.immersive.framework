@@ -511,6 +511,19 @@ namespace Immersive.Framework.PlayerParticipation
                 }
 
                 RebuildActiveRecordFromReadiness(session);
+                // The Slot assignment remains authoritative until contextual release below.
+                // It must not make this Leaving Player reappear in the Activity lifecycle ledger.
+                _activeRecord = new ActiveActivityRecord(
+                    _activeRecord.Activity,
+                    _activeRecord.Owner,
+                    _activeRecord.RequirementLevel,
+                    _activeRecord.ProjectedSlotCount,
+                    _activeRecord.SelectedCount,
+                    FilterContextualSlotsForLeave(
+                        _activeRecord.ContextualSlots,
+                        playerSlotId),
+                    _activeRecord.PreparedSlots,
+                    _activeRecord.AdmittedHosts);
                 UpdateLifecycleSnapshot(
                     _playerReadinessRecord.completed
                         ? ActivityPlayerActorLifecycleStatus.SucceededEntered
@@ -590,6 +603,29 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             activityLedgerRetired = !ActivityLedgerContainsSlot(playerSlotId);
+        }
+
+        internal static IReadOnlyList<PlayerSlotId>
+            FilterContextualSlotsForLeave(
+                IReadOnlyList<PlayerSlotId> contextualSlots,
+                PlayerSlotId leavingSlot)
+        {
+            var remaining = new List<PlayerSlotId>();
+            if (contextualSlots == null)
+            {
+                return remaining;
+            }
+
+            for (int index = 0; index < contextualSlots.Count; index++)
+            {
+                PlayerSlotId slot = contextualSlots[index];
+                if (slot != leavingSlot)
+                {
+                    remaining.Add(slot);
+                }
+            }
+
+            return remaining;
         }
 
         private bool ActivityLedgerContainsSlot(PlayerSlotId playerSlotId)

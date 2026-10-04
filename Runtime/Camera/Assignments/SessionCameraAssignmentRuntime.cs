@@ -44,6 +44,12 @@ namespace Immersive.Framework.Camera
         {
             get
             {
+                if (Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
+                    Composer?.BehaviorDefinition is GroupCameraRigBehaviorDefinition)
+                {
+                    return ResolvedSubjects.Count > 0;
+                }
+
                 if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets ||
                     Assignment.OccurrenceMode == CameraOccurrenceMode.SharedGroup)
                 {
@@ -188,6 +194,14 @@ namespace Immersive.Framework.Camera
             }
         }
 
+        internal void ApplyCurrentSubjects()
+        {
+            if (Composer?.BehaviorDefinition is GroupCameraRigBehaviorDefinition)
+            {
+                ApplyResolvedSubjects(true);
+            }
+        }
+
         private void ApplyResolvedSubjects(bool updateFallbackCoverage)
         {
             if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets ||
@@ -198,7 +212,25 @@ namespace Immersive.Framework.Camera
 
             IReadOnlyList<SessionCameraMemberState> resolvedSubjects = ResolvedSubjects;
 
-            // Group framing is a later cut. Keep all evidence and never choose an arbitrary member.
+            if (Composer.BehaviorDefinition is GroupCameraRigBehaviorDefinition)
+            {
+                ApplyGroupSubjects(resolvedSubjects);
+                if (!updateFallbackCoverage)
+                {
+                    return;
+                }
+
+                if (resolvedSubjects.Count == 0)
+                {
+                    CoverForMissingRequiredSubject();
+                }
+                else
+                {
+                    ReleaseSubjectFallbackCoverage();
+                }
+                return;
+            }
+
             if (resolvedSubjects.Count != 1)
             {
                 Composer.CinemachineCamera.Follow = null;
@@ -231,6 +263,38 @@ namespace Immersive.Framework.Camera
             {
                 ReleaseSubjectFallbackCoverage();
             }
+        }
+
+        private void ApplyGroupSubjects(
+            IReadOnlyList<SessionCameraMemberState> resolvedSubjects)
+        {
+            CinemachineTargetGroup targetGroup = Composer.FrameworkOwnedGroupTargetGroup;
+            var targets = new List<CinemachineTargetGroup.Target>(resolvedSubjects.Count);
+            var projectedObservations = new HashSet<Transform>();
+            for (int index = 0; index < resolvedSubjects.Count; index++)
+            {
+                CameraSubject subject = resolvedSubjects[index].Subject;
+                if (!subject.IsValid || !projectedObservations.Add(subject.Observation))
+                {
+                    continue;
+                }
+
+                targets.Add(new CinemachineTargetGroup.Target
+                {
+                    Object = subject.Observation,
+                    Radius = subject.FramingRadius > 0f
+                        ? subject.FramingRadius
+                        : Composer.GroupMemberRadius,
+                    Weight = Composer.GroupMemberWeight
+                });
+            }
+
+            targetGroup.Targets = targets;
+            Composer.CinemachineCamera.Follow = targetGroup.transform;
+            Composer.CinemachineCamera.LookAt =
+                Composer.EffectiveLookAtRequirement == CameraTargetRequirement.NotUsed
+                    ? null
+                    : targetGroup.transform;
         }
 
         private void CoverForMissingRequiredSubject()
@@ -1080,8 +1144,7 @@ namespace Immersive.Framework.Camera
                 {
                     SessionCameraOccurrence occurrence = candidateOccurrences[index];
                     if (!occurrence.IsReadyForOutput &&
-                        occurrence.Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
-                        occurrence.Assignment.OccurrenceMode != CameraOccurrenceMode.SharedGroup)
+                        occurrence.Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets)
                     {
                         occurrence.AdoptSubjectFallbackCoverageAfterReplacement();
                     }
@@ -1838,6 +1901,8 @@ namespace Immersive.Framework.Camera
                         DestroyOccurrences(candidates);
                         return false;
                     }
+
+                    occurrence.ApplyCurrentSubjects();
                 }
 
                 for (int assignmentIndex = 0;
