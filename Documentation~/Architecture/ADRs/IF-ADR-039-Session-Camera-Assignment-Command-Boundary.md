@@ -1,6 +1,6 @@
 # IF-ADR-039 — Session Camera Assignment Command Boundary
 
-Status: **Accepted — command boundary implemented; Route observer consumer migration integrated, validation pending**
+Status: **Accepted — Implemented / Tested / Integrated / Validated**
 Proposed: **2026-10-03**
 Type: architecture / Session Camera / public command boundary
 Depends on: **IF-ADR-038**
@@ -93,9 +93,9 @@ Session boot / Hub       -> Fallback; no Clear command
 Hub -> Basic A           -> Activate A
 A -> B                   -> Replace A -> B
 B -> A                   -> Replace B -> A
-A/B -> C                 -> source Activity Exit clears A/B -> Fallback
+A/B -> C                 -> Route observer clears A/B -> Fallback
 C -> A/B                 -> Activate A/B
-A/B -> Hub               -> source Activity Exit clears A/B -> Fallback
+A/B -> Hub               -> Route observer receives Activity None and clears A/B -> Fallback
 C -> Hub                 -> no command
 ```
 
@@ -103,23 +103,28 @@ A and B use distinct Fixed Rig Prefabs referenced directly by `CameraAssignment_
 
 ## 7. Validation
 
-Prior command-boundary evidence — 2026-10-04 (does not validate the IF-ADR-041 consumer migration):
+Closed evidence — 2026-10-04:
 
-- Framework EditMode aggregate: **163/163 PASS**;
+- Framework EditMode aggregate: **169/169 PASS**;
+- RouteLifecycle observer tests: **6/6 PASS**;
 - Camera Editor tests: **74/74 PASS**;
-- regression coverage proves Activate, Replace and Clear while temporary Fallback coverage is owned;
-- GameFlow Play Mode proves Hub -> A, A -> B, B -> A, A/B -> C, C -> A/B and A/B -> Hub with `blockingIssues=0`;
-- the covered Hub -> A path closes with Assignment A active and its normal occurrence restored when transition coverage releases;
-- C and Hub close with no active normal Assignment;
+- regression coverage still proves Activate, Replace and Clear while temporary Fallback coverage is owned;
+- the migrated GameFlow consumer is one Route-scoped `IRouteActivityTransitionObserver` in `SCN_GameFlow_Basic`;
+- GameFlow Play Mode executed `Hub -> A -> B -> A -> C -> B -> Hub`, with all requests completing with `blockingIssues=0`;
+- Hub -> A closed with Assignment A active after temporary Fallback coverage released;
+- A -> C closed with no active normal Assignment;
+- C -> B restored Assignment B;
+- B -> Hub closed with no active normal Assignment;
+- Activity C remains content-less and owns no Camera adapter;
 - no Route/Activity Camera fields, CameraRequest, global Camera lookup or UI-owned Camera decision were introduced.
 
 Disposition:
 
 ```text
 Implemented  YES
-Tested       command boundary evidence remains valid; observer migration pending EditMode execution
-Integrated   Route-scoped GameFlow adapter authored; Unity consumer run pending
-Validated    prior command-boundary evidence only; this migration is not validated
+Tested       YES
+Integrated   YES
+Validated    YES
 ```
 
-The previous evidence certifies the command boundary and its original Activity-context consumer. The IF-ADR-041 Route-observer migration is integrated in authoring but still requires EditMode and Unity consumer validation. The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status.
+The IF-ADR-041 migration supersedes the earlier Activity-scoped consumer placement while preserving this command boundary unchanged. The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status.
