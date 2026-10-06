@@ -2,7 +2,7 @@
 
 Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
-Last updated: **2026-10-04**
+Last updated: **2026-10-06**
 
 ## Authority and status model
 
@@ -174,6 +174,7 @@ Local Multiplayer remains blocked by public Slot/device/InputUser/control-scheme
 | 038 | ACCEPTED; current Assignment/Output model implemented | Camera Editor 74/74 PASS; IF-ADR-039 GameFlow command consumer Play Mode PASS | broader IF-ADR-038 recertification remains separately scoped |
 | 039 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle 6/6; Camera 74/74; Route-scoped GameFlow Play Mode PASS | command boundary and migrated consumer proof closed |
 | 041 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle observer 6/6; GameFlow `Hub -> A -> B -> A -> C -> B -> Hub` Play Mode PASS | one Route-scoped adapter in `SCN_GameFlow_Basic`; ActivityFlow remains authority |
+| 042 | ACCEPTED; SharedGroup projection implemented | Local Multiplayer SharedGroup manual consumer validation PASS 2026-10-06 | Framework Unity import/compile and Camera Editor tests remain pending; broader IF-ADR-038 QA remains open |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -325,17 +326,18 @@ Certification and reconciliation records:
 ## Current Camera and Actor occurrence target — IF-ADR-038 — 2026-09-30
 
 ~~~text
-SessionCameraAssignmentAsset (Rig Prefab + policy) -> Occurrence -> Membership / Subject -> Output
-Fallback is separate.
+GameApplication startup -> Session Camera Assignment -> Occurrence -> Membership / Subject -> Output
+Empty SharedGroup -> Output fallback
 ~~~
 
-Session Camera authority explicitly activates Assignments. Route and Activity have
-no Camera selection/ownership; Join/Leave changes membership only. Individual
-Occurrence identity includes the exact PlayerOccurrence. The Actor occurrence root
-owns Player physical/spatial state and pose; optional visual content is subordinate.
-Its explicit ObservationTransform owns Camera observation, and replacement updates
-Subject evidence while preserving Player and Camera Occurrence identity. Output,
-Fallback and PlayerInputManager physical split-layout ownership remain.
+Session Camera authority explicitly activates Assignments. Route and Activity do not
+own Assignment state, membership, or Output routing; Join/Leave changes membership
+only. SharedGroup retains one occurrence per Assignment/Output and reconciles its
+current eligible Actor Subjects into the TargetGroup. The Actor occurrence root owns
+Player physical/spatial state and pose; its explicit ObservationTransform owns Camera
+observation, and Actor replacement updates Subject evidence while preserving Player
+and Camera Occurrence identity. Output, fallback, and PlayerInputManager physical
+split-layout ownership remain.
 
 The Player runtime ownership cut and the Session Camera runtime path are present in
 source. `FrameworkRuntimeHost` materializes Outputs, creates Assignment occurrences,
@@ -351,15 +353,17 @@ membership/Subject reconciliation, and transactional replacement.
 | CAMERA-038-D — Zero-Player Session Camera | Implemented in source | Regression source covers normal Session occurrence before Players join | Unity Play Mode evidence |
 | CAMERA-038-E — Membership / Subjects | Implemented in source | Current Player/Actor occurrence reconciliation and Subject updates have Editor coverage | Unity Join/Leave/replacement evidence |
 | CAMERA-038-F — Individual per Player | Implemented in source | Exact PlayerOccurrence identity, isolated Outputs, Leave/Rejoin and Actor replacement have Editor coverage | Unity multiplayer/split-screen evidence |
-| CAMERA-038-G — Shared group | Implemented in source; Unity validation pending | Shared occurrence lifetime and membership through zero members have Editor coverage; Camera Rig Composer materializes enabled Cinemachine Group Framing from Group behavior settings | Unity import/compile, Group framing and target-validity evidence |
+| CAMERA-038-G — Shared group | Implemented; Local Multiplayer consumer manual validation PASS 2026-10-06 | IF-ADR-042 projection/fallback and Group framing configuration are implemented; Local Multiplayer verified 1-player follow without orbit, 2-player framing, dolly/FOV on separation, and stable Subject under Actor rotation | Framework Unity import/compile, Camera Editor tests, and remaining IF-ADR-038 QA/certification |
 | CAMERA-038-H — Transactional Assignment change | Implemented in source | Candidate replacement, rollback and Output preservation have Editor coverage | Unity failure-path and multi-Output evidence |
 | CAMERA-038-I — Remove Presentation / Request / Game Flow ownership | Package code removed | Old Presentation/Request symbols are absent from Runtime/Editor | Migrate and revalidate remaining serialized QA/consumer assets |
 | CAMERA-038-J — Authoring / samples / assets | Partial | GameApplication authoring, Definition/Assignment/Output Inspector support and one planet-devourer Getting Started camera asset use the new model | Migrate remaining planet-devourer and QA assets; prove authoring in Unity |
 | CAMERA-038-K — QA / regressions / documentation cleanup | Partial | Assignment, Output, identity and Actor Subject Editor test sources exist | Execute Unity validation; migrate QA-NEW-004 and active guides/certification navigation |
 
-The Editor test sources are present but were not executed during this update.
-Unity import, compile, Play Mode and QA recertification remain pending. Existing
-Camera certifications remain historical evidence and do not certify IF-ADR-038.
+Editor test sources are present but were not executed for this consumer validation.
+The Local Multiplayer SharedGroup manual checks above passed; Framework Unity
+import/compile, Camera Editor tests, and broader Play Mode/QA recertification remain
+pending. Existing Camera certifications remain historical evidence and do not certify
+IF-ADR-038.
 
 Previous IF-ADR-032 and IF-ADR-029/030 certifications remain historical evidence
 for the exact former boundaries; they do not certify IF-ADR-038.
@@ -374,7 +378,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle has historical proof through `GameplayReady`; Actor occurrence now owns physical/spatial state and replacement pose. Unity recertification and sample migration remain pending.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L removes the duplicate Player Output authoring and derives `PlayerInput.camera` topology from Individual Assignments. The split-screen consumer sample has been migrated in source. Group framing is now materialized and configured by the Camera Rig Composer; Unity import/compile/runtime recertification and remaining consumer/QA asset migration are pending.
+3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L removes the duplicate Player Output authoring and derives `PlayerInput.camera` topology from Individual Assignments. The split-screen consumer sample is migrated in source. IF-ADR-042 SharedGroup has Local Multiplayer manual consumer PASS (2026-10-06); Framework Unity import/compile, Camera Editor tests, and broader IF-ADR-038 QA/recertification remain pending.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — IF-ADR-040 Audio composition migration validated: EditMode 5/5 + QA-NEW-005 12/12 with `BaselineRestored`; historical 44/44 remains pre-migration evidence. Consumer integration is proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.

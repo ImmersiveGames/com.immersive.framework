@@ -1,13 +1,13 @@
 # IF-ADR-042 — Session Camera Shared Group Assignment Projection
 
-Status: **Accepted — source implementation complete; Unity validation pending**
+Status: **Accepted — SharedGroup consumer manual validation PASS; Framework Unity validation pending**
 Proposed: **2026-10-04**
 Type: architecture / Session Camera / Subject projection / fallback
 Depends on: **IF-ADR-038, IF-ADR-039**
 
 ## Context
 
-`CameraOccurrenceMode.SharedGroup` already creates one Assignment occurrence per Output and retains explicit Player membership. Group Rig behavior is materialized by `CameraRigComposer`, but Session Camera Assignment authoring rejects it and the occurrence runtime does not project member Subjects into the authored `CinemachineTargetGroup`.
+Shared Group Assignment projection requires one stable occurrence per Assignment/Output, explicit Player membership, current Actor Subject projection, Group framing, and Output fallback while the group is empty. IF-ADR-042 defines this contract for the Local Multiplayer P1/P2 consumer.
 
 Local multiplayer needs one shared camera on an Output that frames the eligible Actor Subjects of P1/P2 as membership changes. The occurrence must remain stable across Join, Leave, Rejoin and Actor replacement. An empty group cannot provide the required Group framing and therefore uses the Output's Fallback Camera while preserving the Assignment and occurrence.
 
@@ -56,6 +56,15 @@ The Group Camera Rig Composer materializes `CinemachineGroupFraming` enabled and
 
 ## Validation
 
-Editor test sources cover authoring acceptance/rejection, the zero-to-one-to-two-to-one-to-zero projection sequence, radius/weight projection, fallback transitions, stable occurrence identity, Rejoin, Actor Subject replacement and Group framing materialization/configuration.
+Local Multiplayer manual Unity consumer validation was reported PASS on 2026-10-06 for:
 
-Unity import/compile, Camera Editor test execution, prefab Apply/Rebuild and Local Multiplayer Play Mode validation remain required before this decision can be marked validated.
+```text
+1 Player follows translation without orbiting around the Actor
+2 Players are framed together
+separating Players uses dolly/FOV to keep both visible
+rotating an Actor in place does not move its Subject
+```
+
+Framework Editor test sources cover authoring acceptance/rejection, the zero-to-one-to-two-to-one-to-zero projection sequence, radius/weight projection, fallback transitions, stable occurrence identity, Rejoin, Actor Subject replacement and Group framing materialization/configuration. They have not been executed as part of this consumer validation.
+
+Framework Unity import/compile, Camera Editor test execution, prefab Apply/Rebuild validation, and the remaining IF-ADR-038 QA/certification gates remain pending. Consumer PASS does not close those gates.
