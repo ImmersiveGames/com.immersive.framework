@@ -2,6 +2,29 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0-preview.4] - 2026-10-06 — prepared, not published
+
+This candidate completes the Session Camera Assignment migration and adds
+consumer-facing validation for the Local Multiplayer SharedGroup and
+CharacterSelection Fixed Follow samples. Automated package QA, broader
+IF-ADR-038 recertification and Framework Unity import/compile remain pending.
+
+- Added the explicit Session Camera Assignment command boundary and trigger
+  authoring for activation and clearing.
+- Completed SharedGroup subject projection, group framing materialization and
+  Individual Player Output physical participation with one Fallback Camera at
+  zero bound Players.
+- Added Route-scoped Activity transition observation while preserving
+  ActivityFlow as transition authority.
+- Added the Scene Composition binding model and refreshed Camera authoring and
+  Editor workflows.
+- Integrated the Camera model into Local Multiplayer SharedGroup,
+  CharacterSelection Fixed Follow and CharacterSelectionMultiplayerSplitScreen
+  consumer samples; manual Play Mode evidence is recorded in the workspace
+  tracker.
+- Completed the Audio BGM composition/injection refinement and recorded its
+  consumer validation.
+
 ## [1.1.0-preview.3] - 2026-10-02
 
 This candidate consolidates the IF-ADR-035 Reset authoring and runtime cut.

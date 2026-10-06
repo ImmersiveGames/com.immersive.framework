@@ -4,9 +4,11 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Latest published preview: `1.1.0-preview.3` (Reset consumer validation is
-complete; Camera/Player validation remains pending). Latest stable package
-release: `1.0.2`. The earlier
+Latest published preview: `1.1.0-preview.3`. A local release candidate,
+`1.1.0-preview.4`, includes the Session Camera Assignment migration and
+consumer Play Mode validation; Framework Unity import/compile, automated tests
+and broader Camera/Player QA remain pending. Latest stable package release:
+`1.0.2`. The earlier
 `1.0.3-preview.1` preparation was not published and `1.1.0-preview.1` failed
 archive verification before distribution.
 
@@ -56,6 +58,10 @@ Use preview `1.1.0-preview.3` through OpenUPM or the Git tag
 `https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.3`.
 It consolidates the Reset authoring and runtime cut; preview APIs and serialized
 authoring may still change.
+
+The prepared `1.1.0-preview.4` candidate is not available to consumers until
+its signed release workflow completes. Its candidate changes and validation
+limits are listed in the [changelog](CHANGELOG.md).
 
 ## Getting started
 
