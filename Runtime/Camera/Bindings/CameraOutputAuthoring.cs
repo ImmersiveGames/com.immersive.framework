@@ -66,8 +66,7 @@ namespace Immersive.Framework.Camera
 
         internal void SetPlayerPhysicalParticipation(bool participating)
         {
-            if (unityCamera == null ||
-                (_session != null && _session.OutputState.HasActiveAssignment))
+            if (unityCamera == null)
             {
                 return;
             }

@@ -77,6 +77,64 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void IndividualPlayerOutputParticipationPreservesOnePhysicalCoverageAcrossZeroOneTwoLeaveAndRejoin()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.MemberActorTargets);
+            CreateIndividualRuntime(fixture);
+
+            CameraOutputAuthoring player1Output = fixture.Outputs[0];
+            CameraOutputAuthoring player2Output = fixture.Outputs[1];
+
+            // Zero Players: keep only the first stable Slot binding as Fallback coverage.
+            AssertIndividualAssignmentsRemainReservedAndFallbackCovered(fixture);
+            Assert.That(player1Output.UnityCamera.enabled, Is.True);
+            Assert.That(player2Output.UnityCamera.enabled, Is.False);
+
+            // P1 joins: the same physical Output remains enabled for its Player.
+            player1Output.SetPlayerPhysicalParticipation(true);
+            Assert.That(player1Output.UnityCamera.enabled, Is.True);
+            Assert.That(player2Output.UnityCamera.enabled, Is.False);
+
+            // P2 joins: both bound Outputs participate.
+            player2Output.SetPlayerPhysicalParticipation(true);
+            Assert.That(player1Output.UnityCamera.enabled, Is.True);
+            Assert.That(player2Output.UnityCamera.enabled, Is.True);
+
+            // P1 leaves while P2 stays joined.
+            player1Output.SetPlayerPhysicalParticipation(false);
+            Assert.That(player1Output.UnityCamera.enabled, Is.False);
+            Assert.That(player2Output.UnityCamera.enabled, Is.True);
+
+            // Last Player leaves: enable the deterministic fallback before
+            // disabling the departing Output.
+            player1Output.SetPlayerPhysicalParticipation(true);
+            player2Output.SetPlayerPhysicalParticipation(false);
+            Assert.That(player1Output.UnityCamera.enabled, Is.True);
+            Assert.That(player2Output.UnityCamera.enabled, Is.False);
+
+            // P2 rejoins alone: enable its Output before disabling Fallback.
+            player2Output.SetPlayerPhysicalParticipation(true);
+            player1Output.SetPlayerPhysicalParticipation(false);
+            Assert.That(player1Output.UnityCamera.enabled, Is.False);
+            Assert.That(player2Output.UnityCamera.enabled, Is.True);
+            AssertIndividualAssignmentsRemainReservedAndFallbackCovered(fixture);
+        }
+
+        private static void AssertIndividualAssignmentsRemainReservedAndFallbackCovered(
+            Fixture fixture)
+        {
+            for (int index = 0; index < fixture.Outputs.Length; index++)
+            {
+                CameraOutputState outputState =
+                    fixture.Outputs[index].Session.OutputState;
+                Assert.That(outputState.ActiveAssignmentId,
+                    Is.EqualTo(fixture.AssignmentId));
+                Assert.That(outputState.IsFallbackCovering, Is.True);
+                Assert.That(outputState.HasRetainedNormalOccurrence, Is.False);
+            }
+        }
+
+        [Test]
         public void IndividualAssignmentProjectsExactPlayerSlotsToOutputs()
         {
             Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);

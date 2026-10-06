@@ -327,7 +327,6 @@ namespace Immersive.Framework.Camera
                 !slot.IsJoined)
             {
                 ReleaseApplied(playerSlotId);
-                SetOutputPhysicalParticipation(binding, false);
                 return true;
             }
 
@@ -340,7 +339,6 @@ namespace Immersive.Framework.Camera
                 // The dedicated evidence event reconciles the same Slot immediately
                 // after registration; no index/order/hierarchy fallback is allowed.
                 ReleaseApplied(playerSlotId);
-                SetOutputPhysicalParticipation(binding, false);
                 return true;
             }
 
@@ -351,7 +349,6 @@ namespace Immersive.Framework.Camera
                 host.JoinedPlayerSlotId != playerSlotId)
             {
                 ReleaseApplied(playerSlotId);
-                SetOutputPhysicalParticipation(binding, false);
                 issue =
                     $"Current Session physical Host for Slot '{playerSlotId.StableText}' has no exact valid PlayerInput evidence.";
                 return false;
@@ -371,7 +368,6 @@ namespace Immersive.Framework.Camera
             if (resolvedCamera == null)
             {
                 ReleaseApplied(playerSlotId);
-                SetOutputPhysicalParticipation(binding, false);
                 issue =
                     $"Camera Output '{binding.OutputId}' has no explicit Unity Camera.";
                 return false;
@@ -384,8 +380,6 @@ namespace Immersive.Framework.Camera
                 ReleaseApplied(playerSlotId);
             }
 
-            SetOutputPhysicalParticipation(binding, true);
-
             SetCamera(playerInput, resolvedCamera);
 
             _applied[playerSlotId] = new AppliedBinding(
@@ -396,15 +390,18 @@ namespace Immersive.Framework.Camera
 
         private void RefreshPhysicalParticipation()
         {
-            bool hasAssociatedPlayerOutput =
-                _applied.Count > 0;
+            // Assignment reservation and logical Fallback coverage persist
+            // independently from physical Camera participation. With no bound
+            // Players, retain one deterministic physical Fallback on the first
+            // stable Slot binding. Once a Player is bound, only bound Outputs render.
+            int emptyFallbackIndex = _applied.Count == 0 &&
+                _bindings.Bindings.Count > 0
+                ? 0
+                : -1;
 
-            // Session Output capacity and configured Assignments exist independently
-            // from Player count. Before any Player Output association exists, all
-            // configured Player-bound Outputs remain physically available so their
-            // active normal Occurrence or Fallback can render. Once an exact
-            // Player association exists, only currently associated Player-bound
-            // Outputs participate physically. Unbound Session Outputs are untouched.
+            // Enable the new coverage set before disabling stale cameras. These
+            // operations run synchronously, so a leave/rejoin cannot expose a frame
+            // with no physical Camera.
             for (int index = 0;
                  index < _bindings.Bindings.Count;
                  index++)
@@ -412,12 +409,25 @@ namespace Immersive.Framework.Camera
                 PlayerCameraOutputBinding binding =
                     _bindings.Bindings[index];
                 bool participating =
-                    !hasAssociatedPlayerOutput ||
-                    _applied.ContainsKey(
-                        binding.PlayerSlotId);
-                SetOutputPhysicalParticipation(
-                    binding,
-                    participating);
+                    _applied.ContainsKey(binding.PlayerSlotId) ||
+                    index == emptyFallbackIndex;
+                if (participating)
+                {
+                    SetOutputPhysicalParticipation(binding, true);
+                }
+            }
+
+            for (int index = 0;
+                 index < _bindings.Bindings.Count;
+                 index++)
+            {
+                PlayerCameraOutputBinding binding =
+                    _bindings.Bindings[index];
+                if (!_applied.ContainsKey(binding.PlayerSlotId) &&
+                    index != emptyFallbackIndex)
+                {
+                    SetOutputPhysicalParticipation(binding, false);
+                }
             }
 
             if (!_automaticSplitScreenConfigured ||
