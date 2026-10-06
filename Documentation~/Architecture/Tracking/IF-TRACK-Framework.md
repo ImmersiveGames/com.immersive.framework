@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; Reset consumer + current integration QA PASS; Camera EditMode 78/78 PASS; QA-NEW-004 Session Camera 9/9 PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player recertification tracked separately**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; 1.1.0-preview.4 release candidate prepared locally, not published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
 Last updated: **2026-10-06**
 
