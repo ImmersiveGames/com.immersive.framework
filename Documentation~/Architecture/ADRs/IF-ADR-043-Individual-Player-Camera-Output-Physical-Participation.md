@@ -38,8 +38,10 @@ At zero bound Players, one mapped Output Camera provides physical Fallback cover
 
 ## Current implementation coverage
 
-**Implemented / Integrated / Manual Play Mode: PASS.** Runtime centralizes Output participation and preserves one physical Output at zero bindings. Manual validation confirmed 0 → 1 → 2 → 1 → 0 Players and Rejoin, with logical Assignment/Fallback intact and unbound Outputs excluded while Players are active.
+**Implemented / Integrated / Manual Play Mode: PASS / EditMode regression: PASS.** Runtime centralizes Output participation and preserves one physical Output at zero bindings. Manual validation confirmed 0 → 1 → 2 → 1 → 0 Players and Rejoin, with logical Assignment/Fallback intact and unbound Outputs excluded while Players are active.
+
+Current automated evidence on 2026-10-06: Framework EditMode **175/175 PASS**, Camera **78/78 PASS**, including `PlayerCameraOutputIntegrationTests` **3/3** and `SessionCameraAssignmentRuntimeTests` **37/37**.
 
 ## Pending validation
 
-Automated tests and QA certification remain pending. Manual Play Mode validation does not certify those gates.
+Focused QAFramework certification for this physical-participation boundary remains pending. The current EditMode and manual Play Mode evidence do not relabel that separate certification gate.
