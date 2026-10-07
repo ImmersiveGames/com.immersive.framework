@@ -399,19 +399,49 @@ namespace Immersive.Framework.Camera
                 ? 0
                 : -1;
 
-            // Enable the new coverage set before disabling stale cameras. These
-            // operations run synchronously, so a leave/rejoin cannot expose a frame
-            // with no physical Camera.
+            RefreshPhysicalOutputParticipation(emptyFallbackIndex);
+
+            if (!_automaticSplitScreenConfigured ||
+                _splitScreenManager == null)
+            {
+                return;
+            }
+
+            // Join is deliberately bracketed while PlayerInput.camera is still being
+            // correlated. Do not let PlayerInputManager recompute from a partial set.
+            if (_splitScreenJoinTransactionActive)
+            {
+                if (_splitScreenManager.splitScreen)
+                {
+                    _splitScreenManager.splitScreen = false;
+                    RefreshPhysicalOutputParticipation(emptyFallbackIndex);
+                }
+
+                return;
+            }
+
+            bool shouldSplit = _applied.Count >= 2;
+            if (_splitScreenManager.splitScreen != shouldSplit)
+            {
+                _splitScreenManager.splitScreen = shouldSplit;
+                // The Manager owns viewport recomposition. Reassert Framework-owned
+                // physical participation after its synchronous layout change.
+                RefreshPhysicalOutputParticipation(emptyFallbackIndex);
+            }
+        }
+
+        private void RefreshPhysicalOutputParticipation(int emptyFallbackIndex)
+        {
+            // Enable all current Outputs before disabling stale ones so recomposition
+            // cannot expose a frame without physical Camera coverage.
             for (int index = 0;
                  index < _bindings.Bindings.Count;
                  index++)
             {
                 PlayerCameraOutputBinding binding =
                     _bindings.Bindings[index];
-                bool participating =
-                    _applied.ContainsKey(binding.PlayerSlotId) ||
-                    index == emptyFallbackIndex;
-                if (participating)
+                if (_applied.ContainsKey(binding.PlayerSlotId) ||
+                    index == emptyFallbackIndex)
                 {
                     SetOutputPhysicalParticipation(binding, true);
                 }
@@ -429,32 +459,6 @@ namespace Immersive.Framework.Camera
                     SetOutputPhysicalParticipation(binding, false);
                 }
             }
-
-            if (!_automaticSplitScreenConfigured ||
-                _splitScreenManager == null)
-            {
-                return;
-            }
-
-            // Join is deliberately bracketed while PlayerInput.camera is still being
-            // correlated. Do not let PlayerInputManager recompute from a partial set.
-            if (_splitScreenJoinTransactionActive)
-            {
-                if (_splitScreenManager.splitScreen)
-                {
-                    _splitScreenManager.splitScreen = false;
-                }
-
-                return;
-            }
-
-            bool shouldSplit = _applied.Count >= 2;
-            if (_splitScreenManager.splitScreen != shouldSplit)
-            {
-                _splitScreenManager.splitScreen = shouldSplit;
-                return;
-            }
-
         }
 
         private void SetOutputPhysicalParticipation(
@@ -464,7 +468,7 @@ namespace Immersive.Framework.Camera
             if (!_outputs.TryGetOutput(
                     binding.OutputId,
                     out CameraOutputAuthoring output,
-                    out _))
+                    out string outputIssue))
             {
                 return;
             }

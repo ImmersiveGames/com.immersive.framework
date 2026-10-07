@@ -198,17 +198,19 @@ namespace Immersive.Framework.PlayerParticipation
                         : "Activity gameplay release returned no result.");
             }
 
-            if (!progress.hadActivityRepresentation)
+            if (TryResolveNoRepresentationStageCStatus(
+                    progress.hadActivityRepresentation,
+                    out SessionPlayerActivityRepresentationReleaseStatus noRepresentationStatus))
             {
                 progress.completed = true;
                 return Result(
-                    SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation,
+                    noRepresentationStatus,
                     leaveToken,
                     leaveConfirmation,
                     progress,
                     resolvedSource,
                     resolvedReason,
-                    "The exact Leaving Session Player has no current Activity representation; Stage C retired retained Session gameplay occupancy without requiring nonexistent Activity contextual ownership.");
+                    "The exact Leaving Session Player has no current Activity representation; Stage C retired retained Session gameplay occupancy without requiring a contextual projection.");
             }
 
             if (!_preparationModule.TryReleaseContextualProjection(
@@ -241,6 +243,15 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedSource,
                 resolvedReason,
                 "Current Activity representation retired for the exact Leaving Session Player. Physical Actor release, provisioning resources and Slot vacancy remain downstream stages.");
+        }
+
+        internal static bool TryResolveNoRepresentationStageCStatus(
+            bool hadActivityRepresentation,
+            out SessionPlayerActivityRepresentationReleaseStatus status)
+        {
+            status = SessionPlayerActivityRepresentationReleaseStatus
+                .SucceededNoCurrentRepresentation;
+            return !hadActivityRepresentation;
         }
 
         private SessionPlayerActivityRepresentationReleaseResult

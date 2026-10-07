@@ -25,5 +25,30 @@ namespace Immersive.Framework.PlayerParticipation.Tests
 
             Assert.That(retired, Is.EquivalentTo(new[] { remainingSlot }));
         }
+
+        [Test]
+        public void StageCWithoutActivityRepresentation_DoesNotRequireContextualProjection()
+        {
+            Assert.That(
+                ActivityPlayerActorLifecycleParticipant
+                    .TryResolveNoRepresentationStageCStatus(
+                        hadActivityRepresentation: false,
+                        out SessionPlayerActivityRepresentationReleaseStatus status),
+                Is.True);
+            Assert.That(
+                status,
+                Is.EqualTo(SessionPlayerActivityRepresentationReleaseStatus.SucceededNoCurrentRepresentation));
+        }
+
+        [Test]
+        public void StageCWithActivityRepresentation_ReleasesContextualProjection()
+        {
+            Assert.That(
+                ActivityPlayerActorLifecycleParticipant
+                    .TryResolveNoRepresentationStageCStatus(
+                        hadActivityRepresentation: true,
+                        out _),
+                Is.False);
+        }
     }
 }
