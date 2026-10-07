@@ -1,6 +1,6 @@
 # IF-ADR-042 — Session Camera Shared Group Assignment Projection
 
-Status: **Accepted — SharedGroup consumer manual validation PASS; Framework Unity validation pending**
+Status: **Accepted — QA certification PASS (2026-10-07)**
 Proposed: **2026-10-04**
 Type: architecture / Session Camera / Subject projection / fallback
 Depends on: **IF-ADR-038, IF-ADR-039**
@@ -65,6 +65,19 @@ separating Players uses dolly/FOV to keep both visible
 rotating an Actor in place does not move its Subject
 ```
 
-Framework Editor test sources cover authoring acceptance/rejection, the zero-to-one-to-two-to-one-to-zero projection sequence, radius/weight projection, fallback transitions, stable occurrence identity, Rejoin, Actor Subject replacement and Group framing materialization/configuration. They have not been executed as part of this consumer validation.
+The dedicated QA fixture `QA-IF-ADR-042` was executed in Unity on 2026-10-07 and certified the public SharedGroup contract with terminal:
 
-Framework Unity import/compile, Camera Editor test execution, prefab Apply/Rebuild validation, and the remaining IF-ADR-038 QA/certification gates remain pending. Consumer PASS does not close those gates.
+```text
+status='Passed'
+verdict='PASS'
+cases='7/7'
+cleanup='BaselineRestored'
+```
+
+The certified sequence covers baseline zero, `0 -> P1`, `P1 -> P1+P2`, P1 Actor/Subject replacement and restoration, `P1+P2 -> P2`, `P2 -> 0`, and `0 -> P1` rejoin. It verifies stable Assignment/Output/occurrence identity, fallback transitions, unique current Target Group membership, radius/weight projection, contextual Actor/Subject convergence, and deterministic cleanup.
+
+As a regression check, `QA-IF-ADR-043` also passed `7/7` in the same validation session with `framesWithoutCamera='0'` and `cleanup='BaselineRestored'`, providing evidence that the corrected IF-ADR-042 fixture did not regress the related individual physical-participation camera contract.
+
+Framework Editor test sources cover authoring acceptance/rejection, the zero-to-one-to-two-to-one-to-zero projection sequence, radius/weight projection, fallback transitions, stable occurrence identity, Rejoin, Actor Subject replacement and Group framing materialization/configuration. Those Editor tests were not executed as part of this QA certification.
+
+IF-ADR-042 is therefore technically validated by its dedicated Unity QA. Broader IF-ADR-038 certification gates remain independently tracked and are not closed by this result.
