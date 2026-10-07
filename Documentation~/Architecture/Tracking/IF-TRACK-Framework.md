@@ -2,7 +2,7 @@
 
 Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; 1.1.0-preview.4 release candidate prepared locally, not published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
-Last updated: **2026-10-06**
+Last updated: **2026-10-07**
 
 ## Authority and status model
 
@@ -183,7 +183,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 039 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle 6/6; Camera 74/74; Route-scoped GameFlow Play Mode PASS | command boundary and migrated consumer proof closed |
 | 041 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle observer 6/6; GameFlow `Hub -> A -> B -> A -> C -> B -> Hub` Play Mode PASS | one Route-scoped adapter in `SCN_GameFlow_Basic`; ActivityFlow remains authority |
 | 042 | ACCEPTED; SharedGroup projection implemented | Local Multiplayer SharedGroup manual consumer validation PASS 2026-10-06; current Camera Editor 78/78 PASS | focused SharedGroup QA certification and broader IF-ADR-038 recertification remain open |
-| 043 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / MANUAL PLAY MODE PASS | Individual Output participation manually validated for 0 → 1 → 2 → 1 → 0 Players and Rejoin; Framework EditMode 175/175, Camera 78/78, PlayerCameraOutputIntegration 3/3, SessionCameraAssignmentRuntime 37/37 | focused QAFramework certification pending |
+| 043 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Individual Output participation manually validated; Framework EditMode 175/175, Camera 78/78, PlayerCameraOutputIntegration 3/3, SessionCameraAssignmentRuntime 37/37; focused QAFramework 7/7 PASS on 2026-10-07 with 10/10 monitored frames covered and `BaselineRestored` | focused physical-participation gate closed; broader IF-ADR-038 recertification remains separate |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
@@ -361,21 +361,20 @@ membership/Subject reconciliation, and transactional replacement.
 | CAMERA-038-C — Outputs / Fallback | Implemented in source | Per-Output state, Fallback coverage and same-occurrence recovery have Editor coverage | Unity runtime certification across multiple Outputs |
 | CAMERA-038-D — Zero-Player Session Camera | Implemented / Validated | QA-NEW-004 current Session-scoped, Player-free continuity certification PASS 9/9 with `BaselineRestored`; same Output/Assignment survives Route/Activity transitions | cut closed; broader IF-ADR-038 recertification remains separate |
 | CAMERA-038-E — Membership / Subjects | Implemented in source | Current Player/Actor occurrence reconciliation and Subject updates have Editor coverage | Unity Join/Leave/replacement evidence |
-| CAMERA-038-F — Individual per Player | Implemented / Integrated / Manual Play Mode PASS | Manual P1/P2 validation plus current Framework EditMode 175/175 / Camera 78/78; ADR-043 regressions cover physical participation and Assignment reservation | focused QAFramework certification pending |
+| CAMERA-038-F — Individual per Player | Implemented / Integrated / Validated | Manual P1/P2 validation plus Framework EditMode 175/175 / Camera 78/78; IF-ADR-043 focused QAFramework 7/7 PASS proves `0 -> P1 -> P1+P2 -> P2 -> 0 -> P1 -> P1+P2`, exact `PlayerInput.camera`, stable Assignment/Output identity and zero frames without physical coverage | cut closed; broader IF-ADR-038 recertification remains separate |
 | CAMERA-038-G — Shared group | Implemented; Local Multiplayer consumer manual validation PASS 2026-10-06 | IF-ADR-042 projection/fallback and Group framing configuration are implemented; Local Multiplayer verified 1-player follow without orbit, 2-player framing, dolly/FOV on separation, and stable Subject under Actor rotation; current Camera Editor 78/78 PASS | focused SharedGroup QA certification and broader IF-ADR-038 recertification |
 | CAMERA-038-H — Transactional Assignment change | Implemented in source | Candidate replacement, rollback and Output preservation have Editor coverage | Unity failure-path and multi-Output evidence |
 | CAMERA-038-I — Remove Presentation / Request / Game Flow ownership | Package code removed | Old Presentation/Request symbols are absent from Runtime/Editor | Migrate and revalidate remaining serialized QA/consumer assets |
 | CAMERA-038-J — Authoring / samples / assets | Partial | Getting Started, Local Multiplayer SharedGroup, Character Selection Fixed Follow and Character Selection Multiplayer Split Screen are migrated; the Character Selection samples and Local Multiplayer have manual Play Mode PASS | Migrate remaining consumer/QA assets and complete authoring validation |
-| CAMERA-038-K — QA / regressions / documentation cleanup | Partial | Framework EditMode 175/175 and Camera Editor 78/78 PASS; QA-NEW-004 migrated/current and Play Mode 9/9 PASS; sample docs record current manual Play Mode evidence | focused QA remains for SharedGroup, Individual physical participation and transactional Assignment failure paths; broader IF-ADR-038 recertification remains |
+| CAMERA-038-K — QA / regressions / documentation cleanup | Partial | Framework EditMode 175/175 and Camera Editor 78/78 PASS; QA-NEW-004 Play Mode 9/9 PASS; IF-ADR-043 focused physical-participation QA 7/7 PASS; sample docs record current manual Play Mode evidence | focused QA remains for SharedGroup and transactional Assignment failure paths; broader IF-ADR-038 recertification remains |
 
 Current Framework EditMode execution is **175/175 PASS**, including Camera Editor
 **78/78 PASS**. Manual Play Mode passed for Local Multiplayer SharedGroup,
 Character Selection Fixed Follow, Character Selection Multiplayer Split Screen,
 and IF-ADR-043 Output participation. QA-NEW-004 now provides current Play Mode
 certification for the zero-Player Session-scoped Camera cut at **9/9 PASS** with
-`BaselineRestored`. Focused QA for SharedGroup, Individual physical participation
-and transactional Assignment failure paths, plus broader IF-ADR-038 recertification,
-remain pending. Historical Camera certifications stay dated evidence for their exact
+`BaselineRestored`. Focused QA for SharedGroup and transactional Assignment failure paths, plus broader
+IF-ADR-038 recertification, remain pending. Historical Camera certifications stay dated evidence for their exact
 former boundaries.
 
 Previous IF-ADR-032 and IF-ADR-029/030 certifications remain historical evidence
@@ -391,7 +390,7 @@ Historical records:
 
 1. **Player** — Scene Player physical/contextual lifecycle has historical proof through `GameplayReady`; Actor occurrence now owns physical/spatial state and replacement pose. Character Selection and Character Selection Multiplayer Split Screen migration/Play Mode are complete; broader Unity recertification and remaining sample migrations are pending.
 2. **Loading / Readiness** — positive Game Flow consumer lane proven; negative/terminal robustness remains QA-owned.
-3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L derives `PlayerInput.camera` topology from Individual Assignments. Local Multiplayer SharedGroup, Character Selection Fixed Follow, and Character Selection Multiplayer Split Screen are migrated and have manual Play Mode PASS. IF-ADR-043 physical Output participation passed manual 0/1/2/Leave/Rejoin validation and current automated regressions. Framework EditMode is 175/175 PASS, Camera Editor 78/78 PASS, and QA-NEW-004 Session Camera continuity is 9/9 PASS. Focused QA for SharedGroup, Individual physical participation and transactional Assignment failures, plus broader IF-ADR-038 recertification, remain pending.
+3. **Camera** — IF-ADR-038 is Accepted. Assignment/Occurrence/Fallback runtime cuts A-H remain present; CAMERA-038-L derives `PlayerInput.camera` topology from Individual Assignments. Local Multiplayer SharedGroup, Character Selection Fixed Follow, and Character Selection Multiplayer Split Screen are migrated and have manual Play Mode PASS. IF-ADR-043 physical Output participation passed manual 0/1/2/Leave/Rejoin validation and current automated regressions. Framework EditMode is 175/175 PASS, Camera Editor 78/78 PASS, and QA-NEW-004 Session Camera continuity is 9/9 PASS. Focused QA for SharedGroup and transactional Assignment failures, plus broader IF-ADR-038 recertification, remain pending.
 4. **Pause** — runtime certified; remaining work is consumer authoring/usability only.
 5. **Audio** — IF-ADR-040 Audio composition migration validated: EditMode 5/5 + QA-NEW-005 12/12 with `BaselineRestored`; historical 44/44 remains pre-migration evidence. Consumer integration is proven; API maturity promotion is separate.
 6. **Progression Save** — real consumer persistence/usability proof remains.
