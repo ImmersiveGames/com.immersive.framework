@@ -1,7 +1,7 @@
 # IF-ADR-043 — Individual Player Camera Output Physical Participation
 
 Status: Accepted  
-Last updated: 2026-10-06  
+Last updated: 2026-10-07  
 Supersedes: none  
 Superseded by: none
 
@@ -38,10 +38,12 @@ At zero bound Players, one mapped Output Camera provides physical Fallback cover
 
 ## Current implementation coverage
 
-**Implemented / Integrated / Manual Play Mode: PASS / EditMode regression: PASS.** Runtime centralizes Output participation and preserves one physical Output at zero bindings. Manual validation confirmed 0 → 1 → 2 → 1 → 0 Players and Rejoin, with logical Assignment/Fallback intact and unbound Outputs excluded while Players are active.
+**Implemented / Tested / Integrated / Manual Play Mode: PASS / Focused QAFramework: PASS.** Runtime centralizes Output participation and preserves one physical Output at zero bindings. Manual validation confirmed 0 → 1 → 2 → 1 → 0 Players and Rejoin, with logical Assignment/Fallback intact and unbound Outputs excluded while Players are active.
 
 Current automated evidence on 2026-10-06: Framework EditMode **175/175 PASS**, Camera **78/78 PASS**, including `PlayerCameraOutputIntegrationTests` **3/3** and `SessionCameraAssignmentRuntimeTests` **37/37**.
 
-## Pending validation
+Focused QAFramework certification on 2026-10-07: **7/7 PASS** across `0 -> P1 -> P1+P2 -> P2 -> 0 -> P1 -> P1+P2`, with `framesObserved='10'`, `framesWithoutCamera='0'`, `firstFrameWithoutCamera='-1'`, public Leave cleanup and `BaselineRestored`.
 
-Focused QAFramework certification for this physical-participation boundary remains pending. The current EditMode and manual Play Mode evidence do not relabel that separate certification gate.
+## Validation status
+
+The focused IF-ADR-043 physical-participation gate is closed. Broader IF-ADR-038 recertification remains separate, including SharedGroup and transactional Assignment failure-path coverage.
