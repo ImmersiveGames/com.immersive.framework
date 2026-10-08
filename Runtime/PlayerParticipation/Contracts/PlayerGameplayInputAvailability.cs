@@ -12,6 +12,7 @@ namespace Immersive.Framework.PlayerParticipation
         BlockedByGate = 20,
         PlayerInputDisabled = 30,
         ActionsUnavailable = 40,
-        GateUnavailable = 50
+        GateUnavailable = 50,
+        BlockedByConsumer = 60
     }
 }

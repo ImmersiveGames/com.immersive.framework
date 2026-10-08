@@ -1,6 +1,6 @@
 # IF-ADR-044 — Consumer-Controlled Player Runtime Gameplay Availability
 
-Status: **Proposed**  
+Status: **Accepted — implementation delivered; Unity validation pending**
 Proposed: **2026-10-07**  
 Type: architecture / Player gameplay / public command boundary / input gating  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-025, IF-ADR-033, IF-ADR-036  
@@ -85,9 +85,16 @@ without teaching the Framework what a turn or AI is.
 
 Implementation SHALL first reuse the Runtime Gameplay Availability model established by IF-ADR-036 and existing input-gate infrastructure. A parallel availability authority or direct consumer ownership of `PlayerInput` is rejected.
 
-## 8. Validation
+## 8. Current implementation coverage
 
-Before this decision can move beyond Proposed, QA must prove at minimum:
+- Public acquire/release commands use independent occurrence-scoped tokens on `IPlayerSessionScopedAccess`.
+- Session Player gameplay runtime composes consumer blocks with existing Gate availability and projects the result through `UnityPlayerInputGateAdapter`.
+- Session Leave and runtime shutdown clear occurrence blocks and their physical projection.
+- `GameplayReady`, participation, Actor, device pairing and Camera state remain independent of the consumer block.
+
+## 9. Validation
+
+Unity validation remains pending. QA must prove at minimum:
 
 1. blocking one Player does not alter participation, Actor, Assignment, devices, or Gameplay Readiness;
 2. releasing the block restores gameplay when no other gate is active;

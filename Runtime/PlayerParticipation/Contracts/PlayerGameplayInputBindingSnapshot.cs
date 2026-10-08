@@ -38,6 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
                     BoundCount++;
                     if (summary.IsAllowed) AllowedCount++;
                     if (summary.IsBlockedByGate) BlockedCount++;
+                    if (summary.IsBlockedByConsumer) ConsumerBlockedCount++;
                     if (summary.IsReleaseFailed) ReleaseFailedCount++;
                     if (summary.Availability ==
                         PlayerGameplayInputAvailability.PlayerInputDisabled)
@@ -74,6 +75,7 @@ namespace Immersive.Framework.PlayerParticipation
         public int UnboundCount { get; }
         public int AllowedCount { get; }
         public int BlockedCount { get; }
+        public int ConsumerBlockedCount { get; }
         public int ReleaseFailedCount { get; }
         public int DivergentCount { get; }
         public int PlayerInputDisabledCount { get; }

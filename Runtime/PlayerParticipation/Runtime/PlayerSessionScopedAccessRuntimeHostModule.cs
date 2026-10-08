@@ -469,6 +469,50 @@ namespace Immersive.Framework.PlayerParticipation
             return false;
         }
 
+        public PlayerGameplayAvailabilityBlockResult RequestBlockRuntimeGameplay(
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason)
+        {
+            if (!TryGetContext(out string issue))
+            {
+                return PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    playerSlotId,
+                    issue);
+            }
+
+            return _runtimeHost.TryGetPlayerGameplayRuntime(
+                    out PlayerGameplayRuntimeHostModule gameplay)
+                ? gameplay.RequestBlockRuntimeGameplay(playerSlotId, source, reason)
+                : PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    playerSlotId,
+                    "Player gameplay runtime is unavailable.");
+        }
+
+        public PlayerGameplayAvailabilityBlockResult RequestReleaseRuntimeGameplay(
+            PlayerGameplayAvailabilityBlockToken blockToken,
+            string source,
+            string reason)
+        {
+            if (!TryGetContext(out string issue))
+            {
+                return PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    default,
+                    issue);
+            }
+
+            return _runtimeHost.TryGetPlayerGameplayRuntime(
+                    out PlayerGameplayRuntimeHostModule gameplay)
+                ? gameplay.RequestReleaseRuntimeGameplay(blockToken, source, reason)
+                : PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    default,
+                    "Player gameplay runtime is unavailable.");
+        }
+
         public PlayerParticipationOperationResult OpenJoining(string source, string reason)
         {
             if (!TryGetContext(out string issue))

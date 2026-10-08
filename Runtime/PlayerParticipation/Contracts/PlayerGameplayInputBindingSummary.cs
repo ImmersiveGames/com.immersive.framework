@@ -93,6 +93,7 @@ namespace Immersive.Framework.PlayerParticipation
         public bool IsDivergent => State == PlayerGameplayInputBindingState.Divergent;
         public bool IsAllowed => IsBound && Availability == PlayerGameplayInputAvailability.Allowed;
         public bool IsBlockedByGate => IsBound && Availability == PlayerGameplayInputAvailability.BlockedByGate;
+        public bool IsBlockedByConsumer => IsBound && Availability == PlayerGameplayInputAvailability.BlockedByConsumer;
 
         public bool IsValid =>
             !string.IsNullOrEmpty(SessionContextId) &&

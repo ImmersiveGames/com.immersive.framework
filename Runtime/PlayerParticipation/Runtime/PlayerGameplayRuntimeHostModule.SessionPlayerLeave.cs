@@ -122,6 +122,17 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!TryClearConsumerGameplayBlocksForLeave(
+                    leaveToken.PlayerSlotId,
+                    source,
+                    $"{reason}; session-player-leave",
+                    out string consumerBlockIssue))
+            {
+                failureStatus = SessionPlayerLeaveGameplayReleaseStatus.FailedInputRelease;
+                issue = consumerBlockIssue;
+                return false;
+            }
+
             if (_sessionPlayerLeaveGameplayReleaseProgress.TryGetValue(
                     leaveToken,
                     out SessionPlayerLeaveGameplayReleaseProgress existing))

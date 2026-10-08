@@ -402,6 +402,7 @@ physical replacement is the separate Manager-Provisioned IF-ADR-024 operation
 - IF-ADR-023 — **Superseded by IF-ADR-038**; certification retained only as historical evidence.
 - IF-ADR-023A — Runtime occurrence identity boundary reconciled; Scene-Provided `LogicalActorsPrepared` and `GameplayReady` FIRSTGAME proof PASS.
 - IF-ADR-024 — Accepted / reconciled / implemented for Manager-Provisioned V1; public `RequestReplacePreparedActor(...)` positive path certified by Full Player QA 16/16. Scene-Provided prepared physical replacement remains deferred.
+- [IF-ADR-044](ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md) — Accepted / implemented; independent occurrence-scoped consumer blocks compose through the canonical input adapter. Unity validation remains pending.
 
 ### Composition binding
 

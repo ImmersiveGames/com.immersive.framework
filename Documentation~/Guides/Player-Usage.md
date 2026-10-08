@@ -1,7 +1,7 @@
 # Player Usage
 
 Status: **Scene-Provided authoring and runtime adoption are implemented; Unity validation pending. ActorProfile and admission timing remain Experimental.**
-Last updated: **2026-09-30**
+Last updated: **2026-10-07**
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
 ## Product model
@@ -253,6 +253,43 @@ PREPARED / COMMITTED
 typed occurrence identity before preparation establishes it.
 
 ## Activity readiness and consumer boundaries
+
+### Temporarily block gameplay input for a Player
+
+An authorized `IPlayerSessionScopedAccess` consumer can temporarily block gameplay
+input without leaving the Player Session, changing readiness, replacing the Actor
+or changing Camera membership. Store the returned token for the full reason that
+owns the block and release that exact token when the reason ends:
+
+```csharp
+private PlayerGameplayAvailabilityBlockToken _waitingPlayerBlock;
+
+PlayerGameplayAvailabilityBlockResult blocked = access.RequestBlockRuntimeGameplay(
+    playerSlotId,
+    source: "TurnController",
+    reason: "waiting-for-other-player");
+
+if (blocked.Succeeded)
+{
+    _waitingPlayerBlock = blocked.BlockToken;
+}
+```
+
+When that consumer reason ends, release the stored token:
+
+```csharp
+PlayerGameplayAvailabilityBlockResult released = access.RequestReleaseRuntimeGameplay(
+    _waitingPlayerBlock,
+    source: "TurnController",
+    reason: "player-turn-started");
+```
+
+Each successful acquisition has its own token. Releasing one token does not
+release another consumer's block. Tokens belong to the exact joined Player
+occurrence and become stale when that occurrence leaves. Pause, Transition and
+other Runtime Gates continue to block input until their own owners release them.
+Consumers must not enable or disable `PlayerInput` or its gameplay Action Map
+directly; the canonical Framework input adapter applies the combined posture.
 
 ```text
 None

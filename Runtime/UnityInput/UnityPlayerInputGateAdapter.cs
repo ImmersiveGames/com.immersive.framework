@@ -63,6 +63,8 @@ namespace Immersive.Framework.UnityInput
         private string _inputGateRuntimeBindingDiagnostic =
             "Input Gate runtime port is not bound.";
         private bool _isBlockedByAdapter;
+        private bool _isBlockedByConsumer;
+        private bool _consumerBlockOwnsSuppressedPosture;
         private bool _actionMapWasEnabledBeforeBlock;
         private string _lastStatus = "NotApplied";
         private string _lastReason = string.Empty;
@@ -95,6 +97,9 @@ namespace Immersive.Framework.UnityInput
 
         public bool IsBlockedByAdapter =>
             _isBlockedByAdapter;
+
+        internal bool IsBlockedByConsumer =>
+            _isBlockedByConsumer;
 
         public string LastStatus =>
             _lastStatus.NormalizeText();
@@ -207,6 +212,40 @@ namespace Immersive.Framework.UnityInput
             issue =
                 "Input Gate runtime port binding rejected a different port for the current lifetime.";
             _inputGateRuntimeBindingDiagnostic = issue;
+            return false;
+        }
+
+        internal bool TrySetConsumerGameplayAvailabilityBlocked(
+            bool blocked,
+            string reason,
+            out string issue)
+        {
+            bool previous = _isBlockedByConsumer;
+            bool previousConsumerPostureOwnership =
+                _consumerBlockOwnsSuppressedPosture;
+            if (blocked && !_isBlockedByAdapter)
+            {
+                _consumerBlockOwnsSuppressedPosture = true;
+            }
+            _isBlockedByConsumer = blocked;
+            ApplyFromCurrentRuntimeGate(
+                reason.NormalizeTextOrFallback("consumer-gameplay-availability"));
+
+            bool expectedPhysicalBlock =
+                blocked || IsBlockedByCurrentRuntimeGate();
+            if (_isBlockedByAdapter == expectedPhysicalBlock)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            _isBlockedByConsumer = previous;
+            _consumerBlockOwnsSuppressedPosture =
+                previousConsumerPostureOwnership;
+            ApplyFromCurrentRuntimeGate("consumer-gameplay-availability-rollback");
+            issue = blocked
+                ? "The canonical input writer could not apply the consumer gameplay-availability block."
+                : "The canonical input writer could not restore gameplay after releasing the consumer block.";
             return false;
         }
 
@@ -470,8 +509,18 @@ namespace Immersive.Framework.UnityInput
                 _inputGateRuntimeBindingDiagnostic =
                     diagnostic;
 
-                RestoreIfNeeded(
-                    "input-gate-runtime-unbound");
+                if (_isBlockedByConsumer)
+                {
+                    ApplyBlock(
+                        "input-gate-runtime-unbound",
+                        false,
+                        false);
+                }
+                else
+                {
+                    RestoreIfNeeded(
+                        "input-gate-runtime-unbound");
+                }
 
                 if (!_isBlockedByAdapter)
                 {
@@ -514,7 +563,8 @@ namespace Immersive.Framework.UnityInput
                     GateDomain.GameplayAction);
 
             if (blocksInput ||
-                blocksGameplay)
+                blocksGameplay ||
+                _isBlockedByConsumer)
             {
                 ApplyBlock(
                     reason,
@@ -525,6 +575,25 @@ namespace Immersive.Framework.UnityInput
 
             RestoreIfNeeded(
                 reason);
+        }
+
+        private bool IsBlockedByCurrentRuntimeGate()
+        {
+            IInputGateRuntimePort inputGateRuntime = _inputGateRuntime;
+            if (inputGateRuntime == null)
+            {
+                return false;
+            }
+
+            GateSnapshot snapshot = inputGateRuntime.CurrentGateSnapshot;
+            return (blockOnInputAcceptance &&
+                    snapshot.IsBlockedForAnyOwner(
+                        GateScope.Input,
+                        GateDomain.InputAcceptance)) ||
+                   (blockOnGameplayAction &&
+                    snapshot.IsBlockedForAnyOwner(
+                        GateScope.Gameplay,
+                        GateDomain.GameplayAction));
         }
 
         private void ApplyBlock(
@@ -570,6 +639,11 @@ namespace Immersive.Framework.UnityInput
                 _lastReason =
                     reason.NormalizeText();
                 return;
+            }
+
+            if (_isBlockedByConsumer)
+            {
+                _consumerBlockOwnsSuppressedPosture = true;
             }
 
             if (!TryResolveGameplayActionMap(
@@ -632,6 +706,7 @@ namespace Immersive.Framework.UnityInput
         {
             if (!_isBlockedByAdapter)
             {
+                _consumerBlockOwnsSuppressedPosture = false;
                 _lastStatus =
                     "Allowed";
                 _lastReason =
@@ -645,6 +720,7 @@ namespace Immersive.Framework.UnityInput
             if (resolvedPlayerInput == null)
             {
                 _isBlockedByAdapter = false;
+                _consumerBlockOwnsSuppressedPosture = false;
                 _lastStatus =
                     "ReleasedMissingPlayerInput";
                 _lastReason =
@@ -655,7 +731,8 @@ namespace Immersive.Framework.UnityInput
             bool restored = true;
             string issue = string.Empty;
 
-            if (restorePreviousState &&
+            if ((restorePreviousState ||
+                 _consumerBlockOwnsSuppressedPosture) &&
                 _actionMapWasEnabledBeforeBlock)
             {
                 if (!TryResolveGameplayActionMap(
@@ -694,6 +771,7 @@ namespace Immersive.Framework.UnityInput
 
             _isBlockedByAdapter = false;
             _actionMapWasEnabledBeforeBlock = false;
+            _consumerBlockOwnsSuppressedPosture = false;
             _lastStatus =
                 "Released";
             _lastReason =
@@ -931,6 +1009,9 @@ namespace Immersive.Framework.UnityInput
                 LogFields.Field(
                     "blockOnGameplayAction",
                     blockOnGameplayAction),
+                LogFields.Field(
+                    "blockedByConsumerAvailability",
+                    _isBlockedByConsumer),
                 LogFields.Field(
                     "blocksInputAcceptance",
                     blocksInput),

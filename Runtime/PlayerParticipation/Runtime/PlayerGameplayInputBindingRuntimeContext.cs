@@ -35,6 +35,9 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerSlotId[] _orderedSlots;
         private readonly Dictionary<PlayerSlotId, PlayerGameplayInputBindingSummary> _slots;
         private readonly Dictionary<PlayerSlotId, BindingRecord> _records;
+        private readonly HashSet<PlayerSlotId> _consumerBlockedSlots = new();
+        private readonly Dictionary<PlayerSlotId, UnityPlayerInputGateAdapter>
+            _gateAdaptersBySlot = new();
 
         private int _revision = 1;
         private int _bindingSequence;
@@ -544,6 +547,29 @@ namespace Immersive.Framework.PlayerParticipation
                     $"Gameplay action map activation failed. {activationIssue}");
             }
 
+            if (!gateAdapter.TrySetConsumerGameplayAvailabilityBlocked(
+                    _consumerBlockedSlots.Contains(requestedSlot),
+                    "bind-gameplay-input-consumer-availability",
+                    out string consumerBlockIssue))
+            {
+                bool rollbackSucceeded = gateAdapter.TryRestoreActionMap(
+                    actionMapWrite,
+                    resolvedSource,
+                    "consumer-availability-bind-rollback",
+                    out string rollbackIssue);
+                return Failure(
+                    PlayerGameplayInputBindingStatus.FailedActionMapActivation,
+                    operation,
+                    requestedSlot,
+                    previous,
+                    actionMapWrite.StateChanged,
+                    rollbackSucceeded,
+                    rollbackIssue,
+                    rollbackSucceeded
+                        ? consumerBlockIssue
+                        : $"{consumerBlockIssue} Action-map rollback failed: {rollbackIssue}");
+            }
+
             try
             {
                 gateAdapter.ApplyCurrentGate();
@@ -619,6 +645,7 @@ namespace Immersive.Framework.PlayerParticipation
                     gateAdapter = gateAdapter,
                     releaseActionMapWrite = actionMapWrite
                 });
+            _gateAdaptersBySlot[requestedSlot] = gateAdapter;
             _slots[requestedSlot] = current;
             _lastOperationStatus =
                 PlayerGameplayInputBindingStatus.SucceededBound;
@@ -665,7 +692,8 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             if (record.gateAdapter == null ||
-                record.gateAdapter.IsBlockedByAdapter)
+                (record.gateAdapter.IsBlockedByAdapter &&
+                 !record.gateAdapter.IsBlockedByConsumer))
             {
                 return Reject(
                     PlayerGameplayInputBindingStatus
@@ -1186,6 +1214,189 @@ namespace Immersive.Framework.PlayerParticipation
                 _lastOperationMessage);
         }
 
+        internal bool TrySetConsumerAvailabilityBlocked(
+            PlayerSlotId playerSlotId,
+            bool blocked,
+            string source,
+            string reason,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!playerSlotId.IsValid)
+            {
+                issue = "Consumer gameplay availability requires a valid Player Slot.";
+                return false;
+            }
+
+            bool wasBlocked = _consumerBlockedSlots.Contains(playerSlotId);
+            if (blocked)
+            {
+                _consumerBlockedSlots.Add(playerSlotId);
+            }
+            else
+            {
+                _consumerBlockedSlots.Remove(playerSlotId);
+            }
+
+            _gateAdaptersBySlot.TryGetValue(
+                playerSlotId,
+                out UnityPlayerInputGateAdapter adapter);
+            if (blocked && adapter == null &&
+                !TryResolveGateAdapter(playerSlotId, out adapter, out issue))
+            {
+                RestoreConsumerBlockProjection(playerSlotId, wasBlocked, null);
+                return false;
+            }
+
+            if (adapter != null &&
+                !adapter.TrySetConsumerGameplayAvailabilityBlocked(
+                    blocked,
+                    reason,
+                    out issue))
+            {
+                RestoreConsumerBlockProjection(playerSlotId, wasBlocked, adapter);
+                return false;
+            }
+
+            if (_slots.TryGetValue(
+                    playerSlotId,
+                    out PlayerGameplayInputBindingSummary binding) &&
+                binding.IsBound)
+            {
+                PlayerGameplayInputBindingResult refreshed = TryRefreshAvailability(
+                    playerSlotId,
+                    binding.Token,
+                    source,
+                    reason);
+                if (refreshed == null || !refreshed.Succeeded)
+                {
+                    if (adapter != null)
+                    {
+                        RestoreConsumerBlockProjection(
+                            playerSlotId,
+                            wasBlocked,
+                            adapter);
+                    }
+                    else if (wasBlocked)
+                    {
+                        _consumerBlockedSlots.Add(playerSlotId);
+                    }
+                    else
+                    {
+                        _consumerBlockedSlots.Remove(playerSlotId);
+                    }
+
+                    issue = refreshed != null
+                        ? refreshed.ToDiagnosticString()
+                        : "Gameplay input availability refresh returned no result.";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal void ForgetConsumerAvailabilityProjection(
+            PlayerSlotId playerSlotId)
+        {
+            _consumerBlockedSlots.Remove(playerSlotId);
+            _gateAdaptersBySlot.Remove(playerSlotId);
+        }
+
+        internal void ClearConsumerAvailabilityProjections(
+            string source,
+            string reason)
+        {
+            var playerSlots = new HashSet<PlayerSlotId>(_consumerBlockedSlots);
+            foreach (PlayerSlotId playerSlotId in _gateAdaptersBySlot.Keys)
+            {
+                playerSlots.Add(playerSlotId);
+            }
+
+            foreach (PlayerSlotId playerSlotId in playerSlots)
+            {
+                TrySetConsumerAvailabilityBlocked(
+                    playerSlotId,
+                    false,
+                    source,
+                    reason,
+                    out _);
+            }
+
+            _consumerBlockedSlots.Clear();
+            _gateAdaptersBySlot.Clear();
+        }
+
+        private void RestoreConsumerBlockProjection(
+            PlayerSlotId playerSlotId,
+            bool wasBlocked,
+            UnityPlayerInputGateAdapter adapter)
+        {
+            if (wasBlocked)
+            {
+                _consumerBlockedSlots.Add(playerSlotId);
+            }
+            else
+            {
+                _consumerBlockedSlots.Remove(playerSlotId);
+            }
+
+            if (adapter != null)
+            {
+                adapter.TrySetConsumerGameplayAvailabilityBlocked(
+                    wasBlocked,
+                    "restore-consumer-gameplay-block-projection",
+                    out _);
+            }
+        }
+
+        private bool TryResolveGateAdapter(
+            PlayerSlotId playerSlotId,
+            out UnityPlayerInputGateAdapter gateAdapter,
+            out string issue)
+        {
+            gateAdapter = null;
+            issue = string.Empty;
+            if (!_preparationModule.TryGetRegisteredHost(
+                    playerSlotId,
+                    out LocalPlayerHostAuthoring host,
+                    out issue) || host == null || host.PlayerInput == null)
+            {
+                issue = string.IsNullOrWhiteSpace(issue)
+                    ? "Consumer gameplay availability requires the registered Local Player Host and PlayerInput."
+                    : issue;
+                return false;
+            }
+
+            UnityPlayerInputGateAdapter[] adapters =
+                host.GetComponentsInChildren<UnityPlayerInputGateAdapter>(
+                    includeInactive: true);
+            int matchingCount = 0;
+            for (int index = 0; index < adapters.Length; index++)
+            {
+                UnityPlayerInputGateAdapter candidate = adapters[index];
+                if (candidate == null ||
+                    !ReferenceEquals(candidate.PlayerInput, host.PlayerInput))
+                {
+                    continue;
+                }
+
+                gateAdapter = candidate;
+                matchingCount++;
+            }
+
+            if (matchingCount != 1)
+            {
+                gateAdapter = null;
+                issue =
+                    $"Consumer gameplay availability requires exactly one Host-owned Gate adapter for Player Slot '{playerSlotId.StableText}'. Found '{matchingCount}'.";
+                return false;
+            }
+
+            _gateAdaptersBySlot[playerSlotId] = gateAdapter;
+            return true;
+        }
+
         internal PlayerGameplayInputBindingResult TryRelease(
             PlayerSlotId playerSlotId,
             PlayerGameplayInputBindingToken expectedBinding,
@@ -1294,6 +1505,21 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         resolvedReason,
                         restoreIssue);
+                }
+
+                if (_consumerBlockedSlots.Contains(playerSlotId) &&
+                    !record.gateAdapter.TrySetConsumerGameplayAvailabilityBlocked(
+                        true,
+                        "retain-consumer-gameplay-block-after-activity-release",
+                        out string consumerBlockIssue))
+                {
+                    return MarkReleaseFailed(
+                        operation,
+                        playerSlotId,
+                        previous,
+                        resolvedSource,
+                        resolvedReason,
+                        consumerBlockIssue);
                 }
             }
             catch (Exception exception)
@@ -1705,6 +1931,10 @@ namespace Immersive.Framework.PlayerParticipation
 
             if (gateAdapter.IsBlockedByAdapter)
             {
+                if (gateAdapter.IsBlockedByConsumer)
+                {
+                    return PlayerGameplayInputAvailability.BlockedByConsumer;
+                }
                 return PlayerGameplayInputAvailability.BlockedByGate;
             }
 
@@ -1738,6 +1968,8 @@ namespace Immersive.Framework.PlayerParticipation
                     "Gameplay input is currently allowed.",
                 PlayerGameplayInputAvailability.BlockedByGate =>
                     "Gameplay input is currently blocked by the Gate.",
+                PlayerGameplayInputAvailability.BlockedByConsumer =>
+                    "Gameplay input is currently blocked by a consumer availability request.",
                 PlayerGameplayInputAvailability.PlayerInputDisabled =>
                     "Gameplay input binding is retained while PlayerInput is disabled.",
                 PlayerGameplayInputAvailability.ActionsUnavailable =>

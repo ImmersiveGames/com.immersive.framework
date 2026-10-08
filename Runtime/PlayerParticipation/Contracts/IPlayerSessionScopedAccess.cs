@@ -20,6 +20,16 @@ namespace Immersive.Framework.PlayerParticipation
         bool TryGetObservation(
             out PlayerSessionScopedObservationSnapshot observation);
 
+        PlayerGameplayAvailabilityBlockResult RequestBlockRuntimeGameplay(
+            PlayerSlotId playerSlotId,
+            string source,
+            string reason);
+
+        PlayerGameplayAvailabilityBlockResult RequestReleaseRuntimeGameplay(
+            PlayerGameplayAvailabilityBlockToken blockToken,
+            string source,
+            string reason);
+
         PlayerParticipationOperationResult OpenJoining(string source, string reason);
 
         PlayerParticipationOperationResult CloseJoining(string source, string reason);

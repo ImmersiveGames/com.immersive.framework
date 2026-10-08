@@ -687,6 +687,8 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
+            ReleaseAllConsumerGameplayBlocksForShutdown();
+
             _currentGameplayContext = null;
             if (_runtimeHost != null)
             {

@@ -55,6 +55,7 @@ Guide: [Activity Readiness](../Guides/Activity-Readiness.md).
 | `PlayerSessionProfile`, `PlayerHostProvisioningMode` | Session profile/configuration · Experimental | Configure supported Slots, initial Session intent and Scene-Provided or Manager-Provisioned Host mode. |
 | `LocalPlayerProvisioningAuthoring` | Authoring · Experimental | Configures explicit runtime Manager-Provisioned Player creation. |
 | `PlayerSessionObserver` and Player Session command triggers | Observation/request components · Experimental | Explicit Session observation and logical Join/Leave/Actor-selection commands. They do not replace physical Actor materialization. |
+| `IPlayerSessionScopedAccess` runtime gameplay block commands, `PlayerGameplayAvailabilityBlockToken` | Scoped Player command contract · Experimental | Acquires and releases independent transient input-consumption blocks using occurrence-scoped tokens. `PlayerGameplayInputAvailability.BlockedByConsumer` and `PlayerGameplayInputBindingSnapshot.ConsumerBlockedCount` expose the projection. Gameplay rules and physical `PlayerInput` writes remain outside consumer control. |
 | `SceneProvidedLocalPlayerCreator` | Editor tooling · DevelopmentTooling | Creates an initial technical composition shell. It is not runtime ownership, admission or a completion check. |
 
 Guide: [Player Participation and Local Player](../Guides/Player-Usage.md). Scene-Provided is Stable authoring that requires Experimental Actor/session-profile configuration; the end-to-end composition therefore has a mixed maturity boundary.
