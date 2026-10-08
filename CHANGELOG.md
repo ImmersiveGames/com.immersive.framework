@@ -2,7 +2,27 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.4] - 2026-10-06 — prepared, not published
+## [1.1.0-preview.5] - 2026-10-08 — prepared for signed publication
+
+This preview adds the consumer-controlled Player gameplay availability block
+and completes focused SharedGroup, Individual Output participation and Player
+availability validation. It remains a preview: Unity package import/compile
+and broader IF-ADR-038 recertification are still required before relying on the
+full Camera surface in a production game.
+
+- Added occurrence-scoped Player gameplay availability block commands,
+  independent block tokens, scoped cleanup and the `PlayerGameplayAvailabilityBlockTrigger`
+  authoring surface.
+- Integrated consumer block state with the canonical Unity input gate while
+  preserving Pause and other runtime gate ownership.
+- Completed focused SharedGroup projection and Individual Player Output
+  participation, including Player Leave when no Activity representation exists.
+- Recorded IF-ADR-044 runtime QA and Local Multiplayer authoring validation,
+  alongside focused IF-ADR-042/043 Camera evidence.
+- Updated public API, authoring guides and architecture tracking for the
+  validated contracts and remaining release limits.
+
+## [1.1.0-preview.4] - 2026-10-06 — published
 
 This candidate completes the Session Camera Assignment migration and adds
 consumer-facing validation for the Local Multiplayer SharedGroup and

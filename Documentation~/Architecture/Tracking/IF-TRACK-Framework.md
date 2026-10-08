@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; 1.1.0-preview.4 release candidate prepared locally, not published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.4 published; 1.1.0-preview.5 prepared for signed publication; Reset and IF-ADR-044 consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
 Last updated: **2026-10-08**
 
@@ -29,12 +29,14 @@ The public OpenUPM graph is published:
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
 
-Preview **`1.1.0-preview.3`** is published to GitHub Releases and OpenUPM. The
-`v1.1.0-preview.1` tag stopped at signed-archive verification; no GitHub Release
-or OpenUPM publication was created for it. The `.3` release includes the
-IF-ADR-035 Reset cut. Reset consumer scenarios 1-8 were manually validated in
-`planet-devourer` on 2026-10-02; package import/compile and Camera/Player
-validation remain pending.
+Preview **`1.1.0-preview.4`** is published to GitHub Releases and OpenUPM. Its
+signed archive is attached to [the GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.4),
+and OpenUPM resolves `.4` as the current preview. The `v1.1.0-preview.1` tag
+stopped at signed-archive verification; no GitHub Release or OpenUPM publication
+was created for it. Preview **`1.1.0-preview.5`** is prepared for signed
+publication; verify its workflow, GitHub Release and OpenUPM state before
+treating it as available to consumers. Package import/compile and broader
+Camera/Player validation remain pending.
 
 Registry dependency graph:
 
@@ -360,7 +362,7 @@ membership/Subject reconciliation, and transactional replacement.
 | CAMERA-038-A — Actor occurrence authority | Implemented in source | Actor-root ownership, optional visual content and explicit Subject authoring; Editor coverage exists | SceneProvided and ManagerProvisioned Unity revalidation |
 | CAMERA-038-B — Definition / Assignment / Occurrence | Implemented in source | Definition, Assignment, mode-specific identity and identity/validation coverage exist | Unity import/compile and runtime certification |
 | CAMERA-038-C — Outputs / Fallback | Implemented in source | Per-Output state, Fallback coverage and same-occurrence recovery have Editor coverage | Unity runtime certification across multiple Outputs |
-| CAMERA-038-D — Zero-Player Session Camera | Implemented / Validated | QA-NEW-004 current Session-scoped, Player-free continuity certification PASS 9/9 with `BaselineRestored`; same Output/Assignment survives Route/Activity transitions | cut closed; broader IF-ADR-038 recertification remains separate |
+| CAMERA-038-D — Zero-Player Session Camera | Targetless/fixed path implemented / validated; explicit Session/world target deferred | QA-NEW-004 current Session-scoped, Player-free continuity certification PASS 9/9 with `BaselineRestored`; FirstGame uses `NoSubject`; same Output/Assignment survives Route/Activity transitions | targetless cut closed; implement explicit world target only for a concrete consumer; broader IF-ADR-038 recertification remains separate |
 | CAMERA-038-E — Membership / Subjects | Implemented in source | Current Player/Actor occurrence reconciliation and Subject updates have Editor coverage | Unity Join/Leave/replacement evidence |
 | CAMERA-038-F — Individual per Player | Implemented / Integrated / Validated | Manual P1/P2 validation plus Framework EditMode 175/175 / Camera 78/78; IF-ADR-043 focused QAFramework 7/7 PASS proves `0 -> P1 -> P1+P2 -> P2 -> 0 -> P1 -> P1+P2`, exact `PlayerInput.camera`, stable Assignment/Output identity and zero frames without physical coverage | cut closed; broader IF-ADR-038 recertification remains separate |
 | CAMERA-038-G — Shared group | Implemented; Local Multiplayer consumer manual validation PASS 2026-10-06 | IF-ADR-042 projection/fallback and Group framing configuration are implemented; Local Multiplayer verified 1-player follow without orbit, 2-player framing, dolly/FOV on separation, and stable Subject under Actor rotation; current Camera Editor 78/78 PASS | focused SharedGroup QA certification and broader IF-ADR-038 recertification |

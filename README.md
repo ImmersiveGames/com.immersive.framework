@@ -4,13 +4,12 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Latest published preview: `1.1.0-preview.3`. A local release candidate,
-`1.1.0-preview.4`, includes the Session Camera Assignment migration and
-consumer Play Mode validation; Framework Unity import/compile, automated tests
-and broader Camera/Player QA remain pending. Latest stable package release:
-`1.0.2`. The earlier
-`1.0.3-preview.1` preparation was not published and `1.1.0-preview.1` failed
-archive verification before distribution.
+Current package version: `1.1.0-preview.5` (preview channel); latest published
+preview: `1.1.0-preview.4`. Latest stable package release: `1.0.2`. The preview
+line contains experimental API and serialized-authoring changes; Unity package
+import/compile and broader IF-ADR-038 Camera recertification remain pending.
+Earlier release history and validation limits are recorded in the
+[changelog](CHANGELOG.md) and [framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md).
 
 The package provides runtime authorities, designer-facing authoring surfaces,
 Editor workflows, diagnostics and validation. It consumes the technical
@@ -48,20 +47,17 @@ scope, then declare only the Framework package:
 ```
 
 The stable `1.0.2` release resolves Foundation `0.2.1` and Logging `0.2.2`.
-The preview candidate in this checkout targets Foundation `0.2.2` and Logging
-`0.2.3`. As a Git fallback for the stable release, use
+The preview line targets Foundation `0.2.2` and Logging `0.2.3`. As a Git fallback for the stable release, use
 `https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.2`; Git
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
 
-Use preview `1.1.0-preview.3` through OpenUPM or the Git tag
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.3`.
-It consolidates the Reset authoring and runtime cut; preview APIs and serialized
-authoring may still change.
-
-The prepared `1.1.0-preview.4` candidate is not available to consumers until
-its signed release workflow completes. Its candidate changes and validation
-limits are listed in the [changelog](CHANGELOG.md).
+Use preview `1.1.0-preview.5` through OpenUPM after publication or through the
+Git tag
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.5`.
+Preview APIs and serialized authoring may still change. Check the GitHub Release
+and OpenUPM package page for publication status before installing through the
+registry.
 
 ## Getting started
 
