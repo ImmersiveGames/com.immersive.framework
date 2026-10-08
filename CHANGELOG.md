@@ -2,7 +2,7 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.5] - 2026-10-08 — prepared for signed publication
+## [1.1.0-preview.5] - 2026-10-08 — published
 
 This preview adds the consumer-controlled Player gameplay availability block
 and completes focused SharedGroup, Individual Output participation and Player

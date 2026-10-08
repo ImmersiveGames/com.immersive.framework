@@ -4,8 +4,8 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current package version: `1.1.0-preview.5` (preview channel); latest published
-preview: `1.1.0-preview.4`. Latest stable package release: `1.0.2`. The preview
+Current package version and latest published preview: `1.1.0-preview.5`.
+Latest stable package release: `1.0.2`. The preview
 line contains experimental API and serialized-authoring changes; Unity package
 import/compile and broader IF-ADR-038 Camera recertification remain pending.
 Earlier release history and validation limits are recorded in the
@@ -52,12 +52,11 @@ The preview line targets Foundation `0.2.2` and Logging `0.2.3`. As a Git fallba
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
 
-Use preview `1.1.0-preview.5` through OpenUPM after publication or through the
-Git tag
+Use preview `1.1.0-preview.5` through OpenUPM or through the Git tag
 `https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.5`.
-Preview APIs and serialized authoring may still change. Check the GitHub Release
-and OpenUPM package page for publication status before installing through the
-registry.
+Preview APIs and serialized authoring may still change. The signed package is
+available in the [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.5)
+and OpenUPM.
 
 ## Getting started
 
