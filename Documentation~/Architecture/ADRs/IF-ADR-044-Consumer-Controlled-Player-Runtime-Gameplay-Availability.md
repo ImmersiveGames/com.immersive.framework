@@ -1,6 +1,6 @@
 # IF-ADR-044 — Consumer-Controlled Player Runtime Gameplay Availability
 
-Status: **Accepted — implementation delivered; Unity validation pending**
+Status: **Accepted — runtime contract validated; authoring surface implemented, Unity validation pending**
 Proposed: **2026-10-07**  
 Type: architecture / Player gameplay / public command boundary / input gating  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-025, IF-ADR-033, IF-ADR-036  
@@ -102,7 +102,21 @@ The authoring component does not represent a turn, active Player or selection po
 
 ## 10. Validation
 
-Unity validation remains pending. QA must prove at minimum:
+Current focused runtime evidence:
+
+```text
+QAFramework IF-ADR-044
+status = Passed
+verdict = PASS
+cases = 8/8
+cleanup = BaselineRestored
+```
+
+This certification exercises the public runtime block/release contract, independent block composition, preserved Player/Actor/device/Camera state, Leave/Rejoin occurrence invalidation and cleanup. It validates the runtime contract delivered by this ADR; it does not by itself certify the newly added `PlayerGameplayAvailabilityBlockTrigger` authoring component.
+
+Remaining validation for the authoring addition is Unity import/compile plus focused use of `RequestBlock()` / `RequestRelease()` through a real scoped scene consumer. Composition with Pause/Transition or another active gate must continue to prove that releasing a consumer-owned block cannot bypass an independently owned gate.
+
+The complete contract remains:
 
 1. blocking one Player does not alter participation, Actor, Assignment, devices, or Gameplay Readiness;
 2. releasing the block restores gameplay when no other gate is active;

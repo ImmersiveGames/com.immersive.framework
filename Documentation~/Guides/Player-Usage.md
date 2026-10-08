@@ -1,8 +1,8 @@
 # Player Usage
 
 Status: **Scene-Provided authoring and runtime adoption are implemented; Unity validation pending. ActorProfile and admission timing remain Experimental.**
-Last updated: **2026-10-07**
-Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
+Last updated: **2026-10-08**
+Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-044](../Architecture/ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md)
 
 ## Product model
 
@@ -257,6 +257,8 @@ typed occurrence identity before preparation establishes it.
 ### Temporarily block gameplay input for a Player
 
 For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` and configure its Route or Activity `Scope`, `Player Slot Profile` and optional diagnostic `Reason`. Wire `RequestBlock()` and `RequestRelease()` to the desired UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
+
+The underlying IF-ADR-044 runtime contract has focused QAFramework evidence at **8/8 PASS** with `BaselineRestored`. That evidence certifies the runtime acquire/release semantics; the authoring trigger itself remains pending Unity import/compile and focused consumer validation.
 
 An authorized `IPlayerSessionScopedAccess` consumer can temporarily block gameplay
 input without leaving the Player Session, changing readiness, replacing the Actor

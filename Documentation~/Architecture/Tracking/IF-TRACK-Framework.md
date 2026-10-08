@@ -2,7 +2,7 @@
 
 Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.3 published; 1.1.0-preview.4 release candidate prepared locally, not published; Reset consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
-Last updated: **2026-10-07**
+Last updated: **2026-10-08**
 
 ## Authority and status model
 
@@ -184,7 +184,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 041 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Framework EditMode 169/169; RouteLifecycle observer 6/6; GameFlow `Hub -> A -> B -> A -> C -> B -> Hub` Play Mode PASS | one Route-scoped adapter in `SCN_GameFlow_Basic`; ActivityFlow remains authority |
 | 042 | ACCEPTED; SharedGroup projection implemented | Local Multiplayer SharedGroup manual consumer validation PASS 2026-10-06; current Camera Editor 78/78 PASS | focused SharedGroup QA certification and broader IF-ADR-038 recertification remain open |
 | 043 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Individual Output participation manually validated; Framework EditMode 175/175, Camera 78/78, PlayerCameraOutputIntegration 3/3, SessionCameraAssignmentRuntime 37/37; focused QAFramework 7/7 PASS on 2026-10-07 with 10/10 monitored frames covered and `BaselineRestored` | focused physical-participation gate closed; broader IF-ADR-038 recertification remains separate |
-| 044 | ACCEPTED / IMPLEMENTED; Unity validation pending | Public occurrence-scoped block/release token, Session-lifetime composition, canonical input adapter projection, Leave cleanup, `PlayerGameplayAvailabilityBlockTrigger` authoring surface and Player usage docs delivered; QAFramework IF-ADR-044 focused 8-case certification authored (not executed) | manual Unity validation pending for IF-ADR-044 certification, Gate composition, Route transition, Pause/Resume and Leave/Rejoin |
+| 044 | ACCEPTED / IMPLEMENTED; runtime contract VALIDATED; authoring surface Unity validation pending | Public occurrence-scoped block/release token, Session-lifetime composition, canonical input adapter projection, Leave cleanup, `PlayerGameplayAvailabilityBlockTrigger` authoring surface and Player usage docs delivered; QAFramework IF-ADR-044 focused **8/8 PASS** with `BaselineRestored` | focused Unity import/compile and consumer validation remain for the new authoring trigger; Gate composition with Pause/Transition remains separate evidence |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
