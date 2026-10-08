@@ -1,6 +1,6 @@
 # IF-ADR-044 — Consumer-Controlled Player Runtime Gameplay Availability
 
-Status: **Accepted — runtime contract validated; authoring surface implemented, Unity validation pending**
+Status: **Accepted / Implemented / Integrated / Validated — runtime contract and authoring surface consumer-proven**
 Proposed: **2026-10-07**  
 Type: architecture / Player gameplay / public command boundary / input gating  
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-025, IF-ADR-033, IF-ADR-036  
@@ -112,9 +112,18 @@ cases = 8/8
 cleanup = BaselineRestored
 ```
 
-This certification exercises the public runtime block/release contract, independent block composition, preserved Player/Actor/device/Camera state, Leave/Rejoin occurrence invalidation and cleanup. It validates the runtime contract delivered by this ADR; it does not by itself certify the newly added `PlayerGameplayAvailabilityBlockTrigger` authoring component.
+This certification exercises the public runtime block/release contract, independent block composition, preserved Player/Actor/device/Camera state, Leave/Rejoin occurrence invalidation and cleanup.
 
-Remaining validation for the authoring addition is Unity import/compile plus focused use of `RequestBlock()` / `RequestRelease()` through a real scoped scene consumer. Composition with Pause/Transition or another active gate must continue to prove that releasing a consumer-owned block cannot bypass an independently owned gate.
+The public `PlayerGameplayAvailabilityBlockTrigger` authoring surface was then integrated manually in the `LocalMultiplayer` consumer on 2026-10-08. Two Activity-scoped triggers, one for P1 and one for P2, bound successfully through the normal Player Session scoped-access composition. Manual Unity validation confirmed:
+
+- `RequestBlock()` disables only the targeted Player gameplay Action Map through the canonical `UnityPlayerInputGateAdapter`;
+- `RequestRelease()` restores that Player when no other gate remains;
+- P1 and P2 blocks are independent;
+- joined Session state, Actor ownership, devices, GameplayReady and shared Camera composition remain intact;
+- a held consumer block is released during scoped-consumer teardown;
+- Pause/Resume continues to compose with consumer availability through the canonical gate path.
+
+Authoring placement follows the normal scoped-access composition rule: an Activity-scoped trigger must be authored in content discoverable by that Activity scope. Arbitrary Persistent Content placement does not imply Activity ownership or binding.
 
 The complete contract remains:
 

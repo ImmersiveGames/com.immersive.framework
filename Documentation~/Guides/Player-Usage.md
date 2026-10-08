@@ -258,7 +258,9 @@ typed occurrence identity before preparation establishes it.
 
 For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` and configure its Route or Activity `Scope`, `Player Slot Profile` and optional diagnostic `Reason`. Wire `RequestBlock()` and `RequestRelease()` to the desired UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
 
-The underlying IF-ADR-044 runtime contract has focused QAFramework evidence at **8/8 PASS** with `BaselineRestored`. That evidence certifies the runtime acquire/release semantics; the authoring trigger itself remains pending Unity import/compile and focused consumer validation.
+The underlying IF-ADR-044 runtime contract has focused QAFramework evidence at **8/8 PASS** with `BaselineRestored`. The `PlayerGameplayAvailabilityBlockTrigger` authoring surface is also consumer-validated in the Local Multiplayer sample (2026-10-08): P1/P2 Block/Release projected through the canonical Gate adapter, independent token ownership was preserved, and a held block was released on scoped-consumer teardown.
+
+Scope is ownership, not scene location. An Activity-scoped trigger must live in content discoverable by the active Activity scope; placing the component in arbitrary Persistent Content does not make it Activity-scoped or eligible for binding. Use the same Route/Activity content composition rules as the other `PlayerSessionScopedAccessConsumer` authoring surfaces.
 
 An authorized `IPlayerSessionScopedAccess` consumer can temporarily block gameplay
 input without leaving the Player Session, changing readiness, replacing the Actor
