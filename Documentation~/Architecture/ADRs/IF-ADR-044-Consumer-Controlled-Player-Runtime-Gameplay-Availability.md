@@ -92,7 +92,15 @@ Implementation SHALL first reuse the Runtime Gameplay Availability model establi
 - Session Leave and runtime shutdown clear occurrence blocks and their physical projection.
 - `GameplayReady`, participation, Actor, device pairing and Camera state remain independent of the consumer block.
 
-## 9. Validation
+## 9. Public authoring surface
+
+The runtime API defined by this ADR remains the authority for acquiring and releasing Runtime Gameplay Availability blocks. The Framework also provides `PlayerGameplayAvailabilityBlockTrigger` as a public Unity authoring component for UnityEvent, UI and sample workflows.
+
+Each component represents one consumer-owned block and retains/releases only the token it acquired. It targets one explicitly authored `PlayerSlotProfile` within its Route or Activity `Scope`; it does not select among Players. `Reason` is diagnostic operation metadata and does not add gameplay-rule semantics.
+
+The authoring component does not represent a turn, active Player or selection policy. It does not control `PlayerInput` directly and does not alter Actor, Camera, devices, participation or `GameplayReady`.
+
+## 10. Validation
 
 Unity validation remains pending. QA must prove at minimum:
 

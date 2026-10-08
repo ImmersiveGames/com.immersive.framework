@@ -256,6 +256,8 @@ typed occurrence identity before preparation establishes it.
 
 ### Temporarily block gameplay input for a Player
 
+For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` and configure its Route or Activity `Scope`, `Player Slot Profile` and optional diagnostic `Reason`. Wire `RequestBlock()` and `RequestRelease()` to the desired UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
+
 An authorized `IPlayerSessionScopedAccess` consumer can temporarily block gameplay
 input without leaving the Player Session, changing readiness, replacing the Actor
 or changing Camera membership. Store the returned token for the full reason that
