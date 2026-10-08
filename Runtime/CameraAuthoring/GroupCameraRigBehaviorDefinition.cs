@@ -6,6 +6,7 @@ namespace Immersive.Framework.CameraAuthoring
     [CreateAssetMenu(fileName = "Group Camera Rig Behavior", menuName = "Immersive Framework/Camera/Rig Behaviors/Group")]
     public sealed class GroupCameraRigBehaviorDefinition : CameraRigBehaviorDefinition
     {
+        [SerializeField] private CameraTargetRequirement followRequirement = CameraTargetRequirement.Required;
         [SerializeField] private CameraTargetRequirement lookAtRequirement = CameraTargetRequirement.Optional;
         [SerializeField] private Vector3 followOffset = new Vector3(0f, 5f, -8f);
         [SerializeField, Min(0.0001f)] private float memberWeight = 1f;
@@ -17,7 +18,7 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private Vector2 orthoSizeRange = new Vector2(1f, 1000f);
 
         public override CameraRigPresentationIntent PresentationIntent => CameraRigPresentationIntent.Group;
-        public override CameraTargetRequirement FollowRequirement => CameraTargetRequirement.Required;
+        public override CameraTargetRequirement FollowRequirement => followRequirement;
         public override CameraTargetRequirement LookAtRequirement => lookAtRequirement;
         public Vector3 FollowOffset => followOffset;
         public float MemberWeight => memberWeight;
@@ -30,6 +31,8 @@ namespace Immersive.Framework.CameraAuthoring
 
         public override bool TryValidate(out string issue)
         {
+            if (!IsDefinedRequirement(followRequirement))
+                return Invalid(nameof(followRequirement), followRequirement, "Not Used, Optional or Required", out issue);
             if (!IsDefinedRequirement(lookAtRequirement))
                 return Invalid(nameof(lookAtRequirement), lookAtRequirement, "Not Used, Optional or Required", out issue);
             if (!IsFinite(followOffset))

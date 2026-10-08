@@ -40,6 +40,10 @@ namespace Immersive.Framework.Camera
         internal CameraRigComposer Composer { get; }
         internal CameraOutputAuthoring Output { get; }
         internal string SubjectDiagnostic { get; private set; } = string.Empty;
+        private bool HasRequiredSubjectTarget =>
+            Composer?.EffectiveFollowRequirement == CameraTargetRequirement.Required ||
+            Composer?.EffectiveLookAtRequirement == CameraTargetRequirement.Required;
+
         internal bool IsReadyForOutput
         {
             get
@@ -47,7 +51,7 @@ namespace Immersive.Framework.Camera
                 if (Assignment.TargetPolicy == CameraTargetPolicy.MemberActorTargets &&
                     Composer?.BehaviorDefinition is GroupCameraRigBehaviorDefinition)
                 {
-                    return ResolvedSubjects.Count > 0;
+                    return !HasRequiredSubjectTarget || ResolvedSubjects.Count > 0;
                 }
 
                 if (Assignment.TargetPolicy != CameraTargetPolicy.MemberActorTargets ||
@@ -56,10 +60,7 @@ namespace Immersive.Framework.Camera
                     return true;
                 }
 
-                bool targetRequired =
-                    Composer?.EffectiveFollowRequirement == CameraTargetRequirement.Required ||
-                    Composer?.EffectiveLookAtRequirement == CameraTargetRequirement.Required;
-                return !targetRequired || ResolvedSubjects.Count == 1;
+                return !HasRequiredSubjectTarget || ResolvedSubjects.Count == 1;
             }
         }
         internal IReadOnlyList<SessionCameraMemberState> Members =>
@@ -129,7 +130,7 @@ namespace Immersive.Framework.Camera
                     _subjectCoverageOwnerId) == true)
             {
                 _ownsSubjectFallbackCoverage = false;
-                SubjectDiagnostic = string.Empty;
+                SetSubjectDiagnostic(string.Empty);
             }
         }
 
@@ -142,12 +143,12 @@ namespace Immersive.Framework.Camera
             if (Output?.Session?.RegisterFallbackCoverageOwnershipAfterAssignmentCommit(
                     _subjectCoverageOwnerId) != true)
             {
-                SubjectDiagnostic = "The committed Assignment requires Fallback coverage, but the Output could not register target coverage ownership.";
+                SetSubjectDiagnostic("The committed Assignment requires Fallback coverage, but the Output could not register target coverage ownership.");
                 return false;
             }
 
             _ownsSubjectFallbackCoverage = true;
-            SubjectDiagnostic = string.Empty;
+            SetSubjectDiagnostic(string.Empty);
             return true;
         }
 
@@ -178,6 +179,10 @@ namespace Immersive.Framework.Camera
         {
             if (!_ownsSubjectFallbackCoverage || Output?.Session == null)
             {
+                if (!_ownsSubjectFallbackCoverage)
+                {
+                    SetSubjectDiagnostic(string.Empty);
+                }
                 return;
             }
 
@@ -186,11 +191,11 @@ namespace Immersive.Framework.Camera
             if (result.Succeeded)
             {
                 _ownsSubjectFallbackCoverage = false;
-                SubjectDiagnostic = string.Empty;
+                SetSubjectDiagnostic(string.Empty);
             }
             else
             {
-                SubjectDiagnostic = result.DiagnosticSummary;
+                SetSubjectDiagnostic(result.DiagnosticSummary);
             }
         }
 
@@ -222,7 +227,14 @@ namespace Immersive.Framework.Camera
 
                 if (resolvedSubjects.Count == 0)
                 {
-                    CoverForMissingRequiredSubject();
+                    if (HasRequiredSubjectTarget)
+                    {
+                        CoverForMissingRequiredSubject();
+                    }
+                    else
+                    {
+                        ReleaseSubjectFallbackCoverage();
+                    }
                 }
                 else
                 {
@@ -305,14 +317,22 @@ namespace Immersive.Framework.Camera
             }
             if (Output?.Session == null)
             {
-                SubjectDiagnostic = "Required member Actor Subject is unavailable and the Session Output cannot apply Fallback coverage.";
+                SetSubjectDiagnostic("Required member Actor Subject is unavailable and the Session Output cannot apply Fallback coverage.");
                 return;
             }
 
             CameraOutputApplyResult result =
                 Output.Session.CoverWithFallback(_subjectCoverageOwnerId);
             _ownsSubjectFallbackCoverage = result.Succeeded;
-            SubjectDiagnostic = result.Succeeded ? string.Empty : result.DiagnosticSummary;
+            SetSubjectDiagnostic(result.Succeeded
+                ? "Required member Actor Subject is unavailable; the active occurrence remains alive and the Output is covered by Fallback."
+                : result.DiagnosticSummary);
+        }
+
+        private void SetSubjectDiagnostic(string diagnostic)
+        {
+            SubjectDiagnostic = diagnostic ?? string.Empty;
+            Output?.SetSubjectDiagnostic(SubjectDiagnostic);
         }
     }
 
@@ -1962,6 +1982,15 @@ namespace Immersive.Framework.Camera
         {
             if (_disposed) return;
             _disposed = true;
+            for (int index = _occurrences.Count - 1; index >= 0; index--)
+            {
+                GameObject occurrenceRoot = _occurrences[index].Root;
+                if (occurrenceRoot != null)
+                {
+                    occurrenceRoot.SetActive(false);
+                }
+            }
+
             for (int index = _occurrences.Count - 1; index >= 0; index--)
             {
                 SessionCameraOccurrence occurrence = _occurrences[index];

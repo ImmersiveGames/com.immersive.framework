@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using Immersive.Audio.Authoring;
 using Immersive.Framework.Audio;
 using Immersive.Framework.SceneLifecycle;
@@ -134,10 +133,9 @@ namespace Immersive.Framework.Audio.Editor.Tests
             IReadOnlyList<GameObject> roots = new[] { consumerRoot };
 
             SceneCompositionResult first = firstParticipant.OnSceneAvailable(scope, roots);
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("Route BGM binding rejected a different FrameworkBgmDirector authority"));
-            SceneCompositionResult rejected = secondParticipant.OnSceneAvailable(scope, roots);
+            SceneCompositionResult rejected = InvokeWithExpectedErrorLog(
+                () => secondParticipant.OnSceneAvailable(scope, roots),
+                "[ERROR][Immersive.Framework][RouteBgmAuthoring] Route BGM binding rejected a different FrameworkBgmDirector authority. currentDirector='first-director' rejectedDirector='second-director'");
 
             Assert.That(first.Succeeded, Is.True, first.Diagnostic);
             Assert.That(rejected.Succeeded, Is.False);
@@ -162,16 +160,54 @@ namespace Immersive.Framework.Audio.Editor.Tests
 
             SceneCompositionResult existingBinding = ownerParticipant.OnSceneAvailable(scope, new[] { routeRoot });
             Assert.That(existingBinding.Succeeded, Is.True, existingBinding.Diagnostic);
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("Route BGM binding rejected a different FrameworkBgmDirector authority"));
-            SceneCompositionResult rejected = incomingParticipant.OnSceneAvailable(
-                scope,
-                new[] { activityRoot, routeRoot });
+            SceneCompositionResult rejected = InvokeWithExpectedErrorLog(
+                () => incomingParticipant.OnSceneAvailable(
+                    scope,
+                    new[] { activityRoot, routeRoot }),
+                "[ERROR][Immersive.Framework][RouteBgmAuthoring] Route BGM binding rejected a different FrameworkBgmDirector authority. currentDirector='owner-director' rejectedDirector='incoming-director'");
 
             Assert.That(rejected.Succeeded, Is.False);
+            Assert.That(rejected.Diagnostic, Does.Contain("rejected"));
             Assert.That(newlyBound.Director, Is.Null);
             Assert.That(alreadyOwned.Director, Is.SameAs(ownerDirector));
+        }
+
+        private static SceneCompositionResult InvokeWithExpectedErrorLog(
+            System.Func<SceneCompositionResult> operation,
+            string expectedMessage)
+        {
+            var receivedErrors = new List<string>();
+            Application.LogCallback captureError = (condition, stackTrace, type) =>
+            {
+                if (type == LogType.Error)
+                {
+                    receivedErrors.Add(condition);
+                }
+            };
+            bool previousIgnoreFailingMessages = LogAssert.ignoreFailingMessages;
+            Application.logMessageReceived += captureError;
+            SceneCompositionResult result = default;
+            try
+            {
+                LogAssert.ignoreFailingMessages = true;
+                result = operation();
+            }
+            finally
+            {
+                try
+                {
+                    LogAssert.ignoreFailingMessages = previousIgnoreFailingMessages;
+                }
+                finally
+                {
+                    Application.logMessageReceived -= captureError;
+                }
+            }
+
+            Assert.That(receivedErrors, Has.Count.EqualTo(1),
+                "The rejected authority attempt must emit exactly one Unity Error.");
+            Assert.That(receivedErrors[0], Is.EqualTo(expectedMessage));
+            return result;
         }
 
         [Test]

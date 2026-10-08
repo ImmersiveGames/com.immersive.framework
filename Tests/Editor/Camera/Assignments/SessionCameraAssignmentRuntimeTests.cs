@@ -86,6 +86,10 @@ namespace Immersive.Framework.Camera.Tests
             CameraOutputAuthoring player2Output = fixture.Outputs[1];
 
             // Zero Players: keep only the first stable Slot binding as Fallback coverage.
+            // The fixture creates enabled Unity Cameras; establish the physical
+            // participation state that the Player Output integration owns at zero Players.
+            player1Output.SetPlayerPhysicalParticipation(true);
+            player2Output.SetPlayerPhysicalParticipation(false);
             AssertIndividualAssignmentsRemainReservedAndFallbackCovered(fixture);
             Assert.That(player1Output.UnityCamera.enabled, Is.True);
             Assert.That(player2Output.UnityCamera.enabled, Is.False);
@@ -397,8 +401,15 @@ namespace Immersive.Framework.Camera.Tests
             CameraOccurrenceIdentity identity = occurrence.Identity;
             CinemachineTargetGroup group = occurrence.Composer.FrameworkOwnedGroupTargetGroup;
 
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(fixture.Outputs[0].Session.OutputState.ActiveAssignmentId,
+                Is.EqualTo(occurrence.Assignment.Id));
+            Assert.That(fixture.Outputs[0].Session.OutputState.RetainedNormalOccurrence,
+                Is.EqualTo(identity));
             Assert.That(group.Targets, Is.Empty);
             Assert.That(fixture.Outputs.All(output => output.Session.OutputState.IsFallbackCovering), Is.True);
+            StringAssert.Contains("Required member Actor Subject is unavailable", occurrence.SubjectDiagnostic);
+            StringAssert.Contains("Required member Actor Subject is unavailable", fixture.Outputs[0].LastDiagnostic);
             Assert.That(occurrence.Composer.CinemachineCamera.Follow, Is.SameAs(group.transform));
 
             PlayerOccurrenceId firstPlayer = PlayerOccurrenceId.Create(
@@ -415,6 +426,12 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(group.Targets[0].Radius, Is.EqualTo(1.25f));
             Assert.That(group.Targets[0].Weight, Is.EqualTo(occurrence.Composer.GroupMemberWeight));
             Assert.That(fixture.Outputs.All(output => !output.Session.OutputState.IsFallbackCovering), Is.True);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(group.Targets[0].Object, Is.SameAs(firstSubject.Observation));
+            Assert.That(occurrence.SubjectDiagnostic, Is.Empty);
+            Assert.That(fixture.Outputs[0].LastDiagnostic, Is.Empty);
+            Assert.That(fixture.Outputs[0].Session.OutputState.PresentedNormalOccurrence,
+                Is.EqualTo(identity));
 
             Assert.That(runtime.ReconcilePlayerOccurrence(
                 secondPlayer, PlayerSlotId.Player2, secondSubject, out issue), Is.True, issue);
@@ -433,8 +450,159 @@ namespace Immersive.Framework.Camera.Tests
             Assert.That(runtime.RemovePlayerOccurrence(secondPlayer, out issue), Is.True, issue);
             Assert.That(group.Targets, Is.Empty);
             Assert.That(fixture.Outputs.All(output => output.Session.OutputState.IsFallbackCovering), Is.True);
+            Assert.That(fixture.Outputs[0].Session.OutputState.ActiveAssignmentId,
+                Is.EqualTo(occurrence.Assignment.Id));
+            Assert.That(fixture.Outputs[0].Session.OutputState.RetainedNormalOccurrence,
+                Is.EqualTo(identity));
+            Assert.That(occurrence.Members, Is.Empty);
+            Assert.That(occurrence.ResolvedSubjects, Is.Empty);
             Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
             Assert.That(occurrence.Identity, Is.EqualTo(identity));
+            StringAssert.Contains("Required member Actor Subject is unavailable", occurrence.SubjectDiagnostic);
+            StringAssert.Contains("Required member Actor Subject is unavailable", fixture.Outputs[0].LastDiagnostic);
+        }
+
+        [Test]
+        public void SharedGroupWithOptionalFollowPresentsEmptyGroupWithoutFallback()
+        {
+            Fixture fixture = CreateSharedGroupFixture();
+            SetField(fixture.RigPrefab.GetComponent<CameraRigComposer>().BehaviorDefinition,
+                "followRequirement", CameraTargetRequirement.Optional);
+
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            CameraOutputSession output = fixture.Outputs[0].Session;
+            CameraOccurrenceIdentity identity = occurrence.Identity;
+
+            Assert.That(occurrence.Members, Is.Empty);
+            Assert.That(occurrence.ResolvedSubjects, Is.Empty);
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(occurrence.Assignment.Id));
+            Assert.That(output.OutputState.PresentedNormalOccurrence, Is.EqualTo(identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.Applicator.AppliedCamera, Is.EqualTo(occurrence.Composer.CinemachineCamera));
+            Assert.That(occurrence.SubjectDiagnostic, Is.Empty);
+            Assert.That(fixture.Outputs[0].LastDiagnostic, Is.Empty);
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(1));
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(occurrence.Composer.FrameworkOwnedGroupTargetGroup.Targets, Is.Empty);
+
+            PlayerOccurrenceId player = PlayerOccurrenceId.Create(
+                "optional-empty-group", 1, PlayerSlotId.Player1);
+            CameraSubject subject = CreateSubject("Optional Group Subject");
+            Assert.That(runtime.ReconcilePlayerOccurrence(
+                player, PlayerSlotId.Player1, subject, out string issue), Is.True, issue);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(occurrence.Members, Has.Count.EqualTo(1));
+            Assert.That(occurrence.ResolvedSubjects, Has.Count.EqualTo(1));
+            Assert.That(occurrence.Composer.FrameworkOwnedGroupTargetGroup.Targets.Single().Object,
+                Is.SameAs(subject.Observation));
+            Assert.That(output.OutputState.PresentedNormalOccurrence, Is.EqualTo(identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(occurrence.Assignment.Id));
+            Assert.That(fixture.Outputs[0].LastDiagnostic, Is.Empty);
+            Assert.That(runtime.RemovePlayerOccurrence(player, out issue), Is.True, issue);
+            Assert.That(runtime.Occurrences[0], Is.SameAs(occurrence));
+            Assert.That(occurrence.Members, Is.Empty);
+            Assert.That(occurrence.ResolvedSubjects, Is.Empty);
+            Assert.That(occurrence.Composer.FrameworkOwnedGroupTargetGroup.Targets, Is.Empty);
+            Assert.That(occurrence.Identity, Is.EqualTo(identity));
+            Assert.That(output.OutputState.PresentedNormalOccurrence, Is.EqualTo(identity));
+            Assert.That(output.OutputState.IsFallbackCovering, Is.False);
+            Assert.That(output.OutputState.ActiveAssignmentId, Is.EqualTo(occurrence.Assignment.Id));
+            Assert.That(fixture.Outputs[0].LastDiagnostic, Is.Empty);
+        }
+
+        [Test]
+        public void DisposeDisablesPresentedOccurrenceBeforeReleasingItsOutput()
+        {
+            Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence occurrence = runtime.Occurrences[0];
+            var probe = occurrence.Root.AddComponent<SessionCameraShutdownOrderProbe>();
+            Assert.That(probe, Is.Not.Null,
+                "The test-only shutdown probe must be attachable from its non-Editor test assembly.");
+            var observation = new SessionCameraShutdownOrderObservation();
+            probe.Topology = fixture.Topology;
+            probe.Outputs = fixture.Outputs;
+            probe.ExpectedFallbackCovering = false;
+            probe.Observation = observation;
+            probe.ReenterDispose = runtime.Dispose;
+
+            runtime.Dispose();
+            runtime.Dispose();
+
+            Assert.That(observation.SawActiveAssignmentOnOccurrenceDisable, Is.True,
+                "The occurrence must be released while its Output Assignment still exists.");
+            Assert.That(observation.SawOutputRegisteredOnOccurrenceDisable, Is.True,
+                "The Output must remain registered until the occurrence is disabled.");
+            Assert.That(observation.SawFallbackInfrastructureAvailableOnOccurrenceDisable, Is.True,
+                $"Fallback infrastructure must remain available during occurrence release. {observation.OutputStatesAtDisable}");
+            Assert.That(occurrence.Root == null, Is.True);
+            Assert.That(fixture.Outputs[0].Session.OutputState.HasActiveAssignment, Is.False);
+            Assert.That(fixture.Outputs[0].Session.OutputState.IsFallbackCovering, Is.True);
+            Assert.That(fixture.Outputs[0].Session.FallbackCoverageOwnerCount, Is.Zero);
+            Assert.That(fixture.Outputs[0].Applicator.HasAppliedFallback, Is.True);
+            Assert.That(fixture.Topology.TryGetOutput(
+                fixture.Outputs[0].OutputId, out CameraOutputAuthoring registered, out _), Is.True);
+            Assert.That(registered, Is.SameAs(fixture.Outputs[0]));
+
+            fixture.Topology.Dispose();
+            Assert.That(fixture.Topology.CaptureSnapshot().IsTornDown, Is.True);
+            Assert.That(fixture.Outputs[0].IsInitialized, Is.False);
+            Assert.That(fixture.Outputs[0].Session, Is.Null);
+        }
+
+        [Test]
+        public void DisposeDisablesFallbackCoveredOccurrencesBeforeReleasingMultipleOutputs()
+        {
+            Fixture fixture = CreateSharedGroupFixture(2);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+            SessionCameraOccurrence[] occurrences = runtime.Occurrences.ToArray();
+            Assert.That(occurrences, Has.Length.EqualTo(fixture.Outputs.Length),
+                "The SharedGroup fixture must materialize one occurrence for each mapped Output.");
+            var probes = new SessionCameraShutdownOrderProbe[occurrences.Length];
+
+            for (int index = 0; index < occurrences.Length; index++)
+            {
+                probes[index] = occurrences[index].Root.AddComponent<SessionCameraShutdownOrderProbe>();
+                Assert.That(probes[index], Is.Not.Null,
+                    "The test-only shutdown probe must be attachable from its non-Editor test assembly.");
+                probes[index].Observation = new SessionCameraShutdownOrderObservation();
+                probes[index].Topology = fixture.Topology;
+                probes[index].Outputs = fixture.Outputs;
+                probes[index].ExpectedFallbackCovering = true;
+                Assert.That(occurrences[index].Root.activeSelf, Is.True,
+                    $"Occurrence '{occurrences[index].Identity}' must be active before shutdown.");
+                Assert.That(occurrences[index].Root.activeInHierarchy, Is.True,
+                    $"Occurrence '{occurrences[index].Identity}' must be active in the Session hierarchy before shutdown.");
+                Assert.That(fixture.Outputs[index].Session.OutputState.HasActiveAssignment, Is.True,
+                    $"Occurrence '{occurrences[index].Identity}' Output '{fixture.Outputs[index].OutputIdText}' must have its Assignment active before shutdown.");
+                Assert.That(fixture.Outputs[index].Session.OutputState.IsFallbackCovering, Is.True,
+                    $"Occurrence '{occurrences[index].Identity}' Output '{fixture.Outputs[index].OutputIdText}' must be fallback-covered before shutdown.");
+                Assert.That(fixture.Outputs[index].Session.FallbackCoverageOwnerCount, Is.EqualTo(1),
+                    $"Output '{fixture.Outputs[index].OutputIdText}' must have only its occurrence's subject-fallback owner before shutdown.");
+            }
+
+            runtime.Dispose();
+
+            for (int index = 0; index < occurrences.Length; index++)
+            {
+                Assert.That(probes[index].Observation.DisableCallbackCount, Is.EqualTo(1),
+                    $"Occurrence '{occurrences[index].Identity}' must produce one OnDisable observation.");
+                Assert.That(probes[index].Observation.SawActiveAssignmentOnOccurrenceDisable, Is.True,
+                    $"Occurrence '{occurrences[index].Identity}' OnDisable saw Output state: {probes[index].Observation.OutputStatesAtDisable}");
+                Assert.That(probes[index].Observation.SawOutputRegisteredOnOccurrenceDisable, Is.True);
+                Assert.That(probes[index].Observation.SawFallbackCoveringOnOccurrenceDisable, Is.True);
+                Assert.That(occurrences[index].Root == null, Is.True);
+                Assert.That(fixture.Outputs[index].Session.OutputState.HasActiveAssignment, Is.False);
+                Assert.That(fixture.Outputs[index].Session.OutputState.IsFallbackCovering, Is.True);
+                Assert.That(fixture.Outputs[index].Session.FallbackCoverageOwnerCount, Is.Zero);
+                Assert.That(fixture.Outputs[index].Applicator.HasAppliedFallback, Is.True);
+            }
+
+            fixture.Topology.Dispose();
+            Assert.That(fixture.Topology.CaptureSnapshot().IsTornDown, Is.True);
+            Assert.That(fixture.Outputs.All(output => !output.IsInitialized && output.Session == null), Is.True);
         }
 
         [Test]
@@ -1320,9 +1488,9 @@ namespace Immersive.Framework.Camera.Tests
             return fixture;
         }
 
-        private Fixture CreateSharedGroupFixture()
+        private Fixture CreateSharedGroupFixture(int outputCount = 1)
         {
-            Fixture fixture = CreateFixture(1, CameraTargetPolicy.MemberActorTargets);
+            Fixture fixture = CreateFixture(outputCount, CameraTargetPolicy.MemberActorTargets);
             SessionCameraAssignmentAsset assignment = fixture.Assignments[0];
             SetField(assignment, "occurrenceMode", CameraOccurrenceMode.SharedGroup);
             SetField(assignment, "membershipPolicy", CameraMembershipPolicy.ExplicitPlayerSlots);

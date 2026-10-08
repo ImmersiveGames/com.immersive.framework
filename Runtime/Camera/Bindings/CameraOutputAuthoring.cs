@@ -74,6 +74,20 @@ namespace Immersive.Framework.Camera
             unityCamera.enabled = participating;
         }
 
+        internal void SetSubjectDiagnostic(string diagnostic)
+        {
+            if (_session == null)
+            {
+                return;
+            }
+
+            string normalized = (diagnostic ?? string.Empty).NormalizeText();
+            SetDiagnostic(
+                string.IsNullOrEmpty(normalized) ? "Ready" : "SubjectFallback",
+                normalized,
+                false);
+        }
+
         private void Awake()
         {
             if (initializeOnAwake)

@@ -1,0 +1,19 @@
+{
+  "name": "Immersive.Framework.Camera.TestComponents",
+  "rootNamespace": "Immersive.Framework.Camera.Tests",
+  "references": [
+    "Immersive.Framework.Runtime",
+    "Unity.Cinemachine"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
