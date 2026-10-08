@@ -7,6 +7,22 @@ This is the official documentation entry point for consumers of `com.immersive.f
 - [Getting Started](Guides/Getting-Started.md) — create the application and author the smallest navigable setup.
 - [Game Flow](Guides/Game-Flow.md) — understand Routes, Activities, requests, ownership and transitions.
 
+## Find a feature guide
+
+| Need | Start here |
+|---|---|
+| Create the application and first navigable setup | [Getting Started](Guides/Getting-Started.md) |
+| Routes, Activities, lifecycle and commands | [Game Flow](Guides/Game-Flow.md) |
+| Player slots, provisioning, Actors and gameplay input | [Player Usage](Guides/Player-Usage.md) |
+| Session Camera Assignments, Outputs, Subjects and rigs | [Camera Usage](Guides/Camera-Usage.md) |
+| Input gates and Pause | [Pause Usage](Guides/Pause-Usage.md) |
+| Reset composition and requests | [Reset Usage](Guides/Reset-Usage.md) |
+| Progression persistence | [Progression Save authoring](Guides/Progression-Save-Authoring.md) |
+| Audio integration | [Audio Usage](Guides/Audio-Usage.md) |
+| Sample template for persistent application content | [Persistent Content Scene Template](Guides/Persistent-Content-Scene-Template.md) |
+| Supported consumer types | [Public API](API/Public-API.md) |
+| Architecture decisions and status | [Architecture map](Architecture/README.md) |
+
 ## Usage guides
 
 | Domain | Canonical guide |

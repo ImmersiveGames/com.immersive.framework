@@ -1,6 +1,6 @@
 # Player Usage
 
-Status: **Scene-Provided authoring and runtime adoption are implemented; Unity validation pending. ActorProfile and admission timing remain Experimental.**
+Status: **Scene-Provided authoring and runtime adoption are implemented. IF-ADR-044 runtime contract has focused QA 8/8; its authoring trigger has Local Multiplayer manual consumer validation PASS (2026-10-08). ActorProfile and admission timing remain Experimental.**
 Last updated: **2026-10-08**
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-044](../Architecture/ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md)
 
@@ -22,6 +22,14 @@ LocalPlayerHostAuthoring
 ActorProfile
   reusable Actor identity/classification and optional visual-content reference
 ```
+
+`PlayerSessionProfile` is a ScriptableObject with `SupportedSlots` in canonical
+allocation/Join order, `InitialJoiningOpen`, `HostProvisioning` and
+`ActorResolutionPolicy`. It stores initial intent; it never holds live Session
+state. `PlayerSlotProfile` owns the stable Slot ID, display metadata and optional
+default `ActorProfile`. `DisplayOrder` is presentation metadata and does not
+change allocation order. Runtime occupancy, device pairing and current Actor
+selection belong to the Session occurrence, not either profile.
 
 ```text
 Join
@@ -68,7 +76,7 @@ The root GameObject name equals its prefab filename without `.prefab`.
 reference. The Actor occurrence root owns physical/spatial state. Optional visual
 content is subordinate. `VisualContentMount` and `ActorProfile.VisualContentPrefab`
 are optional authoring/runtime content; neither is required for Actor validity,
-activation, placement, relocation or replacement. Unity validation remains pending.
+activation, placement, relocation or replacement.
 
 For a generic Player Actor prefab:
 
@@ -231,6 +239,31 @@ Derived serialized Runtime Host/Presentation references, duplicate ActorProfile 
 visual-content prefab evidence, and stamps proving an Editor operation ran are not
 sources of truth.
 
+## Player Session commands
+
+The scene-facing commands are explicit UnityEvent components. Each derives from
+`PlayerSessionScopedAccessConsumer`, has an authored Route or Activity `Scope`,
+and runs only when its public `Invoke()` method is called. Put the component in
+content owned and discovered by that scope. The base component exposes an
+optional diagnostic `Reason`; it does not own Session state.
+
+| Component | Request |
+|---|---|
+| `PlayerSessionOpenJoiningCommandTrigger` / `PlayerSessionCloseJoiningCommandTrigger` | Open or close Session admission. Closing does not remove already joined Players. |
+| `PlayerSessionJoinCommandTrigger` | Request Manager-Provisioned Join. `InvokeFromDevice(InputDevice)` is the explicit device-aware entry point. |
+| `PlayerSessionLeaveCommandTrigger` | Leave the currently joined occurrence for its required `PlayerSlotProfile`. |
+| `PlayerSessionSelectActorCommandTrigger` | Select an explicit `ActorProfile` for a `PlayerSlotProfile`. |
+| `PlayerSessionDefaultActorSelectionCommandTrigger` | Apply the Slot's configured default Actor selection. |
+| `PlayerSessionReplaceActorSelectionCommandTrigger` | Replace a selected Actor Profile through the selection command. |
+| `PlayerSessionClearActorSelectionCommandTrigger` | Clear Actor selection for the explicit Slot. |
+
+Wire each `Invoke()` to a UnityEvent or UI action. Configure typed Profile
+references; these components do not accept raw Slot identity strings. Manager-
+Provisioned Join is exposed through `ILocalPlayerJoinAccess` and does not turn a
+Scene-Provided candidate into a fallback path. For direct game logic, use the
+scoped `IPlayerSessionScopedAccess` received through the current composition;
+there is no global Player lookup.
+
 ## Occurrence identity
 
 ```text
@@ -256,7 +289,7 @@ typed occurrence identity before preparation establishes it.
 
 ### Temporarily block gameplay input for a Player
 
-For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` and configure its Route or Activity `Scope`, `Player Slot Profile` and optional diagnostic `Reason`. Wire `RequestBlock()` and `RequestRelease()` to the desired UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
+For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` to content owned and discovered by the chosen Route or Activity scope. Configure its `Scope`, `Player Slot Profile` and optional diagnostic `Reason`, then wire `RequestBlock()` and `RequestRelease()` to UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
 
 The underlying IF-ADR-044 runtime contract has focused QAFramework evidence at **8/8 PASS** with `BaselineRestored`. The `PlayerGameplayAvailabilityBlockTrigger` authoring surface is also consumer-validated in the Local Multiplayer sample (2026-10-08): P1/P2 Block/Release projected through the canonical Gate adapter, independent token ownership was preserved, and a held block was released on scoped-consumer teardown.
 

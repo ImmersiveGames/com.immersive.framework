@@ -143,13 +143,14 @@ The repository contains package-local Unity Test Framework assemblies and the
 documentation records focused QAFramework and FIRSTGAME evidence. Certification
 is scoped and dated: an older passing matrix is not evidence for later cuts.
 
-At this release boundary:
-
-- Player, Game Flow, Pause/Input, Activity content/visibility and the focused
-  IF-ADR-038 Camera cuts have source coverage; Unity validation is pending;
-- the Camera legacy-removal aggregate Unity recertification remains pending;
-- Experimental Reset surfaces retain their declared Experimental API status;
-- real-consumer proof remains required where listed by the current tracker.
+Validation is boundary-specific. The current tracker records completed Player,
+Game Flow, Pause/Input, Reset and focused Camera evidence separately from the
+remaining gates. For example, IF-ADR-042 SharedGroup has focused QA and consumer
+evidence, IF-ADR-043 physical Output participation has focused QA and consumer
+evidence, while broader IF-ADR-038 recertification remains open. IF-ADR-044 has
+runtime QA evidence and a Local Multiplayer manual consumer validation; package
+import/compile and other gate combinations remain separate. See the tracker for
+the dated evidence and exact scope.
 
 Always validate package import/compile and the relevant Play Mode or smoke lanes
 in the consuming Unity project before promoting a game build.

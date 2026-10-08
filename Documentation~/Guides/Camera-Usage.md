@@ -1,7 +1,7 @@
 # Camera Usage
 
-Status: **IF-ADR-038 Assignment-owned model active; IF-ADR-039 command boundary integrated and GameFlow consumer-validated.**
-Last updated: **2026-10-03**
+Status: **IF-ADR-038 Session Assignment model active; IF-ADR-039 command boundary and IF-ADR-041 GameFlow consumer path validated. IF-ADR-042/043 focused camera paths have separate QA evidence.**
+Last updated: **2026-10-08**
 
 Architecture status: [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md) and [IF-ADR-039](../Architecture/ADRs/IF-ADR-039-Session-Camera-Assignment-Command-Boundary.md) are Accepted. The IF-ADR-039 command boundary is implemented, Editor-tested and consumer-validated in GameFlow; broader IF-ADR-038 recertification remains separately scoped. This does not promote Experimental Camera assets to Stable API.
 
@@ -23,7 +23,7 @@ Camera Output (Unity Camera + Cinemachine Brain)
 
 Subjects are supplied by the current Actor occurrence. Camera configuration defines rig behavior. The Session Assignment determines membership, target policy, occurrence mode and Output mapping. Each physical Output presents one normal occurrence or its Fallback Camera.
 
-There is no CameraRequest/precedence selection surface. Runtime Assignment changes use the explicit `ISessionCameraAssignmentCommandPort` boundary defined by IF-ADR-039. `SessionCameraAssignmentCommandTrigger` is only an optional Inspector/UnityEvent adapter.
+Runtime Assignment changes use the explicit `ISessionCameraAssignmentCommandPort` boundary defined by IF-ADR-039. `SessionCameraAssignmentCommandTrigger` is only an optional Inspector/UnityEvent adapter.
 
 ## Supported composition
 
@@ -35,7 +35,7 @@ There is no CameraRequest/precedence selection surface. Runtime Assignment chang
 - `CameraSessionConfiguration` contains only physical Output prefabs. For `IndividualPerPlayer`, each Session Camera Assignment maps every member Slot to its Output. `PlayerCameraOutputIntegrationRuntime` derives `PlayerInput.camera` from that Assignment and current Player Host evidence. Do not author a second Player Slot → Output table.
 - `SharedGroup` and `SessionScoped` Assignments do not create individual Player Output bindings. Multiple Players may share one Output in `SharedGroup`, and zero-Player SessionScoped cameras remain valid without a Player binding.
 
-The Camera system/assets are not currently marked Stable as a whole. Check the Public API Reference for each surface’s maturity.
+The Camera system/assets are not marked Stable as a whole. Check the Public API Reference for each surface’s maturity. Current evidence includes Framework EditMode 175/175, Camera Editor 78/78, IF-ADR-042 focused QA 7/7, IF-ADR-043 focused QA 7/7, and QA-NEW-004 continuity 9/9. Those focused results do not close broader IF-ADR-038 recertification or transactional failure-path coverage.
 
 ## Runtime behavior
 
@@ -75,7 +75,7 @@ A/B -> Hub   Clear source -> Fallback
 
 The sample adapter derives the exact previous/next Assignment from `ActivityContentLifecycleContext`, implements `ISessionCameraAssignmentCommandConsumer`, and never reads current Camera state globally. Activity C remains content-less. Covered transitions keep Fallback presentation independent from the configured active Assignment.
 
-Validation evidence: Framework EditMode **163/163 PASS**, Camera Editor **74/74 PASS**, and GameFlow Play Mode PASS for the command sequence above.
+Validation evidence for the command boundary: Framework EditMode **169/169 PASS**, RouteLifecycle observer **6/6 PASS**, Camera Editor **74/74 PASS**, and GameFlow Play Mode PASS for the command sequence above, as recorded in the current tracker. The latest broader local suite counts are tracked separately and do not change the focused scope of this consumer proof.
 
 ## Common mistakes
 
@@ -85,8 +85,7 @@ Validation evidence: Framework EditMode **163/163 PASS**, Camera Editor **74/74 
 - Leaving Output, membership or target selection implicit.
 - Expecting a group rig to choose a follow/look-at subject automatically.
 - Treating an Actor Profile or Actor root as a substitute for explicit Subject authoring.
-- Relying on an old Camera Request/Presentation sample without migrating it to the current Assignment model.
-- Adding Camera fields back to Route/Activity instead of issuing an explicit Session Camera Assignment command from game-owned flow/presentation composition.
+- Adding Camera selection fields to Route or Activity. Change selection through the Session Camera Assignment command boundary.
 
 ## Public surfaces
 
