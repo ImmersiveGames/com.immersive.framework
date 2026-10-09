@@ -2,6 +2,37 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0-preview.6] - 2026-10-09 — prepared, unpublished
+
+This candidate consolidates bounded API maturity decisions and their existing
+validation records. It changes no runtime behavior or public signatures and
+does not certify the Framework as a whole.
+
+- Promoted `PlayerGameplayAvailabilityBlockTrigger`,
+  `PlayerGameplayAvailabilityBlockToken`, `PlayerGameplayAvailabilityBlockResult`
+  and `PlayerGameplayAvailabilityBlockStatus` to Stable for the bounded
+  IF-ADR-044 block/release contract.
+- Promoted `ISessionCameraAssignmentCommandPort` and
+  `ISessionCameraAssignmentCommandConsumer` to Stable for the bounded
+  IF-ADR-039 Activate/Replace/Clear command flow.
+- Consolidated the existing IF-ADR-039/042/043/044 evidence and corrected the
+  Camera Usage maturity statement. Recorded QA outcomes remain scoped: IF-ADR-042
+  7/7, IF-ADR-043 7/7 and IF-ADR-044 8/8; FirstGame results are manual consumer
+  integration evidence, not automated certification of every operation or
+  failure path.
+- `IPlayerSessionScopedAccess`, broader Player Session and Actor surfaces,
+  Manager-Provisioned Player, Session Camera Assignment assets,
+  `CameraOutputDefinition`, `ActorCameraSubjectAuthoring` and
+  `SessionCameraAssignmentCommandTrigger` remain Experimental. The broader
+  IF-ADR-038 Camera surface remains separately unrecertified.
+- Historical QA and FirstGame runs used a local `file:` Framework dependency
+  without an immutable Framework SHA. They remain evidence for the recorded
+  behavior, but do not certify this candidate revision; future certifications
+  must record the resolved Framework revision.
+
+Unity package import/compile and broader IF-ADR-038 recertification remain
+pending. This candidate is prepared but unpublished.
+
 ## [1.1.0-preview.5] - 2026-10-08 — published
 
 This preview adds the consumer-controlled Player gameplay availability block

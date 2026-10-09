@@ -4,7 +4,8 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current package version and latest published preview: `1.1.0-preview.5`.
+Prepared package version: `1.1.0-preview.6` (unpublished). Latest published
+preview: `1.1.0-preview.5`.
 Latest stable package release: `1.0.2`. The preview
 line contains experimental API and serialized-authoring changes; Unity package
 import/compile and broader IF-ADR-038 Camera recertification remain pending.

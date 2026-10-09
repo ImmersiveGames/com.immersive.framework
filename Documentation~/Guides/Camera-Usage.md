@@ -89,7 +89,7 @@ Validation evidence for the command boundary: Framework EditMode **169/169 PASS*
 
 ## Public surfaces
 
-See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assignment assets and related Assignment/Subject authoring remain Experimental. The IF-ADR-039 command boundary (ISessionCameraAssignmentCommandPort, ISessionCameraAssignmentCommandConsumer, SessionCameraAssignmentCommandTrigger) is Stable only for Activate/Replace/Clear through Session Camera authority; this does not promote the referenced assets. Output authoring and rig composition have separately declared API status.
+See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assignment assets and related Assignment/Subject authoring remain Experimental. The IF-ADR-039 command contracts (`ISessionCameraAssignmentCommandPort` and `ISessionCameraAssignmentCommandConsumer`) are Stable only for Activate/Replace/Clear through Session Camera authority; this does not promote the referenced assets. `SessionCameraAssignmentCommandTrigger` remains Experimental because direct execution of its public command surface has no recorded consumer validation. Output authoring and rig composition have separately declared API status.
 
 ## Related architecture
 
