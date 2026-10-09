@@ -4,13 +4,15 @@ This is a curated map of supported consumer surfaces, not a list of every public
 
 ## Maturity and categories
 
-The package uses `FrameworkApiStatusAttribute` to classify types as `Stable`, `Experimental`, `Internal` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+The package uses `FrameworkApiStatusAttribute` to classify types as `Stable`, `Experimental`, `Internal`, `Deferred`, `Removed` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
 
 | Category | Meaning for consumers |
 |---|---|
 | Stable | Supported consumer contract; breaking changes require an explicit architecture and migration decision. |
 | Experimental | Available for controlled development without compatibility guarantees. |
 | Internal | Implementation detail; do not build game code against it. |
+| Deferred | Publicly visible or reserved, but not an available consumer contract. |
+| Removed | Retained only as a migration/history marker; do not use. |
 | Development Tooling | Editor convenience or diagnostics, not runtime/gameplay authority. |
 
 A public type without an explicit consumer status is not automatically a recommended direct API. Prefer authored components/assets and the guide’s stated usage path.
@@ -23,6 +25,15 @@ A public type without an explicit consumer status is not automatically a recomme
 | `PersistentContentComposition` and Persistent Content Scene Template | Authoring configuration/template · Stable workflow | Explicit scene composition retained for application lifetime. The template does not create or register the consumer scene automatically. |
 
 Guide: [Getting Started](../Guides/Getting-Started.md), [Persistent Content Scene Template](../Guides/Persistent-Content-Scene-Template.md).
+
+## Application Frame Rate
+
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `ImmersiveFrameworkSettingsAsset` | Project Settings asset · Stable | Owns framework-level project settings. |
+| `ApplicationFrameRatePolicy` | Project Settings policy · Experimental | Declares requested application frame-rate behavior within platform limits; it is not per-application configuration. |
+
+Guide: [Application Frame Rate](../Guides/Application-Frame-Rate-Usage.md). Check the tracker for current validation scope.
 
 ## Game Flow, Route and Activity
 
@@ -44,6 +55,15 @@ Guide: [Game Flow](../Guides/Game-Flow.md); [Activity Readiness](../Guides/Activ
 
 Guide: [Activity Readiness](../Guides/Activity-Readiness.md).
 
+## Loading and Transition Presentation
+
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `LoadingSurfacePolicy`, `ILoadingSurfaceAdapter`, `ILoadingSurfaceProgressPresentationAdapter`, `IAsyncLoadingSurfaceAdapter`, `UnityLoadingSurfaceAdapter` | Loading policy/presentation adapters · Experimental | Compose an explicit persistent loading presentation; determinate progress requires a progress-capable adapter. |
+| `ITransitionEffectAdapter`, `IAsyncTransitionEffectAdapter`, `UnityFadeCurtainEffectAdapter` | Transition presentation adapters · Experimental | Present covered transitions; these adapters do not own Route or Activity flow. |
+
+Guide: [Game Flow](../Guides/Game-Flow.md), [Activity Readiness](../Guides/Activity-Readiness.md). Wait Covered has explicit transition and persistent surface prerequisites.
+
 ## Player Participation and Actor
 
 | Surface | Category / maturity | Purpose |
@@ -55,13 +75,13 @@ Guide: [Activity Readiness](../Guides/Activity-Readiness.md).
 | `PlayerSessionProfile`, `PlayerHostProvisioningMode` | Session profile/configuration · Experimental | Configure supported Slots, initial Session intent and Scene-Provided or Manager-Provisioned Host mode. |
 | `LocalPlayerProvisioningAuthoring` | Authoring · Experimental | Configures explicit runtime Manager-Provisioned Player creation. |
 | `PlayerSessionObserver` and Player Session command triggers | Observation/request components · Experimental | Explicit Session observation and logical Join/Leave/Actor-selection commands. They do not replace physical Actor materialization. |
-| `IPlayerSessionScopedAccess` runtime gameplay block commands, `PlayerGameplayAvailabilityBlockToken` | Scoped Player command contract · Experimental | Acquires and releases independent transient input-consumption blocks using occurrence-scoped tokens. `PlayerGameplayInputAvailability.BlockedByConsumer` and `PlayerGameplayInputBindingSnapshot.ConsumerBlockedCount` expose the projection. Gameplay rules and physical `PlayerInput` writes remain outside consumer control. |
-| `PlayerGameplayAvailabilityBlockTrigger` | Authoring component · Experimental | UnityEvent/UI surface for one consumer-owned block. It targets one authored `PlayerSlotProfile`, owns only its own token, and binds through normal Route/Activity scoped-access composition; it does not represent turns or select among Players. |
-| `IPlayerSessionScopedAccess` runtime gameplay block commands, `PlayerGameplayAvailabilityBlockToken` | Scoped Player command contract · Experimental | Acquires and releases independent transient input-consumption blocks using occurrence-scoped tokens. `PlayerGameplayInputAvailability.BlockedByConsumer` and `PlayerGameplayInputBindingSnapshot.ConsumerBlockedCount` expose the projection. Gameplay rules and physical `PlayerInput` writes remain outside consumer control. Binding follows the authored Route/Activity lifecycle scope; scene location alone does not create ownership. |
-| `PlayerGameplayAvailabilityBlockTrigger` | Authoring component · Experimental | UnityEvent/UI surface for one consumer-owned block. It targets one authored `PlayerSlotProfile`, owns only its token, and must be authored in content owned/discovered by its Route or Activity scope. Arbitrary Persistent Content does not receive Activity binding. |
+| `IPlayerSessionScopedAccess`, `PlayerGameplayAvailabilityBlockToken` | Scoped Player command contract · Experimental | Acquires/releases independent transient input-consumption blocks with occurrence-scoped tokens. Projection types expose consumer-block state; gameplay rules and physical `PlayerInput` writes remain outside consumer control. Binding follows authored Route/Activity lifecycle scope; scene location alone does not create ownership. |
+| `PlayerGameplayAvailabilityBlockTrigger` | Authoring component · Experimental | UnityEvent/UI surface for one consumer-owned block targeting one authored `PlayerSlotProfile`. It owns only its token, binds through Route/Activity scoped access and does not represent turns or select among Players. Arbitrary Persistent Content does not receive Activity binding. |
 | `SceneProvidedLocalPlayerCreator` | Editor tooling · DevelopmentTooling | Creates an initial technical composition shell. It is not runtime ownership, admission or a completion check. |
 
 Guide: [Player Participation and Local Player](../Guides/Player-Usage.md). Scene-Provided is Stable authoring that requires Experimental Actor/session-profile configuration; the end-to-end composition therefore has a mixed maturity boundary.
+
+Local multiplayer is composed from Player Slots, admission/provisioning and camera Output assignments; there is no separate local multiplayer authority. See [Player Usage](../Guides/Player-Usage.md) and [Camera Usage](../Guides/Camera-Usage.md).
 
 ## Camera
 
@@ -136,6 +156,18 @@ Guide: [Audio Usage](../Guides/Audio-Usage.md).
 Framework logging configuration uses the separate `com.immersive.logging` package. Its types are not Framework package APIs.
 
 Guide: [Logging Usage](../Guides/Logging-Usage.md).
+
+## Scene Lifecycle
+
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `SceneLifecycleEvents` | Observer component · Experimental | Observes events for Framework-managed scene scope; it does not replace Unity SceneManager or create a general lifecycle authority. |
+
+Guide: [Scene Lifecycle Events](../Guides/Scene-Lifecycle-Events.md).
+
+## UI Integration
+
+The Framework has no general-purpose UI system or standalone UI API. Use feature-owned request triggers and presentation adapters listed in the relevant sections; game screens and their composition remain consumer-owned.
 
 ## Types not recommended for direct game use
 

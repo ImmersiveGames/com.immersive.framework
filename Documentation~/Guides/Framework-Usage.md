@@ -1,6 +1,6 @@
 # Framework Usage
 
-This page is a cross-cutting orientation, not a second getting-started tutorial. For the concrete first-use sequence, see [Getting Started](Getting-Started.md). For supported consumer surfaces, see the [Public API Reference](../API/Public-API.md).
+This page summarizes cross-feature authoring principles. For capability discovery, supported surfaces, guide navigation and evidence, use the [Documentation capability index](../README.md). For first-use setup, see [Getting Started](Getting-Started.md).
 
 ## Authoring principles
 
@@ -12,23 +12,6 @@ This page is a cross-cutting orientation, not a second getting-started tutorial.
 - Treat hierarchy as composition only where the owning feature explicitly defines a hierarchy boundary; do not use GameObject names or paths as identity.
 
 The Framework runtime host is an internal composition root, not a consumer service locator. Architecture and historical status live under [Architecture](../Architecture/README.md).
-
-## Feature guide map
-
-Use the domain guide as the normal entry point instead of reconstructing behavior from runtime internals.
-
-| Domain | Guide |
-|---|---|
-| Application bootstrap | [Getting Started](Getting-Started.md) |
-| Route / Activity flow | [Game Flow](Game-Flow.md) |
-| Activity readiness | [Activity Readiness](Activity-Readiness.md) |
-| Player / Actor | [Player Participation](Player-Usage.md) |
-| Camera | [Camera Usage](Camera-Usage.md) |
-| Pause / input gate | [Pause Usage](Pause-Usage.md) |
-| Reset | [Reset Usage](Reset-Usage.md) |
-| Audio | [Audio Usage](Audio-Usage.md) |
-| Progression Save | [Progression Save Authoring](Progression-Save-Authoring.md) |
-| Logging | [Logging Usage](Logging-Usage.md) |
 
 ## Validation vocabulary
 

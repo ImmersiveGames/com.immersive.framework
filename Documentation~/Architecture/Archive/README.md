@@ -15,4 +15,5 @@ Archive/
   Completion/ completed delivery summaries
   Rebaseline/ superseded package/product status baselines
   Fixes/   defect-closeout notes absorbed into product docs
+  top-level dated records/ superseded tracking deltas retained for traceability
 ```

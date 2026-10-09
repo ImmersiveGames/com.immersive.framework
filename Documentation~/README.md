@@ -1,60 +1,35 @@
 # Immersive Framework Documentation
 
-This is the official documentation entry point for consumers of `com.immersive.framework`. The package provides supported authoring surfaces and runtime contracts for application, Session, Route, Activity and game features.
+Use this index from the installed package. It links consumer intent to the canonical guide, public API maturity and available examples or validation records. A guide describes authoring, prerequisites and limits; the API reference describes supported surfaces. An example or test is evidence only for the behavior it actually exercises.
 
 ## Start here
 
-- [Getting Started](Guides/Getting-Started.md) — create the application and author the smallest navigable setup.
-- [Game Flow](Guides/Game-Flow.md) — understand Routes, Activities, requests, ownership and transitions.
+- [Getting Started](Guides/Getting-Started.md) — create the application and the smallest navigable setup.
+- [Public API Reference](API/Public-API.md) — curated consumer surfaces and per-surface maturity.
+- [Architecture index](Architecture/README.md) — decisions, status tracker and historical evidence.
+- [Package README](../README.md) — installation and declared compatibility.
 
-## Find a feature guide
+## Find a capability by intent
 
-| Need | Start here |
-|---|---|
-| Create the application and first navigable setup | [Getting Started](Guides/Getting-Started.md) |
-| Routes, Activities, lifecycle and commands | [Game Flow](Guides/Game-Flow.md) |
-| Player slots, provisioning, Actors and gameplay input | [Player Usage](Guides/Player-Usage.md) |
-| Session Camera Assignments, Outputs, Subjects and rigs | [Camera Usage](Guides/Camera-Usage.md) |
-| Input gates and Pause | [Pause Usage](Guides/Pause-Usage.md) |
-| Reset composition and requests | [Reset Usage](Guides/Reset-Usage.md) |
-| Progression persistence | [Progression Save authoring](Guides/Progression-Save-Authoring.md) |
-| Audio integration | [Audio Usage](Guides/Audio-Usage.md) |
-| Sample template for persistent application content | [Persistent Content Scene Template](Guides/Persistent-Content-Scene-Template.md) |
-| Supported consumer types | [Public API](API/Public-API.md) |
-| Architecture decisions and status | [Architecture map](Architecture/README.md) |
+| Intent | Canonical guide and authoring path | Public API and maturity | Example or validation evidence |
+|---|---|---|---|
+| Create an application and persistent scene | [Getting Started](Guides/Getting-Started.md); [Persistent Content template](Guides/Persistent-Content-Scene-Template.md). The created scene must be saved, assigned and added to the active Build Profile explicitly. | [Application](API/Public-API.md#application). Persistent Content is an authored application-lifetime composition; the template does not register a consumer scene automatically. | No consumer `Samples~` is distributed in this package. The package README and guides define setup; use the tracker for dated consumer/QA evidence. |
+| Navigate between Routes and Activities | [Game Flow](Guides/Game-Flow.md). Create application, Route and Activity assets, then configure startup and request triggers. Navigation does not require an admitted Player. | [Game Flow, Route and Activity](API/Public-API.md#game-flow-route-and-activity); request triggers are Stable, while transition observation is Experimental. | [Stage B Game Flow evidence](Architecture/Reconciliation/IF-STAGE-B-GAMEFLOW-SAMPLE-EVIDENCE-2026-08-21.md) records its specific sample boundary. |
+| Add Activity readiness and loading behavior | [Activity Readiness](Guides/Activity-Readiness.md), alongside [Game Flow](Guides/Game-Flow.md). Wait Covered requires a compatible covered transition and an explicitly composed progress-capable persistent Loading surface for determinate progress. | [Activity Readiness](API/Public-API.md#activity-readiness) and [Loading and Transition](API/Public-API.md#loading-and-transition-presentation); these authoring/adapter surfaces are Experimental. | Use the readiness section of the [Framework tracker](Architecture/Tracking/IF-TRACK-Framework.md#current-stage-b--firstgame-priorities) for scoped evidence. No readiness sample is bundled in the package. |
+| Create a Player and Actor | [Player Usage](Guides/Player-Usage.md). Choose Scene-Provided or Manager-Provisioned authoring; Actor profile and provisioning maturity differ. | [Player Participation and Actor](API/Public-API.md#player-participation-and-actor). Scene-Provided surfaces are Stable where marked; Actor profile and Manager-Provisioned surfaces are Experimental. | The [Player tracker section](Architecture/Tracking/IF-TRACK-Framework.md#current-player-state) links dated proof boundaries. Consumer samples are not shipped in this package. |
+| Build local multiplayer | Compose explicit Player Slots/provisioning from [Player Usage](Guides/Player-Usage.md) with Session Camera Outputs from [Camera Usage](Guides/Camera-Usage.md). This is a composition of domains, not a separate Local Multiplayer runtime authority. | [Player](API/Public-API.md#player-participation-and-actor) and [Camera](API/Public-API.md#camera). Manager-Provisioned Player and Camera Assignment surfaces have Experimental limits. | SharedGroup and individual Output evidence is linked from [IF-ADR-042](Architecture/ADRs/IF-ADR-042-Session-Camera-Shared-Group-Assignment-Projection.md) and [IF-ADR-043](Architecture/ADRs/IF-ADR-043-Individual-Player-Camera-Output-Physical-Participation.md). Consumer samples are external and are not package API. |
+| Configure a camera for an Actor | [Camera Usage](Guides/Camera-Usage.md). Compose a physical Output, explicit Session Assignment, rig and Actor observation subject. | [Camera](API/Public-API.md#camera). Output authoring and rig composition are Stable; Assignment and Actor Subject surfaces are Experimental. | See the current status and remaining gates under [Camera and Actor occurrence](Architecture/Tracking/IF-TRACK-Framework.md#current-camera-and-actor-occurrence-target--if-adr-038--2026-09-30). Older certifications are not proof of the current ADR-038 boundary. |
+| Reset one object or a group | [Reset Usage](Guides/Reset-Usage.md). Author Resettable capabilities; add ResetComposition only for a group and choose the documented target/addressing mode. | [Reset](API/Public-API.md#reset). Reset authoring is Experimental. | The guide records eight consumer scenarios, including single object, composition, Activity/Route and restart. These are manual consumer claims, not package-bundled QA certification or an included sample. |
+| Configure Pause and gameplay input | [Input and Pause](Guides/Pause-Usage.md). Configure the admitted Local Player Host's exact PlayerInput, gate adapter, Gameplay Action Map and optional Pause action. UI request and Pause presentation are separate authored surfaces. | [Input and Pause](API/Public-API.md#input-and-pause). The listed product surface is Stable for single-player; multiplayer Pause policy is out of scope. | See the [Player tracker section](Architecture/Tracking/IF-TRACK-Framework.md#current-player-state) for the recorded input-gate evidence and scope. |
+| Save progression data | [Progression Save authoring](Guides/Progression-Save-Authoring.md), [backend contract](Guides/Progression-Save-Backend-Adapter-Contract.md) and [built-in JSON backend](Guides/Progression-Save-Built-In-Json-Backend.md). Select a backend explicitly; this is not automatic gameplay snapshotting or autosave. | [Progression Save](API/Public-API.md#progression-save). Backend contract is Stable; profile and built-in JSON backend are Experimental. | [IF-ADR-018-C certification](Architecture/Reconciliation/IMMERSIVE-FRAMEWORK-ADR-018-C-CERTIFICATION-2026-08-11.md) covers its recorded contract; consumer usability is a separate proof. |
+| Set the project frame-rate policy | [Application Frame Rate](Guides/Application-Frame-Rate-Usage.md). Configure it in Framework Project Settings; the policy is project-level, not GameApplication-level. | [Application Frame Rate](API/Public-API.md#application-frame-rate). The Settings asset is Stable; frame-rate policy is Experimental. | Current ADR-017 status and test scope are recorded in the [Framework tracker](Architecture/Tracking/IF-TRACK-Framework.md#current-adr-status). Platform limits are in the guide. |
+| Integrate a game's UI | Use feature-owned triggers/adapters in [Game Flow](Guides/Game-Flow.md), [Input and Pause](Guides/Pause-Usage.md), [Player Usage](Guides/Player-Usage.md) and [Camera Usage](Guides/Camera-Usage.md). The Framework does not provide a general-purpose UI system or create the game's screens. | There is no standalone Framework UI API. Use the feature-specific entries for [Game Flow](API/Public-API.md#game-flow-route-and-activity), [Input/Pause](API/Public-API.md#input-and-pause), [Player](API/Public-API.md#player-participation-and-actor) or [Camera](API/Public-API.md#camera); maturity is per surface. | UI composition is consumer-owned. No general UI sample or UI certification is distributed with this package. |
+| Respond to managed scene lifetime events | [Scene Lifecycle Events](Guides/Scene-Lifecycle-Events.md). Author callbacks in explicit Framework-managed scope; the bridge does not replace Unity SceneManager or establish a second lifecycle authority. | [Scene Lifecycle](API/Public-API.md#scene-lifecycle). `SceneLifecycleEvents` is Experimental. | Scene composition evidence belongs to the relevant feature/ADR; the package does not claim a general scene-lifecycle consumer sample. |
+| Add audio or logging | [Audio Usage](Guides/Audio-Usage.md) or [Logging Usage](Guides/Logging-Usage.md). These integrate separate technical packages; author their hosts/configuration explicitly. | [Optional Audio](API/Public-API.md#optional-audio) and [Logging](API/Public-API.md#logging). Audio integration is Experimental; Logging types belong to `com.immersive.logging`, not this package. | Audio's current evidence is recorded in the [guide](Guides/Audio-Usage.md#current-certification). No Framework-owned Logging sample or certification is cataloged here. |
 
-## Usage guides
+## Authoring and evidence rules
 
-| Domain | Canonical guide |
-|---|---|
-| Application setup | [Getting Started](Guides/Getting-Started.md) |
-| Game Flow, Route and Activity | [Game Flow](Guides/Game-Flow.md) |
-| Activity readiness | [Activity Readiness](Guides/Activity-Readiness.md) |
-| Player Participation, Local Player and Actor | [Player Usage](Guides/Player-Usage.md) |
-| Camera | [Camera Usage](Guides/Camera-Usage.md) |
-| Input and Pause | [Pause Usage](Guides/Pause-Usage.md) |
-| Persistent Content authoring | [Persistent Content Scene Template](Guides/Persistent-Content-Scene-Template.md) |
-| Reset | [Reset Usage](Guides/Reset-Usage.md) |
-| Audio | [Audio Usage](Guides/Audio-Usage.md) |
-| Logging | [Logging Usage](Guides/Logging-Usage.md) |
-| Progression Save | [Progression Save authoring](Guides/Progression-Save-Authoring.md) |
-| Application frame rate | [Application Frame Rate](Guides/Application-Frame-Rate-Usage.md) |
-| Scene lifecycle events | [Scene Lifecycle Events](Guides/Scene-Lifecycle-Events.md) |
-| Editor authoring conventions | [Editor Authoring Standard](Guides/Editor-Authoring-Standard.md) |
-
-Use a domain guide for setup and normal behavior. An ADR explains an underlying decision; it does not replace the usage steps.
-
-## Public API and architecture
-
-- [Curated Public API Reference](API/Public-API.md) — supported authoring, assets, consumer contracts and experimental surfaces.
-- [Architecture map](Architecture/README.md) — decisions, governance, reconciliation records, tracking and archives.
-- [ADRs](Architecture/ADRs/) — architecture decisions and their accepted or proposed status.
-- [API maturity governance](Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md) — Stable, Experimental, Internal and tooling classifications.
-
-C# `public` visibility alone does not make a type recommended consumer API. Follow the Public API Reference and the linked guide for the intended usage path.
-
-## Package and release information
-
-See the [package README](../README.md) for Unity requirements, package installation and release information. This documentation describes how to use the package after installation.
-
-The `Architecture/Archive/` directory contains historical execution evidence. It is not the active consumer navigation path.
+- Check [API maturity governance](Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md). C# `public` visibility alone does not make a type supported consumer API.
+- Use [Editor Authoring Standard](Guides/Editor-Authoring-Standard.md) for cross-feature authoring principles.
+- The package does not distribute a consumer `Samples~` directory. External consumer examples must be checked against the consumer's resolved package before use; they are not normative API.
+- The [Framework tracker](Architecture/Tracking/IF-TRACK-Framework.md) is the mutable status/evidence index. ADRs decide; dated reconciliation and archive records prove only their stated boundary.
