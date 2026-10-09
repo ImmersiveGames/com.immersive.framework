@@ -573,7 +573,7 @@ namespace Immersive.Framework.GlobalUi
             {
                 Scene scene = SceneManager.GetSceneAt(index);
                 if (scene.IsValid() && scene.isLoaded)
-                    handles.Add(scene.handle);
+                    handles.Add(scene.handle.GetRawData());
             }
 
             return handles;
@@ -596,7 +596,7 @@ namespace Immersive.Framework.GlobalUi
             {
                 Scene candidate = SceneManager.GetSceneAt(index);
                 if (!candidate.IsValid() || !candidate.isLoaded ||
-                    previouslyLoadedHandles.Contains(candidate.handle))
+                    previouslyLoadedHandles.Contains(candidate.handle.GetRawData()))
                 {
                     continue;
                 }
