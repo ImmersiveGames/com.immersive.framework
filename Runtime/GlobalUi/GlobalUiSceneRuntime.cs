@@ -566,9 +566,9 @@ namespace Immersive.Framework.GlobalUi
             return false;
         }
 
-        private static HashSet<int> GetLoadedSceneHandles()
+        private static HashSet<ulong> GetLoadedSceneHandles()
         {
-            var handles = new HashSet<int>();
+            var handles = new HashSet<ulong>();
             for (int index = 0; index < SceneManager.sceneCount; index++)
             {
                 Scene scene = SceneManager.GetSceneAt(index);
@@ -582,7 +582,7 @@ namespace Immersive.Framework.GlobalUi
         private static bool TryFindNewlyLoadedScene(
             string expectedPath,
             string expectedName,
-            ISet<int> previouslyLoadedHandles,
+            ISet<ulong> previouslyLoadedHandles,
             out Scene scene,
             out Scene homonymousScene,
             out string diagnostic)
