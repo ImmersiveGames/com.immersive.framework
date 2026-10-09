@@ -494,12 +494,50 @@ namespace Immersive.Framework.GlobalUi
             out string diagnostic)
         {
             scenePath = scenePath.NormalizeText();
+            var candidatePaths = GetEffectiveBuildScenePaths();
+            if (string.IsNullOrWhiteSpace(scenePath))
+            {
+                sceneName = sceneName.NormalizeText();
+                for (int index = 0; index < SceneManager.sceneCount; index++)
+                {
+                    Scene loadedScene = SceneManager.GetSceneAt(index);
+                    if (loadedScene.IsValid() && loadedScene.isLoaded &&
+                        HasSceneName(loadedScene.path, sceneName))
+                    {
+                        candidatePaths.Add(loadedScene.path);
+                    }
+                }
+            }
+
+            return TryResolveSceneLoadIdentifierFromCandidates(
+                scenePath,
+                sceneName,
+                candidatePaths,
+                Application.CanStreamedLevelBeLoaded,
+                out sceneIdentifier,
+                out diagnostic);
+        }
+
+        internal static bool TryResolveSceneLoadIdentifierFromCandidates(
+            string scenePath,
+            string sceneName,
+            IEnumerable<string> candidatePaths,
+            Func<string, bool> canLoadScenePath,
+            out string sceneIdentifier,
+            out string diagnostic)
+        {
+            scenePath = scenePath.NormalizeText();
             sceneName = sceneName.NormalizeText();
+            var availablePaths = new HashSet<string>(
+                candidatePaths ?? Array.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
+
             if (!string.IsNullOrWhiteSpace(scenePath))
             {
                 if (!scenePath.EndsWith(".unity", StringComparison.OrdinalIgnoreCase) ||
-                    !IsScenePathInEffectiveBuildSet(scenePath) ||
-                    !Application.CanStreamedLevelBeLoaded(scenePath))
+                    !availablePaths.Contains(scenePath) ||
+                    canLoadScenePath == null ||
+                    !canLoadScenePath(scenePath))
                 {
                     sceneIdentifier = string.Empty;
                     diagnostic =
@@ -519,36 +557,25 @@ namespace Immersive.Framework.GlobalUi
                 return false;
             }
 
-            var candidatePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (int index = 0; index < SceneManager.sceneCountInBuildSettings; index++)
+            var matchingPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string candidatePath in availablePaths)
             {
-                string candidatePath = SceneUtility.GetScenePathByBuildIndex(index);
                 if (HasSceneName(candidatePath, sceneName))
-                    candidatePaths.Add(candidatePath);
+                    matchingPaths.Add(candidatePath);
             }
 
-            for (int index = 0; index < SceneManager.sceneCount; index++)
-            {
-                Scene loadedScene = SceneManager.GetSceneAt(index);
-                if (loadedScene.IsValid() && loadedScene.isLoaded &&
-                    HasSceneName(loadedScene.path, sceneName))
-                {
-                    candidatePaths.Add(loadedScene.path);
-                }
-            }
-
-            if (candidatePaths.Count != 1)
+            if (matchingPaths.Count != 1)
             {
                 sceneIdentifier = string.Empty;
-                diagnostic = candidatePaths.Count == 0
+                diagnostic = matchingPaths.Count == 0
                     ? $"Legacy sceneName '{sceneName}' has no candidate in the effective build or loaded scene set."
-                    : $"Legacy sceneName '{sceneName}' is ambiguous across {candidatePaths.Count} scene paths.";
+                    : $"Legacy sceneName '{sceneName}' is ambiguous across {matchingPaths.Count} scene paths.";
                 return false;
             }
 
-            foreach (string candidatePath in candidatePaths)
+            foreach (string candidatePath in matchingPaths)
             {
-                if (!Application.CanStreamedLevelBeLoaded(candidatePath))
+                if (canLoadScenePath == null || !canLoadScenePath(candidatePath))
                 {
                     sceneIdentifier = string.Empty;
                     diagnostic =
@@ -564,6 +591,19 @@ namespace Immersive.Framework.GlobalUi
             sceneIdentifier = string.Empty;
             diagnostic = $"Legacy sceneName '{sceneName}' could not be resolved.";
             return false;
+        }
+
+        private static HashSet<string> GetEffectiveBuildScenePaths()
+        {
+            var candidatePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < SceneManager.sceneCountInBuildSettings; index++)
+            {
+                string candidatePath = SceneUtility.GetScenePathByBuildIndex(index);
+                if (!string.IsNullOrWhiteSpace(candidatePath))
+                    candidatePaths.Add(candidatePath);
+            }
+
+            return candidatePaths;
         }
 
         private static HashSet<ulong> GetLoadedSceneHandles()
@@ -709,23 +749,6 @@ namespace Immersive.Framework.GlobalUi
                        Path.GetFileNameWithoutExtension(scenePath),
                        sceneName,
                        StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsScenePathInEffectiveBuildSet(string scenePath)
-        {
-            for (int index = 0; index < SceneManager.sceneCountInBuildSettings; index++)
-            {
-                string candidatePath = SceneUtility.GetScenePathByBuildIndex(index);
-                if (string.Equals(
-                        candidatePath,
-                        scenePath,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static List<TAdapter> CollectAdapters<TAdapter>(

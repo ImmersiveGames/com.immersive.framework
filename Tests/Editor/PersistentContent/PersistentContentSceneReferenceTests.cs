@@ -7,9 +7,7 @@ using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.GlobalUi;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Immersive.Framework.Authoring.Editor.Tests
 {
@@ -22,17 +20,68 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [SetUp]
         public void SetUp()
         {
-            _previousBuildScenes = EditorBuildSettings.scenes;
+            EditorBuildSettingsScene[] currentBuildScenes =
+                EditorBuildSettings.scenes;
+            _previousBuildScenes = currentBuildScenes != null
+                ? (EditorBuildSettingsScene[])currentBuildScenes.Clone()
+                : Array.Empty<EditorBuildSettingsScene>();
             _folder = $"{TestRoot}_{Guid.NewGuid():N}";
-            AssetDatabase.CreateFolder("Assets", _folder.Substring("Assets/".Length));
+            try
+            {
+                string folderGuid = AssetDatabase.CreateFolder(
+                    "Assets",
+                    _folder.Substring("Assets/".Length));
+                Assert.IsNotEmpty(folderGuid, $"Could not create temporary test folder '{_folder}'.");
+            }
+            catch
+            {
+                try
+                {
+                    DeleteTemporaryAssets();
+                    AssetDatabase.Refresh();
+                }
+                catch (Exception cleanupException)
+                {
+                    Debug.LogException(cleanupException);
+                }
+
+                throw;
+            }
         }
 
         [TearDown]
         public void TearDown()
         {
-            EditorBuildSettings.scenes = _previousBuildScenes;
-            AssetDatabase.DeleteAsset(_folder);
-            AssetDatabase.Refresh();
+            try
+            {
+                if (_previousBuildScenes != null)
+                    EditorBuildSettings.scenes = _previousBuildScenes;
+            }
+            finally
+            {
+                try
+                {
+                    DeleteTemporaryAssets();
+                }
+                finally
+                {
+                    AssetDatabase.Refresh();
+                }
+            }
+        }
+
+        private void DeleteTemporaryAssets()
+        {
+            if (string.IsNullOrWhiteSpace(_folder) ||
+                !AssetDatabase.IsValidFolder(_folder))
+            {
+                return;
+            }
+
+            bool deleted = AssetDatabase.DeleteAsset(_folder);
+            Assert.IsTrue(
+                deleted || !AssetDatabase.IsValidFolder(_folder),
+                $"Could not delete temporary test folder '{_folder}'.");
         }
 
         [Test]
@@ -123,21 +172,25 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             GameApplicationAsset application = CreateApplication("InvalidLegacy");
             RouteAsset invalidReference = ScriptableObject.CreateInstance<RouteAsset>();
-            try
-            {
-                SetComposition(application, string.Empty, string.Empty, invalidReference);
+            string invalidReferencePath = $"{_folder}/InvalidLegacyRoute.asset";
+            AssetDatabase.CreateAsset(invalidReference, invalidReferencePath);
+            SetComposition(application, string.Empty, string.Empty, invalidReference);
+            AssetDatabase.SaveAssetIfDirty(application);
 
-                PersistentContentSceneReferenceMigrationResult result =
-                    PersistentContentSceneReferenceMigration.MigrateAsset(application);
+            PersistentContentSceneReferenceMigrationResult result =
+                PersistentContentSceneReferenceMigration.MigrateAsset(application);
 
-                Assert.AreEqual(PersistentContentSceneReferenceMigrationStatus.Invalid, result.Status);
-                Assert.AreSame(invalidReference, application.PersistentContent.ContainerScene);
-                Assert.IsEmpty(application.PersistentContent.ContainerScenePath);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(invalidReference);
-            }
+            var persistedApplication = new SerializedObject(application);
+            SerializedProperty persistedComposition =
+                persistedApplication.FindProperty("persistentContent");
+            UnityEngine.Object persistedReference =
+                persistedComposition.FindPropertyRelative("containerScene").objectReferenceValue;
+
+            Assert.AreEqual(PersistentContentSceneReferenceMigrationStatus.Invalid, result.Status);
+            Assert.AreSame(invalidReference, persistedReference);
+            Assert.AreEqual(invalidReferencePath, AssetDatabase.GetAssetPath(persistedReference));
+            Assert.AreSame(invalidReference, application.PersistentContent.ContainerScene);
+            Assert.IsEmpty(application.PersistentContent.ContainerScenePath);
         }
 
         [Test]
@@ -160,15 +213,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [Test]
         public void ExplicitInvalidPath_DoesNotFallbackToHomonymousBuildScene()
         {
-            SceneAsset buildScene = CreateScene("Shared");
-            EditorBuildSettings.scenes = new[]
-            {
-                new EditorBuildSettingsScene(AssetDatabase.GetAssetPath(buildScene), true)
-            };
+            string homonymousPath = $"{_folder}/Other/Shared.unity";
 
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifier(
+            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
                 $"{_folder}/Missing/Shared.unity",
                 "Shared",
+                new[] { homonymousPath },
+                _ => true,
                 out string identifier,
                 out string diagnostic);
 
@@ -180,17 +231,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [Test]
         public void NameOnlyReference_WithDuplicateBuildCandidatesIsRejected()
         {
-            SceneAsset first = CreateScene("A", "Shared");
-            SceneAsset second = CreateScene("B", "Shared");
-            EditorBuildSettings.scenes = new[]
-            {
-                new EditorBuildSettingsScene(AssetDatabase.GetAssetPath(first), true),
-                new EditorBuildSettingsScene(AssetDatabase.GetAssetPath(second), true)
-            };
-
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifier(
+            string firstPath = $"{_folder}/A/Shared.unity";
+            string secondPath = $"{_folder}/B/Shared.unity";
+            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
                 string.Empty,
                 "Shared",
+                new[] { firstPath, secondPath },
+                _ => true,
                 out string identifier,
                 out string diagnostic);
 
@@ -202,21 +249,34 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [Test]
         public void NameOnlyReference_WithSingleCandidateResolvesToItsPath()
         {
-            SceneAsset scene = CreateScene("Shared");
-            string expectedPath = AssetDatabase.GetAssetPath(scene);
-            EditorBuildSettings.scenes = new[]
-            {
-                new EditorBuildSettingsScene(expectedPath, true)
-            };
-
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifier(
+            string expectedPath = $"{_folder}/Shared.unity";
+            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
                 string.Empty,
                 "Shared",
+                new[] { expectedPath },
+                path => string.Equals(path, expectedPath, StringComparison.Ordinal),
                 out string identifier,
                 out string diagnostic);
 
             Assert.IsTrue(resolved, diagnostic);
             Assert.AreEqual(expectedPath, identifier);
+        }
+
+        [Test]
+        public void NameOnlyReference_WithSingleUnavailableCandidateIsRejected()
+        {
+            const string candidatePath = "Assets/Scenes/Shared.unity";
+            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
+                string.Empty,
+                "Shared",
+                new[] { candidatePath },
+                _ => false,
+                out string identifier,
+                out string diagnostic);
+
+            Assert.IsFalse(resolved, diagnostic);
+            Assert.IsEmpty(identifier);
+            StringAssert.Contains("cannot be loaded", diagnostic);
         }
 
         [Test]
@@ -239,14 +299,24 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 ? _folder
                 : $"{_folder}/{subdirectory}";
             if (directory != _folder)
-                AssetDatabase.CreateFolder(_folder, subdirectory);
+            {
+                string folderGuid = AssetDatabase.CreateFolder(_folder, subdirectory);
+                Assert.IsNotEmpty(folderGuid, $"Could not create temporary scene folder '{directory}'.");
+            }
 
-            Scene scene = EditorSceneManager.NewScene(
-                NewSceneSetup.EmptyScene,
-                NewSceneMode.Additive);
             string path = $"{directory}/{sceneName}.unity";
-            Assert.IsTrue(EditorSceneManager.SaveScene(scene, path));
-            EditorSceneManager.CloseScene(scene, true);
+            string packagePath = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                typeof(PersistentContentSceneReferenceTests).Assembly)?.assetPath;
+            Assert.IsNotEmpty(packagePath, "Could not resolve the Framework package path for the scene fixture.");
+            string templatePath =
+                $"{packagePath}/Editor/SceneTemplates/PersistentContent/PersistentContentTemplateSource.unity";
+            Assert.IsNotNull(
+                AssetDatabase.LoadAssetAtPath<SceneAsset>(templatePath),
+                $"Persistent Content scene fixture template was not found at '{templatePath}'.");
+            Assert.IsTrue(
+                AssetDatabase.CopyAsset(templatePath, path),
+                $"Could not copy scene fixture from '{templatePath}' to '{path}'.");
+
             SceneAsset asset = AssetDatabase.LoadAssetAtPath<SceneAsset>(path);
             Assert.IsNotNull(asset);
             return asset;
