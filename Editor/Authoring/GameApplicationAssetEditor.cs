@@ -850,6 +850,10 @@ namespace Immersive.Framework.Editor.Authoring
             EditorGUI.indentLevel++;
 
             GameApplicationAsset activeGameApplication = _activeGameApplication;
+            string contentScenePath = _scenePath?.stringValue ?? string.Empty;
+            SceneAsset contentScene = string.IsNullOrWhiteSpace(contentScenePath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<SceneAsset>(contentScenePath);
 
             using (new EditorGUI.DisabledScope(true))
             {
@@ -867,7 +871,7 @@ namespace Immersive.Framework.Editor.Authoring
 
                 EditorGUILayout.ObjectField(
                     "Content Scene",
-                    currentScene,
+                    contentScene,
                     typeof(SceneAsset),
                     false);
 
