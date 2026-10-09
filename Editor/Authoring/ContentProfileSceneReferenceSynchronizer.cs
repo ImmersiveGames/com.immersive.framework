@@ -97,11 +97,15 @@ namespace Immersive.Framework.Editor.Authoring
             int routeAssetsUpdated =
                 SynchronizeRoutePrimaryScenes(
                     moves);
+            int gameApplicationsUpdated =
+                SynchronizePersistentContentScenes(
+                    moves);
 
             int totalUpdated =
                 activityProfilesUpdated +
                 routeProfilesUpdated +
-                routeAssetsUpdated;
+                routeAssetsUpdated +
+                gameApplicationsUpdated;
 
             if (totalUpdated <= 0)
             {
@@ -112,7 +116,8 @@ namespace Immersive.Framework.Editor.Authoring
                 $"{LogPrefix} Scene references synchronized after rename/move. " +
                 $"activityProfiles='{activityProfilesUpdated}' " +
                 $"routeProfiles='{routeProfilesUpdated}' " +
-                $"routeAssets='{routeAssetsUpdated}'.");
+                $"routeAssets='{routeAssetsUpdated}' " +
+                $"gameApplications='{gameApplicationsUpdated}'.");
         }
 
         private static int SynchronizeProfiles<TProfile>(
@@ -271,6 +276,46 @@ namespace Immersive.Framework.Editor.Authoring
             }
 
             return routesUpdated;
+        }
+
+        private static int SynchronizePersistentContentScenes(
+            IReadOnlyDictionary<string, string> moves)
+        {
+            string[] guids = AssetDatabase.FindAssets("t:GameApplicationAsset");
+            int applicationsUpdated = 0;
+
+            for (int index = 0; index < guids.Length; index++)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(guids[index]);
+                GameApplicationAsset application =
+                    AssetDatabase.LoadAssetAtPath<GameApplicationAsset>(assetPath);
+                if (application == null)
+                    continue;
+
+                var serializedApplication = new SerializedObject(application);
+                SerializedProperty composition =
+                    serializedApplication.FindProperty("persistentContent");
+                SerializedProperty scenePath =
+                    composition?.FindPropertyRelative("scenePath");
+                SerializedProperty sceneName =
+                    composition?.FindPropertyRelative("sceneName");
+
+                if (scenePath == null ||
+                    sceneName == null ||
+                    !moves.TryGetValue(scenePath.stringValue, out string newPath))
+                {
+                    continue;
+                }
+
+                scenePath.stringValue = newPath;
+                sceneName.stringValue = Path.GetFileNameWithoutExtension(newPath);
+                serializedApplication.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(application);
+                AssetDatabase.SaveAssetIfDirty(application);
+                applicationsUpdated++;
+            }
+
+            return applicationsUpdated;
         }
 
         private static bool IsScenePath(

@@ -369,26 +369,39 @@ namespace Immersive.Framework.Editor.Validation
                 return;
             }
 
-            SceneAsset sceneAsset =
-                composition.ContainerScene as SceneAsset;
-            if (sceneAsset == null)
+            string scenePath = composition.ContainerScenePath;
+            string sceneName = composition.ContainerSceneName;
+            if (string.IsNullOrWhiteSpace(scenePath))
             {
+                bool hasLegacyReference = composition.ContainerScene != null;
                 report.AddError(
-                    composition.ContainerScene == null
-                        ? "Persistent Content Scene is missing."
-                        : "Persistent Content Scene must directly reference a Unity Scene asset.",
+                    hasLegacyReference
+                        ? "Persistent Content uses a legacy SceneAsset reference and must be migrated. Run Tools > Immersive Framework > Migrate Persistent Content Scene References."
+                        : string.IsNullOrWhiteSpace(sceneName)
+                            ? "Persistent Content Scene path and name are missing."
+                            : $"Persistent Content sceneName '{sceneName}' has no scenePath. Migrate the legacy reference or assign a Scene with the picker.",
                     gameApplication);
                 return;
             }
 
-            string scenePath =
-                AssetDatabase.GetAssetPath(sceneAsset);
+            SceneAsset sceneAsset =
+                AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
+            if (sceneAsset == null)
+            {
+                report.AddError(
+                    $"Persistent Content scenePath '{scenePath}' does not resolve to a Unity Scene asset. The path is authoritative; no name fallback will be used.",
+                    gameApplication);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(sceneName))
+                sceneName = sceneAsset.name;
 
             ValidateSceneAssetReference(
                 report,
                 gameApplication,
                 scenePath,
-                sceneAsset.name,
+                sceneName,
                 "Persistent Content Scene");
 
             if (!IsSceneInBuildSettings(scenePath))
@@ -397,12 +410,6 @@ namespace Immersive.Framework.Editor.Validation
                     $"Persistent Content Scene '{scenePath}' is not enabled in the Build Profile.",
                     gameApplication);
             }
-
-            ValidateUniqueBuildSceneName(
-                report,
-                gameApplication,
-                sceneAsset.name,
-                scenePath);
 
             if (!validateDependencies)
             {
@@ -413,59 +420,6 @@ namespace Immersive.Framework.Editor.Validation
                 report,
                 gameApplication,
                 scenePath);
-        }
-
-        private static void ValidateUniqueBuildSceneName(
-            FrameworkAuthoringValidationReport report,
-            GameApplicationAsset owner,
-            string sceneName,
-            string expectedPath)
-        {
-            if (string.IsNullOrWhiteSpace(sceneName))
-            {
-                report.AddError(
-                    "Persistent Content Scene has no valid scene name.",
-                    owner);
-                return;
-            }
-
-            EditorBuildSettingsScene[] scenes =
-                EditorBuildSettings.scenes;
-            int enabledNameMatches = 0;
-
-            if (scenes != null)
-            {
-                for (int index = 0;
-                     index < scenes.Length;
-                     index++)
-                {
-                    EditorBuildSettingsScene scene =
-                        scenes[index];
-                    if (scene == null ||
-                        !scene.enabled)
-                    {
-                        continue;
-                    }
-
-                    string candidateName =
-                        System.IO.Path.GetFileNameWithoutExtension(
-                            scene.path);
-                    if (string.Equals(
-                            candidateName,
-                            sceneName,
-                            StringComparison.OrdinalIgnoreCase))
-                    {
-                        enabledNameMatches++;
-                    }
-                }
-            }
-
-            if (enabledNameMatches != 1)
-            {
-                report.AddError(
-                    $"Persistent Content Scene name '{sceneName}' must be unique among enabled Build Profile scenes. matches='{enabledNameMatches}' expectedPath='{expectedPath}'.",
-                    owner);
-            }
         }
 
         private static void ValidatePersistentContentScene(

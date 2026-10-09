@@ -77,7 +77,9 @@ namespace Immersive.Framework.Editor.Authoring
         private SerializedProperty _startupCameraAssignments;
         private ReorderableList _sessionCameraAssignmentList;
         private SerializedProperty _persistentContent;
-        private SerializedProperty _containerScene;
+        private SerializedProperty _scenePath;
+        private SerializedProperty _sceneName;
+        private SerializedProperty _legacyContainerScene;
         private SerializedProperty _validationMode;
 
         private FrameworkAuthoringValidationReport _lastValidationReport;
@@ -115,9 +117,12 @@ namespace Immersive.Framework.Editor.Authoring
             _sessionCameraAssignmentList = CreateSessionCameraAssignmentList();
             _persistentContent =
                 serializedObject.FindProperty("persistentContent");
-            _containerScene =
-                _persistentContent?.FindPropertyRelative(
-                    "containerScene");
+            _scenePath =
+                _persistentContent?.FindPropertyRelative("scenePath");
+            _sceneName =
+                _persistentContent?.FindPropertyRelative("sceneName");
+            _legacyContainerScene =
+                _persistentContent?.FindPropertyRelative("containerScene");
             _validationMode =
                 serializedObject.FindProperty("validationMode");
 
@@ -557,8 +562,18 @@ namespace Immersive.Framework.Editor.Authoring
         {
             DrawSection("Persistent Content");
 
+            string scenePath = _scenePath?.stringValue ?? string.Empty;
             SceneAsset currentScene =
-                _containerScene?.objectReferenceValue as SceneAsset;
+                string.IsNullOrWhiteSpace(scenePath)
+                    ? null
+                    : AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
+
+            if (!string.IsNullOrWhiteSpace(scenePath) && currentScene == null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Persistent Content scenePath '{scenePath}' does not resolve to a Scene asset. The path is authoritative; no name fallback will be used.",
+                    MessageType.Error);
+            }
 
             SceneAsset selectedScene =
                 (SceneAsset)EditorGUILayout.ObjectField(
@@ -568,26 +583,55 @@ namespace Immersive.Framework.Editor.Authoring
                     false);
 
             if (selectedScene != currentScene &&
-                _containerScene != null)
+                _scenePath != null &&
+                _sceneName != null)
             {
-                _containerScene.objectReferenceValue =
-                    selectedScene;
+                if (selectedScene == null)
+                {
+                    _scenePath.stringValue = string.Empty;
+                    _sceneName.stringValue = string.Empty;
+                    if (_legacyContainerScene != null)
+                        _legacyContainerScene.objectReferenceValue = null;
+                }
+                else
+                {
+                    string selectedPath = AssetDatabase.GetAssetPath(selectedScene);
+                    if (selectedPath.EndsWith(".unity", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _scenePath.stringValue = selectedPath;
+                        _sceneName.stringValue = selectedScene.name;
+                    }
+                    else
+                    {
+                        EditorGUILayout.HelpBox(
+                            "The selected asset is not a Unity Scene asset.",
+                            MessageType.Error);
+                    }
+                }
             }
 
-            if (selectedScene == null)
+            if (string.IsNullOrWhiteSpace(scenePath) &&
+                _legacyContainerScene?.objectReferenceValue != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "This Game Application has a legacy Persistent Content reference. Run Tools > Immersive Framework > Migrate Persistent Content Scene References. The runtime uses only serialized scenePath/sceneName values.",
+                    MessageType.Warning);
+            }
+
+            string effectivePath = _scenePath?.stringValue ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(effectivePath) || selectedScene == null)
             {
                 EditorGUILayout.HelpBox(
                     "Tip: create the starting Persistent Content Scene with File > New Scene > Immersive Persistent Content.",
                     MessageType.Info);
 
                 EditorGUILayout.HelpBox(
-                    "Select the Persistent Content Scene.",
+                    "Assign a valid Persistent Content Scene or migrate the legacy reference.",
                     MessageType.Error);
                 return;
             }
 
-            string scenePath =
-                AssetDatabase.GetAssetPath(selectedScene);
+            scenePath = effectivePath;
 
             EditorBuildSettingsScene[] buildScenes =
                 EditorBuildSettings.scenes;
@@ -823,7 +867,7 @@ namespace Immersive.Framework.Editor.Authoring
 
                 EditorGUILayout.ObjectField(
                     "Content Scene",
-                    _containerScene?.objectReferenceValue,
+                    currentScene,
                     typeof(SceneAsset),
                     false);
 

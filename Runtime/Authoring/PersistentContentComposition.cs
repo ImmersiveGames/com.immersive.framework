@@ -20,19 +20,33 @@ namespace Immersive.Framework.Authoring
     public sealed class PersistentContentComposition
     {
         [SerializeField]
-        [Tooltip("Direct reference to the Unity scene containing the complete application-persistent composition.")]
+        [Tooltip("Project-relative Unity scene path. This is the authoritative Persistent Content scene identity.")]
+        private string scenePath = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Cached scene name for presentation, diagnostics and migrated name-only compatibility.")]
+        private string sceneName = string.Empty;
+
+        [SerializeField]
+        [Tooltip("Deprecated serialized reference retained for explicit asset migration and Stable API compatibility. Runtime identity comes only from the scene path/name strings.")]
         private UnityEngine.Object containerScene;
 
+        /// <summary>
+        /// Deprecated compatibility snapshot of the pre-path SceneAsset reference.
+        /// It may be null for valid path-authored content and is not runtime identity.
+        /// </summary>
         public UnityEngine.Object ContainerScene =>
             containerScene;
 
         public string ContainerSceneName =>
-            containerScene != null
-                ? containerScene.name
-                : string.Empty;
+            sceneName ?? string.Empty;
+
+        public string ContainerScenePath =>
+            scenePath ?? string.Empty;
 
         public bool HasContainerScene =>
-            containerScene != null;
+            !string.IsNullOrWhiteSpace(scenePath) ||
+            !string.IsNullOrWhiteSpace(sceneName);
 
         public bool IsComplete =>
             HasContainerScene;

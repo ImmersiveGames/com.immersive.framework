@@ -821,6 +821,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                         this,
                         _globalUiSceneRuntime.PersistedRoots,
                         "persistent-content-composition-rollback");
+                _persistentContentScopeComposed = !releaseResult.Succeeded;
                 var failed = FrameworkGameFlowStartResult.Failed(
                     persistentContentComposition.Diagnostic +
                     (releaseResult.Succeeded ? string.Empty : " " + releaseResult.Diagnostic));
@@ -828,6 +829,27 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return failed;
             }
             _persistentContentScopeComposed = true;
+
+            PersistentContentOwnershipCommitResult ownershipCommit =
+                await _globalUiSceneRuntime.CommitApplicationLifetimeAsync(_logger);
+            if (!ownershipCommit.Succeeded)
+            {
+                SceneCompositionResult releaseResult =
+                    _sceneLifecycleRuntime.ReleaseSessionScope(
+                        this,
+                        _globalUiSceneRuntime.PersistedRoots,
+                        "persistent-content-lifetime-commit-rollback");
+                _persistentContentScopeComposed = !releaseResult.Succeeded;
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    ownershipCommit.Diagnostic +
+                    (releaseResult.Succeeded ? string.Empty : " " + releaseResult.Diagnostic));
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ownershipCommit.Diagnostic))
+                _logger.Warning(ownershipCommit.Diagnostic);
+
             IRouteRuntimePort routeRuntimePort = this;
             IActivityRuntimePort activityRuntimePort = this;
             ApplyPauseSurfaceSnapshot("FrameworkRuntimeHost", "framework-start");
