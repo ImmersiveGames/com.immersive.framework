@@ -132,3 +132,11 @@ The complete contract remains:
 3. releasing the block does not bypass Pause/Transition or another active gate;
 4. multiple independent blocks compose safely;
 5. Player leave/disposal removes occurrence-scoped block state without residue.
+
+## API maturity disposition — 2026-10-09
+
+The following public types are Stable in the bounded block/release workflow: PlayerGameplayAvailabilityBlockTrigger, PlayerGameplayAvailabilityBlockToken, PlayerGameplayAvailabilityBlockResult, and PlayerGameplayAvailabilityBlockStatus. This records maturity only; it does not alter the decision or runtime behavior.
+
+IPlayerSessionScopedAccess remains Experimental as a whole. The block/release methods remain accessible through it, but the Stable guarantee applies only to the four named types and IF-ADR-044 behavior recorded above. It does not certify Transition composition or turn/active-Player rules.
+
+Historical QAFramework and FirstGame executions resolved Framework through a local file: dependency without recording an immutable Framework SHA. This traceability limitation does not invalidate the recorded results for tested behavior. Future certification records must include the exact resolved Framework revision.

@@ -128,3 +128,11 @@ Validated    YES
 ```
 
 The IF-ADR-041 migration supersedes the earlier Activity-scoped consumer placement while preserving this command boundary unchanged. The broader IF-ADR-038 Camera surface keeps its own maturity and recertification status.
+
+## API maturity disposition — 2026-10-09
+
+The command port and injection contract are Stable in the bounded scope of this decision: ISessionCameraAssignmentCommandPort and ISessionCameraAssignmentCommandConsumer support explicit Activate/Replace/Clear through Session Camera authority and exact composition binding. SessionCameraAssignmentCommandTrigger remains Experimental: binding is covered by Framework Editor tests, but direct execution of its public UnityEvent command surface has no recorded consumer validation. This metadata consolidation does not change the accepted architecture or runtime semantics.
+
+SessionCameraAssignmentAsset, CameraOutputDefinition, and ActorCameraSubjectAuthoring remain Experimental. Framework Editor tests exercise invalid candidate replacement preserving the previous occurrence/output state; the recorded GameFlow consumer proof demonstrates successful command transitions and clear/fallback. This evidence does not certify every Unity failure topology or broaden the Stable guarantee to referenced assets.
+
+The historical Framework/QA/consumer evidence used local file: package dependencies without recording an immutable Framework SHA. Results remain valid for executed behavior; future certification records must capture the exact resolved Framework revision.

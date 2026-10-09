@@ -3,7 +3,7 @@ using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-044 consumer gameplay-availability block operation result.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "IF-ADR-044 consumer gameplay-availability block operation result.")]
     public sealed class PlayerGameplayAvailabilityBlockResult
     {
         internal PlayerGameplayAvailabilityBlockResult(

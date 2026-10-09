@@ -5,7 +5,7 @@ using Immersive.Framework.Common;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>Opaque ownership evidence for one consumer gameplay-availability block.</summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-044 occurrence-scoped gameplay-availability block token.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "IF-ADR-044 occurrence-scoped gameplay-availability block token.")]
     public readonly struct PlayerGameplayAvailabilityBlockToken : IEquatable<PlayerGameplayAvailabilityBlockToken>
     {
         private readonly string _sessionContextId;

@@ -7,7 +7,7 @@ namespace Immersive.Framework.Camera
     /// Explicit command boundary for consumers that receive Session Camera commands
     /// through their own composition. The command authority remains Session-owned.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-039 Session Camera command boundary.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "IF-ADR-039 Session Camera command boundary.")]
     public interface ISessionCameraAssignmentCommandPort
     {
         /// <summary>Activates an Assignment only when its targeted Outputs have no active normal Assignment.</summary>

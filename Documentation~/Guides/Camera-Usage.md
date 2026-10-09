@@ -75,7 +75,7 @@ A/B -> Hub   Clear source -> Fallback
 
 The sample adapter derives the exact previous/next Assignment from `ActivityContentLifecycleContext`, implements `ISessionCameraAssignmentCommandConsumer`, and never reads current Camera state globally. Activity C remains content-less. Covered transitions keep Fallback presentation independent from the configured active Assignment.
 
-Validation evidence for the command boundary: Framework EditMode **169/169 PASS**, RouteLifecycle observer **6/6 PASS**, Camera Editor **74/74 PASS**, and GameFlow Play Mode PASS for the command sequence above, as recorded in the current tracker. The latest broader local suite counts are tracked separately and do not change the focused scope of this consumer proof.
+Validation evidence for the command boundary: Framework EditMode **169/169 PASS**, RouteLifecycle observer **6/6 PASS**, Camera Editor **74/74 PASS**, and GameFlow Play Mode PASS for the command sequence above, as recorded in the current tracker. The latest broader local suite counts are tracked separately and do not change the focused scope of this consumer proof. The command port and consumer contract are Stable for the IF-ADR-039 flow. SessionCameraAssignmentCommandTrigger remains Experimental because its direct command execution has no recorded consumer validation. Assignment assets, Output Definition and Actor Subject remain Experimental. Framework Editor tests include invalid-candidate preservation/rollback, while QA and the sample demonstrate successful transitions rather than every failure topology. Historical QA and consumer runs used a local file: Framework dependency without an immutable Framework SHA; future certification records must capture the resolved revision.
 
 ## Common mistakes
 
@@ -89,7 +89,7 @@ Validation evidence for the command boundary: Framework EditMode **169/169 PASS*
 
 ## Public surfaces
 
-See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assignment and related authoring are Experimental/current implementation surfaces; Output authoring and rig composition have separately declared API status.
+See the [Public API Reference](../API/Public-API.md#camera). Session Camera Assignment assets and related Assignment/Subject authoring remain Experimental. The IF-ADR-039 command boundary (ISessionCameraAssignmentCommandPort, ISessionCameraAssignmentCommandConsumer, SessionCameraAssignmentCommandTrigger) is Stable only for Activate/Replace/Clear through Session Camera authority; this does not promote the referenced assets. Output authoring and rig composition have separately declared API status.
 
 ## Related architecture
 

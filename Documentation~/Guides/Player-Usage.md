@@ -1,6 +1,6 @@
 # Player Usage
 
-Status: **Scene-Provided authoring and runtime adoption are implemented. IF-ADR-044 runtime contract has focused QA 8/8; its authoring trigger has Local Multiplayer manual consumer validation PASS (2026-10-08). ActorProfile and admission timing remain Experimental.**
+Status: **Scene-Provided authoring and runtime adoption are implemented. IF-ADR-044 block/release value types and PlayerGameplayAvailabilityBlockTrigger are Stable in the bounded contract; IPlayerSessionScopedAccess, ActorProfile and admission timing remain Experimental. QA is 8/8; trigger integration has Local Multiplayer manual validation PASS (2026-10-08).**
 Last updated: **2026-10-08**
 Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-044](../Architecture/ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md)
 
@@ -291,7 +291,7 @@ typed occurrence identity before preparation establishes it.
 
 For scene-authored UnityEvent or UI workflows, add `PlayerGameplayAvailabilityBlockTrigger` to content owned and discovered by the chosen Route or Activity scope. Configure its `Scope`, `Player Slot Profile` and optional diagnostic `Reason`, then wire `RequestBlock()` and `RequestRelease()` to UnityEvents. The component owns one block token and releases only that token, including when its scoped access is released. It does not model turns or select an active Player.
 
-The underlying IF-ADR-044 runtime contract has focused QAFramework evidence at **8/8 PASS** with `BaselineRestored`. The `PlayerGameplayAvailabilityBlockTrigger` authoring surface is also consumer-validated in the Local Multiplayer sample (2026-10-08): P1/P2 Block/Release projected through the canonical Gate adapter, independent token ownership was preserved, and a held block was released on scoped-consumer teardown.
+The IF-ADR-044 block/release value types and PlayerGameplayAvailabilityBlockTrigger are Stable in the bounded workflow. The runtime contract has focused QAFramework evidence at 8/8 PASS with BaselineRestored. The trigger authoring surface received Local Multiplayer manual consumer validation (2026-10-08): P1/P2 Block/Release projected through the canonical Gate adapter, independent token ownership was preserved, and a held block was released on scoped-consumer teardown. The methods remain accessible through IPlayerSessionScopedAccess, whose broader contract remains Experimental. These historical runs used a local file: Framework dependency without an immutable Framework SHA; this does not invalidate their recorded behavior. Future certification records must include the resolved Framework revision.
 
 Scope is ownership, not scene location. An Activity-scoped trigger must live in content discoverable by the active Activity scope; placing the component in arbitrary Persistent Content does not make it Activity-scoped or eligible for binding. Use the same Route/Activity content composition rules as the other `PlayerSessionScopedAccessConsumer` authoring surfaces.
 

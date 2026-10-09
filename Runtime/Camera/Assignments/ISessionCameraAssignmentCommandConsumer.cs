@@ -8,7 +8,7 @@ namespace Immersive.Framework.Camera
     /// Implementations must accept the same port idempotently, reject another
     /// Session authority, and detach only the exact port supplied to this method.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-039 scene-local Session Camera command injection contract.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "IF-ADR-039 scene-local Session Camera command injection contract.")]
     public interface ISessionCameraAssignmentCommandConsumer
     {
         bool IsBoundToSessionCameraAssignmentCommands(

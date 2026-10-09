@@ -9,7 +9,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Player/Commands/Gameplay Availability Block")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental,
+    [FrameworkApiStatus(FrameworkApiStatus.Stable,
         "IF-ADR-044 UnityEvent authoring surface for one consumer-owned gameplay availability block.")]
     public sealed class PlayerGameplayAvailabilityBlockTrigger : PlayerSessionScopedAccessConsumer
     {

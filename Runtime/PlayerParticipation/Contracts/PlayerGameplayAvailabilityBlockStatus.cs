@@ -2,7 +2,7 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-044 consumer gameplay-availability block operation status.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "IF-ADR-044 consumer gameplay-availability block operation status.")]
     public enum PlayerGameplayAvailabilityBlockStatus
     {
         None = 0,
