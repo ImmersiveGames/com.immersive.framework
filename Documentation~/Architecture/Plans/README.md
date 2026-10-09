@@ -9,6 +9,10 @@ Active immutable distribution plan:
 - [OpenUPM Signed Distribution v2](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v2.md)
 - [OpenUPM Signed Distribution — implementation plan](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION-IMPLEMENTATION-2026-09-24.md)
 
+Accepted architecture implementation route (implementation pending):
+
+- [IF-ADR-045 — Runtime-Safe Scene References v1](IF-PLAN-ADR-045-RUNTIME-SAFE-SCENE-REFERENCES.v1.md)
+
 Superseded distribution plan and execution record:
 
 - [OpenUPM Public Package Distribution v1](IF-PLAN-OPENUPM-PUBLIC-DISTRIBUTION.v1.md)
