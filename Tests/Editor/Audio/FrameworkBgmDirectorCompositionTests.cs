@@ -41,6 +41,7 @@ namespace Immersive.Framework.Audio.Editor.Tests
         public void SessionRoots_DiscoverDirectorParticipant_AndReleaseItExplicitly()
         {
             GameObject sessionRoot = Create("persistent-content");
+            GameObject originalRoot = sessionRoot;
             FrameworkBgmDirector director = sessionRoot.AddComponent<FrameworkBgmDirector>();
             sessionRoot.AddComponent<FrameworkBgmDirectorSceneLifecycleParticipant>();
             ActivityBgmAuthoring activity = sessionRoot.AddComponent<ActivityBgmAuthoring>();
@@ -72,7 +73,20 @@ namespace Immersive.Framework.Audio.Editor.Tests
             Assert.That(release.Succeeded, Is.True, release.Diagnostic);
             Assert.That(activity.Director, Is.Null);
             Assert.That(route.Director, Is.Null);
-            Assert.That(director, Is.Not.Null);
+            Assert.That(sessionRoot != null, Is.True);
+            Assert.That(director != null, Is.True);
+            Assert.That(sessionRoot, Is.SameAs(originalRoot));
+
+            SceneCompositionResult repeatedRelease = lifecycle.ReleaseSessionScope(
+                sessionRoot,
+                new[] { sessionRoot },
+                "test-shutdown-repeated");
+
+            Assert.That(repeatedRelease.Succeeded, Is.True, repeatedRelease.Diagnostic);
+            Assert.That(repeatedRelease.Diagnostic, Does.Contain("with no participants"));
+            Assert.That(activity.Director, Is.Null);
+            Assert.That(director != null, Is.True,
+                "Session composition release detaches bindings but does not destroy Persistent Content roots.");
         }
 
         [Test]
