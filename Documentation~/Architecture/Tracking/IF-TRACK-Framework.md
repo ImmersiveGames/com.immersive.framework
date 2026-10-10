@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.5 published; Reset and IF-ADR-044 consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; Reset and IF-ADR-044 consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
 
 Last updated: **2026-10-09**
 
@@ -29,9 +29,9 @@ The public OpenUPM graph is published:
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
 
-Preview **`1.1.0-preview.5`** is published to GitHub Releases and OpenUPM. Its
-signed archive is attached to [the GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.5),
-and OpenUPM resolves `.5` as the current preview. It depends on Foundation
+Preview **`1.1.0-preview.7`** is published to GitHub Releases and OpenUPM. Its
+signed archive is attached to [the GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.7),
+and OpenUPM resolves `.7` as the current preview. It depends on Foundation
 `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7` and Input System `1.19.0`. The
 `v1.1.0-preview.1` tag
 stopped at signed-archive verification; no GitHub Release or OpenUPM publication

@@ -2,7 +2,7 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.7] - 2026-10-10
+## [1.1.0-preview.7] - 2026-10-10 — published
 
 This preview delivers the IF-ADR-045 Persistent Content scene-reference and
 lifecycle cut. It does not promote additional API surfaces or certify the
@@ -22,7 +22,7 @@ Framework as a whole.
   IF-ADR-038 Camera recertification, Standalone/WebGL Player Build validation,
   and independent reproduction of the consumer WebGL incident remain pending.
 
-## [1.1.0-preview.6] - 2026-10-09 — prepared, unpublished
+## [1.1.0-preview.6] - 2026-10-09 — published
 
 This candidate consolidates bounded API maturity decisions and their existing
 validation records. It changes no runtime behavior or public signatures and
@@ -51,7 +51,7 @@ does not certify the Framework as a whole.
   must record the resolved Framework revision.
 
 Unity package import/compile and broader IF-ADR-038 recertification remain
-pending. This candidate is prepared but unpublished.
+pending.
 
 ## [1.1.0-preview.5] - 2026-10-08 — published
 
