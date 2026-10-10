@@ -4,8 +4,8 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Prepared package version: `1.1.0-preview.6` (unpublished). Latest published
-preview: `1.1.0-preview.5`.
+Current package version: `1.1.0-preview.7`. The latest published preview
+before this candidate was `1.1.0-preview.5`.
 Latest stable package release: `1.0.2`. The preview
 line contains experimental API and serialized-authoring changes; Unity package
 import/compile and broader IF-ADR-038 Camera recertification remain pending.
@@ -53,10 +53,10 @@ The preview line targets Foundation `0.2.2` and Logging `0.2.3`. As a Git fallba
 consumers must declare the custom Git dependencies themselves because Unity
 cannot resolve their semantic versions from Git alone.
 
-Use preview `1.1.0-preview.5` through OpenUPM or through the Git tag
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.5`.
+Use preview `1.1.0-preview.7` through OpenUPM or through the Git tag
+`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.7`.
 Preview APIs and serialized authoring may still change. The signed package is
-available in the [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.5)
+available in the [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.7)
 and OpenUPM.
 
 ## Getting started
@@ -119,8 +119,8 @@ See [Persistent Content Scene Template](Documentation~/Guides/Persistent-Content
 
 ## API maturity
 
-The package version is stable, but maturity is declared per surface with
-`FrameworkApiStatusAttribute`:
+Package version and API maturity are separate. Maturity is declared per
+surface with `FrameworkApiStatusAttribute`:
 
 - `Stable`: supported consumer contract; breaking changes require an explicit
   architecture and migration decision;

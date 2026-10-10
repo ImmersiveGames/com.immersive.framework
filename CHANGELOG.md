@@ -2,6 +2,26 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0-preview.7] - 2026-10-10
+
+This preview delivers the IF-ADR-045 Persistent Content scene-reference and
+lifecycle cut. It does not promote additional API surfaces or certify the
+Framework as a whole.
+
+- Persistent Content authoring now stores a scene path/name reference, with an
+  explicit Editor migration path, path-driven Scene Picker, and validation.
+- Runtime composition retains source roots until Session composition succeeds,
+  then transfers those roots to application lifetime. Focused regression tests
+  cover scene-reference migration/resolution and Session release behavior.
+- D7 QAFramework Play Mode evidence reported by the user is partial: 6/7
+  checkpoints passed and Session shutdown remains BLOCKED. D8 classifies that
+  checkpoint as PACKAGE-LEVEL because consumers have no supported shutdown
+  request/result. D9 Edit Mode results (194 passed, 0 failed, 0 ignored) were
+  reported by the user; no Unity tests were run for this release preparation.
+- Unity package import/compile, complete host-shutdown integration, broader
+  IF-ADR-038 Camera recertification, Standalone/WebGL Player Build validation,
+  and independent reproduction of the consumer WebGL incident remain pending.
+
 ## [1.1.0-preview.6] - 2026-10-09 — prepared, unpublished
 
 This candidate consolidates bounded API maturity decisions and their existing
