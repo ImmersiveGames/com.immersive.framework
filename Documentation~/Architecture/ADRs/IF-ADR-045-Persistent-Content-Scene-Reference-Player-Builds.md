@@ -143,6 +143,45 @@ This is one Framework-owned Editor build gate and its focused validation helper,
 - QAFramework has Editor/Play Mode route/activity/lifecycle scenarios, but no coverage found for this mismatch, legacy migration, custom scheduled scene lists or Player Build startup.
 - Consumer-reported WebGL failure remains **not independently reproduced**. No Player Build was run for this reconciliation.
 
+### D7–D10 Persistent Content Session release evidence — 2026-10-10
+
+This evidence supplements the scene-reference implementation gates above; it does
+not close IF-ADR-045 validation or Player Build certification.
+
+| Contract | Evidence level | Status after D10 |
+|---|---|---|
+| Session composition succeeds | Package Edit Mode feature tests compose a discovered Session participant. The D9 Edit Mode run was reported by the user as 194/194 passed, 0 failed, 0 ignored. | Executed evidence reported by user |
+| The same roots transfer to application lifetime | D7 QAFramework Play Mode run reported exact source unload and transfer of the original roots. No package Edit Mode transfer regression test exists. | D7 runtime evidence; not rerun in D9 |
+| Host shutdown invokes release with the exact owner | `FrameworkRuntimeHost.OnDestroy` and `OnApplicationQuit` call the internal release path in source. No test reaches either callback after a successful full bootstrap. `StartAsync` owns the setup needed for that state, and no existing isolated seam does so without reflection or new infrastructure. | Uncovered integration; pending |
+| Release detaches participants and feature bindings | Existing Audio and Flow composition tests exercise successful Session release and detached bindings. User-reported Edit Mode results identify Audio as 5/5 passed. | Executed evidence reported by user |
+| Successful release removes retained Session participants | The D9 Audio test performs a second release and asserts the runtime reports no participants. | User reports Audio group 5/5 passed; no unnamed test result is inferred |
+| Failed release preserves diagnostics and does not report success | `SessionCompositionReleaseTests` exercises multiple failures, checks aggregation/rejection, and retries with the same owner and roots. | Named test class reported PASS by user |
+| Release is separate from physical root destruction | The D9 Audio test checks that the original root and director remain alive after release. | Audio group reported 5/5 passed |
+| Repeated release/retry behavior | Existing composition tests cover repeated availability; D9 adds failed-release retry and successful repeated release with no retained Session participants. | D9 Edit Mode evidence reported passed by user |
+
+D8 classified checkpoint 7 as **PACKAGE-LEVEL**: the public QA consumer has no
+supported Session shutdown request/result, while the release protocol is an
+internal package contract. D7's six completed checkpoints were `bootstrap-and-session-composition`,
+`exact-source-unload-and-root-transfer`, `route-a-to-route-b`,
+`route-b-to-route-d-startup-activity`, `activity-d-a-to-d-b`, and
+`route-restoration-and-cleanup`; its seventh checkpoint,
+`session-shutdown-release`, remains **BLOCKED**. Prepare/cleanup and scoped
+migration 4/4 were also reported PASS by the user. Do not convert the QAFramework
+terminal to 7/7.
+
+For D9, the user-reported Unity Test Runner Edit Mode results are 194 passed, 0
+failed and 0 ignored. The report separately identifies
+`SessionCompositionReleaseTests` as PASS, Audio 5/5 and
+`PersistentContentSceneReferenceTests` 12/12. These are execution results reported
+by the user, not a new run performed during D10; aggregate suite evidence is kept
+distinct from named group/class results.
+
+D9 added package test source and D10 reconciles the records. Full
+`FrameworkRuntimeHost.OnDestroy → ReleaseSessionScope` integration remains
+uncovered. This residual does not change the public-boundary `PACKAGE-LEVEL`
+classification or turn D7 into a full certification. No runtime or public API
+change is part of D9/D10.
+
 ## Implementation and validation gates
 
 1. Implement each boundary in the linked plan; acceptance does not mean implementation or validation is complete.
