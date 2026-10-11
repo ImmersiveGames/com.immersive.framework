@@ -3,6 +3,7 @@
   "rootNamespace": "Immersive.Framework.PlayerParticipation.Tests",
   "references": [
     "Immersive.Framework.Runtime",
+    "Unity.InputSystem",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

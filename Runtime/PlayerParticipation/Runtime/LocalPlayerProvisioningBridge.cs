@@ -247,7 +247,7 @@ namespace Immersive.Framework.PlayerParticipation
                     LocalPlayerJoinStatus.FailedAdmission,
                     _pendingJoin,
                     null,
-                    null,
+                    _pendingJoin.CallbackPlayerInput,
                     $"PlayerInputManager provisioning threw '{exception.GetType().Name}': {exception.Message}");
             }
 
