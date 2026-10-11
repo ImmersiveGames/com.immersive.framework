@@ -4,7 +4,9 @@ Status: **Accepted / Reconciled / Implemented**
 Last updated: **2026-08-29**  
 Related decisions: IF-ADR-002, IF-ADR-003, IF-ADR-006, IF-ADR-010, IF-ADR-012, IF-ADR-014, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-023  
 Public-surface reconciliation: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
-Current Player Actor runtime certification: [IF-ADR-023 — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+Historical Player Actor runtime certification: [IF-ADR-023 — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
+
+> Historical QA counts cited in this ADR predate the QA-001 Player Slices and remain evidence only for their dated boundaries. Current certification status is tracked in [the 2026-10-11 Player recertification matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md); this notice does not alter the accepted command/observation architecture.
 
 ## Decision
 

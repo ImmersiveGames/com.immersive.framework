@@ -1,11 +1,13 @@
 # IF-ADR-016 — Player Session Initial Configuration
 
-Status: **Accepted / Reconciled / Implemented / Current Player QA PASS**  
-Last updated: **2026-08-26**  
+Status: **Accepted / Reconciled / Implemented; 2026-08 QA evidence is historical, full recertification remains open**
+Last updated: **2026-08-26**
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-019, IF-ADR-020  
 Historical reopen record: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Historical closure record: [2026-08-15 Player Physical Lifetime Recertification](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-RECERTIFICATION-2026-08-15.md)  
-Current Actor-selection closure: [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+Historical Actor-selection closure: [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+
+> The PASS counts below record the 2026-08 certification boundary; they are not current QA-001 coverage. Current per-contract evidence and remaining gates are in [Player Full Recertification — 2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md).
 
 ## Context
 

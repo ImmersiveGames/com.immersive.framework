@@ -1,8 +1,8 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; Reset and IF-ADR-044 consumer proof PASS; IF-ADR-039 command boundary consumer-validated; IF-ADR-041 Route-scoped Activity observation validated; broader Camera/Player validation tracked separately**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; Player full recertification open under QA-001; Stable readiness audited, no Player promotion ready**
 
-Last updated: **2026-10-09**
+Last updated: **2026-10-11**
 
 ## Authority and status model
 
@@ -116,24 +116,29 @@ PREPARED / COMMITTED
 
 `PlayerActorDeclaration.ActorId` is runtime occurrence identity. It is not a persistent prefab/template identity. Ordinary persistent `ActorDeclaration` identity rules remain separate.
 
-Current Player evidence:
+Current Player evidence and authority:
 
 ```text
-Historical Full Player          25/25 preserved
-Player current aggregate        27/27 PASS
-Manager functional Player QA    14/14 historical/current earlier boundary
-ADR-024 Full Player QA          16/16 PASS
-Pause/Input/Gate                 8/8 PASS
-Route Spatial Entry             18/18 PASS
-Activity Relocation             23/23 PASS
-Scene-Provided occurrence ID    FIRSTGAME Play Mode PASS
+QA-001 Slice 1 — Session / Join                    user-reported PASS 8/8; provenance pending
+QA-001 Slice 2 — Leave / Rejoin / Actor occurrence user-reported PASS; provenance pending
+QA-001 Slice 3 — Local Multiplayer / Input ownership user-reported PASS; initial cleanup FAIL retained
+Full Player aggregate 25/25 and 27/27             dated historical records; not current runners
+Manager 14/14; ADR-024 16/16                     dated evidence for earlier boundaries
+Route 18/18; Activity 23/23                       dated bounded evidence; full recertification open
 ```
 
-The ADR-024 `16/16` run is the current integrated proof for the Manager-Provisioned
-prepared Actor replacement boundary. The older `14/14` Manager functional and
-`27/27` aggregate records remain dated evidence for the earlier boundaries they
-executed and are not relabeled as ADR-024 proof.
+The QA-001 results are scoped evidence supplied by the user; no raw logs or
+immutable Framework SHA were attached. They do not close full Player
+recertification or alter maturity. See
+[IF-PLAYER-FULL-RECERTIFICATION-2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
+for the single current coverage/maturity matrix and remaining gates. Dated counts
+remain historical evidence only for the boundaries they executed.
 
+### Player Stable readiness — 2026-10-11
+
+Static audit baseline: Framework `.7` HEAD `039223a39abfbe3bcf1c6f37c2d7764ad60834a8`; QAFramework HEAD `f00676563b5adfdc4c66323234c60a0a733c8217`; FirstGame HEAD `98a0c23ea33f11e721afe80161fe0aba8cb7acc7`. QAFramework and FirstGame resolve the local Framework path without an immutable lock SHA. Slices 1–3 remain user-reported, partial-provenance evidence, not current SHA-bound runs.
+
+Next recommended work is **P0/P1: prepare the bounded Manager-Provisioned Join compatibility closure** (`ILocalPlayerJoinAccess.RequestJoin` plus the minimum request/result/status and public dependencies), beginning with a provenance-fixed S1 replay and deterministic package tests. This is a preparation candidate only: every current Join surface/dependency is Experimental and no Player API is ready for promotion. Leave/observation and P1/P2 ownership follow only after their own failure, ordering and compatibility gates. See the report's canonical matrix and gates; do not promote `IPlayerSessionScopedAccess` or adjacent Actor/Input APIs by association.
 Foundational Player sample evidence from FIRSTGAME FG-ADR-002 Revision 4 and the 2026-08-31 Scene-Provided reconciliation run:
 
 ```text
@@ -159,7 +164,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 |---|---|---|---|
 | 001 | ACCEPTED / RECONCILED / IMPLEMENTED | core evidence preserved; Editor startup isolation proven | current |
 | 002 | ACCEPTED / RECONCILED / IMPLEMENTED | feature-owned | current |
-| 003 | ACCEPTED / RECONCILED / IMPLEMENTED; ADR-023 structural reconciliation current | Player aggregate 27/27 + Manager functional 14/14 | current |
+| 003 | ACCEPTED / RECONCILED / IMPLEMENTED; ADR-023 structural reconciliation current | historical Player aggregate 27/27 + Manager functional 14/14; QA-001 Slices 1–3 user-reported | architecture current; full Player recertification open |
 | 005 | ACCEPTED / RECONCILED / IMPLEMENTED | Input Gate / Restart / Pause certified | current |
 | 006 | ACCEPTED / RECONCILED / IMPLEMENTED | technical Transition/Loading certified | Game Flow consumer PASS |
 | 007 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness policies certified | Game Flow consumer PASS |
@@ -167,18 +172,18 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 009 | ACCEPTED / RECONCILED / IMPLEMENTED / TECHNICAL QA CERTIFIED | Contribution 3/3 + Visibility 2/2 + lifecycle 16/16 | current post-split contract |
 | 010 | ACCEPTED / IMPLEMENTED | feature-owned | current |
 | 011 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness/progress certified | consumer proof PASS |
-| 012 | ACCEPTED / RECONCILED / IMPLEMENTED | Player aggregate 27/27 | current |
+| 012 | ACCEPTED / RECONCILED / IMPLEMENTED | historical Player aggregate 27/27; QA-001 coverage in current recertification report | architecture accepted; current full Player certification open |
 | 013 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED / VALIDATED | QA-NEW-005 12/12 PASS post-IF-ADR-040; historical 44/44 retained | consumer gate PASS; maturity remains Experimental |
 | 014 | ACCEPTED / IMPLEMENTED | certified | current |
-| 015 | ACCEPTED / RECONCILED / IMPLEMENTED | public surface aggregate + Manager functional 14/14 | Observer + 8 explicit commands current |
-| 016 | ACCEPTED / IMPLEMENTED | Player aggregate 27/27 | ResolveConfiguredDefault + LeaveUnresolved current |
+| 015 | ACCEPTED / RECONCILED / IMPLEMENTED | public surface aggregate + Manager functional 14/14 are dated evidence; QA-001 Slices bounded | Observer/commands implemented; Player recertification open |
+| 016 | ACCEPTED / IMPLEMENTED | historical Player aggregate 27/27; Slice 1 default-selection path user-reported | policies remain Experimental/current recertification open |
 | 017 | ACCEPTED / RECONCILED / IMPLEMENTED | frame-rate matrices certified | current |
 | 018 | ACCEPTED / RECONCILED / IMPLEMENTED | persistence/backend certifications | FIRSTGAME usability proof remains feature-owned |
-| 019 | ACCEPTED / RECONCILED / IMPLEMENTED | current aggregate + historical physical-lifetime certification | closed |
-| 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + aggregate + historical certification | closed |
-| 021 | ACCEPTED / RECONCILED / IMPLEMENTED | Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B current |
+| 019 | ACCEPTED / RECONCILED / IMPLEMENTED | historical aggregate + physical-lifetime certification | architecture closed; current Player recertification open |
+| 020 | ACCEPTED / RECONCILED / IMPLEMENTED | ADR020-H + historical aggregate/certification | architecture closed; current Player recertification open |
+| 021 | ACCEPTED / RECONCILED / IMPLEMENTED | historical Route 18/18 + Activity 23/23 + aggregate 27/27 | Model B architecture current; Player recertification for current occurrence boundary open |
 | 023 | SUPERSEDED by IF-ADR-038; dated certification retained as evidence | Historical Manager/Scene-Provided evidence only | Optional visual-content lifecycle remains; Actor root owns spatial state |
-| 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | Full Player QA 16/16 PASS including positive `actor-replace` | public `RequestReplacePreparedActor(...)` current; Scene-Provided prepared physical replacement deferred |
+| 024 | ACCEPTED / RECONCILED / IMPLEMENTED — Manager-Provisioned V1 | historical Full Player QA 16/16 including `actor-replace`; not rerun in QA-001 | `RequestReplacePreparedActor(...)` implemented; current replacement recertification open |
 | 025 | ACCEPTED / IMPLEMENTATION STATUS OWNED BY PLAYER TRACK | feature-owned | Camera remains outside the Player input contract |
 | 032 | SUPERSEDED / HISTORICAL | prior Camera QA/certifications remain historical only | superseded by IF-ADR-038 |
 | 038 | ACCEPTED; current Assignment/Output model implemented | Framework EditMode 175/175; Camera Editor 78/78 PASS; QA-NEW-004 Session Camera 9/9 PASS; IF-ADR-039 GameFlow command consumer Play Mode PASS | broader IF-ADR-038 recertification remains separately scoped |
@@ -437,7 +442,7 @@ Historical records:
 - [IF-ADR-023 — Player Actor Runtime Host and Presentation Authority](../ADRs/IF-ADR-023-Player-Actor-Runtime-Host-and-Presentation-Authority.md)
 - [IF-ADR-024 — Prepared Actor Replacement Public Contract](../ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md)
 - [IF-ADR-009 Contribution / Visibility Technical Certification — 2026-08-30](../Reconciliation/IF-ADR-009-CONTRIBUTION-VISIBILITY-TECHNICAL-CERTIFICATION-2026-08-30.md)
-- [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
+- [Historical Player Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
 - [IF-ADR-015B — Player Actor Selection Public Surface Certification — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
 - [IF-ADR-023 Player Actor Runtime Technical Certification — 2026-08-29](../Reconciliation/IF-ADR-023-PLAYER-ACTOR-RUNTIME-TECHNICAL-CERTIFICATION-2026-08-29.md)
 - [IF-ADR-023A Player Actor Occurrence Identity Boundary — 2026-08-31](../Reconciliation/IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md)

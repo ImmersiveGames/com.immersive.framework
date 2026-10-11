@@ -1,9 +1,9 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
-Status: **Accepted / Reconciled / Implemented / Current Player QA PASS**  
-Last updated: **2026-08-29**  
+Status: **Accepted / Reconciled / Implemented; current QA coverage is bounded and full Player recertification remains open**
+Last updated: **2026-08-29**
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-024, IF-ADR-038
-Current aggregate record: [Player Current Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)  
+Historical aggregate evidence: [Player Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md); current QA-001 coverage: [Player Full Recertification — 2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
 Actor occurrence spatial and Camera Subject authority: [IF-ADR-038](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md)
 
@@ -195,7 +195,7 @@ Historical Player physical-lifetime certification is preserved:
 Full Player 25/25
 ```
 
-Expanded current aggregate:
+Historical expanded aggregate (2026-08):
 
 ```text
 PLAYER CURRENT AGGREGATE COMPLETE

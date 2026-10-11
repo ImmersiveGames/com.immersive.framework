@@ -1,16 +1,18 @@
-# Immersive Framework — Player Current Aggregate Recertification
+# Immersive Framework — Player Aggregate Recertification (Historical)
 
-Status: **Closed / Player Current Aggregate Complete**  
-Date: **2026-08-24**  
+> **Historical evidence only.** The legacy aggregate runner is not part of current QAFramework/QA-001. The `27/27` result remains tied to the contracts and execution recorded here; current Player coverage and pending gates are maintained in [the 2026-10-11 recertification report](IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md).
+
+Status: **Historical certification record — superseded as current QA authority by QA-001 Player Slices**
+Date of recorded run: **2026-08-24**
 Related decisions: IF-ADR-003, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021
 
 ## Purpose
 
-Record the current Player technical certification after the IF-ADR-021 Model B replacement runtime, the Player/Game Flow bootstrap-order correction, and the QA Play Mode startup-synchronization sweep.
+Record the Player technical certification reported on 2026-08-24 after the IF-ADR-021 Model B replacement runtime, Player/Game Flow bootstrap-order correction and QA Play Mode startup-synchronization sweep.
 
 This record does not rewrite the historical Full Player `25/25` certification or the historical ADR-021 Initial Placement `9/9` result. Those remain dated evidence for the boundaries they executed.
 
-## Current terminal aggregate
+## Terminal aggregate recorded on 2026-08-24
 
 The 2026-08-24 Full Player QA run reported:
 
@@ -24,7 +26,7 @@ executedContracts='27'
 passedContracts='27'
 ```
 
-Current aggregate phases:
+Aggregate phases recorded in this run:
 
 ```text
 Serialization                         PASS
@@ -106,7 +108,7 @@ Historical ADR-021 Initial Placement
   is not current Model B certification
 ```
 
-The current `27/27` aggregate is the mutable/current Player certification reference. It extends the tested boundary; it does not relabel the older runs as having tested later contracts.
+At the time of the 2026-08-24 run, this `27/27` aggregate was the recorded certification reference. It is preserved as dated evidence and is not the current QA-001 certification route; it does not prove later contracts or the current package SHA.
 
 ## Disposition
 
@@ -115,7 +117,7 @@ IF-ADR-019 Session physical lifetime       CLOSED / CURRENT AGGREGATE PASS
 IF-ADR-020 Leave/resource release           CLOSED / CURRENT AGGREGATE PASS
 IF-ADR-021 Route Spatial Entry              CLOSED / 18/18 + CURRENT AGGREGATE PASS
 IF-ADR-021 Activity Explicit Relocation     CLOSED / 23/23 + CURRENT AGGREGATE PASS
-Full Player current aggregate               CLOSED / 27/27
+Full Player aggregate recorded in this run  CLOSED / 27/27 (historical)
 Historical Full Player                      PRESERVED / 25/25
 Historical ADR-021 Initial Placement        PRESERVED / 9/9 / SUPERSEDED BOUNDARY
 ```

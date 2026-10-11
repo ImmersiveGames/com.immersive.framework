@@ -1,17 +1,17 @@
 # IF-ADR-021 — Route Spatial Entry and Activity Explicit Relocation
 
-Status: **Accepted / Reconciled — Model B; IMPLEMENTED / CURRENT QA VERIFIED**
+Status: **Accepted / Reconciled — Model B; IMPLEMENTED; dated QA evidence**
 Historical implementation QA: **ADR-021 Initial Placement 9/9**
 Route spatial-entry QA: **18/18 PASS**
 Activity relocation QA: **23/23 PASS**
-Current Full Player aggregate: **27/27 PASS — PLAYER CURRENT AGGREGATE COMPLETE**
+Historical Full Player aggregate (2026-08-24): **27/27 PASS — preserved for its recorded boundary; not the current QA-001 certification**
 Historical Full Player certification: **25/25 preserved**
 Last updated: **2026-08-27**
 Type: architecture / spatial authority / player product direction
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020
 Reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
 Runtime robustness reconciliation: [2026-08-27 Activity Player Relocation Fail-Fast and Readiness Recovery](../Reconciliation/IF-ADR-021A-Activity-Player-Relocation-Fail-Fast-and-Readiness-Recovery-2026-08-27.md)
-Current certification: [2026-08-24 Player Current Aggregate Recertification](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md)
+Historical certification record: [2026-08-24 Player Aggregate Recertification](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md); current coverage: [2026-10-11 QA-001 Player Recertification](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 
 ## Context
 
@@ -255,9 +255,9 @@ evaluation may recover within the same Activity occurrence according to IF-ADR-0
 An unrelated Session revision does not clear the failure while the invalid Joined
 condition still exists.
 
-## Current certification
+## Dated certification evidence
 
-Replacement certification is complete for the implemented Model B boundary:
+The following results were recorded for the 2026-08 Model B boundary. They remain evidence for that run, not a current aggregate verdict:
 
 ```text
 Route Spatial Entry
@@ -268,14 +268,14 @@ Activity Explicit Relocation
   23/23 PASS
   ADR-021 MODEL B ACTIVITY RELOCATION VERIFIED
 
-Full Player current aggregate
+Full Player aggregate (historical 2026-08)
   mandatoryContracts=27
   executedContracts=27
   passedContracts=27
   PLAYER CURRENT AGGREGATE COMPLETE
 ```
 
-The Full Player aggregate also passes Scene-Provided, Manager-Provisioned, Actor
+The recorded 2026-08 Full Player aggregate also included Scene-Provided, Manager-Provisioned, Actor
 Lifecycle, public surface, Leave, Session termination, failed first-scene adoption,
 failed contextual reprojection and no-physical-handoff coverage under the current
 runtime composition.
@@ -292,5 +292,5 @@ Route startup follows. QA Play Mode synchronization was aligned to canonical Hos
 readiness; that synchronization change does not create new runtime authority or alter
 this ADR's semantics.
 
-See the current certification record for the exact aggregate disposition and the
+See the historical certification record for the aggregate disposition and the
 preserved historical evidence boundary.
