@@ -18,6 +18,7 @@ namespace Immersive.Framework.PlayerParticipation
     public sealed class RoutePlayerSpatialEntryAuthoring : MonoBehaviour
     {
         [Serializable]
+        [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-021 Model B Route-owned explicit Player spatial-entry binding.")]
         public sealed class Binding
         {
             [SerializeField]

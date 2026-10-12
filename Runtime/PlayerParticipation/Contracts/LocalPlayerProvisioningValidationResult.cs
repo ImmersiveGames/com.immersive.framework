@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Result consumed by Editor Manager-Provisioned Player authoring diagnostics.")]
     public sealed class LocalPlayerProvisioningValidationResult
     {
         internal LocalPlayerProvisioningValidationResult(

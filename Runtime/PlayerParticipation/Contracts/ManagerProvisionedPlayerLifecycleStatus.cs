@@ -1,9 +1,12 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Consumer-safe lifecycle stage for one Manager-Provisioned Player flow.
     /// This status is diagnostic only and does not grant mutation authority.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-015 Manager-Provisioned Player lifecycle diagnostic; outside IF-ADR-046 Stable Join outcome.")]
     public enum ManagerProvisionedPlayerLifecycleStatus
     {
         Unavailable = 0,

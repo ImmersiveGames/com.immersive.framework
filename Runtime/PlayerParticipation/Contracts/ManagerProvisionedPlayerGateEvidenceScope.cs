@@ -1,3 +1,5 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
@@ -5,6 +7,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// A Player readiness contribution is not equivalent to the aggregate
     /// Activity gate across all readiness participants.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-015 Manager-Provisioned Player lifecycle diagnostic evidence; outside IF-ADR-046 Stable Join outcome.")]
     public enum ManagerProvisionedPlayerGateEvidenceScope
     {
         None = 0,

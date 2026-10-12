@@ -1,5 +1,8 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Issue vocabulary for Editor Manager-Provisioned Player authoring validation.")]
     public enum LocalPlayerProvisioningIssueKind
     {
         None = 0,

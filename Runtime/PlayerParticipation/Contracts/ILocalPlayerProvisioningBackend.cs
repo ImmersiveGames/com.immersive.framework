@@ -40,6 +40,9 @@ namespace Immersive.Framework.PlayerParticipation
     /// The interface is public only so synthetic QA backends can validate orchestration without
     /// driving PlayerInputManager through the Input System.
     /// </remarks>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Internal,
+        "P3G.3 testable admitted Player release capability; Framework orchestration and synthetic QA only.")]
     public interface IAdmittedLocalPlayerReleaseBackend
     {
         void ReleaseAdmittedPlayer(

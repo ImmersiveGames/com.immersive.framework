@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace Immersive.Framework.RuntimeContent
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-014 owner-selector vocabulary within the Experimental StableObjectReference contract.")]
     public enum StableObjectOwnerSelectorKind { Unspecified = 0, Route = 10, Activity = 20 }
 
     /// <summary>Stable Object Entry ID with an optional exact typed Route or Activity selector.</summary>

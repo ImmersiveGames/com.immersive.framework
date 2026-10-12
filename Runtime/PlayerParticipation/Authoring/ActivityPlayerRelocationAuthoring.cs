@@ -19,6 +19,7 @@ namespace Immersive.Framework.PlayerParticipation
     public sealed class ActivityPlayerRelocationAuthoring : MonoBehaviour
     {
         [Serializable]
+        [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-021 Model B Activity-owned explicit Player relocation binding.")]
         public sealed class Binding
         {
             [SerializeField]

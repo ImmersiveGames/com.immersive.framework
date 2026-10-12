@@ -1,7 +1,9 @@
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor diagnostics for Manager-Provisioned Player authoring validation; not a product runtime contract.")]
     public sealed class LocalPlayerProvisioningIssue
     {
         internal LocalPlayerProvisioningIssue(

@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Configuration checks used by Editor Manager-Provisioned Player authoring validation.")]
     public static class LocalPlayerProvisioningConfigurationRules
     {
         public static LocalPlayerProvisioningValidationResult Validate(
