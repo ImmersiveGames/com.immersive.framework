@@ -8,8 +8,7 @@ namespace Immersive.Framework.ApiStatus
     /// This marker is documentation/validation metadata only; it does not alter runtime behavior.
     /// </summary>
     [AttributeUsage(
-        AttributeTargets.Assembly
-        | AttributeTargets.Class
+        AttributeTargets.Class
         | AttributeTargets.Struct
         | AttributeTargets.Interface
         | AttributeTargets.Enum

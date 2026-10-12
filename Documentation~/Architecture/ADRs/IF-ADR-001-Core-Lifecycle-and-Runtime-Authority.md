@@ -1,7 +1,7 @@
 # IF-ADR-001 — Core Lifecycle and Runtime Authority
 
 Status: **Accepted / Reconciled**  
-Last updated: **2026-08-20**  
+Last updated: **2026-10-12**
 Related decisions: IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-007, IF-ADR-008, IF-ADR-010, IF-ADR-011, IF-ADR-014, IF-ADR-019, IF-ADR-020, IF-ADR-021  
 Current Player lifetime reconciliation: [2026-08-14 Player Physical Lifetime Reopen](../Reconciliation/IMMERSIVE-FRAMEWORK-PLAYER-PHYSICAL-LIFETIME-REOPEN-2026-08-14.md)  
 Current Editor startup isolation reconciliation: [IF-ADR-001A — Editor Play Mode Startup Isolation](../Reconciliation/IF-ADR-001A-Editor-Play-Mode-Startup-Isolation-2026-08-20.md)
@@ -50,15 +50,18 @@ Route and Activity do not own Session participant identity.
 After successful Player admission, Route and Activity also do not own the terminal
 lifetime of the admitted physical Player representation.
 
-### SessionContentSet implementation disposition — 2026-10-12
+### SessionContentSet disposition — 2026-10-12
 
-`SessionContentSet` is an internal candidate for removal, conditional on
-confirmation by the Session owner that Session-scoped content composition is not
-an active requirement. The inspected implementation initializes the set empty
-and carries it through `SessionRuntimeState`; no current producer was found.
-Until the owner confirms the requirement and disposition, retain the internal
-type and its state plumbing. This records neither a functional replacement nor
-a public API deprecation/removal decision.
+**Decision: Removed.** The Session owner approved removal of the preparatory,
+internal `SessionContentSet` mechanism. Its set, entry and ownership vocabulary
+had no producer or active consumer and carried only an always-empty inventory
+through `SessionRuntimeState` and `FrameworkRuntimeState`. The three types and
+their exclusive state plumbing are removed; no replacement is introduced.
+
+This is removal of internal implementation scaffolding under IF-GOV-001. It does
+not change Session participation or identity, `RuntimeContentOwner.Session`,
+Session content scopes/identities, or the canonical RuntimeContent mechanisms.
+No public API maturity category or Stable compatibility guarantee changes.
 
 ## Editor Play Mode startup isolation
 

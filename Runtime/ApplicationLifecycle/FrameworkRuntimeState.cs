@@ -29,7 +29,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 currentRoute,
                 routeLifecycleResult,
                 routeContentSet,
-                SessionContentSet.Empty(),
                 primarySceneResult,
                 activityFlowResult,
                 gameFlowStarted);
@@ -48,8 +47,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         public RouteSceneCompositionResult RouteSceneCompositionResult => SessionState.RouteSceneCompositionResult;
 
         public RouteContentSet RouteContentSet => SessionState.RouteContentSet;
-
-        public SessionContentSet SessionContentSet => SessionState.SessionContentSet;
 
         public SceneLifecycleLoadResult PrimarySceneResult => SessionState.PrimarySceneResult;
 

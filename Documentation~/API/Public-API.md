@@ -4,7 +4,7 @@ This is a curated map of supported consumer surfaces, not a list of every public
 
 ## Maturity and categories
 
-The package uses `FrameworkApiStatusAttribute` to classify types as `Stable`, `Experimental`, `Internal`, `Deferred`, `Removed` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+The package uses type-level `FrameworkApiStatusAttribute` metadata to classify types as `Stable`, `Experimental`, `Internal`, `Deferred`, `Removed` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
 
 | Category | Meaning for consumers |
 |---|---|
@@ -23,8 +23,19 @@ A public type without an explicit consumer status is not automatically a recomme
 |---|---|---|
 | `GameApplicationAsset` | Authoring asset · Stable | Application root: Startup Route, Session policies, Persistent Content and application-scoped features. |
 | `PersistentContentComposition` and Persistent Content Scene Template | Authoring configuration/template · Stable workflow | Explicit scene composition retained for application lifetime. The template does not create or register the consumer scene automatically. |
+| `FrameworkValidationMode`, `FrameworkValidationModePolicy` | Authoring validation policy · Stable | Defines diagnostic strictness for `Strict`, `Standard`, `Release` and unknown values; required configuration fails in every mode. [IF-GOV-001](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md) owns the policy semantics; [IF-ADR-010](../Architecture/ADRs/IF-ADR-010-Editor-and-Inspector-Product-Surface-Authority.md) owns the product diagnostics surface. |
+| `FrameworkEditorPlayModeStartup` | Editor startup setting · Stable | Selects Framework startup or current-scene-only startup while entering Play Mode in the Editor; Player/runtime builds use Framework startup. See [IF-ADR-001](../Architecture/ADRs/IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md), which links the current startup-isolation reconciliation. |
 
 Guide: [Getting Started](../Guides/Getting-Started.md), [Persistent Content Scene Template](../Guides/Persistent-Content-Scene-Template.md).
+
+## Boundary identities
+
+`IFrameworkIdentity`, `FrameworkIdentityDomain`, `FrameworkIdentityKey` and
+`FrameworkIdentityValue` provide typed identity boundaries. `RouteId`,
+`ActivityId` and `PlayerSlotId` are domain-specific identities; they are not
+interchangeable across domains. Authored identity and stable addressing rules
+are owned by [IF-ADR-014](../Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
+and the feature ADRs that consume them.
 
 ## Application Frame Rate
 
@@ -41,7 +52,10 @@ Guide: [Application Frame Rate](../Guides/Application-Frame-Rate-Usage.md). Chec
 |---|---|---|
 | `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | Stable authoring includes preservation and interpretation of existing serialized data. Activity Player projection and readiness remain Experimental under [IF-ADR-012](../Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md); relocation remains Experimental under [IF-ADR-021](../Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md). Stored fields do not promote those behaviors. |
 | `RouteContentProfileAsset`, `ActivityContentProfileAsset` | Profiles · Stable | Declare content owned by their Route or Activity scope. |
-| `RouteRequestTrigger`, `ActivityRequestTrigger` | Request components · Stable | Request a Route, request an Activity or clear the Activity from an authored scene/UI event. |
+| `RouteRequestTrigger`, `ActivityRequestTrigger` | Request components · Stable | Request a Route, request an Activity or clear the Activity from an authored scene/UI event; they do not own navigation authority. |
+| `FlowRequestOutcome`, `FlowRequestEventPhase` | Request event vocabulary · Stable | Coarse public outcome and event phase only; detailed framework result kinds remain outside this contract. |
+| `RouteContentSceneEntry`, `ActivityContentSceneEntry`, `ActivityContentSceneLoadMode`, `ActivityContentReleasePolicy`, `ActivityVisualTransitionMode` | Serialized content declarations · Stable | Stable declarations and stored intent; their presence does not independently guarantee that every declared scene or transition behavior executes. Runtime ownership and execution remain governed by [IF-ADR-006](../Architecture/ADRs/IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md), [IF-ADR-007](../Architecture/ADRs/IF-ADR-007-Activity-Entry-Readiness-and-Reveal-Gating.md), [IF-ADR-008](../Architecture/ADRs/IF-ADR-008-Persistent-Application-Content-Composition.md) and [IF-ADR-011](../Architecture/ADRs/IF-ADR-011-Participant-Aware-Activity-Readiness-Loading-Progress.md). |
+| `RouteRequestTriggerUnityEventBridge`, `ActivityRequestTriggerUnityEventBridge`, `RouteRequestTriggerEvent`, `ActivityRequestTriggerEvent` | Request event adapters/payloads · Stable | UnityEvent delivery and request event data for the corresponding triggers; they do not own navigation authority. |
 | `RouteActivityTransitionContext`, `IRouteActivityTransitionObserver` | Lifecycle observer · Experimental | Read-only, Route-scoped observation of one committed Activity transition, including previous/current Activity, source and reason. It cannot request or control Activity Flow. |
 
 Guide: [Game Flow](../Guides/Game-Flow.md); [Activity Readiness](../Guides/Activity-Readiness.md).
@@ -95,6 +109,7 @@ Local multiplayer is composed from Player Slots, admission/provisioning and came
 |---|---|---|
 | `CameraOutputAuthoring` | Unity authoring component · Stable | Binds an explicit Unity Camera, Cinemachine Brain and Fallback rig to an Output. |
 | `CameraRigComposer` | Authoring/materialization component · Stable | Configures and materializes a local Cinemachine rig; it does not select an active camera or own the Unity Camera/Brain. |
+| `CameraOutputId`, `CameraRigReference`, `CameraRigPresentationIntent`, `CameraTargetRequirement`, `CameraResolvedTargets`, `CameraOperationStatus`, `CameraIssue`, `CameraIssueSeverity` | Camera supporting values · Stable within the per-Output Session 1..N surface | Values and diagnostics used by the supported Output/rig surface under [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md); they do not stabilize Session Assignment assets, Actor Subject authoring, split-screen or additional Session Camera operations. |
 | `SessionCameraAssignmentAsset`, `CameraOutputDefinition` | Assets · Experimental | Session Camera policy with a direct Rig Prefab reference, and explicit physical Output identity. |
 | `ActorCameraSubjectAuthoring` | Actor authoring component · Experimental | Supplies an explicit Observation Transform for an exact Actor occurrence. |
 | `GameApplicationAsset.StartupCameraAssignments` and `SessionCameraAssignmentAsset` | Session authoring · Experimental | Configure occurrence mode, membership/target policy, Rig Prefab and explicit Output mapping. Assignment assets are the sole Player Slot → Output authority; `CameraSessionConfiguration` owns only physical Output capacity. Focused evidence: IF-ADR-042 QA 7/7, IF-ADR-043 QA 7/7, QA-NEW-004 9/9 and Camera Editor 78/78; broader IF-ADR-038 recertification and transactional failure-path coverage remain separate. |
@@ -120,6 +135,8 @@ Guide: [Camera Usage](../Guides/Camera-Usage.md).
 | `UnityPauseSurfaceAdapter`, `UnityPauseResidentSurfaceAdapter` | Unity presentation adapters · Stable | Project Pause state onto explicit authored surfaces. |
 | `IPauseSurfaceAdapter` | Consumer adapter contract · Stable | Presents a Pause snapshot; does not own Pause, input or time scale. |
 | `InputModeKind`, `InputModeDefinitions`, `InputModeRules`, `InputModeRequestStatus`, `InputModeRequestResult`, `InputModeRequestIssueKind` | InputMode vocabulary/helpers/results · Stable within the current single-player Pause/Input/Gate scope | Type-level Stable declarations only. They do not make Experimental definitions, requests, runtime transactions, or unimplemented mode-to-Action-Map behavior Stable. |
+| `PauseState`, `PauseSnapshot`, `PauseRequest`, `PauseRequestId`, `PauseRequestKind`, `PauseRequestStatus`, `PauseResult`, `PauseIssue`, `PauseIssueSeverity`, `PauseInputActionId`, `PauseInputCommandKind`, `PauseInputIntent`, `PauseInputSignal`, `PauseInputSourceKind`, `PauseActivityBindingIntent`, `PauseActivityBindingIntentResolution`, `PauseActivityBindingIntentStatus`, `PauseActivityBindingRequiredness`, `PausePresentationIntent`, `PauseVisualSurfaceKind`, `PauseGateBlockerPolicy` | Pause supporting values/policy · Stable, single-player scope | Typed request and observation vocabulary plus passive logical Gate projection. The policy does not own Pause/Gate state or physical input; see [IF-ADR-005](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md). |
+| `ActivityPauseAuthoringValidator` | Explicit-root authoring validator · Stable | Resolves supplied Activity Pause declarations only; it does not perform global discovery or create runtime bindings. |
 | `InputModeDefinition`, `InputModeId`, `InputModeRequest`, `InputModeRequestEvaluator`, `InputModeState`, `InputModeRuntimeContext`, `InputModeRuntimeSnapshot`, `InputModeRuntimeTransaction`, `InputModeRuntimeOperationResult`, `InputModeRuntimeOperationStatus`, `InputModeRequestIssue` | InputMode definitions and runtime · Experimental | Currently used as Pause transaction infrastructure; no independent consumer feature or physical input writer is established. |
 
 These Stable surfaces do not define multiplayer Pause policy.
@@ -133,6 +150,7 @@ Guide: [Input and Pause](../Guides/Pause-Usage.md).
 | Surface | Category / maturity | Purpose |
 |---|---|---|
 | `IProgressionSaveStore` | Backend adapter contract · Stable | Backend-neutral slot read/write/delete contract for custom or third-party storage adapters. |
+| `ProgressionSaveBackendId`, `ProgressionSaveRecordId`, `ProgressionSaveSlotId`, `ProgressionSavePayload`, `ProgressionSavePayloadFormat`, `ProgressionSaveSlotRecord`, `ProgressionSaveReadStatus` / `ProgressionSaveReadResult`, `ProgressionSaveWriteStatus` / `ProgressionSaveWriteResult`, `ProgressionSaveDeleteStatus` / `ProgressionSaveDeleteResult` | Backend contract values · Stable | Data and operation vocabulary for the Stable store port. This does not promote `ProgressionSaveProfile`, the built-in JSON backend, autosave or gameplay snapshotting. See [IF-ADR-018](../Architecture/ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md). |
 | `ProgressionSaveProfile` | Authoring profile · Experimental | Selects the application backend; it does not hold live save state or issue gameplay requests. |
 | `JsonProgressionSaveStore` | Built-in backend · Experimental | Optional minimum local JSON implementation; physical transaction files are implementation details. |
 
