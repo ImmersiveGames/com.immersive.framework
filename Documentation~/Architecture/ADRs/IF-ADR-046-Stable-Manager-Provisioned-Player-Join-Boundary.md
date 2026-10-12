@@ -6,7 +6,7 @@ Accepted: **2026-10-11**
 Type: Player Participation / public compatibility boundary / scoped authoring  
 Related decisions: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md), IF-ADR-003, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
 Current evidence and gates: [Player full recertification matrix (P6/P7)](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
-Implementation route: [IF-PLAN-ADR-046 v2](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v2.md) — approved; I3 is the next authorized increment; maturity remains a separate decision under IF-GOV-001
+Implementation route: [IF-PLAN-ADR-046 v3](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md) — approved; [Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) accepted and supplements §6 migration policy; maturity remains a separate decision under IF-GOV-001
 
 > Acceptance authorizes this architectural direction and contract design only. It does not certify, implement, or promote any API to Stable, and authorizes no Runtime/API/test/consumer changes or release. IF-GOV-001 remains authoritative for maturity and compatibility policy.
 
@@ -258,3 +258,5 @@ This ADR proposes only the compatibility surface and its scoped projection. IF-A
 ## 10. Approval state
 
 The user accepted architecture direction B, its bounded signatures, full mapping, scoped lease model and migration policy on 2026-10-11. This ADR is **Accepted as an architecture/contract decision**. Acceptance authorizes neither implementation nor certification, `FrameworkApiStatus` changes, consumer migration, release nor Stable promotion. Those require separate authorization and evidence under IF-GOV-001. No API status or Runtime code changed while accepting this ADR.
+
+**Amendment 001 accepted:** the finite convergence and retirement policy in [IF-ADR-046 Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements §§6.1–6.5 without rewriting this original decision history. Apply the amendment for the current migration/retirement direction. The approved execution route is v3; its stages remain separately task-gated.

@@ -13,8 +13,13 @@ Accepted architecture implementation route (implementation pending):
 
 - [IF-ADR-045 — Runtime-Safe Scene References v1](IF-PLAN-ADR-045-RUNTIME-SAFE-SCENE-REFERENCES.v1.md)
 
-Implementation plan proposed for review (not yet authorized for execution):
+Approved convergence route; execution remains task-gated:
 
+- [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary v3](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md)
+
+Superseded historical routes retained for traceability:
+
+- [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary v2](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v2.md)
 - [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary v1](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v1.md)
 
 Superseded distribution plan and execution record:
