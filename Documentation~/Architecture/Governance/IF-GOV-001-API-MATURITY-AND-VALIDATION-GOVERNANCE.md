@@ -2,18 +2,21 @@
 
 Status: **Active**  
 Date: 2026-08-11  
+Last updated: 2026-10-12
 Classification: **Cross-cutting architecture governance**  
 Feature authority created: **None**  
 Primary related decision: **IF-ADR-010 — Editor and Inspector Product Surface Authority**
 
 ## 1. Purpose
 
-This record makes two already-existing framework-wide policies explicit:
+This record makes existing framework-wide governance policies explicit:
 
 1. API maturity metadata expressed by `FrameworkApiStatus` and
    `FrameworkApiStatusAttribute`.
 2. Product authoring diagnostic strictness expressed by
    `FrameworkValidationMode` and `FrameworkValidationModePolicy`.
+3. Risk-proportionate evidence and certification decisions used to assess
+   implementation increments and API maturity.
 
 These concerns are governance primitives. They do not justify a new feature ADR,
 runtime service, manager, singleton, Composer or authoring authority.
@@ -124,7 +127,111 @@ No synthetic Inspector-understandability test is required.
 - Adding a new validation mode requires defining its severity/noise semantics explicitly before adoption.
 - Unknown values must continue to fail conservatively; no silent downgrade is allowed.
 
-## 8. Disposition
+## 8. Evidence proportionality and certification
 
-This record closes the reverse-audit documentation gap around the two governance
-primitives without inventing ADR-019 or another product subsystem.
+Evidence demonstrates a defined property at a defined scope. Evidence format,
+provenance detail, and repeat execution are selected for the risk and purpose of
+the decision; none is a universal requirement or universally sufficient.
+
+Keep these concepts distinct:
+
+| Concept | Meaning |
+|---|---|
+| Functional evidence | Test result or observation that demonstrates a behavior within its actual scope. |
+| Provenance | Available information about source/package, version, environment, and execution time. It describes evidence; it is not itself functional proof. |
+| Composite evidence | Verifiable combination of independent or complementary tests, runtime observations, and static inspection used to assess related properties. |
+| Residual risk | A known property or limitation not fully demonstrated, explicitly accepted by the authority responsible for the decision. |
+| Functional gap | A required behavior not demonstrated by the available evidence, or a valid execution that showed a real failure. |
+
+### 8.1 Reconcile before requesting more execution
+
+Before requesting a new test or fixture, the reviewer or certifier must:
+
+1. State the exact property and decision scope.
+2. Locate accessible existing tests, QA results, consumer observations,
+   certification records, and relevant static reviews.
+3. Record what each source actually demonstrates, including its scope and
+   limitations; do not infer coverage from its title or verdict alone.
+4. Consider whether complementary evidence covers the claim when combined.
+5. Identify uncovered properties and residual risks; obtain explicit acceptance
+   from the responsible authority when a bounded decision depends on that risk.
+6. Propose a new test only for a material technical gap that cannot be accepted
+   under the applicable governance and gate.
+
+Do not create a Play Mode fixture solely because no single fixture covers the
+entire property. The proposed test must target a named uncovered risk, and its
+owner must be the package, QAFramework, or consumer that owns that behavior.
+
+### 8.2 Accepted evidence forms and limits
+
+Depending on the property, evidence may include NUnit/Test Runner output,
+execution screenshots, structured QA terminal lines, raw logs, a manual run
+record with verifiable criteria, static inspection, a composition of these
+sources, or a historical certification whose applicability to the current
+contract is justified. No form is automatically sufficient. Preserve direct
+results as reported: static inspection is not an executed test, and a composite
+acceptance is a gate decision rather than a new `PASS`.
+
+Missing provenance is not a functional failure. Never attach a historical
+result to a SHA, package revision, or exact execution time that was not captured.
+A Git SHA identifies repository content; it does not alone prove which package
+bytes the consumer resolved, imported, compiled, or exercised. Record the
+effective package source/version or consumer resolution when the claim depends
+on it.
+
+### 8.3 Risk-based traceability
+
+Record the provenance available for each execution and state unknown fields
+plainly. For routine manual certification, scenario, result, known environment,
+and available revision may be enough. For a critical release, security/legal
+claim, regression investigation, or explicitly governed gate, exact candidate
+identity, raw output, timestamps, artifact hashes, and replay may be warranted.
+Require each additional field only when its technical, legal, security, or
+governance purpose is stated.
+
+An explicit contract-specific gate remains binding. A general policy does not
+waive its required proof, candidate identity, compatibility check, or approval.
+If a gate demands traceability disproportionate to its risk, document the
+conflict and use that decision's amendment mechanism; do not silently ignore the
+gate or repeat tests only to reconstruct historical metadata. Historical
+certifications remain usable when their scope and applicability to the current
+contract are justified; retain their original result and provenance limits.
+
+### 8.4 Cross-agent evidence access
+
+An agent may assess only evidence it can read. If evidence is in another
+conversation, tool session, repository, or host, identify the files or results
+needed. When evidence is in a ChatGPT conversation, prepare a compact evidence
+package when appropriate and tell the user which package to attach to the Codex
+task. Confirm the transferred files are readable and distinguish original
+artifacts from transcripts or summaries. If access is unavailable, report that
+limitation; do not claim the evidence does not exist or was never executed. Do
+not presume automatic transfer between conversation histories, tools,
+repositories, or agent sessions.
+
+The implementation agent owns required contract and package tests and must not
+expand QA automatically. The reviewer assesses properties, existing coverage,
+and regressions. The certifier reconciles evidence, identifies real gaps, and
+states a scoped verdict. The governance authority decides explicit residual
+risk and normative exceptions. Existing agents may hold more than one of these
+responsibilities; do not create duplicate agents solely to mirror these roles.
+
+### 8.5 Application example: IF-ADR-046
+
+IF-ADR-046 keeps the individual NUnit, QA, consumer, and static-review claims
+separate, then uses Amendments 002 and 003 to record bounded composite evidence
+and explicit acceptance of partial provenance for the identified Stable
+decision. The accepted physical-compensation risk is not reported as an
+integrated Play Mode `PASS`; missing execution SHAs are not filled from current
+checkout state. This is an example of a scoped decision, not a new universal
+manifest or waiver for other gates. For a future candidate-specific Stable
+claim, verify the package source/version actually resolved by the consumer as
+well as the Framework revision; a Git SHA alone does not establish loaded or
+executed package bytes.
+
+## 9. Disposition
+
+Sections 2–7 govern the existing API maturity and authoring validation
+primitives. Section 8 establishes risk-proportionate evidence policy for
+certification and maturity decisions. These policies create no runtime behavior,
+new feature authority, or product subsystem.

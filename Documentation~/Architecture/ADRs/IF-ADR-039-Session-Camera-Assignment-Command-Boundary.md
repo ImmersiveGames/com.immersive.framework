@@ -135,4 +135,4 @@ The command port and injection contract are Stable in the bounded scope of this 
 
 SessionCameraAssignmentAsset, CameraOutputDefinition, and ActorCameraSubjectAuthoring remain Experimental. Framework Editor tests exercise invalid candidate replacement preserving the previous occurrence/output state; the recorded GameFlow consumer proof demonstrates successful command transitions and clear/fallback. This evidence does not certify every Unity failure topology or broaden the Stable guarantee to referenced assets.
 
-The historical Framework/QA/consumer evidence used local file: package dependencies without recording an immutable Framework SHA. Results remain valid for executed behavior; future certification records must capture the exact resolved Framework revision.
+The historical Framework/QA/consumer evidence used local file: package dependencies without recording an immutable Framework SHA. Results remain valid for executed behavior. Apply [Amendment 001](IF-ADR-039-AMENDMENT-001-RISK-PROPORTIONATE-EVIDENCE.md) for provenance in future certification records.

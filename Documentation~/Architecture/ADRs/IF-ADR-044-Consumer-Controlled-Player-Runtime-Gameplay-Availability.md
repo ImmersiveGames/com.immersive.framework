@@ -139,4 +139,4 @@ The following public types are Stable in the bounded block/release workflow: Pla
 
 IPlayerSessionScopedAccess remains Experimental as a whole. The block/release methods remain accessible through it, but the Stable guarantee applies only to the four named types and IF-ADR-044 behavior recorded above. It does not certify Transition composition or turn/active-Player rules.
 
-Historical QAFramework and FirstGame executions resolved Framework through a local file: dependency without recording an immutable Framework SHA. This traceability limitation does not invalidate the recorded results for tested behavior. Future certification records must include the exact resolved Framework revision.
+Historical QAFramework and FirstGame executions resolved Framework through a local file: dependency without recording an immutable Framework SHA. This traceability limitation does not invalidate the recorded results for tested behavior. Apply [Amendment 001](IF-ADR-044-AMENDMENT-001-RISK-PROPORTIONATE-EVIDENCE.md) for provenance in future certification records.
