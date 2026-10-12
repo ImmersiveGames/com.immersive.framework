@@ -59,7 +59,7 @@ namespace Immersive.Framework.Camera
         public CinemachineBrain CinemachineBrain => cinemachineBrain;
         public CameraRigComposer FallbackCameraRig => fallbackCameraRig;
         public bool IsInitialized => _session != null;
-        public CameraOutputRigApplicator Applicator => _applicator;
+        internal CameraOutputRigApplicator Applicator => _applicator;
         public CameraOutputSession Session => _session;
         public string LastStatus => lastStatus ?? string.Empty;
         public string LastDiagnostic => lastDiagnostic ?? string.Empty;

@@ -40,7 +40,7 @@ namespace Immersive.Framework.Camera
         private readonly CameraOutputState _outputState;
         private CameraRigReference _presentedNormalRig;
 
-        public CameraOutputSession(
+        internal CameraOutputSession(
             CameraOutputRigApplicator applicator,
             CameraRigReference fallbackRig)
         {
@@ -64,11 +64,11 @@ namespace Immersive.Framework.Camera
             _outputState = new CameraOutputState(applicator.Binding.OutputId);
         }
 
-        public CameraOutputRigApplicator Applicator => _applicator;
+        internal CameraOutputRigApplicator Applicator => _applicator;
 
         public CameraOutputId OutputId => _applicator.Binding.OutputId;
 
-        public CameraRigReference FallbackRig => _fallbackRig;
+        internal CameraRigReference FallbackRig => _fallbackRig;
 
         public CameraOutputState OutputState => _outputState;
 
@@ -76,7 +76,7 @@ namespace Immersive.Framework.Camera
 
         public int FallbackCoverageOwnerCount => _fallbackCoverageOwners.Count;
 
-        public bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
+        internal bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
         {
             return _outputState.TrySetActiveAssignment(assignment, out issue);
         }
@@ -183,7 +183,7 @@ namespace Immersive.Framework.Camera
                 _fallbackCoverageOwners.Add(ownerId);
         }
 
-        public CameraOutputApplyResult PresentNormalOccurrence(
+        internal CameraOutputApplyResult PresentNormalOccurrence(
             CameraOccurrenceIdentity occurrence,
             CameraRigReference occurrenceRig)
         {
@@ -335,7 +335,7 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        public CameraOutputApplyResult CoverWithFallback(CameraOutputFallbackCoverageOwnerId ownerId)
+        internal CameraOutputApplyResult CoverWithFallback(CameraOutputFallbackCoverageOwnerId ownerId)
         {
             if (!ownerId.IsValid)
             {
@@ -362,7 +362,7 @@ namespace Immersive.Framework.Camera
             return applyResult;
         }
 
-        public CameraOutputApplyResult ReleaseFallbackCoverage(CameraOutputFallbackCoverageOwnerId ownerId)
+        internal CameraOutputApplyResult ReleaseFallbackCoverage(CameraOutputFallbackCoverageOwnerId ownerId)
         {
             if (!ownerId.IsValid)
                 return BlockedFallbackCoverage("camera.output-session.fallback.owner-missing",
@@ -403,7 +403,7 @@ namespace Immersive.Framework.Camera
             return applyResult;
         }
 
-        public CameraOutputApplyResult Synchronize()
+        internal CameraOutputApplyResult Synchronize()
         {
             CameraOutputApplyResult applyResult =
                 ApplyEffectivePresentation();
@@ -419,7 +419,7 @@ namespace Immersive.Framework.Camera
             return applyResult;
         }
 
-        public CameraOutputApplyResult Teardown()
+        internal CameraOutputApplyResult Teardown()
         {
             _fallbackCoverageOwners.Clear();
             return _applicator.Clear();

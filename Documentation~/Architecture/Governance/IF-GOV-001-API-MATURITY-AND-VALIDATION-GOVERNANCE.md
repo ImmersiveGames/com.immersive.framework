@@ -56,6 +56,16 @@ break Stable commitments. A contract does not become Stable merely because it
 uses a Stable type. Conversely, documenting a narrower boundary must not
 retrospectively reduce any existing Stable guarantee.
 
+For this decision, the Stable authoring contracts of `ActivityAsset` and
+`GameApplicationAsset` cover preservation and interpretation of their existing
+serialized consumer data, including fields whose configured behavior belongs to
+an Experimental contract. This does not promote those field behaviors. A
+change that makes existing authored data unreadable or changes its stored
+intent is a breaking change to the affected Stable authoring contract and
+requires an explicit ADR and migration. This guarantee concerns the package's
+serialized data schema, not byte-for-byte Unity YAML formatting. Field-specific
+behavior and its maturity remain governed by the relevant feature ADR.
+
 An inventory of contracts is an index for traceability, not a second authority
 for maturity. It should reference the applicable type attributes and
 architecture decisions. A divergence among attribute, documentation, and

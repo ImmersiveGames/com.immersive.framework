@@ -41,7 +41,7 @@ namespace Immersive.Framework.Camera
         private bool _hasAppliedFallback;
         private CinemachineCamera _appliedCamera;
 
-        public CameraOutputRigApplicator(CameraOutputBinding binding)
+        internal CameraOutputRigApplicator(CameraOutputBinding binding)
         {
             if (!binding.IsValid)
             {
@@ -102,7 +102,7 @@ namespace Immersive.Framework.Camera
             return CameraOccurrenceOutputResult.Applied(previous, _appliedCamera);
         }
 
-        public CameraOutputApplyResult Clear()
+        internal CameraOutputApplyResult Clear()
         {
             CinemachineCamera previous = _appliedCamera;
 
@@ -126,7 +126,7 @@ namespace Immersive.Framework.Camera
                     : "Camera output was already clear.");
         }
 
-        public CameraOutputApplyResult ApplyFallbackRig(CameraRigReference fallbackRig)
+        internal CameraOutputApplyResult ApplyFallbackRig(CameraRigReference fallbackRig)
         {
             CameraRigComposer composer = fallbackRig.Composer;
 
@@ -193,7 +193,7 @@ namespace Immersive.Framework.Camera
                 $"Camera output applied Fallback Camera Rig. camera='{targetCamera.name}' output='{_binding.OutputId}'.");
         }
 
-        public CameraOutputApplyResult ApplyNormalOccurrence(CameraRigReference occurrenceRig)
+        internal CameraOutputApplyResult ApplyNormalOccurrence(CameraRigReference occurrenceRig)
         {
             CameraRigComposer composer = occurrenceRig.Composer;
             if (composer == null)

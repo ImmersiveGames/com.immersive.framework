@@ -6,7 +6,7 @@ Route spatial-entry QA: **18/18 PASS**
 Activity relocation QA: **23/23 PASS**
 Historical Full Player aggregate (2026-08-24): **27/27 PASS — preserved for its recorded boundary; not the current QA-001 certification**
 Historical Full Player certification: **25/25 preserved**
-Last updated: **2026-08-27**
+Last updated: **2026-10-12**
 Type: architecture / spatial authority / player product direction
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020
 Reconciliation: [2026-08-23 Player Authority and Initial Placement](../Reconciliation/IF-ADR-021-Player-Authority-and-Initial-Placement-Reconciliation-2026-08-23.md)
@@ -26,6 +26,17 @@ a Route from an optional contextual relocation by an Activity. It does not reope
 Session Player lifetime, Join, Leave, provisioning or Actor Selection.
 
 ## Decision
+
+### Maturity and serialized authoring boundary
+
+Activity relocation behavior remains Experimental. Its policy is stored by the
+Stable `ActivityAsset` authoring surface; therefore, the existing serialized
+policy field and its stored values remain within the Stable authoring data
+compatibility boundary defined by
+[IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+The current values are `NoRelocation = 0` and `ApplyExplicitRelocation = 1`.
+Preserving this data does not promote relocation behavior, Route placement, or
+other Player contracts.
 
 ### Session Player occurrence
 

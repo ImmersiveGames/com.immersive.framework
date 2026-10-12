@@ -39,7 +39,7 @@ Guide: [Application Frame Rate](../Guides/Application-Frame-Rate-Usage.md). Chec
 
 | Surface | Category / maturity | Purpose |
 |---|---|---|
-| `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | Define Route identity/content/startup Activity and Activity content/participation/readiness/transition policy. |
+| `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | Stable authoring includes preservation and interpretation of existing serialized data. Activity Player projection and readiness remain Experimental under [IF-ADR-012](../Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md); relocation remains Experimental under [IF-ADR-021](../Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md). Stored fields do not promote those behaviors. |
 | `RouteContentProfileAsset`, `ActivityContentProfileAsset` | Profiles · Stable | Declare content owned by their Route or Activity scope. |
 | `RouteRequestTrigger`, `ActivityRequestTrigger` | Request components · Stable | Request a Route, request an Activity or clear the Activity from an authored scene/UI event. |
 | `RouteActivityTransitionContext`, `IRouteActivityTransitionObserver` | Lifecycle observer · Experimental | Read-only, Route-scoped observation of one committed Activity transition, including previous/current Activity, source and reason. It cannot request or control Activity Flow. |
@@ -72,6 +72,7 @@ Guide: [Game Flow](../Guides/Game-Flow.md), [Activity Readiness](../Guides/Activ
 | `LocalPlayerHostAuthoring` | Authoring component · Stable | Explicit technical Host boundary for PlayerInput, ActorMount and Actor Runtime Host configuration. Manager provisioning remains Experimental. |
 | `PlayerSlotProfile` | Profile · Stable for Scene-Provided use | Owns a stable Slot ID and presentation metadata; optional default Actor intent is separate from runtime allocation. |
 | `ActorProfile` | Profile · Experimental | Reusable Actor identity, classification and optional visual content. It does not own an Actor occurrence or its spatial state. |
+| `PlayerActorSelectionDuplicatePolicy` | Session Actor-selection policy · Experimental | Selects whether ActorProfile identities may repeat across joined Slots. Stored by Stable `GameApplicationAsset`; existing serialized data remains covered by its Stable authoring schema. See [IF-ADR-003](../Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md). The enum type currently has no `FrameworkApiStatusAttribute`. |
 | `PlayerSessionProfile`, `PlayerHostProvisioningMode` | Session profile/configuration · Experimental | Configure supported Slots, initial Session intent and Scene-Provided or Manager-Provisioned Host mode. |
 | `LocalPlayerProvisioningAuthoring` | Authoring · Experimental | Configures explicit runtime Manager-Provisioned Player creation. |
 | `PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`, `LocalPlayerJoinRequest`, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode`, `LocalPlayerJoinAdmissionState` | Manager-Provisioned Join boundary · Stable | The single public Join request boundary under IF-ADR-046. The trigger delegates through the active Route/Activity occurrence; the bounded outcome does not expose Session/Slot, Host or Actor evidence. `InputDevice` is part of the request contract. |
@@ -113,12 +114,17 @@ Guide: [Camera Usage](../Guides/Camera-Usage.md).
 | `PlayerPauseInput` | Authoring component · Stable, single-player scope | Binds a Pause action to the admitted Local Player Host. |
 | `PauseRequestTrigger` | Request component · Stable, single-player scope | Requests Pause, Resume or Toggle without owning Pause state. |
 | `ActivityPauseAuthoring` | Activity authoring · Stable, single-player scope | Declares required/optional Activity Pause binding intent. |
-| `UnityPlayerInputGateAdapter` | Unity Input adapter · Stable, single-player scope | Applies the explicit PlayerInput/Gameplay Action Map gate. |
+| `GateBlocker`, `GateSnapshot`, `GateDecision`, `GateDecisionStatus`, `GateEvaluationResult`, `GateScope`, `GateDomain` | Gate values and evaluation · Stable, single-player Pause/Input/Gate scope | Expresses logical blockers and evaluation results. It does not own a generic Gate service or physically mutate PlayerInput. |
+| `UnityPlayerInputGateAdapter` | Unity Input adapter · Stable, single-player scope | Projects the logical Gate onto the explicitly configured PlayerInput/Gameplay Action Map when its canonical binding and physical write succeed; failure does not guarantee physical suppression. |
 | `PlayerInputActionMapReference` | Input reference value · Stable, single-player scope | Identifies a map by stable map ID rather than runtime name lookup. |
 | `UnityPauseSurfaceAdapter`, `UnityPauseResidentSurfaceAdapter` | Unity presentation adapters · Stable | Project Pause state onto explicit authored surfaces. |
 | `IPauseSurfaceAdapter` | Consumer adapter contract · Stable | Presents a Pause snapshot; does not own Pause, input or time scale. |
+| `InputModeKind`, `InputModeDefinitions`, `InputModeRules`, `InputModeRequestStatus`, `InputModeRequestResult`, `InputModeRequestIssueKind` | InputMode vocabulary/helpers/results · Stable within the current single-player Pause/Input/Gate scope | Type-level Stable declarations only. They do not make Experimental definitions, requests, runtime transactions, or unimplemented mode-to-Action-Map behavior Stable. |
+| `InputModeDefinition`, `InputModeId`, `InputModeRequest`, `InputModeRequestEvaluator`, `InputModeState`, `InputModeRuntimeContext`, `InputModeRuntimeSnapshot`, `InputModeRuntimeTransaction`, `InputModeRuntimeOperationResult`, `InputModeRuntimeOperationStatus`, `InputModeRequestIssue` | InputMode definitions and runtime · Experimental | Currently used as Pause transaction infrastructure; no independent consumer feature or physical input writer is established. |
 
 These Stable surfaces do not define multiplayer Pause policy.
+The `InputModeRuntimeContext` remains Experimental; its current use by Pause
+does not create a separate InputMode product contract. See [IF-ADR-005](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) for the distinction between logical Gate authorization and physical input application, including the unresolved persistent-binding failure policy.
 
 Guide: [Input and Pause](../Guides/Pause-Usage.md).
 

@@ -136,3 +136,51 @@ The command port and injection contract are Stable in the bounded scope of this 
 SessionCameraAssignmentAsset, CameraOutputDefinition, and ActorCameraSubjectAuthoring remain Experimental. Framework Editor tests exercise invalid candidate replacement preserving the previous occurrence/output state; the recorded GameFlow consumer proof demonstrates successful command transitions and clear/fallback. This evidence does not certify every Unity failure topology or broaden the Stable guarantee to referenced assets.
 
 The historical Framework/QA/consumer evidence used local file: package dependencies without recording an immutable Framework SHA. Results remain valid for executed behavior. Apply [Amendment 001](IF-ADR-039-AMENDMENT-001-RISK-PROPORTIONATE-EVIDENCE.md) for provenance in future certification records.
+
+## API boundary compatibility decision — 2026-10-12
+
+IF-ADR-038/039 make Session Camera the sole authority for active Assignment
+changes and normal Output routing. The current public `CameraOutputAuthoring`
+accessors expose `CameraOutputSession` and `CameraOutputRigApplicator`; their
+public mutation methods, together with the public mutators on
+`CameraOutputState`, allow callers to change assignment, occurrence, fallback,
+and physical presentation outside the Session Camera transaction. Read-only
+validation and observation do not grant that authority.
+
+The compatibility decision is to keep the `CameraOutputAuthoring.Session`
+accessor and the existing read-only Output-state observations used by
+QAFramework, while removing its public `Applicator` accessor and restricting
+construction and mutation of Session, State, and Applicator to the Framework
+Runtime and its friend test assemblies. The `Session` and `Applicator` objects
+remain implementation types; no new command, service, or observation API is
+introduced. Session Camera runtime paths, authoring initialization/teardown,
+fallback transitions, and diagnostic reads remain available to their current
+owners. Session's rig reference and Applicator reach-through are not exposed by
+the retained diagnostic accessor. Output-state properties remain read-only to
+consumers; their state-changing methods are Runtime-only.
+
+This is an explicit compatibility disposition for the public
+`CameraOutputAuthoring.Applicator` signature. It is not inferred from the
+Internal status of its return type. The published `Public-API.md` does not list
+this accessor as a Stable consumer contract. The consumer scan for this cut
+found no `.Applicator` or `.Session` calls in FirstGame or PEGA code; QAFramework
+uses only read-only `.Session.OutputState` observations. Framework runtime and
+tests contain the mutation and diagnostic call sites, with the Camera test
+assembly already granted internal visibility; the Camera test-components
+assembly requires the same test-only access for its shutdown diagnostic probe.
+PEGA's accessible project resolves `1.1.0-preview.7` from its package cache,
+while QAFramework and FirstGame resolve the Framework workspace at
+`1.1.0-preview.8`. PEGA Git metadata was inaccessible during this scan.
+
+Making the Applicator accessor non-public and restricting the Internal
+mutators can cause source or binary compilation failures for unknown external
+consumers that used these undocumented implementation paths. The available
+consumer scan cannot prove that no such consumers exist. This residual risk is
+accepted explicitly for this authority correction; it does not authorize
+changes to serialized authoring data, `CameraOutputAuthoring` serialized
+fields, prefab/asset references, or the Stable Output authoring guarantees.
+The public `Session` accessor is retained only for its existing read-only
+diagnostic use; all Assignment, occurrence, fallback, and rig-application
+operations remain Session Camera-owned. Direct mutation of Unity Camera or
+Cinemachine objects through other authoring references is outside this narrow
+API cut and remains a separately visible residual risk.

@@ -44,7 +44,7 @@ namespace Immersive.Framework.Camera
         private CameraOccurrenceMode _activeOccurrenceMode;
         private CameraOccurrenceIdentity _normalOccurrence;
 
-        public CameraOutputState(CameraOutputId outputId)
+        internal CameraOutputState(CameraOutputId outputId)
         {
             if (!outputId.IsValid) throw new ArgumentException("Output state requires a valid Output identity.", nameof(outputId));
             _outputId = outputId;
@@ -165,7 +165,7 @@ namespace Immersive.Framework.Camera
             IsFallbackCovering = snapshot.FallbackCovering;
         }
 
-        public bool TryMakeFallbackAvailable(out string issue)
+        internal bool TryMakeFallbackAvailable(out string issue)
         {
             if (!IsFallbackAvailable)
             {
@@ -176,7 +176,7 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        public bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
+        internal bool TrySetActiveAssignment(SessionCameraAssignment assignment, out string issue)
         {
             issue = string.Empty;
             if (assignment == null || !assignment.TryValidate(out issue))
@@ -240,7 +240,7 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        public bool TryPresentNormalOccurrence(CameraOccurrenceIdentity occurrence, out string issue)
+        internal bool TryPresentNormalOccurrence(CameraOccurrenceIdentity occurrence, out string issue)
         {
             if (!CanPresentNormalOccurrence(occurrence, out issue)) return false;
             _normalOccurrence = occurrence;
@@ -277,7 +277,7 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        public bool TryCoverWithFallback(out string issue)
+        internal bool TryCoverWithFallback(out string issue)
         {
             if (!IsFallbackAvailable)
             {
@@ -289,7 +289,7 @@ namespace Immersive.Framework.Camera
             return true;
         }
 
-        public bool TryRestoreNormalOccurrence(out string issue)
+        internal bool TryRestoreNormalOccurrence(out string issue)
         {
             if (!CanRestoreNormalOccurrence(out issue)) return false;
             IsFallbackCovering = false;

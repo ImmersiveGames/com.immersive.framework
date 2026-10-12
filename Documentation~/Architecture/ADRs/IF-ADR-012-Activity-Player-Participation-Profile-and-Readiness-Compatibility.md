@@ -1,8 +1,8 @@
 # IF-ADR-012 — Activity Player Participation Profile and Readiness Compatibility
 
 Status: **Accepted**  
-Last updated: 2026-09-27  
-Amended: **2026-09-27 — GameplayReady admission versus entry-gate block.**  
+Last updated: 2026-10-12
+Amended: **2026-09-27 — GameplayReady admission versus entry-gate block; 2026-10-12 — Stable ActivityAsset serialization with Experimental Player behavior boundary.**
 Related decisions: IF-ADR-003, IF-ADR-007, IF-ADR-010, IF-ADR-015, IF-ADR-016
 Current reconciliation: [ADR-003 / ADR-012 technical reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-003-012-RECONCILIATION-2026-08-10.md)
 
@@ -28,6 +28,50 @@ explicitly.
 
 Activity participation does not own or silently mutate Player Session
 configuration.
+
+### Maturity and serialized authoring boundary
+
+`ActivityAsset` remains a Stable authoring asset. Under
+[IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md),
+the Stable authoring contract includes preservation and interpretation of its
+existing serialized Player participation data, independently of the maturity
+of the behavior selected by that data. This is a data-schema guarantee, not a
+promise of byte-for-byte Unity YAML formatting.
+
+The following configured behaviors remain Experimental and are not promoted by
+the Stable asset that stores them:
+
+- Slot projection and zero-participant policy, stored in
+  `playerParticipationProjectionMode`,
+  `playerParticipationZeroParticipantPolicy`, and the ordered
+  `playerParticipationExplicitSlotProfiles` references.
+- Progressive Player readiness, stored in
+  `playerParticipationRequirementLevel`.
+- Contextual Player relocation, stored in `playerRelocationPolicy`; its
+  behavioral authority and limits remain
+  [IF-ADR-021](IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md).
+
+The current serialized enum values are part of the existing data schema:
+projection `NoSlots = 0`, `AllJoinedSlots = 10`, `ExplicitSlots = 20`; zero
+participants `Allowed = 0`, `Rejected = 10`; readiness `None = 0`,
+`JoinedSlots = 10`, `SelectedActors = 20`, `LogicalActorsPrepared = 30`, and
+`GameplayReady = 40`. The explicit Slot reference list retains its authored
+order. These values document the current schema; they do not promote the
+associated behavior to Stable.
+
+The existing field identities, serialized enum values, and authored reference
+data must remain interpretable. A change that loses or silently reinterprets
+existing data requires an explicit ADR and migration, even when the affected
+behavior remains Experimental. These boundaries do not alter Session
+provisioning ownership, promote Player participation/readiness, or reduce any
+other Stable `ActivityAsset` guarantee.
+
+The enum types `ActivityParticipationProjectionMode`,
+`ActivityParticipationZeroParticipantPolicy`,
+`PlayerParticipationRequirementLevel`, and `ActivityPlayerRelocationPolicy`
+currently lack `FrameworkApiStatusAttribute`. This ADR establishes the maturity
+of the scoped behaviors, not type-level metadata; reconciliation of those
+attributes remains separate and must not be inferred for other types.
 
 ## Session boundary
 

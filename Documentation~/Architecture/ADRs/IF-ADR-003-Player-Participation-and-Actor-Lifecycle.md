@@ -1,7 +1,8 @@
 # IF-ADR-003 — Player Participation and Actor Lifecycle
 
 Status: **Accepted / Reconciled / Implemented; current QA coverage is bounded and full Player recertification remains open**
-Last updated: **2026-08-29**
+Last updated: **2026-10-12**
+Amended: **2026-10-12 — Stable GameApplicationAsset serialization and Experimental Actor-selection policy boundary.**
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-024, IF-ADR-038
 Historical aggregate evidence: [Player Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md); current QA-001 coverage: [Player Full Recertification — 2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
@@ -110,6 +111,28 @@ Clear Actor Selection
 ```
 
 Selection is revision-aware. Repeating the same selection is idempotent. A different selected Actor requires Replace. Stale revisions reject without mutation.
+
+The Session-wide duplicate-selection policy configured by
+`GameApplicationAsset.playerActorSelectionDuplicatePolicy` is part of the
+Experimental Actor-selection behavior contract. Its current values are
+`Unspecified = 0`, `AllowDuplicates = 10`, and
+`UniqueAcrossJoinedSlots = 20`. This policy does not promote `GameApplicationAsset`,
+`ActorProfile`, the Player Session command surfaces, or any other Player
+contract.
+
+`GameApplicationAsset` remains a Stable authoring asset. Its existing
+serialized data, including the duplicate-selection field and its stored enum
+value, is protected as part of the Stable authoring data schema under
+[IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+The Experimental behavior may evolve, but a change that makes existing
+serialized data unreadable or silently changes its intent requires an explicit
+ADR and migration. [IF-ADR-015B](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)
+certifies the bounded public Actor-selection command surface; it does not
+promote this policy or adjacent surfaces.
+
+`PlayerActorSelectionDuplicatePolicy` currently has no
+`FrameworkApiStatusAttribute`. This decision establishes the maturity of its
+Actor-selection contract only; it does not authorize metadata or code changes.
 
 ### Preparation barrier
 

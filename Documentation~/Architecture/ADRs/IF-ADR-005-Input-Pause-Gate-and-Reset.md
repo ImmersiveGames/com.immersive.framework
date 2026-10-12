@@ -317,6 +317,42 @@ Gameplay Action Map suppression is a separate physical PlayerInput integration.
 Pause does not require or publish a synthetic `Gameplay / GameplayAction` Pause
 blocker.
 
+The Gate snapshot expresses logical authorization/admission state; it does not
+itself disable physical input. `UnityPlayerInputGateAdapter` projects the
+current snapshot onto the explicitly configured `PlayerInput` Gameplay Action
+Map through the canonical writer. A successful logical block therefore does
+not prove that the physical write succeeded. Missing targets, unresolved maps,
+or an unavailable runtime port remain observable adapter failures, not a
+guarantee that input is physically suppressed.
+
+Before canonical runtime binding is available, the adapter reports the missing
+port and retries on `Update`; it does not discover or substitute another host.
+If a consumer-owned gameplay block is active, the adapter still attempts that
+physical block. Otherwise, if it owns a prior adapter block, its missing-port
+path calls the normal restoration path; with neither condition, it leaves the
+existing physical posture unchanged. `OnDisable` and `OnDestroy` call the same
+restoration path, which can itself report a write failure. This is the existing
+fail-open initialization / teardown behavior and provides no physical-block
+guarantee during that interval.
+
+Once the current Local Player Host is active, a missing canonical binding is a
+composition/integration failure, not a successfully applied Gate. Stable Host
+endpoint composition requires exactly one host-owned adapter bound to the
+canonical `FrameworkRuntimeHost`. The adapter itself has no Activity-aware
+timeout or failure transition: it continues to report and retry, and the
+current contract does not promise that this persistent failure rejects the
+Activity or keeps gameplay physically blocked. The ADR-005 Input Gate smoke
+records explicit binding, ordinary block/release, unrelated-domain behavior,
+and missing-map diagnostics; it does not establish the persistent-active-Host
+failure behavior as a certified guarantee.
+
+Whether a persistent binding/application failure during an active Activity
+must reject admission or otherwise change lifecycle state remains undecided.
+No fail-closed behavior, broader Gate guarantee, or new lifecycle authority is
+approved here. The existing Stable contract remains bounded to the configured
+single-player path and its documented diagnostics; consumers must not treat
+this adapter as a security boundary when its physical application has failed.
+
 ## Transition Gate diagnostic semantics
 
 The IF-TXN-03A distinction remains:
