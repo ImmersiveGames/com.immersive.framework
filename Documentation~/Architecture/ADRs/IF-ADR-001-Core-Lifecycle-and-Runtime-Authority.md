@@ -50,6 +50,16 @@ Route and Activity do not own Session participant identity.
 After successful Player admission, Route and Activity also do not own the terminal
 lifetime of the admitted physical Player representation.
 
+### SessionContentSet implementation disposition — 2026-10-12
+
+`SessionContentSet` is an internal candidate for removal, conditional on
+confirmation by the Session owner that Session-scoped content composition is not
+an active requirement. The inspected implementation initializes the set empty
+and carries it through `SessionRuntimeState`; no current producer was found.
+Until the owner confirms the requirement and disposition, retain the internal
+type and its state plumbing. This records neither a functional replacement nor
+a public API deprecation/removal decision.
+
 ## Editor Play Mode startup isolation
 
 Unity Editor authoring state is not an implicit runtime composition input.

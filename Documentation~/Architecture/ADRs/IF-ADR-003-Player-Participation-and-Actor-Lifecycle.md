@@ -97,6 +97,18 @@ consumer scene authors exact Local Player Host
 
 A failed Scene-Provided admission does not transfer ownership. Supplying scene unload must not silently end an already admitted Session Player.
 
+### Activity Player Admission Stage disposition — 2026-10-12
+
+The P3K.7B `ActivityPlayerAdmissionStage*` implementation remains frozen as
+Experimental/preparatory. This records neither functional replacement by
+`ActivityPlayerLifecycleAdmissionRuntime` nor equivalence between the two
+boundaries. The current GameFlow lifecycle-admission path remains authoritative
+for its implemented prepare/commit/rollback behavior; the Stage runtime has no
+current composition call site. Preserve the Stage sources and their existing
+maturity until an explicit architecture decision establishes whether the
+pre-activation staging responsibility is still required. This disposition does
+not promote, reclassify or remove any API.
+
 ## Actor selection
 
 Actor selection is Session-owned mutable logical intent for one exact Joined Slot.

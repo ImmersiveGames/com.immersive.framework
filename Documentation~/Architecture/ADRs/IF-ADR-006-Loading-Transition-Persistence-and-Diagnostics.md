@@ -84,3 +84,28 @@ Activity authority.
   object creation.
 - Compensation/retry mechanisms are introduced only for concrete demonstrated
   partial-side-effect paths, not as a generic rollback manager.
+
+## F22 Loading Screen adapter disposition — 2026-10-12
+
+Plan to discontinue `ILoadingScreenAdapter` and the F22-only public types used
+exclusively by that adapter contract after checking for consumers outside the
+Framework, QAFramework and FirstGame repositories. This is a removal plan, not
+a declaration that the contract is already Deprecated or Removed. Until that
+consumer check and removal decision are complete, retain the existing source and
+metadata.
+
+The confirmed adapter-specific scope includes `LoadingScreenPresentation`,
+`LoadingScreenAdapterResult`, `LoadingScreenAdapterAction` and
+`LoadingScreenAdapterStatus`. Other F22 types are in scope only if the consumer
+check confirms they are exclusive to this path.
+
+The current Loading presentation path remains `ILoadingSurfaceAdapter` with
+`LoadingSurfaceRequest`/`LoadingSurfaceRuntime`, composed from Global UI and
+driven by Framework lifecycle operations. The F22 removal scope must exclude
+types still required by that path. This disposition does not change Loading's
+presentation-only authority, readiness ownership, or any API maturity.
+
+Evidence: `Runtime/Loading/ILoadingScreenAdapter.cs` has no current composition
+call site; `Runtime/GlobalUi/GlobalUiSceneRuntime.cs` collects
+`ILoadingSurfaceAdapter`, and `Runtime/ApplicationLifecycle/FrameworkRuntimeHost.cs`
+creates the current `LoadingSurfaceRuntime`.
