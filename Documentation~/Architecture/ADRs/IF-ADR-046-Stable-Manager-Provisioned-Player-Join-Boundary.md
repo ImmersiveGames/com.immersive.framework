@@ -6,7 +6,7 @@ Accepted: **2026-10-11**
 Type: Player Participation / public compatibility boundary / scoped authoring  
 Related decisions: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md), IF-ADR-003, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
 Current evidence and gates: [Player full recertification matrix (P6/P7)](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
-Implementation route: [IF-PLAN-ADR-046 v1](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v1.md) — proposed for review; execution not authorized
+Implementation route: [IF-PLAN-ADR-046 v2](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v2.md) — approved; I3 is the next authorized increment; maturity remains a separate decision under IF-GOV-001
 
 > Acceptance authorizes this architectural direction and contract design only. It does not certify, implement, or promote any API to Stable, and authorizes no Runtime/API/test/consumer changes or release. IF-GOV-001 remains authoritative for maturity and compatibility policy.
 

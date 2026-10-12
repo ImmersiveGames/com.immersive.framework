@@ -65,6 +65,13 @@ namespace Immersive.Framework.RouteLifecycle
 
         internal RouteAsset CurrentRoute => _currentRouteState.Route;
 
+        internal int CurrentRouteOccurrenceSequence =>
+            _hasCurrentRouteContext &&
+            _currentPlayerSpatialEntryContext.IsValid &&
+            ReferenceEquals(_currentPlayerSpatialEntryContext.Route, CurrentRoute)
+                ? _currentPlayerSpatialEntryContext.OccurrenceSequence
+                : 0;
+
         internal RouteContentSet CurrentRouteContentSet => _currentRouteState.RouteContentSet;
 
         internal ActivityAsset CurrentActivity => _activityFlowRuntime.CurrentActivity;

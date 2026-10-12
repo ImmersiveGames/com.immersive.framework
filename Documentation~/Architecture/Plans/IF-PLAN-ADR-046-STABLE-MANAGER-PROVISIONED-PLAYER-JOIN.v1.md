@@ -1,10 +1,10 @@
 # IF-PLAN — Stable Manager-Provisioned Player Join Boundary
 
-Status: **Proposed for review; execution not authorized**
+Status: **Superseded**
 Version: **v1**
 Last updated: **2026-10-11**
 Supersedes: none
-Superseded by: none
+Superseded by: [IF-PLAN-ADR-046 v2](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v2.md)
 Decision: [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary](../ADRs/IF-ADR-046-Stable-Manager-Provisioned-Player-Join-Boundary.md)
 Governance: [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 Evidence/status: [Player full recertification matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md), [Framework tracker](../Tracking/IF-TRACK-Framework.md)

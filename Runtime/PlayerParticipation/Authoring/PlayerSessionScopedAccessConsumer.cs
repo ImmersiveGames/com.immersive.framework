@@ -6,6 +6,173 @@ using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    internal delegate bool ValidatePlayerSessionBindingRecipient(out string issue);
+    internal delegate IDisposable CreatePlayerSessionRecipientBinding(
+        PlayerSessionJoinBindingLease lease);
+    internal delegate bool TryBindPlayerSessionRecipientBinding(
+        IDisposable binding,
+        LocalPlayerProvisioningConsumerScope actualScope,
+        out string issue);
+    internal delegate void ReleasePlayerSessionRecipientBinding(
+        string reason,
+        bool isStale);
+
+    /// <summary>
+    /// Internal adapter between composition discovery and one binding destination.
+    /// It lets the existing lifecycle binder own multiple recipient kinds without
+    /// requiring new components to inherit the broad Experimental consumer API.
+    /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "I2 internal Player Session binding recipient seam.")]
+    internal sealed class PlayerSessionScopedBindingRecipient
+    {
+        private readonly Component _component;
+        private readonly LocalPlayerProvisioningConsumerScope _scope;
+        private readonly Type _bindingKind;
+        private readonly ValidatePlayerSessionBindingRecipient _validateScope;
+        private readonly CreatePlayerSessionRecipientBinding _createBinding;
+        private readonly TryBindPlayerSessionRecipientBinding _tryBind;
+        private readonly ReleasePlayerSessionRecipientBinding _release;
+        private bool _released;
+
+        internal PlayerSessionScopedBindingRecipient(
+            Component component,
+            LocalPlayerProvisioningConsumerScope scope,
+            Type bindingKind,
+            ValidatePlayerSessionBindingRecipient validateScope,
+            CreatePlayerSessionRecipientBinding createBinding,
+            TryBindPlayerSessionRecipientBinding tryBind,
+            ReleasePlayerSessionRecipientBinding release)
+        {
+            _component = component;
+            _scope = scope;
+            _bindingKind = bindingKind;
+            _validateScope = validateScope;
+            _createBinding = createBinding;
+            _tryBind = tryBind;
+            _release = release;
+        }
+
+        internal Component Component => _component;
+        internal LocalPlayerProvisioningConsumerScope Scope => _scope;
+        internal Type BindingKind => _bindingKind;
+
+        internal static PlayerSessionScopedBindingRecipient ForLegacyConsumer(
+            PlayerSessionScopedAccessConsumer consumer,
+            CreatePlayerSessionRecipientBinding createBinding)
+        {
+            if (consumer == null)
+                return null;
+
+            LocalPlayerProvisioningConsumerScope authoredScope = consumer.Scope;
+
+            return new PlayerSessionScopedBindingRecipient(
+                consumer,
+                authoredScope,
+                typeof(PlayerSessionScopedAccessConsumer),
+                (out string issue) =>
+                {
+                    if (!consumer.TryValidateScope(out issue))
+                        return false;
+
+                    if (consumer.Scope == authoredScope)
+                        return true;
+
+                    issue = "Player Session recipient authored scope changed after binding discovery.";
+                    return false;
+                },
+                createBinding,
+                (IDisposable binding,
+                    LocalPlayerProvisioningConsumerScope actualScope,
+                    out string issue) =>
+                {
+                    if (binding is not IPlayerSessionScopedAccess access)
+                    {
+                        issue = "Legacy Player Session recipient requires its broad scoped access binding.";
+                        return false;
+                    }
+
+                    return consumer.TryBind(access, actualScope, out issue);
+                },
+                consumer.ReleaseScopedAccess);
+        }
+
+        internal bool TryValidateScope(out string issue)
+        {
+            if (_component == null)
+            {
+                issue = "Player Session binding recipient was destroyed.";
+                return false;
+            }
+
+            if (!_scope.IsDefinedScope())
+            {
+                issue = "Player Session binding recipient requires an explicit Route or Activity scope.";
+                return false;
+            }
+
+            if (_validateScope == null)
+            {
+                issue = "Player Session binding recipient has no authored-scope validator.";
+                return false;
+            }
+
+            return _validateScope(out issue);
+        }
+
+        internal IDisposable CreateBinding(PlayerSessionJoinBindingLease lease) =>
+            _createBinding != null ? _createBinding(lease) : null;
+
+        internal bool TryBind(
+            IDisposable binding,
+            LocalPlayerProvisioningConsumerScope actualScope,
+            out string issue)
+        {
+            if (binding == null)
+            {
+                issue = "Player Session binding recipient received no binding.";
+                return false;
+            }
+
+            if (!TryValidateScope(out issue))
+                return false;
+
+            if (!actualScope.IsDefinedScope() || _scope != actualScope)
+            {
+                issue = $"Player Session recipient scope '{_scope}' does not match active '{actualScope}' scope.";
+                return false;
+            }
+
+            if (_tryBind == null)
+            {
+                issue = "Player Session binding recipient has no binding receiver.";
+                return false;
+            }
+
+            bool bound = _tryBind(binding, actualScope, out issue);
+            if (bound)
+                _released = false;
+            return bound;
+        }
+
+        internal void Release(string reason, bool isStale)
+        {
+            if (_released)
+                return;
+
+            _released = true;
+            if (_component != null)
+                _release?.Invoke(reason, isStale);
+        }
+
+        internal bool HasSameDestination(PlayerSessionScopedBindingRecipient other)
+        {
+            return other != null &&
+                ReferenceEquals(_component, other._component) &&
+                _scope == other._scope &&
+                _bindingKind == other._bindingKind;
+        }
+    }
+
     /// <summary>
     /// Runtime lifetime state for a Player Session product consumer. It reports
     /// only the Framework-injected scoped access transport, never Player state.

@@ -23,8 +23,7 @@ namespace Immersive.Framework.PlayerParticipation
     [DisallowMultipleComponent]
     internal sealed class PlayerSessionScopedAccessRuntimeHostModule : MonoBehaviour
     {
-        private readonly Dictionary<PlayerSessionScopedAccessConsumer,
-            PlayerSessionScopedAccess> _accesses = new();
+        private readonly Dictionary<Component, ActiveScopedBinding> _accesses = new();
         private readonly HashSet<string> _inputOwnershipDiagnosticKeys = new();
         private FrameworkRuntimeHost _runtimeHost;
         private PlayerParticipationRuntimeContext _participationContext;
@@ -91,8 +90,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void RefreshBindings()
         {
-            var desired = new Dictionary<PlayerSessionScopedAccessConsumer,
-                RuntimeContentOwner>();
+            var desired = new Dictionary<Component, DesiredScopedBinding>();
             var flow = _runtimeHost.CurrentGameFlowRuntime;
             if (flow != null && flow.CurrentRoute != null &&
                 flow.CurrentRouteLifecycleRuntime != null &&
@@ -102,11 +100,13 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 RouteAsset route = flow.CurrentRoute;
                 AddBindings(
-                    SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionScopedAccessConsumer>(routeScope),
+                    CreateLegacyRecipients(SceneCompositionComponentQuery.GetComponents<
+                        PlayerSessionScopedAccessConsumer>(routeScope)),
                     LocalPlayerProvisioningConsumerScope.Route,
                     RuntimeContentOwner.Route(route.RouteId.StableText,
                         route.RouteName, RuntimeDefinitionToken.FromUnityObject(route)),
+                    flow.CurrentRouteLifecycleRuntime.CurrentRouteOccurrenceSequence,
+                    0,
                     desired);
             }
 
@@ -118,21 +118,24 @@ namespace Immersive.Framework.PlayerParticipation
                     activity, out ActivityContentDiscoveryScope activityScope))
             {
                 AddBindings(
-                    SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionScopedAccessConsumer>(activityScope, activity),
+                    CreateLegacyRecipients(SceneCompositionComponentQuery.GetComponents<
+                        PlayerSessionScopedAccessConsumer>(activityScope, activity)),
                     LocalPlayerProvisioningConsumerScope.Activity,
                     RuntimeContentOwner.Activity(activity.ActivityId.StableText,
                         activity.ActivityName, RuntimeDefinitionToken.FromUnityObject(activity)),
+                    flow.CurrentRouteLifecycleRuntime.CurrentRouteOccurrenceSequence,
+                    flow.CurrentOccurrence.TransitionSequence,
                     desired);
             }
 
-            var stale = new List<PlayerSessionScopedAccessConsumer>();
+            bool managerJoinAvailable = HasManagerJoinCapability();
+            var stale = new List<Component>();
             foreach (var pair in _accesses)
             {
-                bool managerJoinAvailable = HasManagerJoinCapability();
-                if (pair.Key == null || !desired.TryGetValue(pair.Key, out RuntimeContentOwner owner) ||
-                    pair.Value.Snapshot.Owner != owner ||
-                    pair.Value.HasJoinCapability != managerJoinAvailable)
+                if (pair.Key == null ||
+                    !desired.TryGetValue(pair.Key, out DesiredScopedBinding candidate) ||
+                    !pair.Value.Lease.HasSameBindingIdentity(candidate.Lease) ||
+                    pair.Value.ManagerJoinAvailable != managerJoinAvailable)
                 {
                     stale.Add(pair.Key);
                 }
@@ -140,14 +143,14 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < stale.Count; index++)
             {
-                PlayerSessionScopedAccessConsumer consumer = stale[index];
-                if (_accesses.TryGetValue(consumer, out PlayerSessionScopedAccess access))
+                Component component = stale[index];
+                if (_accesses.TryGetValue(component, out ActiveScopedBinding binding))
                 {
-                    access.Dispose();
-                    consumer?.ReleaseScopedAccess(
+                    binding.Dispose();
+                    binding.Recipient.Release(
                         "Player Session scoped access was released because its Route, Activity or join capability changed.",
                         true);
-                    _accesses.Remove(consumer);
+                    _accesses.Remove(component);
                 }
             }
 
@@ -155,37 +158,52 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 if (_accesses.ContainsKey(pair.Key))
                 {
+                    pair.Value.Lease.Dispose();
                     continue;
                 }
 
-                LocalPlayerProvisioningConsumerScope scope =
-                    pair.Value.Scope == RuntimeContentScope.Route
-                        ? LocalPlayerProvisioningConsumerScope.Route
-                        : LocalPlayerProvisioningConsumerScope.Activity;
-                PlayerSessionScopedAccess access = CreateAccess(scope, pair.Value, pair.Key);
-                if (!pair.Key.TryBind(access, scope, out string issue))
+                PlayerSessionScopedBindingRecipient recipient = pair.Value.Recipient;
+                IDisposable binding = recipient.CreateBinding(pair.Value.Lease);
+                string issue = string.Empty;
+                if (binding == null || !recipient.TryBind(binding, recipient.Scope, out issue))
                 {
-                    access.Dispose();
-                    pair.Key.ReleaseScopedAccess(issue);
+                    binding?.Dispose();
+                    pair.Value.Lease.Dispose();
+                    recipient.Release(
+                        string.IsNullOrWhiteSpace(issue)
+                            ? "Player Session recipient could not create its scoped binding."
+                            : issue,
+                        false);
                     continue;
                 }
 
-                _accesses.Add(pair.Key, access);
+                _accesses.Add(pair.Key, new ActiveScopedBinding(
+                    recipient,
+                    pair.Value.Lease,
+                    binding,
+                    managerJoinAvailable));
             }
         }
 
-        private PlayerSessionScopedAccess CreateAccess(
-            LocalPlayerProvisioningConsumerScope scope,
-            RuntimeContentOwner owner,
-            PlayerSessionScopedAccessConsumer consumer)
+        private List<PlayerSessionScopedBindingRecipient> CreateLegacyRecipients(
+            IReadOnlyList<PlayerSessionScopedAccessConsumer> consumers)
         {
-            LocalPlayerProvisioningRuntimeHostModule manager =
-                _runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>();
-            return manager != null && manager.IsReady
-                ? new ManagerPlayerSessionScopedAccess(
-                    _runtimeHost, _participationContext, scope, owner, consumer, manager)
-                : new PlayerSessionScopedAccess(
-                    _runtimeHost, _participationContext, scope, owner, consumer);
+            var recipients = new List<PlayerSessionScopedBindingRecipient>();
+            if (consumers == null)
+                return recipients;
+
+            for (int index = 0; index < consumers.Count; index++)
+            {
+                PlayerSessionScopedAccessConsumer consumer = consumers[index];
+                if (consumer == null)
+                    continue;
+
+                recipients.Add(PlayerSessionScopedBindingRecipient.ForLegacyConsumer(
+                    consumer,
+                    lease => CreateAccess(lease, consumer)));
+            }
+
+            return recipients;
         }
 
         private bool HasManagerJoinCapability()
@@ -195,11 +213,13 @@ namespace Immersive.Framework.PlayerParticipation
             return manager != null && manager.IsReady;
         }
 
-        private static void AddBindings(
-            IReadOnlyList<PlayerSessionScopedAccessConsumer> candidates,
+        private void AddBindings(
+            IReadOnlyList<PlayerSessionScopedBindingRecipient> candidates,
             LocalPlayerProvisioningConsumerScope scope,
             RuntimeContentOwner owner,
-            Dictionary<PlayerSessionScopedAccessConsumer, RuntimeContentOwner> target)
+            int routeOccurrenceSequence,
+            int activityTransitionSequence,
+            Dictionary<Component, DesiredScopedBinding> target)
         {
             if (candidates == null)
             {
@@ -208,23 +228,66 @@ namespace Immersive.Framework.PlayerParticipation
 
             for (int index = 0; index < candidates.Count; index++)
             {
-                PlayerSessionScopedAccessConsumer consumer = candidates[index];
-                if (consumer == null)
+                PlayerSessionScopedBindingRecipient recipient = candidates[index];
+                if (recipient == null || recipient.Component == null)
                 {
                     continue;
                 }
 
-                if (!consumer.TryValidateScope(out string issue))
+                if (!recipient.TryValidateScope(out string issue))
                 {
-                    consumer.ReleaseScopedAccess(issue);
+                    recipient.Release(issue, false);
                     continue;
                 }
 
-                if (consumer.Scope == scope)
+                if (recipient.Scope == scope)
                 {
-                    target[consumer] = owner;
+                    LocalPlayerProvisioningRuntimeHostModule manager =
+                        _runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>();
+                    PlayerSessionJoinBindingLeaseValidation validation =
+                        PlayerSessionJoinBindingLease.TryCapture(
+                            _runtimeHost,
+                            this,
+                            _participationContext,
+                            recipient,
+                            scope,
+                            owner,
+                            manager,
+                            out PlayerSessionJoinBindingLease lease);
+                    if (validation != PlayerSessionJoinBindingLeaseValidation.Current)
+                    {
+                        if (validation == PlayerSessionJoinBindingLeaseValidation.RejectedConfiguration)
+                        {
+                            recipient.Release(
+                                "Player Session recipient scope or owner configuration is invalid.",
+                                false);
+                        }
+
+                        continue;
+                    }
+
+                    if (target.TryGetValue(recipient.Component, out DesiredScopedBinding previous))
+                        previous.Lease.Dispose();
+
+                    target[recipient.Component] = new DesiredScopedBinding(recipient, lease);
                 }
             }
+        }
+
+        private IDisposable CreateAccess(
+            PlayerSessionJoinBindingLease lease,
+            PlayerSessionScopedAccessConsumer consumer)
+        {
+            LocalPlayerProvisioningRuntimeHostModule manager = lease.Manager;
+            return manager != null && manager.IsReady &&
+                ReferenceEquals(manager, _runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>())
+                ? new ManagerPlayerSessionScopedAccess(lease, consumer)
+                : new PlayerSessionScopedAccess(
+                    lease.RuntimeHost,
+                    lease.ParticipationContext,
+                    lease.Scope,
+                    lease.Owner,
+                    consumer);
         }
 
         private void OnDestroy()
@@ -232,7 +295,7 @@ namespace Immersive.Framework.PlayerParticipation
             foreach (var pair in _accesses)
             {
                 pair.Value.Dispose();
-                pair.Key?.ReleaseScopedAccess(
+                pair.Value.Recipient.Release(
                     "Player Session scoped access was released because the Framework runtime was disposed.",
                     true);
             }
@@ -406,6 +469,52 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             return string.Join(",", descriptions);
+        }
+
+        private sealed class DesiredScopedBinding
+        {
+            internal DesiredScopedBinding(
+                PlayerSessionScopedBindingRecipient recipient,
+                PlayerSessionJoinBindingLease lease)
+            {
+                Recipient = recipient;
+                Lease = lease;
+            }
+
+            internal PlayerSessionScopedBindingRecipient Recipient { get; }
+            internal PlayerSessionJoinBindingLease Lease { get; }
+        }
+
+        private sealed class ActiveScopedBinding : IDisposable
+        {
+            private bool _disposed;
+
+            internal ActiveScopedBinding(
+                PlayerSessionScopedBindingRecipient recipient,
+                PlayerSessionJoinBindingLease lease,
+                IDisposable binding,
+                bool managerJoinAvailable)
+            {
+                Recipient = recipient;
+                Lease = lease;
+                Binding = binding;
+                ManagerJoinAvailable = managerJoinAvailable;
+            }
+
+            internal PlayerSessionScopedBindingRecipient Recipient { get; }
+            internal PlayerSessionJoinBindingLease Lease { get; }
+            internal IDisposable Binding { get; }
+            internal bool ManagerJoinAvailable { get; }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+                Binding?.Dispose();
+                Lease?.Dispose();
+            }
         }
     }
 
@@ -749,18 +858,21 @@ namespace Immersive.Framework.PlayerParticipation
         PlayerSessionScopedAccess,
         ILocalPlayerJoinAccess
     {
+        private readonly PlayerSessionJoinBindingLease _joinBindingLease;
         private readonly LocalPlayerProvisioningRuntimeHostModule _manager;
 
         internal ManagerPlayerSessionScopedAccess(
-            FrameworkRuntimeHost runtimeHost,
-            PlayerParticipationRuntimeContext participationContext,
-            LocalPlayerProvisioningConsumerScope scope,
-            RuntimeContentOwner owner,
-            PlayerSessionScopedAccessConsumer consumer,
-            LocalPlayerProvisioningRuntimeHostModule manager)
-            : base(runtimeHost, participationContext, scope, owner, consumer)
+            PlayerSessionJoinBindingLease joinBindingLease,
+            PlayerSessionScopedAccessConsumer consumer)
+            : base(
+                joinBindingLease.RuntimeHost,
+                joinBindingLease.ParticipationContext,
+                joinBindingLease.Scope,
+                joinBindingLease.Owner,
+                consumer)
         {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            _joinBindingLease = joinBindingLease ?? throw new ArgumentNullException(nameof(joinBindingLease));
+            _manager = joinBindingLease.Manager ?? throw new ArgumentNullException(nameof(joinBindingLease));
         }
 
         internal override bool HasJoinCapability => _manager.IsReady;
@@ -768,6 +880,12 @@ namespace Immersive.Framework.PlayerParticipation
         public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
         {
             if (!TryGetContext(out string issue))
+            {
+                return LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
+            }
+
+            if (_joinBindingLease.ValidateCurrent(out issue) !=
+                PlayerSessionJoinBindingLeaseValidation.Current)
             {
                 return LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
             }
