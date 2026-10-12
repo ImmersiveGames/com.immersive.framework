@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -7,6 +8,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// Immutable evaluation input produced by Activity-owned participation projection authoring.
     /// It carries no mutable Session state and performs no runtime lookup.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Framework-owned runtime representation of Activity participation projection policy.")]
     public readonly struct ActivityParticipationProjectionDescriptor
     {
         public ActivityParticipationProjectionDescriptor(

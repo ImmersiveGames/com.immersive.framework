@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
     /// Typed, cumulative evidence used to satisfy an Activity Player readiness requirement.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-003/012 Activity Player readiness evidence for Experimental participation behavior.")]
     public enum PlayerParticipationReadinessEvidence
     {
         JoinedSlot = 10,
@@ -19,6 +21,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// Canonical cumulative definition of Activity Player readiness. Editor tooling and
     /// runtime diagnostics consume this definition without duplicating level semantics.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Framework-owned mapping of Activity Player readiness requirements.")]
     public static class PlayerParticipationReadinessRequirements
     {
         private static readonly PlayerParticipationReadinessEvidence[] None = Array.Empty<PlayerParticipationReadinessEvidence>();
