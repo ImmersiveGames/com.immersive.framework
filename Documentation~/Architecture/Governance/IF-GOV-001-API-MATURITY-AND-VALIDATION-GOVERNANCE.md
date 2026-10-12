@@ -19,12 +19,48 @@ This record makes existing framework-wide governance policies explicit:
    implementation increments and API maturity.
 
 These concerns are governance primitives. They do not justify a new feature ADR,
-runtime service, manager, singleton, Composer or authoring authority.
+runtime service, manager, singleton, Composer or authoring authority. For API
+maturity and compatibility, the consumer contract is the primary normative
+unit; a feature is the functional grouping that may contain multiple contracts.
 
 ## 2. API maturity metadata
 
 `FrameworkApiStatusAttribute` is source-level documentation/validation metadata.
 It does not alter runtime behavior.
+
+### Contract and feature units
+
+The **consumer contract** is the primary unit for maturity and compatibility. A
+contract consists of the consumer-facing API surface and its behavioral,
+configuration, serialization, extension, or lifecycle guarantees. One contract
+may comprise one or more related C# types, and one C# type may participate in
+more than one contract.
+
+A **feature** is a functional grouping and may contain contracts with different
+maturities. A contract's maturity does not determine the maturity of other
+contracts in the feature; a Stable contract does not promote the feature or its
+other contracts, and an Experimental contract does not downgrade Stable
+contracts in the same feature.
+
+`FrameworkApiStatusAttribute` remains type-level metadata and is the reference
+maturity declaration for each attributed C# type. It does not, by itself,
+define a feature or establish the complete scope of every contract in which the
+type participates.
+
+Where distinct guarantees exist within one type, the contract record or
+relevant architecture decision must identify the included members, operations,
+and behaviors, along with compatibility and serialization boundaries. It must
+preserve existing Stable guarantees, identify relevant Experimental
+dependencies, and require explicit ADR and migration handling for changes that
+break Stable commitments. A contract does not become Stable merely because it
+uses a Stable type. Conversely, documenting a narrower boundary must not
+retrospectively reduce any existing Stable guarantee.
+
+An inventory of contracts is an index for traceability, not a second authority
+for maturity. It should reference the applicable type attributes and
+architecture decisions. A divergence among attribute, documentation, and
+behavior must be recorded for formal reconciliation; it must not be resolved
+silently.
 
 The canonical categories are:
 
@@ -36,6 +72,24 @@ The canonical categories are:
 | `Deferred` | Retained for planning/frozen source; not part of the active baseline. |
 | `DevelopmentTooling` | QA, Editor or development tooling; not product API. |
 | `Removed` | Removed or scheduled for removal. It is not an active consumer contract. |
+
+These six enum categories and their meanings remain canonical. `Legacy` and
+`Deprecated` are lifecycle descriptions, not additional `FrameworkApiStatus`
+categories:
+
+- `Legacy` describes historical or compatibility context and does not determine
+  maturity.
+- `Deprecated` records a formal intent to replace or discontinue a surface and
+  requires a traceable decision. A Deprecated surface may retain its current
+  maturity throughout a migration period.
+- Assigning `Removed` requires an explicit decision, including when removal is
+  scheduled. Its existing meaning—removed or scheduled for removal—does not
+  change.
+- `[Obsolete]` is an implementation choice for communicating deprecation; it is
+  not required for every Deprecated surface and must follow the relevant
+  implementation decision.
+- Deprecation does not by itself remove or weaken any Stable compatibility
+  guarantee.
 
 ### Governance rule
 
@@ -122,7 +176,16 @@ No synthetic Inspector-understandability test is required.
 ## 7. Change discipline
 
 - Changes to `FrameworkApiStatus` meanings are architecture-governance changes.
-- Breaking changes to `Stable` consumer surfaces require explicit ADR/migration handling.
+- The consumer contract is the scope for evaluating Stable compatibility;
+  breaking changes to Stable guarantees require explicit ADR/migration handling.
+- Do not promote or downgrade other contracts based only on their membership in
+  the same feature or their use of a type with another maturity.
+- Reconcile any divergence among type attributes, contract documentation, and
+  observed behavior through an explicit decision; do not change classifications
+  silently or retrospectively.
+- `Legacy` and `Deprecated` do not add enum categories or alter a surface's
+  maturity. Deprecation and assignment of `Removed` require the explicit
+  lifecycle decisions described in §2.
 - Changes to validation-mode semantics affect ADR-010 product diagnostics and require focused technical QA.
 - Adding a new validation mode requires defining its severity/noise semantics explicitly before adoption.
 - Unknown values must continue to fail conservatively; no silent downgrade is allowed.
@@ -232,6 +295,7 @@ executed package bytes.
 ## 9. Disposition
 
 Sections 2–7 govern the existing API maturity and authoring validation
-primitives. Section 8 establishes risk-proportionate evidence policy for
-certification and maturity decisions. These policies create no runtime behavior,
-new feature authority, or product subsystem.
+primitives. Contract maturity does not imply functional certification; Section
+8 establishes risk-proportionate evidence policy for the specific contract
+properties and certification decisions under review. These policies create no
+runtime behavior, new feature authority, or product subsystem.
