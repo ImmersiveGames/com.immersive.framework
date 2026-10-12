@@ -2,7 +2,7 @@
 
 Status: **Accepted**  
 Date: 2026-08-11  
-Amended: **2026-10-12 — retired the preparatory Experimental Snapshot implementation; the conceptual persistence boundary remains separate from Progression Save.**
+Amended: **2026-10-12 — retired the preparatory Experimental Snapshot and Preferences implementations; both conceptual domains remain distinct from Progression Save.**
 Type: architecture / product direction / package-to-ADR reverse reconciliation  
 Related decisions: IF-ADR-014, IF-ADR-017  
 Source finding: Package → ADR Reverse Audit RA-02
@@ -66,6 +66,12 @@ Progression Save
 They may collaborate, but none is a synonym or silent fallback for another.
 
 ### 2. Preferences
+
+Preferences remains a conceptual domain distinct from Snapshot and Progression Save.
+The preparatory Experimental Preferences API and PlayerPrefs adapter were removed
+on 2026-10-12. The package currently provides no Preferences API or runtime; a future
+implementation requires concrete consumer requirements and a separately reviewed
+design. This retirement does not merge the three domains.
 
 Preferences owns small values such as:
 
@@ -398,7 +404,7 @@ JsonProgressionSaveStore
   EXPERIMENTAL pending minimum-backend hardening/certification
 
 Preferences
-  EXPERIMENTAL, separate domain
+  preparatory Experimental implementation retired 2026-10-12; conceptual domain distinct from Snapshot and Progression Save
 
 Snapshot
   preparatory Experimental implementation retired 2026-10-12; conceptual separate domain retained
@@ -455,6 +461,9 @@ If a future Snapshot participant/orchestration design is implemented, the select
 Progression Save backend must not discover gameplay participants itself.
 
 ## Future Preferences integration
+
+This relationship is conceptual only; the package currently implements no
+Preferences API or runtime.
 
 Preferences remains independent:
 
@@ -662,7 +671,7 @@ cross-device conflict resolution
 ## Acceptance of this architecture cut
 
 ```text
-Preferences remains separate from Progression Save
+Preferences remains a conceptual domain separate from Snapshot and Progression Save; preparatory implementation retired
 Snapshot remains a conceptual domain separate from Progression Save backend storage
 Progression Save is recognized as canonical framework persistence contract
 JSON is recognized as official built-in minimum backend

@@ -2,6 +2,7 @@
 
 Status: **Accepted**  
 Date: 2026-08-11  
+Amended: **2026-10-12 — clarified that the preparatory Preferences implementation was retired; future persistence decisions remain pending.**
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-010  
 Current implementation cut: ADR017-A1..A4  
 QA certification: **CERTIFIED — ADR017-A5**
@@ -165,8 +166,9 @@ application Frame Rate runtime authority
 
 Preferences must not directly mutate Unity Frame Rate/VSync values.
 
-The current ADR does not canonize the existing experimental Preferences subsystem and
-does not define storage/corruption/cross-session semantics.
+The package's preparatory Experimental Preferences implementation has been removed.
+Preferences remains a future conceptual domain; this ADR does not define a current
+API or storage, corruption or cross-session semantics.
 
 ## Out of scope
 
