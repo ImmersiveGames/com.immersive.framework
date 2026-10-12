@@ -5,10 +5,11 @@ All notable package changes are documented in this file.
 ## [1.1.0-preview.8] - 2026-10-12 — prepared, unpublished
 
 This preview candidate converges Manager-Provisioned Player Join on the
-Experimental `PlayerSessionJoinTrigger`. It does not promote the boundary to
-Stable. User-reported post-removal EditMode and QAFramework regressions passed
-with partial provenance; Unity import/compile of consumer projects against an
-immutable package revision and PEGA compatibility remain unverified.
+`PlayerSessionJoinTrigger`. IF-ADR-046 records **APPROVED — Player Join Stable**
+for the bounded Join request closure only. The evidence amendment accepts
+declared partial provenance for the supplied runs; it does not associate them
+with a retrospective execution SHA. Unity import/compile of consumer projects
+against an immutable package revision and PEGA compatibility remain unverified.
 
 - Removed the replaced Experimental `PlayerSessionJoinCommandTrigger`,
   `ILocalPlayerJoinAccess`, `TryGetJoinAccess`, public
@@ -23,7 +24,12 @@ immutable package revision and PEGA compatibility remain unverified.
 - FirstGame Local Multiplayer Join/Leave/Rejoin was reported functional.
   Character Selection was not independently validated. PEGA resolves the
   earlier `1.1.0-preview.7` and was not tested against this candidate.
-- `PlayerSessionJoinTrigger` remains Experimental. I4.2 LEASE remains
+- The original FirstGame log, Test Runner screenshot and QA terminal transcript
+  are archived in QAFramework's Player Stable evidence set with member hashes
+  verified. No execution SHA or timestamp is claimed.
+- `PlayerSessionJoinTrigger` and its bounded Join request contracts are Stable
+  under IF-ADR-046. Manager-Provisioned configuration and adjacent APIs retain
+  their existing maturity. I4.2 LEASE remains
   historically BLOCKED 3/3; P1/P2 are documented residual risks supported by
   static review, not direct test claims.
 

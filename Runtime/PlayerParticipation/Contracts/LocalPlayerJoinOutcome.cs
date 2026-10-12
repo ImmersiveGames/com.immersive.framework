@@ -2,7 +2,7 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-046 typed Manager-Provisioned Join outcome (I1).")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Bounded Manager-Provisioned Join outcome under IF-ADR-046.")]
     public sealed class LocalPlayerJoinOutcome
     {
         internal LocalPlayerJoinOutcome(

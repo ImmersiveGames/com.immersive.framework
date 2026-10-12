@@ -9,7 +9,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// Product-authorized intent to provision one local Player through Unity PlayerInputManager.
     /// Slot allocation, operation identity, playerIndex and Actor selection are not caller inputs.
     /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "P3G.2 manual local Player join request.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Bounded Manager-Provisioned Join request under IF-ADR-046.")]
     public readonly struct LocalPlayerJoinRequest
     {
         public LocalPlayerJoinRequest(

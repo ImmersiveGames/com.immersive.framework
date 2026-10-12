@@ -2,7 +2,7 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-046 certainty of Session admission for one Join outcome (I1).")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Bounded Manager-Provisioned Join admission state under IF-ADR-046.")]
     public enum LocalPlayerJoinAdmissionState
     {
         NotAdmitted = 1,

@@ -11,7 +11,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Player/Join (Manager-Provisioned)")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-046 I3 standalone scoped Join trigger.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Stable, "Bounded Manager-Provisioned Join boundary under IF-ADR-046.")]
     public sealed class PlayerSessionJoinTrigger : MonoBehaviour
     {
         private const string Source = nameof(PlayerSessionJoinTrigger);

@@ -1,17 +1,17 @@
 # IF-ADR-046 — Decisão de promoção Stable
 
-Status: **PENDING — promoção não aprovada; sem alteração de maturidade da API**
+Status: **APPROVED — Player Join Stable**
 Data: **2026-10-12**
-Autoridade decisória: **IF-GOV-001**
+Autoridade decisória: **usuário na qualidade de autoridade responsável do projeto; aceite explícito na instrução da tarefa de 2026-10-12**
 Escopo: **somente o contrato público Manager-Provisioned Join de `PlayerSessionJoinTrigger`**
 
-## Decision
+## Decisão
 
-**PENDING.** A closure pública delimitada não é promovida. IF-ADR-046 §7.4 exige replay do Slice 1 em SHA imutável do Framework e retenção da saída bruta, timestamps e proveniência da execução. IF-ADR-046 §7.7 e IF-PLAN-ADR-046 v3 Stage E exigem importação/compilação do FirstGame e evidência de Join/Leave/Rejoin no mesmo candidato imutável identificado. Os resultados reportados demonstram resultados funcionais, mas não identificam os bytes do Framework usados durante cada execução. HEADs Git consultados agora não são proveniência de execução. IF-GOV-001 não prevê dispensa desses gates específicos.
+**APPROVED — Player Join Stable.** A autoridade responsável aceitou a [Amendment 003](IF-ADR-046-AMENDMENT-003-PARTIAL-PROVENANCE-ACCEPTANCE.md) e o risco residual de proveniência parcial. IF-GOV-001 §2 define Stable como compromisso de compatibilidade; §7 exige tratamento de governança para mudanças no significado de maturidade e ADR/migração para mudanças incompatíveis. Esta Amendment altera somente os gates de evidência da IF-ADR-046 para este pacote, sem redefinir Stable, enfraquecer a compatibilidade ou alterar semântica Runtime. A IF-GOV-001 não impede essa exceção específica.
 
-O log bruto do FirstGame não está disponível entre os anexos desta tarefa ou os arquivos dos repositórios consultados. O resumo da execução do usuário fica registrado como relato; nenhum log, timestamp ou SHA de execução é inventado. Anexar o log bruto original para arquivamento. Se os registros contemporâneos não trouxerem o vínculo exigido com o candidato imutável, a menor ação obrigatória é capturar Slice 1 e FirstGame em um candidato Framework imutável e limpo, associando a esse candidato os resultados aplicáveis do Framework e da regressão QA pós-retirada. Não repetir I4 nem a evidência composta de compensação física já aceita.
+O ZIP original foi examinado integralmente e arquivado com os membros intactos em `QAFramework/Documentation~/Certification/PlayerJoin/Evidence/PlayerStable-2026-10-12/`. O hash do FirstGame log (339106 bytes, 886 linhas), da screenshot, dos terminais e do ZIP foi conferido com `SHA256SUMS.txt`. O log registra P1/P2 e um rejoin de cada, quatro leaves concluídos com `partialRelease=False`, readiness concluída e nenhum marcador de severity error/warning ou exception. A screenshot mostra 292 aprovados/0 falhas e 101 testes PlayerParticipation. `QA-terminals.txt` é transcrição das linhas de resultado fornecidas, não log bruto. Nenhum desses artefatos registra SHA de Framework/QA ou timestamp da execução; essa proveniência permanece parcial e foi expressamente aceita. Não foi repetido nenhum teste.
 
-## Closure delimitada para decisão futura
+## Closure promovida
 
 - `PlayerSessionJoinTrigger`, including its public `Scope`, `LastOutcome`, `RequestJoin`, `Invoke`, and `InvokeFromDevice` members.
 - The complete `LocalPlayerProvisioningConsumerScope` enum, with its existing names and numeric values.
@@ -32,14 +32,14 @@ O usuário reportou Framework EditMode 292/292, PlayerParticipation 101/101, IF-
 
 I4 permanece aceito por evidência composta, com ressalvas de revisão estática P1/P2 e I4.2 LEASE historicamente `BLOCKED 3/3`. A compensação física permanece **aceita por evidência composta** no Amendment 002; não é um PASS integrado de Play Mode com callback seguido por throw. A falha no commit da Session permanece classificada estaticamente como **inalcançável** pela boundary pública válida sob as premissas Unity síncronas examinadas. A migração para uma única boundary pública de Join do Amendment 001 permanece registrada.
 
-## Registro da decisão
+## Estado de maturidade aprovado
 
-`PlayerSessionJoinTrigger` permanece Experimental, assim como os cinco contratos associados na closure delimitada. `IPlayerSessionScopedAccess`, `LocalPlayerJoinStatus`, superfícies Session/Slot/Actor, APIs assignment/ownership e o Framework permanecem fora desta decisão, com sua maturidade atual. A versão do pacote continua `1.1.0-preview.8`; este registro não altera `package.json`, estado de release ou tags.
+Stable: `PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`, `LocalPlayerJoinRequest`, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode` e `LocalPlayerJoinAdmissionState`. Permanecem em suas maturidades anteriores `IPlayerSessionScopedAccess`, `LocalPlayerJoinStatus`, superfícies Session/Slot/Actor, APIs assignment/ownership e o Framework inteiro. A versão continua `1.1.0-preview.8`; nenhum comportamento Runtime, `package.json`, estado de release ou tag foi alterado.
 
-## Estado Git verificado nesta decisão
+## Estado Git verificado durante a avaliação
 
-- Framework: branch `master`, HEAD `7882d11f801b67aaeac6d289bbc9bd02e462e785`, árvore limpa antes das alterações documentais desta decisão; branch `ahead 1` de `origin/master`.
-- QAFramework: branch `main`, HEAD `693e0d1048303f5fde26831b117ad4c82fd2cf7d`, com alteração local preexistente em `Assets/_Project/Settings/ImmersiveFramework/Resources/ImmersiveFrameworkSettings.asset`; preservada.
+- Framework: branch `master`, HEAD `c66be5709e669dfc71b5e9ea9320156496058490`, `ahead 2` de `origin/master`; no início desta decisão havia documentação preparatória não commitada, mas os atributos Runtime ainda estavam Experimental.
+- QAFramework: branch `main`, HEAD `693e0d1048303f5fde26831b117ad4c82fd2cf7d`, alteração local preexistente em `Assets/_Project/Settings/ImmersiveFramework/Resources/ImmersiveFrameworkSettings.asset` preservada; evidências adicionadas somente em pasta nova.
 - FirstGame: branch `main`, HEAD `c0d14a057197624ff2f070a6e601d7d225f972db`, árvore limpa, `ahead 1` de `origin/main`.
 
-O commit deste registro documental criará um novo HEAD do Framework; nenhum HEAD acima é declarado como SHA usado nas execuções Unity relatadas.
+Nenhum HEAD acima é declarado como SHA usado nas execuções Unity relatadas. FirstGame/PEGA não foram modificados.

@@ -221,6 +221,15 @@ PlayerSessionProfile
 It may expose a joined technical Host before contextual Activity preparation. It
 does not become Scene-Provided, and Scene-Provided never falls back to this path.
 
+The bounded Join request boundary is Stable under IF-ADR-046:
+`PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`,
+`LocalPlayerJoinRequest`, `LocalPlayerJoinOutcome`,
+`LocalPlayerJoinOutcomeCode` and `LocalPlayerJoinAdmissionState`. This guarantees
+only the documented technical Session admission and Host commit contract.
+Manager-Provisioned configuration, Session/Slot observation, Host/PlayerInput
+evidence, Actor preparation and Gameplay Readiness retain their separate
+maturity and are not promoted here.
+
 | Concern | Scene-Provided | Manager-Provisioned |
 |---|---|---|
 | Physical composition | Consumer authors it before Play | Framework creates it at runtime |
@@ -250,7 +259,7 @@ scope. These components do not own Session state.
 | Component | Request |
 |---|---|
 | `PlayerSessionOpenJoiningCommandTrigger` / `PlayerSessionCloseJoiningCommandTrigger` | Open or close Session admission. Closing does not remove already joined Players. |
-| `PlayerSessionJoinTrigger` | Request Manager-Provisioned Join through the current Route/Activity occurrence. `InvokeFromDevice(InputDevice)` preserves the explicit device; `RequestJoin(LocalPlayerJoinRequest)` returns `LocalPlayerJoinOutcome`. |
+| `PlayerSessionJoinTrigger` · Stable | Request Manager-Provisioned Join through the current Route/Activity occurrence. `InvokeFromDevice(InputDevice)` preserves the explicit device; `RequestJoin(LocalPlayerJoinRequest)` returns `LocalPlayerJoinOutcome`. |
 | `PlayerSessionLeaveCommandTrigger` | Leave the currently joined occurrence for its required `PlayerSlotProfile`. |
 | `PlayerSessionSelectActorCommandTrigger` | Select an explicit `ActorProfile` for a `PlayerSlotProfile`. |
 | `PlayerSessionDefaultActorSelectionCommandTrigger` | Apply the Slot's configured default Actor selection. |

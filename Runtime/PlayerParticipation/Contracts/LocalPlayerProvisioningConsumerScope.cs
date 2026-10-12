@@ -8,8 +8,8 @@ namespace Immersive.Framework.PlayerParticipation
     /// consumer endpoint. It is an access lifetime, never Player configuration.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "IF-PLAYER-SURFACE-03 explicit consumer access lifetime.")]
+        FrameworkApiStatus.Stable,
+        "Scope contract of the bounded Manager-Provisioned Join boundary under IF-ADR-046.")]
     public enum LocalPlayerProvisioningConsumerScope
     {
         Unspecified = 0,
