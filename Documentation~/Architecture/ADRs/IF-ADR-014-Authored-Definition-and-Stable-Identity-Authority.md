@@ -1,7 +1,7 @@
 # IF-ADR-014 — Authored Definition and Stable Identity Authority
 
 Status: **Accepted**  
-Last updated: 2026-10-01
+Last updated: 2026-10-12
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015, IF-ADR-035
 Closed execution record: [IF-ID Identity Authority](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
 
@@ -231,6 +231,17 @@ Object Entry request/result envelopes that remain Experimental are not promoted
 by this reconciliation. Their public API necessity should be evaluated separately
 as API/governance hygiene; stable identity ownership does not require a generic
 Object Entry dispatcher.
+
+### Lifecycle materialization registry disposition — 2026-10-12
+
+The Experimental `LifecycleMaterializationRegistry` cluster is discontinued and
+removed. It had no runtime wiring or known consumers and did not own the active
+owner-aware Object Entry binding transaction. This decision removes
+`LifecycleMaterializationRegistry`, its entry/state, operation result/status,
+release-plan and release-execution types. It does not alter the generic
+`RuntimeContentRuntime` materialization/release contracts or the active
+`StableObjectBinding` boundary. No replacement API is introduced. IF-GOV-001
+continues to govern the maturity and compatibility treatment of public surfaces.
 
 ## Reopen criteria
 

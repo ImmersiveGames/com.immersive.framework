@@ -1,7 +1,7 @@
 # IF-ADR-010 — Editor and Inspector Product Surface Authority
 
 Status: **Accepted / Camera Class C contract consolidated by IF-ADR-032; historical ADR-022 evidence retained**  
-Last updated: **2026-09-26**  
+Last updated: **2026-10-12**
 Normative classification: **Minimum product-surface standard accepted**  
 Package conformity audit: **CLOSED — IF-ADR-010B**  
 Implementation classification: **Broad package surface is semantically conformant; Camera Class C materialization is implemented and technically certified**  
@@ -577,6 +577,15 @@ Current package classification:
 | Diagnostics-only surfaces | SUPPORT / NOT APPLICABLE |
 | Camera request/output bindings | SUPPORT / NOT PRIMARY RIG PRODUCT SURFACE |
 | CameraRigComposer | CLASS C / COMPLIANT / TECHNICALLY CERTIFIED |
+
+### Diagnostics-only `FrameworkFact` disposition — 2026-10-12
+
+The Experimental `FrameworkFact` model has no current producer, consumer or
+diagnostics authority and is discontinued. `FrameworkFact`, `FrameworkFactCode`,
+`FrameworkFactScope` and `FrameworkFactSeverity` are removed from the package.
+This disposition does not alter authoring validation diagnostics or the separate
+`com.immersive.logging` package. IF-GOV-001 continues to govern API maturity and
+compatibility; this removal creates no replacement diagnostics API.
 
 The original package audit found no generalized missing-tooling program.
 
