@@ -2,6 +2,31 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0-preview.8] - 2026-10-12 — prepared, unpublished
+
+This preview candidate converges Manager-Provisioned Player Join on the
+Experimental `PlayerSessionJoinTrigger`. It does not promote the boundary to
+Stable. User-reported post-removal EditMode and QAFramework regressions passed
+with partial provenance; Unity import/compile of consumer projects against an
+immutable package revision and PEGA compatibility remain unverified.
+
+- Removed the replaced Experimental `PlayerSessionJoinCommandTrigger`,
+  `ILocalPlayerJoinAccess`, `TryGetJoinAccess`, public
+  `LocalPlayerProvisioningAuthoring.RequestJoin` overloads and public
+  `LastJoinResult`/`LocalPlayerJoinResult` exposure. The canonical Manager,
+  provisioning bridge, Session/Slot/Actor/Leave observation contracts and
+  `PlayerSessionJoinTrigger` remain.
+- Framework EditMode was reported as 292/292 PASS, PlayerParticipation
+  101/101, zero failures. QAFramework IF-ADR-042/043/044 was reported as
+  22/22 PASS with cleanup 3/3 `BaselineRestored`. These reports have no
+  execution SHA, timestamp or original log/XML associated.
+- FirstGame Local Multiplayer Join/Leave/Rejoin was reported functional.
+  Character Selection was not independently validated. PEGA resolves the
+  earlier `1.1.0-preview.7` and was not tested against this candidate.
+- `PlayerSessionJoinTrigger` remains Experimental. I4.2 LEASE remains
+  historically BLOCKED 3/3; P1/P2 are documented residual risks supported by
+  static review, not direct test claims.
+
 ## [1.1.0-preview.7] - 2026-10-10 — published
 
 This preview delivers the IF-ADR-045 Persistent Content scene-reference and
