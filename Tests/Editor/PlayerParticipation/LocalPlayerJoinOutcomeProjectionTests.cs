@@ -246,7 +246,7 @@ namespace Immersive.Framework.PlayerParticipation.Tests
         }
 
         [Test]
-        public void OutcomeExposesOnlyTypedDispositionPropertiesAndRemainsExperimental()
+        public void OutcomeExposesOnlyTypedDispositionPropertiesAndIsStable()
         {
             var propertyTypes = typeof(LocalPlayerJoinOutcome).GetProperties()
                 .Select(property => property.PropertyType)
@@ -258,9 +258,9 @@ namespace Immersive.Framework.PlayerParticipation.Tests
                 typeof(LocalPlayerJoinOutcomeCode?),
                 typeof(LocalPlayerJoinAdmissionState)
             }));
-            AssertExperimental(typeof(LocalPlayerJoinOutcome));
-            AssertExperimental(typeof(LocalPlayerJoinOutcomeCode));
-            AssertExperimental(typeof(LocalPlayerJoinAdmissionState));
+            AssertStable(typeof(LocalPlayerJoinOutcome));
+            AssertStable(typeof(LocalPlayerJoinOutcomeCode));
+            AssertStable(typeof(LocalPlayerJoinAdmissionState));
         }
 
         [Test]
@@ -323,14 +323,14 @@ namespace Immersive.Framework.PlayerParticipation.Tests
             Assert.That(outcome.OriginalCode, Is.Null);
         }
 
-        private static void AssertExperimental(Type type)
+        private static void AssertStable(Type type)
         {
             FrameworkApiStatusAttribute attribute = (FrameworkApiStatusAttribute)Attribute.GetCustomAttribute(
                 type,
                 typeof(FrameworkApiStatusAttribute));
 
             Assert.That(attribute, Is.Not.Null);
-            Assert.That(attribute.Status, Is.EqualTo(FrameworkApiStatus.Experimental));
+            Assert.That(attribute.Status, Is.EqualTo(FrameworkApiStatus.Stable));
         }
 
         private sealed class EvidenceFixture : IDisposable

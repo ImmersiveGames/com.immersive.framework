@@ -2,7 +2,7 @@
 
 Status: **Accepted / Reconciled / Implemented; current QA coverage is bounded and full Player recertification remains open**
 Last updated: **2026-10-12**
-Amended: **2026-10-12 — Stable GameApplicationAsset serialization and Experimental Actor-selection policy boundary.**
+Amended: **2026-10-12 — Stable GameApplicationAsset serialization, Experimental Actor-selection policy boundary and retirement of standalone ActorReadiness APIs.**
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-024, IF-ADR-038
 Historical aggregate evidence: [Player Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md); current QA-001 coverage: [Player Full Recertification — 2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
@@ -30,6 +30,22 @@ Local Player Host
 ```
 
 The removed `ActorProfile.LogicalActorHostPrefab` is **not** current authority. `LogicalActorsPrepared` remains current semantic readiness terminology.
+
+### Standalone ActorReadiness API retirement — 2026-10-12
+
+The unused Experimental F49 cluster `IActorReadiness`, `ActorReadiness`,
+`ActorReadinessBehaviour`, `ActorReadinessSnapshot` and `ActorReadinessState` is
+retired. It had no call sites in the current Framework runtime, Editor, Tests or
+known QAFramework / `planet-devourer` consumers, and it did not participate in
+canonical Actor preparation or Activity readiness.
+
+This retirement does not change Session Actor selection, the
+`LogicalActorsPrepared` barrier, the Activity readiness ordering below, or the
+separation between `GameplayReady` and runtime gameplay availability defined by
+IF-ADR-012 and IF-ADR-036. Those contracts remain authoritative. No replacement
+API or automatic migration is defined. Existing consumer scenes or prefabs that
+serialized `ActorReadinessBehaviour` may show a missing script and require
+consumer-owned cleanup.
 
 ## Decision
 
