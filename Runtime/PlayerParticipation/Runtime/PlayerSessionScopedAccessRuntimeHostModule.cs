@@ -100,8 +100,11 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 RouteAsset route = flow.CurrentRoute;
                 AddBindings(
-                    CreateLegacyRecipients(SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionScopedAccessConsumer>(routeScope)),
+                    CreateRecipients(
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerSessionScopedAccessConsumer>(routeScope),
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerSessionJoinTrigger>(routeScope)),
                     LocalPlayerProvisioningConsumerScope.Route,
                     RuntimeContentOwner.Route(route.RouteId.StableText,
                         route.RouteName, RuntimeDefinitionToken.FromUnityObject(route)),
@@ -118,8 +121,11 @@ namespace Immersive.Framework.PlayerParticipation
                     activity, out ActivityContentDiscoveryScope activityScope))
             {
                 AddBindings(
-                    CreateLegacyRecipients(SceneCompositionComponentQuery.GetComponents<
-                        PlayerSessionScopedAccessConsumer>(activityScope, activity)),
+                    CreateRecipients(
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerSessionScopedAccessConsumer>(activityScope, activity),
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerSessionJoinTrigger>(activityScope, activity)),
                     LocalPlayerProvisioningConsumerScope.Activity,
                     RuntimeContentOwner.Activity(activity.ActivityId.StableText,
                         activity.ActivityName, RuntimeDefinitionToken.FromUnityObject(activity)),
@@ -185,22 +191,35 @@ namespace Immersive.Framework.PlayerParticipation
             }
         }
 
-        private List<PlayerSessionScopedBindingRecipient> CreateLegacyRecipients(
-            IReadOnlyList<PlayerSessionScopedAccessConsumer> consumers)
+        private List<PlayerSessionScopedBindingRecipient> CreateRecipients(
+            IReadOnlyList<PlayerSessionScopedAccessConsumer> consumers,
+            IReadOnlyList<PlayerSessionJoinTrigger> joinTriggers)
         {
             var recipients = new List<PlayerSessionScopedBindingRecipient>();
-            if (consumers == null)
-                return recipients;
-
-            for (int index = 0; index < consumers.Count; index++)
+            if (consumers != null)
             {
-                PlayerSessionScopedAccessConsumer consumer = consumers[index];
-                if (consumer == null)
-                    continue;
+                for (int index = 0; index < consumers.Count; index++)
+                {
+                    PlayerSessionScopedAccessConsumer consumer = consumers[index];
+                    if (consumer == null)
+                        continue;
 
-                recipients.Add(PlayerSessionScopedBindingRecipient.ForLegacyConsumer(
-                    consumer,
-                    lease => CreateAccess(lease, consumer)));
+                    recipients.Add(PlayerSessionScopedBindingRecipient.ForLegacyConsumer(
+                        consumer,
+                        lease => CreateAccess(lease, consumer)));
+                }
+            }
+
+            if (joinTriggers != null)
+            {
+                for (int index = 0; index < joinTriggers.Count; index++)
+                {
+                    PlayerSessionJoinTrigger trigger = joinTriggers[index];
+                    if (trigger != null)
+                    {
+                        recipients.Add(PlayerSessionScopedBindingRecipient.ForJoinTrigger(trigger));
+                    }
+                }
             }
 
             return recipients;

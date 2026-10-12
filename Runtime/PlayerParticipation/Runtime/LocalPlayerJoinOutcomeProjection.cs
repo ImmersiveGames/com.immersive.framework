@@ -6,6 +6,17 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "IF-ADR-046 projection from canonical Join result to its narrow outcome (I1).")]
     internal static class LocalPlayerJoinOutcomeProjection
     {
+        internal static LocalPlayerJoinOutcome RejectedInvalidRequest() =>
+            NotAdmitted(LocalPlayerJoinOutcomeCode.RejectedInvalidRequest);
+
+        internal static LocalPlayerJoinOutcome RejectedUnavailable() =>
+            NotAdmitted(LocalPlayerJoinOutcomeCode.RejectedUnavailable);
+
+        internal static LocalPlayerJoinOutcome RejectedConfiguration() =>
+            NotAdmitted(LocalPlayerJoinOutcomeCode.RejectedConfiguration);
+
+        internal static LocalPlayerJoinOutcome FailedUnknown() => Unknown();
+
         internal static LocalPlayerJoinOutcome Project(LocalPlayerJoinResult result)
         {
             if (result == null)

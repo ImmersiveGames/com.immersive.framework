@@ -96,6 +96,44 @@ namespace Immersive.Framework.PlayerParticipation
                 consumer.ReleaseScopedAccess);
         }
 
+        internal static PlayerSessionScopedBindingRecipient ForJoinTrigger(
+            PlayerSessionJoinTrigger trigger)
+        {
+            if (trigger == null)
+                return null;
+
+            LocalPlayerProvisioningConsumerScope authoredScope = trigger.Scope;
+            return new PlayerSessionScopedBindingRecipient(
+                trigger,
+                authoredScope,
+                typeof(PlayerSessionJoinTrigger),
+                (out string issue) =>
+                {
+                    if (!trigger.TryValidateBindingScope(out issue))
+                        return false;
+
+                    if (trigger.Scope == authoredScope)
+                        return true;
+
+                    issue = "Player Session Join trigger scope changed after binding discovery.";
+                    return false;
+                },
+                lease => new ManagerPlayerSessionJoinPort(lease),
+                (IDisposable binding,
+                    LocalPlayerProvisioningConsumerScope actualScope,
+                    out string issue) =>
+                {
+                    if (binding is not IPlayerSessionJoinPort joinPort)
+                    {
+                        issue = "Player Session Join trigger requires its internal canonical Join port.";
+                        return false;
+                    }
+
+                    return trigger.TryBindJoinPort(joinPort, actualScope, out issue);
+                },
+                trigger.ReleaseJoinPort);
+        }
+
         internal bool TryValidateScope(out string issue)
         {
             if (_component == null)
