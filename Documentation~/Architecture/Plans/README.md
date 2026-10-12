@@ -13,6 +13,10 @@ Accepted architecture implementation route (implementation pending):
 
 - [IF-ADR-045 — Runtime-Safe Scene References v1](IF-PLAN-ADR-045-RUNTIME-SAFE-SCENE-REFERENCES.v1.md)
 
+Implementation plan proposed for review (not yet authorized for execution):
+
+- [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary v1](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v1.md)
+
 Superseded distribution plan and execution record:
 
 - [OpenUPM Public Package Distribution v1](IF-PLAN-OPENUPM-PUBLIC-DISTRIBUTION.v1.md)
