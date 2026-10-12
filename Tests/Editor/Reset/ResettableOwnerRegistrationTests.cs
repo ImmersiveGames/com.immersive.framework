@@ -237,6 +237,44 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
+        public void Release_PartialFailureRetainsOnlyFailedReceiptAndRetryCompletesWithoutDoubleUnregister()
+        {
+            GameObject firstRoot = CreateObject("FirstRoot");
+            Resettable first = AddResettable(firstRoot);
+            AddTransformCapability(firstRoot);
+            GameObject secondRoot = CreateObject("SecondRoot");
+            Resettable second = AddResettable(secondRoot);
+            AddTransformCapability(secondRoot);
+            GameObject foreignRoot = CreateObject("ForeignRoot");
+            Resettable foreign = AddResettable(foreignRoot);
+            AddTransformCapability(foreignRoot);
+
+            Assert.IsTrue(
+                _registration.TryRegisterOwnerContent(_activityA, new[] { firstRoot, secondRoot }, "test", "partial-release", out string ownerDiagnostic),
+                ownerDiagnostic);
+            Assert.IsTrue(Register(_activityB, foreignRoot, out string foreignDiagnostic), foreignDiagnostic);
+
+            ResetRegistrationHandle firstHandle = first.SubjectHandle;
+            ResetSubject firstSubject = first.Subject;
+            first.MarkRegistered(foreign.SubjectHandle, foreign.Subject, foreign.RegisteredCapabilityCount);
+
+            Assert.IsFalse(_registration.TryReleaseOwner(_activityA, "test", "partial-release", out string failureDiagnostic));
+            StringAssert.Contains("resettable-release-failed", failureDiagnostic);
+            Assert.AreEqual(1, _registration.GetRegisteredResettableCount(_activityA));
+            Assert.IsFalse(second.IsRegistered, "The successful member should be released exactly once.");
+            Assert.IsTrue(first.IsRegistered, "The failed member must retain retry evidence.");
+            Assert.AreEqual(foreign.SubjectHandle, first.SubjectHandle);
+            Assert.AreEqual(2, _registry.SubjectCount, "Only the failed owner member and the foreign owner's member remain.");
+
+            first.MarkRegistered(firstHandle, firstSubject, 1);
+            Assert.IsTrue(_registration.TryReleaseOwner(_activityA, "test", "retry-release", out string retryDiagnostic), retryDiagnostic);
+            Assert.IsFalse(first.IsRegistered);
+            Assert.AreEqual(0, _registration.GetRegisteredResettableCount(_activityA));
+            Assert.AreEqual(1, _registry.SubjectCount);
+            Assert.IsTrue(foreign.IsRegistered);
+        }
+
+        [Test]
         public void Registration_RejectsSameOwnerUntilReleased()
         {
             GameObject first = CreateObject("First");

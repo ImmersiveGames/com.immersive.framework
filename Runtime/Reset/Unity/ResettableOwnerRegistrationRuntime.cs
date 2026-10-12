@@ -145,13 +145,38 @@ namespace Immersive.Framework.Reset.Unity
                         out int capabilityCount,
                         out string registrationIssue))
                 {
+                    var rollbackFailures = new List<Resettable>();
+                    var rollbackDiagnostics = new List<string>();
+                    if (resettable.IsRegistered)
+                    {
+                        rollbackFailures.Add(resettable);
+                        rollbackDiagnostics.Add($"handle='{resettable.SubjectHandle}' status='compensation-failed' message='{registrationIssue}'");
+                    }
                     for (int rollbackIndex = registered.Count - 1; rollbackIndex >= 0; rollbackIndex--)
                     {
-                        UnregisterResettable(registered[rollbackIndex], resolvedSource, "resettable-registration-atomic-rollback");
+                        Resettable rollbackTarget = registered[rollbackIndex];
+                        if (!UnregisterResettable(
+                                rollbackTarget,
+                                resolvedSource,
+                                "resettable-registration-atomic-rollback",
+                                out ResetRegistryOperationResult rollbackResult))
+                        {
+                            rollbackFailures.Add(rollbackTarget);
+                            rollbackDiagnostics.Add($"handle='{rollbackTarget.SubjectHandle}' status='{rollbackResult.Status}' message='{rollbackResult.Message}'");
+                        }
+                    }
+
+                    if (rollbackFailures.Count > 0)
+                    {
+                        rollbackFailures.Reverse();
+                        _resettablesByOwner[owner] = rollbackFailures;
                     }
 
                     diagnostic =
-                        $"resettable-registration-failed: owner='{owner.StableText}' resettable='{resettable.DisplayName}'. {registrationIssue} Previously created registrations of this call were removed.";
+                        $"resettable-registration-failed: owner='{owner.StableText}' resettable='{resettable.DisplayName}'. {registrationIssue} " +
+                        (rollbackFailures.Count == 0
+                            ? "Previously created registrations of this call were removed."
+                            : $"Atomic rollback incomplete; retry evidence retained for '{rollbackFailures.Count}' registrations. {string.Join("; ", rollbackDiagnostics)}.");
                     return false;
                 }
 
@@ -201,20 +226,32 @@ namespace Immersive.Framework.Reset.Unity
                 return true;
             }
 
-            int failed = 0;
+            var failedResettables = new List<Resettable>();
+            var failedHandles = new List<string>();
             for (int index = resettables.Count - 1; index >= 0; index--)
             {
-                if (!UnregisterResettable(resettables[index], resolvedSource, resolvedReason))
+                Resettable resettable = resettables[index];
+                if (!UnregisterResettable(resettable, resolvedSource, resolvedReason, out ResetRegistryOperationResult result))
                 {
-                    failed++;
+                    failedResettables.Add(resettable);
+                    failedHandles.Add($"handle='{resettable.SubjectHandle}' status='{result.Status}' message='{result.Message}'");
                 }
             }
 
-            _resettablesByOwner.Remove(owner);
-            diagnostic = failed == 0
+            if (failedResettables.Count == 0)
+            {
+                _resettablesByOwner.Remove(owner);
+            }
+            else
+            {
+                failedResettables.Reverse();
+                _resettablesByOwner[owner] = failedResettables;
+            }
+
+            diagnostic = failedResettables.Count == 0
                 ? $"resettable-{operation}-completed: owner='{owner.StableText}' resettables='{resettables.Count}'."
-                : $"resettable-{operation}-failed: owner='{owner.StableText}' resettables='{resettables.Count}' failed='{failed}'.";
-            return failed == 0;
+                : $"resettable-{operation}-failed: owner='{owner.StableText}' resettables='{resettables.Count}' failed='{failedResettables.Count}'. Retry evidence retained. {string.Join("; ", failedHandles)}.";
+            return failedResettables.Count == 0;
         }
 
         private bool TryRegisterResettable(
@@ -246,6 +283,7 @@ namespace Immersive.Framework.Reset.Unity
             }
 
             ResetRegistrationHandle subjectHandle = subjectResult.Handle;
+            resettable.MarkRegistered(subjectHandle, subjectResult.Subject, 0);
             for (int index = 0; index < capabilities.Count; index++)
             {
                 MonoBehaviour capability = capabilities[index];
@@ -258,10 +296,18 @@ namespace Immersive.Framework.Reset.Unity
                     reason);
                 if (!participantResult.Succeeded)
                 {
-                    _registry.Unregister(subjectHandle, resettable, source, "resettable-capability-registration-failed");
+                    resettable.MarkRegistered(subjectHandle, subjectResult.Subject, capabilityCount);
+                    bool compensationSucceeded = UnregisterResettable(
+                        resettable,
+                        source,
+                        "resettable-capability-registration-failed",
+                        out ResetRegistryOperationResult compensationResult);
                     issue =
                         $"Capability '{capability.GetType().Name}' registration rejected. " +
-                        FirstIssue(participantResult);
+                        FirstIssue(participantResult) +
+                        (compensationSucceeded
+                            ? " Subject compensation succeeded."
+                            : $" Subject compensation failed; receipt retained. status='{compensationResult.Status}' message='{compensationResult.Message}'.");
                     return false;
                 }
 
@@ -273,26 +319,33 @@ namespace Immersive.Framework.Reset.Unity
             return true;
         }
 
-        private bool UnregisterResettable(Resettable resettable, string source, string reason)
+        private bool UnregisterResettable(
+            Resettable resettable,
+            string source,
+            string reason,
+            out ResetRegistryOperationResult result)
         {
             if (ReferenceEquals(resettable, null))
             {
+                result = default;
                 return true;
             }
 
             ResetRegistrationHandle handle = resettable.SubjectHandle;
             if (!handle.IsSubject)
             {
+                result = default;
                 return true;
             }
 
-            ResetRegistryOperationResult result = _registry.Unregister(handle, resettable, source, reason);
-            if (resettable != null)
+            result = _registry.Unregister(handle, resettable, source, reason);
+            if (result.Succeeded)
             {
                 resettable.ClearRegistrationEvidence();
+                return true;
             }
 
-            return result.Succeeded;
+            return false;
         }
 
         private static List<Resettable> CollectResettables(IReadOnlyList<GameObject> roots)

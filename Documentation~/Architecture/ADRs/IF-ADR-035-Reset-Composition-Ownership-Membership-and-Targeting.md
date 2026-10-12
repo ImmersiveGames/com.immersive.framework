@@ -722,3 +722,11 @@ Multiple Participants
 The Multiple Participants proof uses one root `Resettable` with capabilities collected from two descendant GameObjects: one Transform capability and one GameObject active-state capability. The Resettable diagnostic display name remains free to preserve the original authored object name; it is not runtime identity.
 
 This closure records consumer proof of the accepted architecture. It does not change the normative model and does not claim UPM package-import/release validation.
+
+## 25. Owner release integrity — 2026-10-12
+
+Owner-aware Resettable rollback and release retain retry evidence until `ResetRegistry.Unregister` confirms `Unregistered` or `AlreadyUnregistered`. A rejected unregister is a failed operation: the Resettable receipt and owner bucket remain available, and diagnostics identify the retained handle and registry result.
+
+For a partially completed owner release, successful members clear their receipt and are removed from the retry set; only failed members remain. A later retry therefore cannot unregister successful members twice. Atomic registration rollback follows the same rule and reports incomplete compensation instead of claiming that all registrations were removed. The registry remains the authority for whether a registration exists; local owner bookkeeping is not proof of registry removal.
+
+This invariant does not add automatic or unbounded retries. The owning Route/Activity transaction remains responsible for observing a failed release and deciding when to retry. Unity EditMode and lifecycle integration validation are required for execution evidence.
