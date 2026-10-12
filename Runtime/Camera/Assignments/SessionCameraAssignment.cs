@@ -5,10 +5,14 @@ using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.Camera
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment occurrence policy.")]
     public enum CameraOccurrenceMode { Undefined = 0, SessionScoped = 1, IndividualPerPlayer = 2, SharedGroup = 3 }
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment membership policy.")]
     public enum CameraMembershipPolicy { Undefined = 0, None = 1, ExplicitPlayerSlots = 2 }
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment target policy.")]
     public enum CameraTargetPolicy { Undefined = 0, NoSubject = 1, ExplicitWorldTarget = 2, MemberActorTargets = 3 }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment Output mapping value.")]
     public readonly struct CameraOutputMapping : IEquatable<CameraOutputMapping>
     {
         public CameraOutputMapping(CameraOutputId outputId) { OutputId = outputId; }
@@ -19,6 +23,7 @@ namespace Immersive.Framework.Camera
         public override int GetHashCode() => OutputId.GetHashCode();
     }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 Session Camera Assignment Player-to-Output mapping value.")]
     public readonly struct CameraPlayerOutputMapping : IEquatable<CameraPlayerOutputMapping>
     {
         public CameraPlayerOutputMapping(PlayerSlotId playerSlotId, CameraOutputId outputId)

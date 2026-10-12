@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -9,6 +10,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// readiness and lifecycle evidence. It exposes diagnostics only; runtime
     /// authority remains in the scoped Session and Activity modules.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-015 Player lifecycle observation; outside the bounded Stable Join outcome in IF-ADR-046.")]
     public sealed class ManagerProvisionedPlayerLifecycleSnapshot
     {
         private static readonly IReadOnlyList<

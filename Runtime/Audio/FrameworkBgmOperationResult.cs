@@ -1,10 +1,12 @@
 using Immersive.Audio.Authoring;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Audio
 {
     /// <summary>
     /// API status: Experimental. Framework-owned evidence for an optional BGM provider operation.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-013 optional Audio BGM operation result and outcome contract.")]
     public readonly struct FrameworkBgmOperationResult
     {
         private FrameworkBgmOperationResult(
@@ -68,6 +70,7 @@ namespace Immersive.Framework.Audio
         }
     }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-013 optional Audio BGM operation vocabulary.")]
     public enum FrameworkBgmOperation
     {
         Apply = 0,
@@ -79,6 +82,7 @@ namespace Immersive.Framework.Audio
         Preserve = 2
     }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-013 optional Audio BGM operation outcome vocabulary.")]
     public enum FrameworkBgmOperationOutcome
     {
         Applied = 0,

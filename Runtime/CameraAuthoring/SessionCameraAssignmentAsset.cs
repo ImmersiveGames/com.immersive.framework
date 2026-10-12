@@ -9,6 +9,7 @@ using UnityEngine;
 namespace Immersive.Framework.CameraAuthoring
 {
     [Serializable]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-038 serialized member Output authoring value inside the Experimental Session Camera Assignment asset.")]
     public sealed class SessionCameraMemberOutputAuthoring
     {
         [SerializeField] private PlayerSlotProfile playerSlotProfile;

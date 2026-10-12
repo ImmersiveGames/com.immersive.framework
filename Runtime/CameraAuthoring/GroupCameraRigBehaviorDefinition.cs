@@ -1,9 +1,11 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     [CreateAssetMenu(fileName = "Group Camera Rig Behavior", menuName = "Immersive Framework/Camera/Rig Behaviors/Group")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-027-C reusable Camera Rig behavior; IF-ADR-038 Session Camera use.")]
     public sealed class GroupCameraRigBehaviorDefinition : CameraRigBehaviorDefinition
     {
         [SerializeField] private CameraTargetRequirement followRequirement = CameraTargetRequirement.Required;

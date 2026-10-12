@@ -1,9 +1,11 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     [CreateAssetMenu(fileName = "Mounted Camera Rig Behavior", menuName = "Immersive Framework/Camera/Rig Behaviors/Mounted")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-027-C reusable Camera Rig behavior; IF-ADR-038 Session Camera use.")]
     public sealed class MountedCameraRigBehaviorDefinition : CameraRigBehaviorDefinition
     {
         [SerializeField, Min(0f)] private float positionDamping;

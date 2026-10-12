@@ -1,9 +1,11 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     [CreateAssetMenu(fileName = "Follow Camera Rig Behavior", menuName = "Immersive Framework/Camera/Rig Behaviors/Follow")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-027-C reusable Camera Rig behavior; IF-ADR-038 Session Camera use.")]
     public sealed class FollowCameraRigBehaviorDefinition : CameraRigBehaviorDefinition
     {
         [SerializeField] private CameraTargetRequirement lookAtRequirement = CameraTargetRequirement.Optional;

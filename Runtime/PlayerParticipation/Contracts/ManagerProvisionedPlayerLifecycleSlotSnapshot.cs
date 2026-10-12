@@ -1,4 +1,5 @@
 using System;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
@@ -6,6 +7,7 @@ namespace Immersive.Framework.PlayerParticipation
     /// Immutable, read-only evidence for one Player Slot in the current
     /// Manager-Provisioned lifecycle projection.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-015 Player lifecycle observation; outside the bounded Stable Join outcome in IF-ADR-046.")]
     public sealed class ManagerProvisionedPlayerLifecycleSlotSnapshot
     {
         public ManagerProvisionedPlayerLifecycleSlotSnapshot(

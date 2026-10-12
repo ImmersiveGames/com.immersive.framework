@@ -1,9 +1,11 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     [CreateAssetMenu(fileName = "Third Person Camera Rig Behavior", menuName = "Immersive Framework/Camera/Rig Behaviors/Third Person")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "CAMERA-027-C reusable Camera Rig behavior; IF-ADR-038 Session Camera use.")]
     public sealed class ThirdPersonCameraRigBehaviorDefinition : CameraRigBehaviorDefinition
     {
         [SerializeField] private Vector3 shoulderOffset = new Vector3(0.5f, -0.4f, 0f);
