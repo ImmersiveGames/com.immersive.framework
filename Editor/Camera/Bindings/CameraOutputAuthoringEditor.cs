@@ -1,10 +1,12 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Editor.CameraAuthoring;
 using UnityEditor;
 using UnityEngine;
 namespace Immersive.Framework.Editor.Camera.Bindings
 {
     [CustomEditor(typeof(CameraOutputAuthoring))]
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Editor Inspector implementation for Camera Output authoring; not product API.")]
     public sealed class CameraOutputAuthoringEditor : UnityEditor.Editor
     {
         private static readonly GUIContent UnityCameraLabel =

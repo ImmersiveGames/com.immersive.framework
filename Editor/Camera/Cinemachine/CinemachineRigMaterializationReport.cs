@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Editor.Camera.Cinemachine
 {
@@ -7,6 +8,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// Diagnostic report for idempotent Cinemachine rig materialization.
     /// The report separates created, repaired, already valid, skipped and blocked outcomes.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Camera Editor Apply/Rebuild diagnostic report.")]
     public sealed class CinemachineRigMaterializationReport
     {
         private readonly List<string> _created = new List<string>();

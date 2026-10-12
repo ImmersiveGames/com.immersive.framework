@@ -1,11 +1,13 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.Editor.Camera.Cinemachine;
 using UnityEditor;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 CameraRigComposer Editor validation and Apply/Rebuild tooling; QAFramework is a known tooling consumer.")]
     public static class CameraRigComposerApplyRebuildUtility
     {
         public static CameraRigComposerApplyRebuildResult Validate(CameraRigComposer composer)

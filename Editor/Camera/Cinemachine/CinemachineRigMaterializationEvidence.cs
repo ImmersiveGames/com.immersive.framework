@@ -1,4 +1,5 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -9,6 +10,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// ExternalOrUnknown is intentionally conservative: compatible pre-existing content
     /// can be used, but it is never silently adopted as Framework-owned.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Camera Editor materialization ownership diagnostics.")]
     public enum CinemachineRigMaterializationOwnership
     {
         None = 0,
@@ -20,6 +22,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// Technical evidence produced by Cinemachine rig materialization.
     /// It is intended for inspector/debug output, QA and later Composer diagnostics.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Camera Editor materialization evidence for Inspector diagnostics and QA.")]
     public sealed class CinemachineRigMaterializationEvidence
     {
         public CameraRigPresentationIntent PresentationIntent { get; internal set; }

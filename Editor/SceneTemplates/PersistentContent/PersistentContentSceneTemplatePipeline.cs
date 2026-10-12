@@ -1,4 +1,5 @@
 using Immersive.Framework.Editor.Validation;
+using Immersive.Framework.ApiStatus;
 using UnityEditor.SceneTemplate;
 using UnityEngine.SceneManagement;
 namespace Immersive.Framework.Editor.SceneTemplates.PersistentContent
@@ -11,6 +12,7 @@ namespace Immersive.Framework.Editor.SceneTemplates.PersistentContent
     /// instantiated scene preserved the required contracts. It never creates,
     /// repairs, saves or assigns consumer assets.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-008 Editor Scene Template verification pipeline; source-scene authoring remains authoritative.")]
     public sealed class PersistentContentSceneTemplatePipeline :
         ISceneTemplatePipeline
     {

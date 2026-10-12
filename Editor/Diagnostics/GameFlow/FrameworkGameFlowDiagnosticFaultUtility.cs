@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.ApplicationLifecycle;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.GameFlow.Diagnostics;
 using UnityEditor;
 using UnityEngine;
@@ -8,6 +9,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 {
     [InitializeOnLoad]
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor-only diagnostic GameFlow fault injection utility; runtime seam remains internal.")]
     public static class FrameworkGameFlowDiagnosticFaultUtility
     {
         private const string LogPrefix = "[Immersive.Framework][GameFlowDiagnosticFault]";

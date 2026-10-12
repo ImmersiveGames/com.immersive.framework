@@ -1,5 +1,6 @@
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Editor.Common;
 using Unity.Cinemachine;
 using UnityEditor;
@@ -8,6 +9,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
     [CustomEditor(typeof(CameraRigComposer))]
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Inspector implementation for the CameraRigComposer product authoring surface.")]
     public sealed class CameraRigComposerEditor : UnityEditor.Editor
     {
 

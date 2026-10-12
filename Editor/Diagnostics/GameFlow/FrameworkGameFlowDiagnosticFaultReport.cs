@@ -1,5 +1,8 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor-only evidence from diagnostic GameFlow fault injection; not product API.")]
     public sealed class FrameworkGameFlowDiagnosticFaultReport
     {
         internal FrameworkGameFlowDiagnosticFaultReport(

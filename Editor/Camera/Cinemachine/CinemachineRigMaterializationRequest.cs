@@ -1,4 +1,5 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -9,6 +10,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// Structural rig configuration only; this request never authorizes
     /// scene/global lookup or Output selection.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Camera Editor materialization request consumed by the local rig tooling.")]
     public sealed class CinemachineRigMaterializationRequest
     {
         public Transform RigRoot { get; set; }

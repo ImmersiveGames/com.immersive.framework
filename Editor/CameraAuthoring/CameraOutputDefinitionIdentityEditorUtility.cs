@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.CameraAuthoring;
 using UnityEditor;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Editor-only validation and explicit repair helper for Camera Output authored identity.")]
     public static class CameraOutputDefinitionIdentityEditorUtility
     {
         public static bool HasCollision(ScriptableObject definition) => FindCollision(definition) != null;

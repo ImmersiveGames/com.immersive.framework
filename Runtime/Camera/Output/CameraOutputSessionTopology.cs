@@ -173,6 +173,7 @@ namespace Immersive.Framework.Camera
         }
     }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Session Camera Output topology entry diagnostics owned by the Internal runtime topology.")]
     public readonly struct CameraOutputTopologyEntrySnapshot
     {
         public CameraOutputTopologyEntrySnapshot(
@@ -193,6 +194,7 @@ namespace Immersive.Framework.Camera
         public string Diagnostic { get; }
     }
 
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Session Camera Output topology diagnostics owned by the Internal runtime topology.")]
     public sealed class CameraOutputTopologySnapshot
     {
         internal CameraOutputTopologySnapshot(

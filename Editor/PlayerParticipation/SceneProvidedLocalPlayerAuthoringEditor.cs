@@ -1,4 +1,5 @@
 using Immersive.Framework.Editor.Common;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
@@ -6,6 +7,7 @@ using UnityEngine;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     [CustomEditor(typeof(SceneProvidedLocalPlayerAuthoring))]
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Inspector implementation for Scene-Provided Player authoring.")]
     public sealed class SceneProvidedLocalPlayerAuthoringEditor : UnityEditor.Editor
     {
         private SerializedProperty _playerSlotProfile;

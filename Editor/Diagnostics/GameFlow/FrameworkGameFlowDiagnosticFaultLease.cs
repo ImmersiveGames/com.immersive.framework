@@ -1,8 +1,10 @@
 using System;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.GameFlow.Diagnostics;
 
 namespace Immersive.Framework.Editor.Diagnostics.GameFlow
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor-only lease for diagnostic GameFlow fault injection; not product API.")]
     public sealed class FrameworkGameFlowDiagnosticFaultLease : IDisposable
     {
         private readonly Action<FrameworkGameFlowDiagnosticFaultLease> _release;

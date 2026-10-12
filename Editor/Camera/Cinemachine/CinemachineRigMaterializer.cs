@@ -1,4 +1,5 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
 using UnityEditor;
 using UnityEngine;
@@ -9,6 +10,7 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
     /// Editor-only utility that creates or repairs one supported Cinemachine
     /// rig behavior pipeline. This materializer operates only on the supplied local rig.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Camera Class C Editor materialization implementation; not runtime authority or product API.")]
     public static class CinemachineRigMaterializer
     {
         private enum PositionControlKind

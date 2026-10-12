@@ -1,4 +1,5 @@
 using System;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
@@ -6,6 +7,7 @@ using UnityEngine;
 
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor-only validation and diagnostics for an already-authored Scene-Provided Player composition.")]
     public readonly struct SceneProvidedLocalPlayerAuthoringResult
     {
         public SceneProvidedLocalPlayerAuthoringResult(
@@ -27,6 +29,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
     /// Editor-only provenance validation for an already authored Scene-Provided composition.
     /// It never materializes or writes composition state.
     /// </summary>
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "Editor-only provenance validation for Scene-Provided Player authoring; not runtime authority.")]
     public static class SceneProvidedLocalPlayerAuthoringUtility
     {
         public static SceneProvidedLocalPlayerAuthoringResult Validate(

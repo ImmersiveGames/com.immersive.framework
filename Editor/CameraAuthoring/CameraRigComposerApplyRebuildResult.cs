@@ -1,5 +1,8 @@
+using Immersive.Framework.ApiStatus;
+
 namespace Immersive.Framework.Editor.CameraAuthoring
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 CameraRigComposer Editor Apply/Rebuild result consumed by QA tooling.")]
     public readonly struct CameraRigComposerApplyRebuildResult
     {
         private CameraRigComposerApplyRebuildResult(bool succeeded, string status, string blockingIssue, string materializationSummary, int createdCount, int repairedCount, int alreadyValidCount, int skippedCount, int blockedCount)

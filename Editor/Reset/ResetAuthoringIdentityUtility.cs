@@ -1,8 +1,10 @@
 using UnityEditor;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Editor.Common;
 
 namespace Immersive.Framework.Editor.Reset
 {
+    [FrameworkApiStatus(FrameworkApiStatus.DevelopmentTooling, "IF-ADR-010 Editor helper for explicit Reset authoring identity suggestions and prefab recording.")]
     public static class ResetAuthoringIdentityUtility
     {
         public static bool GenerateMissingSubjectId(
