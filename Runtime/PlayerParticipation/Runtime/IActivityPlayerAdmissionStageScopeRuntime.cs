@@ -1,7 +1,11 @@
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "P3K.7B frozen/preparatory Activity Player admission stage scope runtime contract; IF-ADR-003.")]
     public interface IActivityPlayerAdmissionStageScopeRuntime
     {
         bool TryCreate(

@@ -1,4 +1,5 @@
 using Immersive.Framework.Authoring;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.RuntimeContent;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -7,6 +8,9 @@ namespace Immersive.Framework.PlayerParticipation
     /// Explicit staging-scope handle. Public adapters receive only Activity and owner
     /// evidence; the exact RuntimeScopeContext remains package-internal.
     /// </summary>
+    [FrameworkApiStatus(
+        FrameworkApiStatus.Experimental,
+        "P3K.7B frozen/preparatory Activity Player admission staging scope; IF-ADR-003.")]
     public sealed class ActivityPlayerAdmissionStageScope
     {
         public ActivityPlayerAdmissionStageScope(
