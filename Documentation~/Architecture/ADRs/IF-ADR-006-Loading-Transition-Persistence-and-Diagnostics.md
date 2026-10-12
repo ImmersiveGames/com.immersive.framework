@@ -1,7 +1,7 @@
 # IF-ADR-006 — Loading, Transition, Persistence and Diagnostics
 
 Status: **Accepted**  
-Last updated: 2026-08-10  
+Last updated: 2026-10-12
 Related decisions: IF-ADR-001, IF-ADR-005, IF-ADR-007, IF-ADR-011, IF-ADR-015  
 Current reconciliation: [ADR-006 reconciliation](../Reconciliation/IMMERSIVE-FRAMEWORK-ADR-006-RECONCILIATION-2026-08-10.md)
 
@@ -87,25 +87,32 @@ Activity authority.
 
 ## F22 Loading Screen adapter disposition — 2026-10-12
 
-Plan to discontinue `ILoadingScreenAdapter` and the F22-only public types used
-exclusively by that adapter contract after checking for consumers outside the
-Framework, QAFramework and FirstGame repositories. This is a removal plan, not
-a declaration that the contract is already Deprecated or Removed. Until that
-consumer check and removal decision are complete, retain the existing source and
-metadata.
+**Decision: Removed.** Under IF-GOV-001 §2, the disconnected Experimental F22
+surface is discontinued and its source and metadata are removed. No current
+composition or consumer references were found in this package, QAFramework or
+FirstGame. The removed F22-only types are `ILoadingScreenAdapter`,
+`LoadingScreenPresentation`, `LoadingScreenAdapterResult`,
+`LoadingScreenAdapterAction`, `LoadingScreenAdapterStatus`,
+`LoadingOperation`, `LoadingOperationId`, `LoadingOperationStatus`,
+`LoadingProgressAggregationResult`, `LoadingProgressAggregationStatus`,
+`LoadingProgressAggregator`, `LoadingObservationAdapter`, `LoadingIssue`,
+`LoadingIssueSeverity`, `LoadingReadinessObservation`,
+`LoadingReadinessObservationId`, `LoadingReadinessStatus`, `LoadingResult`,
+`LoadingResultStatus`, `LoadingStep`, `LoadingStepId`, `LoadingStepStatus`,
+`LoadingStepWeight` and `LoadingWeightedProgress`. These surfaces were
+Experimental or Internal; this decision does not change the meaning of any
+`FrameworkApiStatus` category or alter a Stable contract.
 
-The confirmed adapter-specific scope includes `LoadingScreenPresentation`,
-`LoadingScreenAdapterResult`, `LoadingScreenAdapterAction` and
-`LoadingScreenAdapterStatus`. Other F22 types are in scope only if the consumer
-check confirms they are exclusive to this path.
+`LoadingProgress` remains because the current F24 `LoadingSurfaceRequest` and
+progress presentation path consume it. The canonical Loading path remains
+`ILoadingSurfaceAdapter` with `LoadingSurfaceRequest`/`LoadingSurfaceRuntime`,
+composed from Global UI and driven by Framework lifecycle operations. This
+decision does not change Loading's presentation-only authority or readiness
+ownership and introduces no replacement adapter or API.
 
-The current Loading presentation path remains `ILoadingSurfaceAdapter` with
-`LoadingSurfaceRequest`/`LoadingSurfaceRuntime`, composed from Global UI and
-driven by Framework lifecycle operations. The F22 removal scope must exclude
-types still required by that path. This disposition does not change Loading's
-presentation-only authority, readiness ownership, or any API maturity.
-
-Evidence: `Runtime/Loading/ILoadingScreenAdapter.cs` has no current composition
-call site; `Runtime/GlobalUi/GlobalUiSceneRuntime.cs` collects
-`ILoadingSurfaceAdapter`, and `Runtime/ApplicationLifecycle/FrameworkRuntimeHost.cs`
-creates the current `LoadingSurfaceRuntime`.
+Evidence: the removed F22 types had no references outside their own cluster in
+Runtime, Editor, Tests or package documentation other than this decision record.
+`Runtime/GlobalUi/GlobalUiSceneRuntime.cs` collects
+`ILoadingSurfaceAdapter`, `Runtime/ApplicationLifecycle/FrameworkRuntimeHost.cs`
+creates the current `LoadingSurfaceRuntime`, and F24 contracts consume
+`LoadingProgress`.
