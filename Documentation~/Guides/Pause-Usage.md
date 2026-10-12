@@ -1,7 +1,7 @@
 # Input and Pause Usage
 
 Status: **Stable single-player Pause/Input/Gate product surface. Multiplayer Pause policy is out of scope.**
-Last updated: **2026-09-30**
+Last updated: **2026-10-12**
 
 ## Choose a request path
 
@@ -22,6 +22,10 @@ On the same Local Player Host GameObject, add:
 Configure the Gate Adapter with the exact `PlayerInput` and Gameplay Action Map. On `PlayerPauseInput`, assign the Pause `InputActionReference` (for example, the `Global/Pause` action). The Global map is derived from that action; do not configure a second map by name.
 
 The binding belongs to the admitted Session Local Player Host lifetime. Activity scene changes do not release it while that Host remains current. A Pause-owned transaction applies logical Pause and the physical Action Map posture together. On failure it compensates the logical snapshot and physical posture; an invalid or missing binding is reported and does not switch to an unrelated input map. `PauseRuntime` owns logical Pause, the Input Gate evaluates logical blockers, and the adapter/writer alone applies physical `PlayerInput` state.
+
+The adapter verifies the Gameplay Action Map's enabled state before reporting it blocked. If automatic Gate projection fails, it makes at most two `Update` attempts while the logical intent remains unchanged. A new Gate intent or runtime binding resets the attempt window. Use **Apply Current Gate** or **Restore** on the adapter for a deliberate retry. A logical blocker does not prove the physical map is disabled; persistent write failure can leave gameplay input available and does not automatically reject Activity.
+
+On Session Host release, a failed posture restore retains the binding token and exact initial posture receipt while the same `PlayerInput` exists. A later Host lifecycle signal retries release; the **Retry Binding Release** component command allows a deliberate retry. A failed Activity-exit restore keeps Pause logically Paused and retains its Pause-time receipt for the next exit attempt. If the exact `PlayerInput` was destroyed, cleanup terminates with a destroyed-target diagnostic; it does not claim that posture restoration succeeded.
 
 ## Pause request trigger
 

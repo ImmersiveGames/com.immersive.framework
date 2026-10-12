@@ -1,6 +1,7 @@
 using System;
 using Immersive.Framework.Common;
 using Immersive.Framework.Pause;
+using Immersive.Framework.UnityInput;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -43,9 +44,12 @@ namespace Immersive.Framework.ApplicationLifecycle
             string resolvedSource = source.NormalizeTextOrFallback(nameof(FrameworkRuntimeHost));
             string resolvedReason = reason.NormalizeTextOrFallback("activity-exit-pause-cleanup");
 
+            PlayerInputPostureRestoreOutcome physicalOutcome =
+                PlayerInputPostureRestoreOutcome.Restored;
             if (_pauseProductBindingRuntime != null &&
                 !_pauseProductBindingRuntime.TryRestorePhysicalPostureForLifecycleExit(
                     resolvedReason,
+                    out physicalOutcome,
                     out string physicalDiagnostic))
             {
                 diagnostic =
@@ -53,6 +57,10 @@ namespace Immersive.Framework.ApplicationLifecycle
                     physicalDiagnostic;
                 return false;
             }
+
+            bool physicalTargetDestroyed =
+                _pauseProductBindingRuntime != null &&
+                physicalOutcome == PlayerInputPostureRestoreOutcome.TargetDestroyed;
 
             if (!((IPauseProductApplicationPort)this).TryRestorePauseSnapshot(
                     PauseSnapshot.FromState(
@@ -76,8 +84,9 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return false;
             }
 
-            diagnostic =
-                "Pause Activity exit precondition restored physical PlayerInput posture and resumed Running through the canonical pipeline.";
+            diagnostic = physicalTargetDestroyed
+                ? "Pause Activity exit resumed Running after the exact PlayerInput target was destroyed; physical posture restoration was not confirmed."
+                : "Pause Activity exit precondition restored physical PlayerInput posture and resumed Running through the canonical pipeline.";
             return true;
         }
     }

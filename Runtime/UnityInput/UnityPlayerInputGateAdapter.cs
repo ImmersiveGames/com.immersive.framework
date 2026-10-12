@@ -63,6 +63,7 @@ namespace Immersive.Framework.UnityInput
         private string _inputGateRuntimeBindingDiagnostic =
             "Input Gate runtime port is not bound.";
         private bool _isBlockedByAdapter;
+        private PlayerInput _blockedPlayerInput;
         private bool _isBlockedByConsumer;
         private bool _consumerBlockOwnsSuppressedPosture;
         private bool _actionMapWasEnabledBeforeBlock;
@@ -70,6 +71,10 @@ namespace Immersive.Framework.UnityInput
         private string _lastReason = string.Empty;
         private bool _loggedMissingRuntime;
         private bool _loggedMissingTarget;
+        private bool _hasObservedGateIntent;
+        private bool _lastObservedGateIntent;
+        private int _consecutiveUpdateFailures;
+        private const int MaximumAutomaticUpdateAttempts = 2;
 
         public PlayerInput PlayerInput =>
             ResolvePlayerInput();
@@ -96,7 +101,8 @@ namespace Immersive.Framework.UnityInput
             blockOnGameplayAction;
 
         public bool IsBlockedByAdapter =>
-            _isBlockedByAdapter;
+            _isBlockedByAdapter &&
+            IsGameplayActionMapPhysicallyBlocked(_blockedPlayerInput);
 
         internal bool IsBlockedByConsumer =>
             _isBlockedByConsumer;
@@ -193,6 +199,7 @@ namespace Immersive.Framework.UnityInput
             {
                 _inputGateRuntime = inputGateRuntime;
                 _loggedMissingRuntime = false;
+                _consecutiveUpdateFailures = 0;
                 issue = string.Empty;
                 _inputGateRuntimeBindingDiagnostic =
                     $"Bound '{inputGateRuntime.GetType().FullName}'.";
@@ -233,7 +240,7 @@ namespace Immersive.Framework.UnityInput
 
             bool expectedPhysicalBlock =
                 blocked || IsBlockedByCurrentRuntimeGate();
-            if (_isBlockedByAdapter == expectedPhysicalBlock)
+            if (IsGameplayActionMapPhysicallyBlocked() == expectedPhysicalBlock)
             {
                 issue = string.Empty;
                 return true;
@@ -260,9 +267,35 @@ namespace Immersive.Framework.UnityInput
             }
         }
 
-        private void Update() =>
-            ApplyFromCurrentRuntimeGate(
-                "update");
+        private void Update()
+        {
+            bool desiredBlock = IsBlockedByCurrentRuntimeGate() ||
+                _isBlockedByConsumer;
+            if (!_hasObservedGateIntent ||
+                desiredBlock != _lastObservedGateIntent)
+            {
+                _hasObservedGateIntent = true;
+                _lastObservedGateIntent = desiredBlock;
+                _consecutiveUpdateFailures = 0;
+            }
+
+            if (_consecutiveUpdateFailures >= MaximumAutomaticUpdateAttempts)
+            {
+                _lastStatus = "RetryLimitReached";
+                _lastReason = "update";
+                return;
+            }
+
+            ApplyFromCurrentRuntimeGate("update");
+            if (IsRetryableFailureStatus(_lastStatus))
+            {
+                _consecutiveUpdateFailures++;
+            }
+            else
+            {
+                _consecutiveUpdateFailures = 0;
+            }
+        }
 
         private void OnDisable() =>
             RestoreIfNeeded(
@@ -273,14 +306,18 @@ namespace Immersive.Framework.UnityInput
                 "component-destroyed");
 
         [ContextMenu("Immersive Framework/Unity Input/Gate Adapter/Apply Current Gate")]
-        public void ApplyCurrentGate() =>
-            ApplyFromCurrentRuntimeGate(
-                "context-menu");
+        public void ApplyCurrentGate()
+        {
+            _consecutiveUpdateFailures = 0;
+            ApplyFromCurrentRuntimeGate("context-menu");
+        }
 
         [ContextMenu("Immersive Framework/Unity Input/Gate Adapter/Restore")]
-        public void Restore() =>
-            RestoreIfNeeded(
-                "context-menu-restore");
+        public void Restore()
+        {
+            _consecutiveUpdateFailures = 0;
+            RestoreIfNeeded("context-menu-restore");
+        }
 
         internal bool TrySelectActionMap(
             string actionMapName,
@@ -405,10 +442,27 @@ namespace Immersive.Framework.UnityInput
             out UnityPlayerInputActionMapSetWriteReceipt receipt,
             out string issue)
         {
-            receipt = default;
+            return TryApplyActionMapSet(
+                ResolvePlayerInput(),
+                primaryActionMapName,
+                enabledActionMapNames,
+                source,
+                reason,
+                out receipt,
+                out issue);
+        }
 
-            PlayerInput resolvedPlayerInput =
-                ResolvePlayerInput();
+        internal bool TryApplyActionMapSet(
+            PlayerInput exactPlayerInput,
+            string primaryActionMapName,
+            IReadOnlyList<string> enabledActionMapNames,
+            string source,
+            string reason,
+            out UnityPlayerInputActionMapSetWriteReceipt receipt,
+            out string issue)
+        {
+            receipt = default;
+            PlayerInput resolvedPlayerInput = exactPlayerInput;
 
             if (resolvedPlayerInput == null)
             {
@@ -427,13 +481,23 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            _actionMapWasEnabledBeforeBlock =
-                ContainsActionMap(
-                    enabledActionMapNames,
-                    GameplayActionMapName);
+            if (this == null)
+            {
+                return true;
+            }
 
-            ApplyFromCurrentRuntimeGate(
-                "action-map-set-applied");
+            if (!_isBlockedByAdapter)
+            {
+                _actionMapWasEnabledBeforeBlock =
+                    ContainsActionMap(
+                        enabledActionMapNames,
+                        GameplayActionMapName);
+            }
+
+            if (ReferenceEquals(resolvedPlayerInput, ResolvePlayerInput()))
+            {
+                ApplyFromCurrentRuntimeGate("action-map-set-applied");
+            }
 
             _lastStatus =
                 "ActionMapSetAppliedByAuthority";
@@ -449,8 +513,22 @@ namespace Immersive.Framework.UnityInput
             string reason,
             out string issue)
         {
-            PlayerInput resolvedPlayerInput =
-                ResolvePlayerInput();
+            return TryRestoreActionMapSet(
+                ResolvePlayerInput(),
+                receipt,
+                source,
+                reason,
+                out issue);
+        }
+
+        internal bool TryRestoreActionMapSet(
+            PlayerInput exactPlayerInput,
+            UnityPlayerInputActionMapSetWriteReceipt receipt,
+            string source,
+            string reason,
+            out string issue)
+        {
+            PlayerInput resolvedPlayerInput = exactPlayerInput;
 
             if (!UnityPlayerInputStateWriter.TryRestoreActionMapSet(
                     resolvedPlayerInput,
@@ -460,14 +538,24 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            _actionMapWasEnabledBeforeBlock =
-                TryResolveGameplayActionMap(
-                    out InputActionMap gameplayMap,
-                    out _) &&
-                gameplayMap.enabled;
+            if (this == null)
+            {
+                return true;
+            }
 
-            ApplyFromCurrentRuntimeGate(
-                "action-map-set-restored");
+            if (!_isBlockedByAdapter)
+            {
+                _actionMapWasEnabledBeforeBlock =
+                    TryResolveGameplayActionMap(
+                        out InputActionMap gameplayMap,
+                        out _) &&
+                    gameplayMap.enabled;
+            }
+
+            if (ReferenceEquals(resolvedPlayerInput, ResolvePlayerInput()))
+            {
+                ApplyFromCurrentRuntimeGate("action-map-set-restored");
+            }
 
             _lastStatus =
                 "ActionMapSetRestoredByAuthority";
@@ -485,11 +573,29 @@ namespace Immersive.Framework.UnityInput
                 out receipt,
                 out issue);
 
-        internal bool TryRestorePosture(
+        internal bool TryCapturePosture(
+            PlayerInput exactPlayerInput,
+            out PausePlayerInputPostureReceipt receipt,
+            out string issue) =>
+            UnityPlayerInputStateWriter.TryCapturePosture(
+                exactPlayerInput,
+                out receipt,
+                out issue);
+
+        internal PlayerInputPostureRestoreOutcome TryRestorePosture(
             PausePlayerInputPostureReceipt receipt,
             out string issue) =>
             UnityPlayerInputStateWriter.TryRestorePosture(
                 ResolvePlayerInput(),
+                receipt,
+                out issue);
+
+        internal PlayerInputPostureRestoreOutcome TryRestorePosture(
+            PlayerInput exactPlayerInput,
+            PausePlayerInputPostureReceipt receipt,
+            out string issue) =>
+            UnityPlayerInputStateWriter.TryRestorePosture(
+                exactPlayerInput,
                 receipt,
                 out issue);
 
@@ -632,18 +738,20 @@ namespace Immersive.Framework.UnityInput
             bool blocksInput,
             bool blocksGameplay)
         {
-            if (_isBlockedByAdapter)
+            if (_isBlockedByAdapter && _blockedPlayerInput == null)
             {
-                _lastStatus =
-                    "AlreadyBlocked";
-                _lastReason =
-                    reason.NormalizeText();
-                return;
+                _isBlockedByAdapter = false;
+                _actionMapWasEnabledBeforeBlock = false;
+                _consumerBlockOwnsSuppressedPosture = false;
             }
 
-            if (_isBlockedByConsumer)
+            if (_isBlockedByAdapter &&
+                _blockedPlayerInput != null &&
+                !ReferenceEquals(_blockedPlayerInput, resolvedPlayerInput))
             {
-                _consumerBlockOwnsSuppressedPosture = true;
+                _lastStatus = "FailedDifferentPlayerInputWhileBlocked";
+                _lastReason = reason.NormalizeText();
+                return;
             }
 
             if (!TryResolveGameplayActionMap(
@@ -663,6 +771,19 @@ namespace Immersive.Framework.UnityInput
                 return;
             }
 
+            if (_isBlockedByAdapter && !gameplayMap.enabled)
+            {
+                _lastStatus = "AlreadyBlocked";
+                _lastReason = reason.NormalizeText();
+                return;
+            }
+
+            bool alreadyOwnedBlock = _isBlockedByAdapter;
+            if (_isBlockedByConsumer)
+            {
+                _consumerBlockOwnsSuppressedPosture = true;
+            }
+
             if (!UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                     resolvedPlayerInput,
                     gameplayMap.name,
@@ -671,6 +792,20 @@ namespace Immersive.Framework.UnityInput
                     out _,
                     out string issue))
             {
+                if (!gameplayMap.enabled)
+                {
+                    if (!alreadyOwnedBlock)
+                    {
+                        _actionMapWasEnabledBeforeBlock = previousEnabled;
+                    }
+                    _blockedPlayerInput = resolvedPlayerInput;
+                    _isBlockedByAdapter = true;
+                    _lastStatus = "BlockedActionMapAfterWriteFailure";
+                    _lastReason = reason.NormalizeText();
+                    LogWriteFailure(issue, reason, blocksInput, blocksGameplay);
+                    return;
+                }
+
                 _lastStatus =
                     "FailedActionMapBlock";
                 _lastReason =
@@ -684,8 +819,23 @@ namespace Immersive.Framework.UnityInput
                 return;
             }
 
-            _actionMapWasEnabledBeforeBlock =
-                previousEnabled;
+            if (gameplayMap.enabled)
+            {
+                _lastStatus = "FailedActionMapBlock";
+                _lastReason = reason.NormalizeText();
+                LogWriteFailure(
+                    "Gameplay Action Map remained enabled after the physical block write.",
+                    reason,
+                    blocksInput,
+                    blocksGameplay);
+                return;
+            }
+
+            if (!alreadyOwnedBlock)
+            {
+                _actionMapWasEnabledBeforeBlock = previousEnabled;
+            }
+            _blockedPlayerInput = resolvedPlayerInput;
             _isBlockedByAdapter = true;
             _lastStatus =
                 "BlockedActionMap";
@@ -715,14 +865,16 @@ namespace Immersive.Framework.UnityInput
             }
 
             PlayerInput resolvedPlayerInput =
-                ResolvePlayerInput();
+                _blockedPlayerInput;
 
             if (resolvedPlayerInput == null)
             {
                 _isBlockedByAdapter = false;
+                _blockedPlayerInput = null;
+                _actionMapWasEnabledBeforeBlock = false;
                 _consumerBlockOwnsSuppressedPosture = false;
                 _lastStatus =
-                    "ReleasedMissingPlayerInput";
+                    "TargetDestroyed";
                 _lastReason =
                     reason.NormalizeText();
                 return;
@@ -730,12 +882,14 @@ namespace Immersive.Framework.UnityInput
 
             bool restored = true;
             string issue = string.Empty;
+            bool restorationRequested = restorePreviousState ||
+                _consumerBlockOwnsSuppressedPosture;
 
-            if ((restorePreviousState ||
-                 _consumerBlockOwnsSuppressedPosture) &&
-                _actionMapWasEnabledBeforeBlock)
+            if (restorationRequested)
             {
-                if (!TryResolveGameplayActionMap(
+                if (resolvedPlayerInput.actions == null ||
+                    !gameplayActionMap.TryResolve(
+                        resolvedPlayerInput.actions,
                         out InputActionMap gameplayMap,
                         out issue))
                 {
@@ -747,15 +901,35 @@ namespace Immersive.Framework.UnityInput
                         UnityPlayerInputStateWriter.TrySetActionMapEnabled(
                             resolvedPlayerInput,
                             gameplayMap.name,
-                            true,
+                            _actionMapWasEnabledBeforeBlock,
                             out _,
                             out _,
                             out issue);
+                    if (gameplayMap.enabled == _actionMapWasEnabledBeforeBlock)
+                    {
+                        restored = true;
+                    }
+                    else if (restored)
+                    {
+                        restored = false;
+                        issue = "Gameplay Action Map did not reach its captured pre-block enabled state.";
+                    }
                 }
             }
 
             if (!restored)
             {
+                if (resolvedPlayerInput == null)
+                {
+                    _isBlockedByAdapter = false;
+                    _blockedPlayerInput = null;
+                    _actionMapWasEnabledBeforeBlock = false;
+                    _consumerBlockOwnsSuppressedPosture = false;
+                    _lastStatus = "TargetDestroyed";
+                    _lastReason = reason.NormalizeText();
+                    return;
+                }
+
                 _lastStatus =
                     "ReleaseFailed";
                 _lastReason =
@@ -770,15 +944,19 @@ namespace Immersive.Framework.UnityInput
             }
 
             _isBlockedByAdapter = false;
+            _blockedPlayerInput = null;
             _actionMapWasEnabledBeforeBlock = false;
             _consumerBlockOwnsSuppressedPosture = false;
-            _lastStatus =
-                "Released";
+            _lastStatus = restorationRequested
+                ? "Released"
+                : "ReleasedWithoutRestoration";
             _lastReason =
                 reason.NormalizeText();
 
             LogStateChange(
-                "Unity PlayerInput Gate Adapter released gameplay input through the canonical writer.",
+                restorationRequested
+                    ? "Unity PlayerInput Gate Adapter confirmed gameplay posture restoration through the canonical writer."
+                    : "Unity PlayerInput Gate Adapter released its block ownership without restoring prior gameplay posture.",
                 _lastStatus,
                 reason,
                 false,
@@ -816,6 +994,32 @@ namespace Immersive.Framework.UnityInput
 
         private PlayerInput ResolvePlayerInput() =>
             playerInput;
+
+        private bool IsGameplayActionMapPhysicallyBlocked()
+        {
+            return IsGameplayActionMapPhysicallyBlocked(ResolvePlayerInput());
+        }
+
+        private bool IsGameplayActionMapPhysicallyBlocked(PlayerInput exactPlayerInput)
+        {
+            return exactPlayerInput != null &&
+                exactPlayerInput.actions != null &&
+                gameplayActionMap.TryResolve(
+                    exactPlayerInput.actions,
+                    out InputActionMap gameplayMap,
+                    out _) &&
+                !gameplayMap.enabled;
+        }
+
+        private static bool IsRetryableFailureStatus(string status)
+        {
+            return status.StartsWith(
+                    "Failed",
+                    System.StringComparison.Ordinal) ||
+                status == "ReleaseFailed" ||
+                status == "SkippedMissingInputGateRuntime" ||
+                status == "SkippedMissingPlayerInput";
+        }
 
         private void TryMigrateLegacyGameplayMap()
         {

@@ -27,6 +27,7 @@ namespace Immersive.Framework.Pause
         private PlayerSlotId _activeSlot;
         private LocalPlayerHostAuthoring _activeHost;
         private PlayerPauseInput _activeBinding;
+        private PauseProductBindingToken _activeBindingToken;
         private FrameworkLogger _logger;
         private bool _shuttingDown;
 
@@ -105,18 +106,40 @@ namespace Immersive.Framework.Pause
                 return;
             }
 
-            if (_activeSlot.IsValid &&
-                playerSlotId == _activeSlot &&
-                (!_playerRuntime.TryGetCurrentSessionPhysicalHost(
-                    playerSlotId,
-                    out LocalPlayerHostAuthoring currentHost,
-                    out _) ||
-                 !ReferenceEquals(currentHost, _activeHost)))
+            if (_activeSlot.IsValid && playerSlotId == _activeSlot)
             {
-                ReleaseActive("session-physical-host-released");
+                bool hostStillCurrent =
+                    _playerRuntime.TryGetCurrentSessionPhysicalHost(
+                        playerSlotId,
+                        out LocalPlayerHostAuthoring currentHost,
+                        out _) &&
+                    ReferenceEquals(currentHost, _activeHost);
+                if (!hostStillCurrent)
+                {
+                    ReleaseActive("session-physical-host-released");
+                    if (_activeBindingToken.IsValid)
+                    {
+                        return;
+                    }
+                }
+                else if (_activeBinding == null ||
+                         _activeBinding.BindingStatus == "ReleasePending")
+                {
+                    ReleaseActive("session-binding-release-retry");
+                    return;
+                }
             }
 
-            if (_activeBinding == null)
+            if (_activeBinding == null && _activeBindingToken.IsValid)
+            {
+                ReleaseActive("session-binding-release-retry");
+                if (_activeBindingToken.IsValid)
+                {
+                    return;
+                }
+            }
+
+            if (_activeBinding == null && !_activeBindingToken.IsValid)
             {
                 TryBindSlot(playerSlotId, "session-physical-host-changed");
             }
@@ -178,6 +201,13 @@ namespace Immersive.Framework.Pause
                     _bindingPort,
                     out string diagnostic))
             {
+                if (binding.HasActiveBinding)
+                {
+                    _activeSlot = playerSlotId;
+                    _activeHost = host;
+                    _activeBinding = binding;
+                    _activeBindingToken = binding.ActiveToken;
+                }
                 LogWarning(
                     playerSlotId,
                     host,
@@ -189,31 +219,59 @@ namespace Immersive.Framework.Pause
             _activeSlot = playerSlotId;
             _activeHost = host;
             _activeBinding = binding;
+            _activeBindingToken = binding.ActiveToken;
         }
 
         private void ReleaseActive(
             string reason)
         {
             PlayerPauseInput binding = _activeBinding;
-            _activeSlot = default;
-            _activeHost = null;
-            _activeBinding = null;
-
-            if (binding == null)
+            if (!_activeBindingToken.IsValid)
             {
+                _activeSlot = default;
+                _activeHost = null;
+                _activeBinding = null;
                 return;
             }
 
-            if (!binding.TryReleaseBinding(
-                    reason,
-                    out string diagnostic))
+            bool released;
+            string diagnostic;
+            if (binding != null)
             {
-                _logger?.Warning(
-                    "Pause Session PlayerInput binding release failed.",
-                    LogFields.Of(
-                        LogFields.Field("reason", reason),
-                        LogFields.Field("issue", diagnostic)));
+                released = binding.TryReleaseBinding(reason, out diagnostic);
             }
+            else
+            {
+                diagnostic = "Pause Session binding port was unavailable for release retry.";
+                PauseBindingReleaseOutcome outcome = PauseBindingReleaseOutcome.Rejected;
+                released = _bindingPort != null && _bindingPort.ReleaseBinding(
+                        _activeBindingToken,
+                        reason,
+                        out outcome,
+                        out diagnostic);
+                if (released && outcome == PauseBindingReleaseOutcome.TargetDestroyed)
+                {
+                    diagnostic = "Pause binding ownership terminated because its exact PlayerInput target was destroyed; physical restoration was not confirmed.";
+                }
+            }
+
+            if (released)
+            {
+                _activeSlot = default;
+                _activeHost = null;
+                _activeBinding = null;
+                _activeBindingToken = default;
+                return;
+            }
+
+            _logger?.Warning(
+                "Pause Session PlayerInput binding release remains pending; owner and retry authority were retained.",
+                LogFields.Of(
+                    LogFields.Field("reason", reason),
+                    LogFields.Field("issue", diagnostic),
+                    LogFields.Field("outcome", binding != null
+                        ? binding.LastReleaseOutcome.ToString()
+                        : PauseBindingReleaseOutcome.FailedRecoverable.ToString())));
         }
 
         private void LogWarning(

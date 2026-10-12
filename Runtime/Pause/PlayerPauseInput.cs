@@ -17,6 +17,7 @@ namespace Immersive.Framework.Pause
 
         private IPauseProductBindingPort _port;
         private PauseProductBindingToken _token;
+        private PauseBindingReleaseOutcome _lastReleaseOutcome;
         private string _bindingStatus = "Unbound";
         private string _bindingDiagnostic =
             "Pause binding has not been composed from the Session Local Player Host lifetime.";
@@ -71,6 +72,12 @@ namespace Immersive.Framework.Pause
         public string BindingDiagnostic => _bindingDiagnostic.NormalizeText();
 
         public bool HasActiveBinding => _token.IsValid;
+
+        internal PauseBindingReleaseOutcome LastReleaseOutcome =>
+            _lastReleaseOutcome;
+
+        internal PauseProductBindingToken ActiveToken =>
+            _token;
 
         public bool TryValidateAuthoring(
             out string diagnostic)
@@ -130,7 +137,16 @@ namespace Immersive.Framework.Pause
                     out PauseProductBindingToken token,
                     out diagnostic))
             {
-                _bindingStatus = "Failed";
+                if (token.IsValid)
+                {
+                    _port = port;
+                    _token = token;
+                    _bindingStatus = "ReleasePending";
+                }
+                else
+                {
+                    _bindingStatus = "Failed";
+                }
                 _bindingDiagnostic = diagnostic;
                 return false;
             }
@@ -203,11 +219,15 @@ namespace Immersive.Framework.Pause
                 _port.ReleaseBinding(
                     _token,
                     reason,
+                    out PauseBindingReleaseOutcome outcome,
                     out diagnostic);
+            _lastReleaseOutcome = outcome;
 
             if (!released)
             {
-                _bindingStatus = "Failed";
+                _bindingStatus = outcome == PauseBindingReleaseOutcome.FailedRecoverable
+                    ? "ReleasePending"
+                    : "Failed";
                 diagnostic =
                     $"Pause PlayerInput Binding release failed; binding retained for retry. {diagnostic.NormalizeTextOrFallback("No release diagnostic was supplied.")}";
                 _bindingDiagnostic = diagnostic;
@@ -216,7 +236,9 @@ namespace Immersive.Framework.Pause
 
             _token = default;
             _port = null;
-            _bindingStatus = "Unbound";
+            _bindingStatus = outcome == PauseBindingReleaseOutcome.TargetDestroyed
+                ? "UnboundTargetDestroyed"
+                : "Unbound";
             _bindingDiagnostic = diagnostic;
             return true;
         }
@@ -376,6 +398,12 @@ namespace Immersive.Framework.Pause
         private void OnDisable() =>
             ReleaseLocal(
                 "component-disabled");
+
+        [ContextMenu("Immersive Framework/Pause/Retry Binding Release")]
+        private void RetryPendingRelease() =>
+            TryReleaseBinding(
+                "context-menu-retry",
+                out _);
 
         private void OnDestroy() =>
             ReleaseLocal(

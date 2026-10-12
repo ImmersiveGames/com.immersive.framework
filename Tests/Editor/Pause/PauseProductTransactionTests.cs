@@ -165,7 +165,7 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(_globalMap.enabled, Is.True);
             Assert.That(_gameplayMap.enabled, Is.True);
 
-            Assert.That(context.ReleaseBinding(token, "test-release", out string diagnostic), Is.True, diagnostic);
+            Assert.That(context.ReleaseBinding(token, "test-release", out _, out string diagnostic), Is.True, diagnostic);
             Assert.That(_globalMap.enabled, Is.EqualTo(_initialGlobalEnabled));
             Assert.That(_gameplayMap.enabled, Is.EqualTo(_initialGameplayEnabled));
         }
@@ -184,13 +184,153 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
 
             Assert.That(application.TryRestorePauseSnapshot(RunningSnapshot(), "activity-exit", out _), Is.True);
-            Assert.That(context.TryRestorePhysicalPostureForLifecycleExit("activity-exit", out string diagnostic), Is.True, diagnostic);
+            Assert.That(context.TryRestorePhysicalPostureForLifecycleExit("activity-exit", out PlayerInputPostureRestoreOutcome outcome, out string diagnostic), Is.True, diagnostic);
+            Assert.That(outcome, Is.EqualTo(PlayerInputPostureRestoreOutcome.Restored));
             Assert.That(context.HasActivePlayerInputBinding, Is.True);
             Assert.That(_globalMap.enabled, Is.True);
             Assert.That(_gameplayMap.enabled, Is.True);
-            Assert.That(context.ReleaseBinding(token, "test-release", out diagnostic), Is.True, diagnostic);
+            Assert.That(context.ReleaseBinding(token, "test-release", out _, out diagnostic), Is.True, diagnostic);
             Assert.That(_globalMap.enabled, Is.EqualTo(_initialGlobalEnabled));
             Assert.That(_gameplayMap.enabled, Is.EqualTo(_initialGameplayEnabled));
+        }
+
+        [Test]
+        public void GateAdapter_AlreadyBlocked_ReappliesWhenGameplayMapWasPhysicallyReenabled()
+        {
+            CreateBoundContext(new FakeApplication(RunningSnapshot()));
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            MethodInfo applyBlock = typeof(UnityPlayerInputGateAdapter).GetMethod(
+                "ApplyBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(applyBlock, Is.Not.Null);
+
+            applyBlock.Invoke(adapter, new object[] { "test-first-block", false, true });
+            Assert.That(_gameplayMap.enabled, Is.False);
+            Assert.That(adapter.IsBlockedByAdapter, Is.True);
+
+            _gameplayMap.Enable();
+            Assert.That(adapter.IsBlockedByAdapter, Is.False);
+            applyBlock.Invoke(adapter, new object[] { "test-reapply-block", false, true });
+
+            Assert.That(_gameplayMap.enabled, Is.False);
+            Assert.That(adapter.LastStatus, Is.Not.EqualTo("AlreadyBlocked"));
+        }
+
+        [Test]
+        public void GateAdapter_AutomaticUpdateRetriesAreBoundedAndExplicitApplyRestartsThem()
+        {
+            CreateBoundContext(new FakeApplication(RunningSnapshot()));
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            MethodInfo update = typeof(UnityPlayerInputGateAdapter).GetMethod(
+                "Update", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(update, Is.Not.Null);
+
+            update.Invoke(adapter, null);
+            update.Invoke(adapter, null);
+            Assert.That(adapter.LastStatus, Is.EqualTo("SkippedMissingInputGateRuntime"));
+
+            update.Invoke(adapter, null);
+            Assert.That(adapter.LastStatus, Is.EqualTo("RetryLimitReached"));
+
+            adapter.ApplyCurrentGate();
+            Assert.That(adapter.LastStatus, Is.EqualTo("SkippedMissingInputGateRuntime"));
+        }
+
+        [Test]
+        public void ReleaseBinding_RestorationFailureRetainsTokenAndReceiptForRetry()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext context = CreateBoundContext(application);
+            PauseProductBindingToken token = context.ActiveToken;
+            PauseProductRequestResult pause = context.RequestPause(
+                PauseRequest.Pause("release-retry.pause", "test", "pause-before-release"));
+            Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            var invalidButOwnedPosture = new PausePlayerInputPostureReceipt(
+                _initialPosture.PlayerInputEntityId,
+                "MissingMap",
+                Array.Empty<string>(),
+                _initialPosture.DefaultActionMapName,
+                _initialPosture.InputWasActive);
+            SetField(context, "_bindingPosture", invalidButOwnedPosture);
+
+            bool firstRelease = context.ReleaseBinding(
+                token,
+                "test-release-failure",
+                out PauseBindingReleaseOutcome firstOutcome,
+                out string firstDiagnostic);
+
+            Assert.That(firstRelease, Is.False, firstDiagnostic);
+            Assert.That(firstOutcome, Is.EqualTo(PauseBindingReleaseOutcome.FailedRecoverable));
+            Assert.That(context.ActiveToken, Is.EqualTo(token));
+            Assert.That(context.HasActivePlayerInputBinding, Is.True);
+            Assert.That(application.CurrentSnapshot.State, Is.EqualTo(PauseState.Paused));
+            Assert.That(GetField<UnityPlayerInputActionMapSetWriteReceipt>(context, "_pauseActionMapSetReceipt").IsValid, Is.True);
+            PausePlayerInputPostureReceipt retainedPosture =
+                GetField<PausePlayerInputPostureReceipt>(context, "_bindingPosture");
+            Assert.That(retainedPosture.IsValid, Is.True);
+            Assert.That(retainedPosture.CurrentActionMapName, Is.EqualTo("MissingMap"));
+
+            SetField(context, "_bindingPosture", _initialPosture);
+            bool retry = context.ReleaseBinding(
+                token,
+                "test-release-retry",
+                out PauseBindingReleaseOutcome retryOutcome,
+                out string retryDiagnostic);
+
+            Assert.That(retry, Is.True, retryDiagnostic);
+            Assert.That(retryOutcome, Is.EqualTo(PauseBindingReleaseOutcome.Restored));
+            Assert.That(context.ActiveToken.IsValid, Is.False);
+            Assert.That(_globalMap.enabled, Is.EqualTo(_initialGlobalEnabled));
+            Assert.That(_gameplayMap.enabled, Is.EqualTo(_initialGameplayEnabled));
+        }
+
+        [Test]
+        public void ReleaseBinding_DestroyedExactPlayerInputIsTerminalAndNotReportedAsRestored()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext context = CreateBoundContext(application);
+            PauseProductBindingToken token = context.ActiveToken;
+            UnityEngine.Object.DestroyImmediate(_playerInput);
+
+            bool released = context.ReleaseBinding(
+                token,
+                "test-target-destroyed",
+                out PauseBindingReleaseOutcome outcome,
+                out string diagnostic);
+
+            Assert.That(released, Is.True, diagnostic);
+            Assert.That(outcome, Is.EqualTo(PauseBindingReleaseOutcome.TargetDestroyed));
+            Assert.That(context.ActiveToken.IsValid, Is.False);
+            Assert.That(diagnostic, Does.Contain("destroyed"));
+        }
+
+        [Test]
+        public void PlayerPauseInput_RetainsReleaseAuthorityUntilRetryRestoresOrTargetEnds()
+        {
+            var host = new GameObject("Pause Binding Release Retry Test Host");
+            try
+            {
+                PlayerPauseInput binding = host.AddComponent<PlayerPauseInput>();
+                var port = new FakeReleasePort();
+                Assert.That(binding.TryInjectBindingPort(port, out string bindDiagnostic), Is.True, bindDiagnostic);
+
+                Assert.That(binding.TryReleaseBinding("first-release", out string firstDiagnostic), Is.False, firstDiagnostic);
+                Assert.That(binding.HasActiveBinding, Is.True);
+                Assert.That(binding.BindingStatus, Is.EqualTo("ReleasePending"));
+
+                Assert.That(binding.TryReleaseBinding("retry-release", out string retryDiagnostic), Is.True, retryDiagnostic);
+                Assert.That(binding.HasActiveBinding, Is.False);
+                Assert.That(binding.LastReleaseOutcome, Is.EqualTo(PauseBindingReleaseOutcome.Restored));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(host);
+            }
         }
 
         private GameObject _host;
@@ -201,6 +341,7 @@ namespace Immersive.Framework.Pause.Tests
         private PlayerPauseInput _binding;
         private bool _initialGlobalEnabled;
         private bool _initialGameplayEnabled;
+        private PausePlayerInputPostureReceipt _initialPosture;
 
         private PauseProductBindingRuntimeContext CreateBoundContext(FakeApplication application)
         {
@@ -220,6 +361,7 @@ namespace Immersive.Framework.Pause.Tests
             UnityPlayerInputGateAdapter adapter = _host.AddComponent<UnityPlayerInputGateAdapter>();
             SetField(adapter, "playerInput", _playerInput);
             SetField(adapter, "gameplayActionMap", PlayerInputActionMapReference.From(_gameplayMap));
+            Assert.That(adapter.TryCapturePosture(out _initialPosture, out string captureIssue), Is.True, captureIssue);
             _binding = _host.AddComponent<PlayerPauseInput>();
             SetField(_binding, "pauseAction", InputActionReference.Create(pauseAction));
 
@@ -255,6 +397,15 @@ namespace Immersive.Framework.Pause.Tests
             field.SetValue(target, value);
         }
 
+        private static T GetField<T>(object target, string name)
+        {
+            FieldInfo field = target.GetType().GetField(
+                name,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, $"Field '{name}' was not found.");
+            return (T)field.GetValue(target);
+        }
+
         private sealed class FakeApplication : IPauseProductApplicationPort
         {
             private PauseSnapshot _snapshot;
@@ -262,6 +413,7 @@ namespace Immersive.Framework.Pause.Tests
             internal FakeApplication(PauseSnapshot snapshot) => _snapshot = snapshot;
 
             internal int ApplyCount { get; private set; }
+            internal PauseSnapshot CurrentSnapshot => _snapshot;
             internal List<PauseSnapshot> RestoredSnapshots { get; } = new List<PauseSnapshot>();
             internal System.Action OnApply { get; set; }
             internal bool ReturnInvalidResult { get; set; } = true;
@@ -301,6 +453,40 @@ namespace Immersive.Framework.Pause.Tests
             public bool TryGetApplicationPauseSnapshot(out PauseSnapshot snapshot)
             {
                 snapshot = _snapshot;
+                return true;
+            }
+        }
+
+        private sealed class FakeReleasePort : IPauseProductBindingPort
+        {
+            private int _releaseAttempts;
+
+            public bool TryRegister(
+                PlayerPauseInput binding,
+                out PauseProductBindingToken token,
+                out string diagnostic)
+            {
+                token = new PauseProductBindingToken(1, 7);
+                diagnostic = "Injected binding token.";
+                return true;
+            }
+
+            public bool ReleaseBinding(
+                PauseProductBindingToken token,
+                string reason,
+                out PauseBindingReleaseOutcome outcome,
+                out string diagnostic)
+            {
+                _releaseAttempts++;
+                if (_releaseAttempts == 1)
+                {
+                    outcome = PauseBindingReleaseOutcome.FailedRecoverable;
+                    diagnostic = "Injected recoverable physical restore failure.";
+                    return false;
+                }
+
+                outcome = PauseBindingReleaseOutcome.Restored;
+                diagnostic = "Injected exact physical restore confirmation.";
                 return true;
             }
         }

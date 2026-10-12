@@ -13,6 +13,7 @@ namespace Immersive.Framework.Pause
         bool ReleaseBinding(
             PauseProductBindingToken token,
             string reason,
+            out PauseBindingReleaseOutcome outcome,
             out string diagnostic);
     }
 
@@ -46,8 +47,18 @@ namespace Immersive.Framework.Pause
         Unbound = 0,
         Binding = 10,
         Bound = 20,
+        ReleasePending = 25,
         Unbinding = 30,
         Failed = 40
+    }
+
+    internal enum PauseBindingReleaseOutcome
+    {
+        None = 0,
+        Restored = 10,
+        FailedRecoverable = 20,
+        TargetDestroyed = 30,
+        Rejected = 40
     }
 
     internal readonly struct PauseProductBindingToken

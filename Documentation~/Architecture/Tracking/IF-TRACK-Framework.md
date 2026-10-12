@@ -4,20 +4,27 @@ Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.8 publi
 
 Last updated: **2026-10-12**
 
-## Current Framework source cut — InputMode removal
+## Current Framework source cut — Pause physical restoration integrity
 
 The Framework source removes `Runtime/InputMode`, including its former Stable
-contracts, and places the remaining transaction evidence inside Pause. The
-decision and consumer migration are recorded in [IF-ADR-005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md#2026-10-12-inputmode-removal-amendment).
+contracts, and places the remaining transaction evidence inside Pause. This
+cut also makes Gate block status depend on current Action Map state, bounds
+automatic projection attempts, and retains Pause release ownership and exact
+receipts while restoration is recoverable. The decision and consumer migration
+are recorded in [IF-ADR-005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md#2026-10-12-persistent-input-gate-failure-and-physical-release-amendment).
 QAFramework resolves the local checkout and FirstGame resolves published
 `1.1.0-preview.8`; neither has a direct InputMode source reference in the
-inspected assets. User-reported QAFramework Unity Test Runner EditMode result:
-**304/304 passed, zero failures**, including `PauseProductTransactionTests`
-**9/9**. This covers package import/compile and focused transaction/failure
-tests for the QA-resolved local source; Play Mode integration remains pending.
-PEGA source/package inspection is **BLOCKED BY ENVIRONMENT ACCESS** and must
-precede its migration claim. No independent raw log or execution SHA was
-supplied.
+inspected assets. The user reports QAFramework Unity Test Runner EditMode
+**309/309 passed, zero failures**, including `PauseProductTransactionTests`
+**14/14** for this physical-integrity source cut. This is manual reported
+evidence; raw log and execution SHA were not supplied. Play Mode integration
+remains pending. PEGA source/package inspection is **BLOCKED BY ENVIRONMENT
+ACCESS** and must precede its migration claim.
+
+`PauseProductTransactionTests` now contains 14 cases, five added for physical
+Gate read-back, bounded retry, recoverable release, retry authority and
+destroyed-target handling. Activity-exit and Session Host recovery scenarios
+still require Unity/QAFramework execution beyond the reported EditMode suite.
 
 ## Authority and status model
 

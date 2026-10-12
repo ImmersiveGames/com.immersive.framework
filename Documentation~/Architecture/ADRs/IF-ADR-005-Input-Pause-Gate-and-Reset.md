@@ -326,7 +326,8 @@ or an unavailable runtime port remain observable adapter failures, not a
 guarantee that input is physically suppressed.
 
 Before canonical runtime binding is available, the adapter reports the missing
-port and retries on `Update`; it does not discover or substitute another host.
+port and makes only the bounded automatic `Update` attempts defined in the
+physical integrity amendment; it does not discover or substitute another host.
 If a consumer-owned gameplay block is active, the adapter still attempts that
 physical block. Otherwise, if it owns a prior adapter block, its missing-port
 path calls the normal restoration path; with neither condition, it leaves the
@@ -338,20 +339,17 @@ guarantee during that interval.
 Once the current Local Player Host is active, a missing canonical binding is a
 composition/integration failure, not a successfully applied Gate. Stable Host
 endpoint composition requires exactly one host-owned adapter bound to the
-canonical `FrameworkRuntimeHost`. The adapter itself has no Activity-aware
-timeout or failure transition: it continues to report and retry, and the
-current contract does not promise that this persistent failure rejects the
-Activity or keeps gameplay physically blocked. The ADR-005 Input Gate smoke
+canonical `FrameworkRuntimeHost`. The adapter has no Activity-aware failure
+transition; after its bounded retries, persistent failure does not promise
+that Activity is rejected or gameplay remains physically blocked. The ADR-005 Input Gate smoke
 records explicit binding, ordinary block/release, unrelated-domain behavior,
 and missing-map diagnostics; it does not establish the persistent-active-Host
 failure behavior as a certified guarantee.
 
-Whether a persistent binding/application failure during an active Activity
-must reject admission or otherwise change lifecycle state remains undecided.
-No fail-closed behavior, broader Gate guarantee, or new lifecycle authority is
-approved here. The existing Stable contract remains bounded to the configured
-single-player path and its documented diagnostics; consumers must not treat
-this adapter as a security boundary when its physical application has failed.
+The persistent failure policy is resolved by the 2026-10-12 physical integrity
+amendment below. Logical Gate authorization remains available when its physical
+projection fails; no global Activity rejection or physical-block guarantee is
+introduced.
 
 ## Transition Gate diagnostic semantics
 
@@ -702,11 +700,58 @@ and must not be translated into `PauseState` values. Consumers must resolve a
 Framework package revision containing this breaking removal before compiling.
 
 QAFramework and FirstGame source inspections found no direct InputMode
-references. The user reports QAFramework Unity Test Runner EditMode **304/304
-passed, zero failures**, including `PauseProductTransactionTests` **9/9**; this
-is accepted as reported test evidence for the local package cut. QA Pause/Input
-Gate Play Mode integration remains to be revalidated. PEGA inspection and
-consumer validation remain pending because its project directory was
-inaccessible in the execution environment. No independent test log or
-execution SHA was supplied. The reported EditMode result does not certify
-Play Mode behavior or PEGA compatibility.
+references. For the physical-integrity source cut, the user reports QAFramework
+Unity Test Runner EditMode **309/309 passed, zero failures**, including
+`PauseProductTransactionTests` **14/14**. This is treated as manual reported
+evidence, not an execution performed in this task; no independent raw log or
+execution SHA was supplied. QA Pause/Input Gate Play Mode integration remains
+to be revalidated. PEGA inspection and consumer validation remain pending
+because its project directory was inaccessible in the execution environment.
+The reported EditMode result does not certify Play Mode behavior or PEGA
+compatibility.
+
+## 2026-10-12 Persistent Input Gate failure and physical release amendment
+
+**Decision: Keep logical authorization separate from physical application and
+retain exact physical ownership while restoration is recoverable.** This is an
+explicit behavioral clarification of the Stable single-player adapter/binding
+contract under IF-GOV-001 §2 and §7; it does not change Pause state semantics
+or make Input Gate a physical security boundary.
+
+- `UnityPlayerInputGateAdapter` may report `AlreadyBlocked` only after reading
+  the configured Gameplay Action Map and confirming it is disabled. A
+  bookkeeping flag is not physical evidence. The adapter records the exact
+  `PlayerInput` it blocked and does not restore a replacement target.
+- The canonical writer confirms the requested posture after writes. A failed
+  multi-step posture restore attempts compensation to the posture observed at
+  operation start and reports `Restored`, `FailedRecoverable`, or
+  `TargetDestroyed` to its Pause owner. The result does not claim physical
+  state when the exact target is destroyed.
+- Pause binding release retains its token, binding owner, initial posture
+  receipt and Pause action-map receipt when the exact `PlayerInput` still
+  exists and physical restoration fails. It rolls logical Pause back to the
+  captured snapshot and returns a recoverable failure. A later Session Host
+  lifecycle signal or the binding's explicit retry command may retry release;
+  no per-frame or unbounded release retry is added.
+- Release clears ownership only after exact posture restoration is confirmed,
+  or after the exact target is destroyed. Destruction is terminal for release
+  ownership but is reported as `TargetDestroyed`, never as successful physical
+  restoration. Activity exit remains blocked while a live target's required
+  Pause posture restore fails; retry uses the retained Pause-time receipt.
+- Gate projection gets at most two automatic `Update` attempts for one
+  unchanged logical intent. A changed Gate intent, a new runtime binding or an
+  explicit Apply/Restore action permits a new bounded attempt sequence.
+  Persistent failure remains observable and may leave gameplay physically
+  available; it does not reject Activity globally and does not alter the
+  logical Gate snapshot.
+- `OnDisable` retains adapter block ownership after a recoverable restore
+  failure so re-enable or explicit Restore can retry. `OnDestroy` is a final
+  bounded cleanup attempt; if the adapter is destroyed while its exact
+  `PlayerInput` survives and no Pause binding retains a posture receipt, no
+  retry owner remains. The resulting physical posture is unknown and is not
+  claimed restored.
+
+The adapter/writer remain the only physical `PlayerInput` authorities;
+`PauseRuntime` remains the logical Pause writer; Input Gate remains logical
+authorization. Consumers must not interpret Gate blockers, Pause state or
+adapter bookkeeping as proof that Unity input is physically blocked.

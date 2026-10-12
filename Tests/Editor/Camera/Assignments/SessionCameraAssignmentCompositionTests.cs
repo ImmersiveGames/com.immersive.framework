@@ -160,8 +160,9 @@ namespace Immersive.Framework.Camera.Editor.Tests
                 return false;
             }
 
-            public bool ReleaseBinding(PauseProductBindingToken token, string reason, out string diagnostic)
+            public bool ReleaseBinding(PauseProductBindingToken token, string reason, out PauseBindingReleaseOutcome outcome, out string diagnostic)
             {
+                outcome = PauseBindingReleaseOutcome.Rejected;
                 diagnostic = "Unused by scene request trigger test.";
                 return false;
             }

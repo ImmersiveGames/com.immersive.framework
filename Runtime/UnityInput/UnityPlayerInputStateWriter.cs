@@ -7,6 +7,13 @@ using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.UnityInput
 {
+    internal enum PlayerInputPostureRestoreOutcome
+    {
+        Restored = 0,
+        FailedRecoverable = 10,
+        TargetDestroyed = 20
+    }
+
     /// <summary>
     /// The only package-owned physical writer for Unity PlayerInput action-map posture.
     /// Callers retain domain policy and lifecycle ownership; this adapter owns only the
@@ -226,6 +233,13 @@ namespace Immersive.Framework.UnityInput
                     desiredNames,
                     out issue))
             {
+                if (HasExactActionMapState(playerInput, normalizedPrimary, desiredNames))
+                {
+                    receipt = rollbackReceipt;
+                    issue = string.Empty;
+                    return true;
+                }
+
                 TryApplyRawActionMapState(
                     playerInput,
                     previousPrimary,
@@ -264,28 +278,133 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
-        internal static bool TryRestorePosture(
+        internal static PlayerInputPostureRestoreOutcome TryRestorePosture(
             PlayerInput playerInput,
             PausePlayerInputPostureReceipt receipt,
             out string issue)
         {
             issue = string.Empty;
-            if (playerInput == null || !receipt.IsValid || !receipt.PlayerInputEntityId.Equals(playerInput.GetEntityId()))
+            if (playerInput == null)
+            {
+                issue = "The exact PlayerInput target was destroyed before posture restoration.";
+                return PlayerInputPostureRestoreOutcome.TargetDestroyed;
+            }
+
+            if (!receipt.IsValid ||
+                !receipt.PlayerInputEntityId.Equals(playerInput.GetEntityId()) ||
+                playerInput.actions == null)
             {
                 issue = "PlayerInput posture restore rejected missing, foreign or stale evidence.";
+                return PlayerInputPostureRestoreOutcome.FailedRecoverable;
+            }
+
+            if (!TryCapturePosture(playerInput, out PausePlayerInputPostureReceipt current, out issue))
+            {
+                return PlayerInputPostureRestoreOutcome.FailedRecoverable;
+            }
+
+            if (TryApplyPosture(playerInput, receipt, out issue))
+            {
+                return PlayerInputPostureRestoreOutcome.Restored;
+            }
+
+            string originalIssue = issue;
+            if (HasExactPosture(playerInput, receipt))
+            {
+                issue = string.Empty;
+                return PlayerInputPostureRestoreOutcome.Restored;
+            }
+
+            if (!TryApplyPosture(playerInput, current, out string rollbackIssue))
+            {
+                issue = $"{originalIssue} Physical rollback also failed: '{rollbackIssue}'.";
+            }
+            else
+            {
+                issue = $"{originalIssue} The prior physical posture was restored; the requested posture remains pending.";
+            }
+
+            return playerInput == null
+                ? PlayerInputPostureRestoreOutcome.TargetDestroyed
+                : PlayerInputPostureRestoreOutcome.FailedRecoverable;
+        }
+
+        private static bool TryApplyPosture(
+            PlayerInput playerInput,
+            PausePlayerInputPostureReceipt receipt,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (playerInput == null)
+            {
+                issue = "The exact PlayerInput target was destroyed during posture restoration.";
                 return false;
             }
-            if (!TryApplyRawActionMapState(playerInput, receipt.CurrentActionMapName, new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal), out issue))
+
+            if (!TryApplyRawActionMapState(
+                    playerInput,
+                    receipt.CurrentActionMapName,
+                    new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal),
+                    out issue))
             {
                 return false;
             }
-            playerInput.defaultActionMap = receipt.DefaultActionMapName;
-            if (playerInput.inputIsActive != receipt.InputWasActive)
+
+            try
             {
-                if (receipt.InputWasActive) playerInput.ActivateInput(); else playerInput.DeactivateInput();
-                if (!TryApplyRawActionMapState(playerInput, receipt.CurrentActionMapName, new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal), out issue)) return false;
+                playerInput.defaultActionMap = receipt.DefaultActionMapName;
+                if (playerInput.inputIsActive != receipt.InputWasActive)
+                {
+                    if (receipt.InputWasActive)
+                    {
+                        playerInput.ActivateInput();
+                    }
+                    else
+                    {
+                        playerInput.DeactivateInput();
+                    }
+
+                    if (!TryApplyRawActionMapState(
+                            playerInput,
+                            receipt.CurrentActionMapName,
+                            new HashSet<string>(receipt.EnabledActionMapNames, StringComparer.Ordinal),
+                            out issue))
+                    {
+                        return false;
+                    }
+                }
             }
+            catch (Exception exception)
+            {
+                issue = exception.Message;
+                return false;
+            }
+
+            if (!HasExactPosture(playerInput, receipt))
+            {
+                issue = "PlayerInput did not reach the exact captured posture.";
+                return false;
+            }
+
             return true;
+        }
+
+        private static bool HasExactPosture(
+            PlayerInput playerInput,
+            PausePlayerInputPostureReceipt receipt)
+        {
+            return playerInput != null &&
+                playerInput.actions != null &&
+                string.Equals(
+                    CurrentActionMapName(playerInput),
+                    receipt.CurrentActionMapName,
+                    StringComparison.Ordinal) &&
+                HasExactEnabledActionMapSet(playerInput, receipt.EnabledActionMapNames) &&
+                string.Equals(
+                    playerInput.defaultActionMap.NormalizeText(),
+                    receipt.DefaultActionMapName,
+                    StringComparison.Ordinal) &&
+                playerInput.inputIsActive == receipt.InputWasActive;
         }
 
         internal static bool TryRestoreActionMapSet(
@@ -314,13 +433,40 @@ namespace Immersive.Framework.UnityInput
                 return false;
             }
 
-            return TryApplyRawActionMapState(
-                playerInput,
-                receipt.PreviousPrimaryActionMapName,
-                new HashSet<string>(
-                    receipt.PreviousEnabledActionMapNames,
-                    StringComparer.Ordinal),
-                out issue);
+            string previousPrimary = CurrentActionMapName(playerInput);
+            string[] previousEnabled = GetEnabledActionMapNames(playerInput);
+            if (TryApplyRawActionMapState(
+                    playerInput,
+                    receipt.PreviousPrimaryActionMapName,
+                    new HashSet<string>(receipt.PreviousEnabledActionMapNames, StringComparer.Ordinal),
+                    out issue))
+            {
+                return true;
+            }
+
+            string restoreIssue = issue;
+            if (HasExactActionMapState(
+                    playerInput,
+                    receipt.PreviousPrimaryActionMapName,
+                    new HashSet<string>(receipt.PreviousEnabledActionMapNames, StringComparer.Ordinal)))
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            if (!TryApplyRawActionMapState(
+                    playerInput,
+                    previousPrimary,
+                    new HashSet<string>(previousEnabled, StringComparer.Ordinal),
+                    out string rollbackIssue))
+            {
+                issue = $"{restoreIssue} Physical compensation also failed: '{rollbackIssue}'.";
+            }
+            else
+            {
+                issue = $"{restoreIssue} The prior physical action-map set was restored.";
+            }
+            return false;
         }
 
         internal static bool HasExactEnabledActionMapSet(
@@ -359,6 +505,30 @@ namespace Immersive.Framework.UnityInput
             return true;
         }
 
+        private static bool HasExactActionMapState(
+            PlayerInput playerInput,
+            string primaryActionMapName,
+            HashSet<string> enabledNames)
+        {
+            if (playerInput == null || playerInput.actions == null ||
+                !string.Equals(
+                    CurrentActionMapName(playerInput),
+                    primaryActionMapName.NormalizeText(),
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            foreach (InputActionMap map in playerInput.actions.actionMaps)
+            {
+                if (map.enabled != enabledNames.Contains(map.name.NormalizeText()))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         internal static bool TrySetActionMapEnabled(
             PlayerInput playerInput,
             string actionMapName,
@@ -388,6 +558,7 @@ namespace Immersive.Framework.UnityInput
                 return true;
             }
 
+            string writeIssue = string.Empty;
             try
             {
                 if (enabled)
@@ -398,21 +569,43 @@ namespace Immersive.Framework.UnityInput
                 {
                     actionMap.Disable();
                 }
-
-                if (actionMap.enabled != enabled)
-                {
-                    issue =
-                        $"Action map '{actionMap.name}' did not reach enabled='{enabled}'.";
-                    return false;
-                }
-
-                return true;
             }
             catch (Exception exception)
             {
-                issue = exception.Message;
+                writeIssue = exception.Message;
+            }
+
+            if (actionMap.enabled == enabled)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(writeIssue))
+            {
+                writeIssue = $"Action map '{actionMap.name}' did not reach enabled='{enabled}'.";
+            }
+
+            try
+            {
+                if (previousEnabled)
+                {
+                    actionMap.Enable();
+                }
+                else
+                {
+                    actionMap.Disable();
+                }
+            }
+            catch (Exception rollbackException)
+            {
+                issue = $"{writeIssue} Physical compensation failed: '{rollbackException.Message}'.";
                 return false;
             }
+
+            issue = actionMap.enabled == previousEnabled
+                ? writeIssue
+                : $"{writeIssue} Physical compensation did not restore the previous enabled state.";
+            return false;
         }
 
         internal static string CurrentActionMapName(PlayerInput playerInput)

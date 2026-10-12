@@ -10,10 +10,17 @@ All notable package changes are documented in this file.
   transaction. The Pause/Input Gate/physical PlayerInput authority boundaries
   are unchanged. This is a breaking API change; see IF-ADR-005 and the Pause
   Usage migration section. Package version is unchanged in this source cut.
-- Added focused Pause transaction tests. QAFramework's user-reported Unity
-  Test Runner EditMode result is 304/304 passed, zero failures, including
-  `PauseProductTransactionTests` 9/9; Play Mode integration validation remains
-  pending.
+- Added focused Pause transaction tests. The user reports QAFramework Unity
+  Test Runner EditMode 309/309 passed, zero failures, including
+  `PauseProductTransactionTests` 14/14 for the physical-integrity source cut.
+  Play Mode integration validation remains pending; raw logs and execution SHA
+  were not supplied.
+- Hardened physical Gate and Pause release integrity: `AlreadyBlocked` now
+  requires Action Map read-back; PlayerInput posture restoration compensates
+  partial writes; binding tokens and receipts remain owned after recoverable
+  release failure; destroyed targets terminate cleanup without claiming
+  restoration. Gate automatic projection retries are bounded. Focused tests
+  were added, but Unity execution for this source cut is pending.
 
 ## [1.1.0-preview.8] - 2026-10-12 — published
 
