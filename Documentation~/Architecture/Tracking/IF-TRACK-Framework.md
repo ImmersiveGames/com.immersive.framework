@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; Player full recertification open under QA-001; Stable readiness audited, no Player promotion ready**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; IF-ADR-046 Player Join closure APPROVED Stable; preview .8 unpublished; Framework-wide readiness remains separate**
 
 Last updated: **2026-10-12**
 
