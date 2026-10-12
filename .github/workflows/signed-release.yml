@@ -76,8 +76,42 @@ jobs:
           fi
 
           archive="${archives[0]}"
-          tar -tzf "$archive" | grep -x 'package/package.json' >/dev/null
-          tar -tzf "$archive" | grep -x 'package/.attestation.p7m' >/dev/null
+          archive_index="$DIST_DIR/archive-index.txt"
+          tar -tzf "$archive" > "$archive_index"
+
+          required_entries=(
+            package/package.json
+            package/README.md
+            package/CHANGELOG.md
+            package/CHANGELOG.md.meta
+            package/LICENSE.md
+            package/LICENSE.md.meta
+            package/README.md.meta
+            package/package.json.meta
+            package/Runtime/Immersive.Framework.Runtime.asmdef
+            package/Runtime/Immersive.Framework.Runtime.asmdef.meta
+            package/Editor/Immersive.Framework.Editor.asmdef
+            package/Editor/Immersive.Framework.Editor.asmdef.meta
+            package/Tests/Editor/PlayerParticipation/Immersive.Framework.PlayerParticipation.Editor.Tests.asmdef
+            package/Tests/Editor/PlayerParticipation/Immersive.Framework.PlayerParticipation.Editor.Tests.asmdef.meta
+            package/Documentation~/API/Public-API.md
+            package/Documentation~/README.md
+          )
+          for entry in "${required_entries[@]}"; do
+            if ! grep -Fx "$entry" "$archive_index" >/dev/null; then
+              printf 'Required package entry is missing: %s\n' "$entry" >&2
+              exit 1
+            fi
+          done
+
+          forbidden_entries='(^|/)(\.agents|\.github|\.idea|Claude outputs|docs|Temp|Bin|bin|obj|Library)(/|$)|(^|/)(Claude outputs|docs|Temp)\.meta$|(^|/)(\.codex-camera026g-runtime\.csproj|\.gitignore|Folder\.DotSettings\.user(\.meta)?|[^/]+\.(csproj|sln|user|userprefs|log|tmp|bak|patch|patch\.meta|diff))$'
+          if grep -E "$forbidden_entries" "$archive_index" >/dev/null; then
+            printf 'Archive contains development or local files:\n' >&2
+            grep -E "$forbidden_entries" "$archive_index" >&2
+            exit 1
+          fi
+
+          grep -Fx 'package/.attestation.p7m' "$archive_index" >/dev/null
 
           archive_name="$(tar -xOzf "$archive" package/package.json | jq -r '.name')"
           archive_version="$(tar -xOzf "$archive" package/package.json | jq -r '.version')"

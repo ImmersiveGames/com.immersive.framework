@@ -1,0 +1,30 @@
+# Keep the Unity package source tree intact; exclude repository and workstation files.
+/.agents/
+/.codex-camera026g-runtime.csproj
+/.gitignore
+/.github/
+/.idea/
+/Claude outputs/
+/Claude outputs.meta
+/docs/
+/docs.meta
+/Folder.DotSettings.user
+/Folder.DotSettings.user.meta
+/Editor/Validation/FrameworkAuthoringValidator.patch
+/Editor/Validation/FrameworkAuthoringValidator.patch.meta
+/Temp/
+/Temp.meta
+**/.idea/**
+**/Bin/**
+**/bin/**
+**/obj/**
+**/Library/**
+**/Temp/**
+**/temp/**
+**/*.csproj
+**/*.sln
+**/*.user
+**/*.userprefs
+**/*.log
+**/*.tmp
+**/*.bak
