@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Immersive.Framework.ActivityFlow;
+using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.Identity;
@@ -178,10 +179,103 @@ namespace Immersive.Framework.PlayerParticipation.Tests
         }
 
         [Test]
-        public async System.Threading.Tasks.Task ActivityReentryOnSameAssetUsesNewReadinessOccurrence()
+        public void RouteBindingIdentityComparison_RejectsChangedOwnerOccurrenceAndManager()
+        {
+            RouteAsset route = CreateRoute();
+            RouteAsset otherRoute = CreateRoute();
+            var hostObject = new GameObject("join-binding-identity-host");
+            _objects.Add(hostObject);
+            FrameworkRuntimeHost runtimeHost = hostObject.AddComponent<FrameworkRuntimeHost>();
+            PlayerSessionScopedAccessRuntimeHostModule bindingModule =
+                hostObject.AddComponent<PlayerSessionScopedAccessRuntimeHostModule>();
+            LocalPlayerProvisioningRuntimeHostModule manager =
+                hostObject.AddComponent<LocalPlayerProvisioningRuntimeHostModule>();
+            var otherManagerObject = new GameObject("other-join-binding-identity-manager");
+            _objects.Add(otherManagerObject);
+            LocalPlayerProvisioningRuntimeHostModule otherManager =
+                otherManagerObject.AddComponent<LocalPlayerProvisioningRuntimeHostModule>();
+            PlayerSessionScopedBindingRecipient recipient = CreateRecipient(
+                LocalPlayerProvisioningConsumerScope.Route);
+            RuntimeContentOwner owner = RouteOwner(route);
+
+            var capturedIdentity = new PlayerSessionJoinBindingIdentity(
+                runtimeHost,
+                null,
+                bindingModule,
+                recipient,
+                LocalPlayerProvisioningConsumerScope.Route,
+                owner,
+                1,
+                0,
+                manager);
+
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Route, owner, 1, 0, manager)), Is.True);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Route, owner, 2, 0, manager)), Is.False);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Route, RouteOwner(otherRoute), 1, 0, manager)), Is.False);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Route, owner, 1, 0, otherManager)), Is.False);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Activity, owner, 1, 0, manager)), Is.False);
+        }
+
+        [Test]
+        public void ActivityBindingIdentityComparison_RejectsChangedActivityOrOwningRouteOccurrence()
+        {
+            ActivityAsset activity = CreateActivity();
+            ActivityAsset otherActivity = CreateActivity();
+            SetString(otherActivity, "activityId", "activity-other-test");
+            RouteAsset route = CreateRoute();
+            var hostObject = new GameObject("activity-join-binding-identity-host");
+            _objects.Add(hostObject);
+            FrameworkRuntimeHost runtimeHost = hostObject.AddComponent<FrameworkRuntimeHost>();
+            PlayerSessionScopedAccessRuntimeHostModule bindingModule =
+                hostObject.AddComponent<PlayerSessionScopedAccessRuntimeHostModule>();
+            LocalPlayerProvisioningRuntimeHostModule manager =
+                hostObject.AddComponent<LocalPlayerProvisioningRuntimeHostModule>();
+            PlayerSessionScopedBindingRecipient recipient = CreateRecipient(
+                LocalPlayerProvisioningConsumerScope.Activity);
+            RuntimeContentOwner owner = ActivityOwner(activity);
+
+            var capturedIdentity = new PlayerSessionJoinBindingIdentity(
+                runtimeHost,
+                null,
+                bindingModule,
+                recipient,
+                LocalPlayerProvisioningConsumerScope.Activity,
+                owner,
+                1,
+                4,
+                manager);
+
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Activity, owner, 1, 4, manager)), Is.True);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Activity, owner, 1, 5, manager)), Is.False);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Activity, ActivityOwner(otherActivity), 1, 4, manager)), Is.False);
+            Assert.That(capturedIdentity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                runtimeHost, null, bindingModule, recipient,
+                LocalPlayerProvisioningConsumerScope.Activity, owner, 2, 4, manager)), Is.False);
+        }
+
+        [Test]
+        public async System.Threading.Tasks.Task ActivityAtoBtoAOnSameAssetUsesNewReadinessOccurrence()
         {
             RouteAsset route = CreateRoute();
             ActivityAsset activity = CreateActivity();
+            ActivityAsset intermediateActivity = CreateActivity();
+            SetString(intermediateActivity, "activityId", "activity-intermediate-test");
             SetObjectReference(route, "startupActivity", activity);
             GameObject routeRoot = CreateRouteRoot(route);
 
@@ -196,17 +290,29 @@ namespace Immersive.Framework.PlayerParticipation.Tests
             ActivityReadinessOccurrence firstOccurrence = flow.CurrentOccurrence;
             Assert.That(firstOccurrence.IsValid, Is.True);
 
-            ActivityFlowStartResult clear =
-                await flow.ClearActivityAsync(route, "test", "clear-before-reentry");
-            Assert.That(clear.Completed, Is.True, clear.Message);
+            ActivityFlowStartResult intermediateEntry =
+                await flow.StartActivityAsync(
+                    intermediateActivity,
+                    route,
+                    "test",
+                    "intermediate-activity");
+            Assert.That(intermediateEntry.Completed, Is.True, intermediateEntry.Message);
+            ActivityReadinessOccurrence intermediateOccurrence = flow.CurrentOccurrence;
+            Assert.That(intermediateOccurrence.Activity, Is.SameAs(intermediateActivity));
+            Assert.That(intermediateOccurrence.TransitionSequence,
+                Is.GreaterThan(firstOccurrence.TransitionSequence));
 
-            ActivityFlowStartResult secondEntry =
-                await flow.StartStartupActivityAsync(route, "test", "same-asset-reentry");
+            ActivityFlowStartResult secondEntry = await flow.StartActivityAsync(
+                activity,
+                route,
+                "test",
+                "same-asset-reentry");
             Assert.That(secondEntry.Completed, Is.True, secondEntry.Message);
             ActivityReadinessOccurrence secondOccurrence = flow.CurrentOccurrence;
 
             Assert.That(secondOccurrence.Activity, Is.SameAs(activity));
-            Assert.That(secondOccurrence.TransitionSequence, Is.GreaterThan(firstOccurrence.TransitionSequence));
+            Assert.That(secondOccurrence.TransitionSequence,
+                Is.GreaterThan(intermediateOccurrence.TransitionSequence));
             Assert.That(secondOccurrence.Matches(activity, firstOccurrence.TransitionSequence), Is.False);
         }
 
@@ -240,6 +346,18 @@ namespace Immersive.Framework.PlayerParticipation.Tests
             _objects.Add(activity);
             return activity;
         }
+
+        private static RuntimeContentOwner RouteOwner(RouteAsset route) =>
+            RuntimeContentOwner.Route(
+                route.RouteId.StableText,
+                route.RouteName,
+                RuntimeDefinitionToken.FromUnityObject(route));
+
+        private static RuntimeContentOwner ActivityOwner(ActivityAsset activity) =>
+            RuntimeContentOwner.Activity(
+                activity.ActivityId.StableText,
+                activity.ActivityName,
+                RuntimeDefinitionToken.FromUnityObject(activity));
 
         private GameObject CreateRouteRoot(RouteAsset route)
         {

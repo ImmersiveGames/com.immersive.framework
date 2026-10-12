@@ -11,6 +11,55 @@ using UnityEngine;
 
 namespace Immersive.Framework.PlayerParticipation
 {
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "I2 immutable identity captured by a scoped Player Session Join binding.")]
+    internal readonly struct PlayerSessionJoinBindingIdentity
+    {
+        internal PlayerSessionJoinBindingIdentity(
+            FrameworkRuntimeHost runtimeHost,
+            PlayerParticipationRuntimeContext participationContext,
+            PlayerSessionScopedAccessRuntimeHostModule bindingModule,
+            PlayerSessionScopedBindingRecipient recipient,
+            LocalPlayerProvisioningConsumerScope scope,
+            RuntimeContentOwner owner,
+            int routeOccurrenceSequence,
+            int activityTransitionSequence,
+            LocalPlayerProvisioningRuntimeHostModule manager)
+        {
+            RuntimeHost = runtimeHost;
+            ParticipationContext = participationContext;
+            BindingModule = bindingModule;
+            Recipient = recipient;
+            Scope = scope;
+            Owner = owner;
+            RouteOccurrenceSequence = routeOccurrenceSequence;
+            ActivityTransitionSequence = activityTransitionSequence;
+            Manager = manager;
+        }
+
+        internal FrameworkRuntimeHost RuntimeHost { get; }
+        internal PlayerParticipationRuntimeContext ParticipationContext { get; }
+        internal PlayerSessionScopedAccessRuntimeHostModule BindingModule { get; }
+        internal PlayerSessionScopedBindingRecipient Recipient { get; }
+        internal LocalPlayerProvisioningConsumerScope Scope { get; }
+        internal RuntimeContentOwner Owner { get; }
+        internal int RouteOccurrenceSequence { get; }
+        internal int ActivityTransitionSequence { get; }
+        internal LocalPlayerProvisioningRuntimeHostModule Manager { get; }
+
+        internal bool MatchesCurrent(PlayerSessionJoinBindingIdentity current)
+        {
+            return ReferenceEquals(RuntimeHost, current.RuntimeHost) &&
+                ReferenceEquals(ParticipationContext, current.ParticipationContext) &&
+                ReferenceEquals(BindingModule, current.BindingModule) &&
+                Recipient != null && Recipient.HasSameDestination(current.Recipient) &&
+                Scope == current.Scope &&
+                Owner == current.Owner &&
+                RouteOccurrenceSequence == current.RouteOccurrenceSequence &&
+                ActivityTransitionSequence == current.ActivityTransitionSequence &&
+                ReferenceEquals(Manager, current.Manager);
+        }
+    }
+
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "I2 occurrence-bound Player Session Join recipient lease.")]
     internal enum PlayerSessionJoinBindingLeaseValidation
     {
@@ -26,47 +75,23 @@ namespace Immersive.Framework.PlayerParticipation
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "I2 internal occurrence-bound scoped Join binding lease.")]
     internal sealed class PlayerSessionJoinBindingLease : IDisposable
     {
-        private readonly FrameworkRuntimeHost _runtimeHost;
-        private readonly PlayerParticipationRuntimeContext _participationContext;
-        private readonly PlayerSessionScopedAccessRuntimeHostModule _bindingModule;
-        private readonly PlayerSessionScopedBindingRecipient _recipient;
-        private readonly LocalPlayerProvisioningConsumerScope _scope;
-        private readonly RuntimeContentOwner _owner;
-        private readonly int _routeOccurrenceSequence;
-        private readonly int _activityTransitionSequence;
-        private readonly LocalPlayerProvisioningRuntimeHostModule _manager;
+        private readonly PlayerSessionJoinBindingIdentity _identity;
         private bool _disposed;
 
         private PlayerSessionJoinBindingLease(
-            FrameworkRuntimeHost runtimeHost,
-            PlayerParticipationRuntimeContext participationContext,
-            PlayerSessionScopedAccessRuntimeHostModule bindingModule,
-            PlayerSessionScopedBindingRecipient recipient,
-            LocalPlayerProvisioningConsumerScope scope,
-            RuntimeContentOwner owner,
-            int routeOccurrenceSequence,
-            int activityTransitionSequence,
-            LocalPlayerProvisioningRuntimeHostModule manager)
+            PlayerSessionJoinBindingIdentity identity)
         {
-            _runtimeHost = runtimeHost;
-            _participationContext = participationContext;
-            _bindingModule = bindingModule;
-            _recipient = recipient;
-            _scope = scope;
-            _owner = owner;
-            _routeOccurrenceSequence = routeOccurrenceSequence;
-            _activityTransitionSequence = activityTransitionSequence;
-            _manager = manager;
+            _identity = identity;
         }
 
-        internal Component Recipient => _recipient != null ? _recipient.Component : null;
-        internal LocalPlayerProvisioningConsumerScope Scope => _scope;
-        internal RuntimeContentOwner Owner => _owner;
-        internal FrameworkRuntimeHost RuntimeHost => _runtimeHost;
-        internal PlayerParticipationRuntimeContext ParticipationContext => _participationContext;
-        internal LocalPlayerProvisioningRuntimeHostModule Manager => _manager;
-        internal int RouteOccurrenceSequence => _routeOccurrenceSequence;
-        internal int ActivityTransitionSequence => _activityTransitionSequence;
+        internal Component Recipient => _identity.Recipient != null ? _identity.Recipient.Component : null;
+        internal LocalPlayerProvisioningConsumerScope Scope => _identity.Scope;
+        internal RuntimeContentOwner Owner => _identity.Owner;
+        internal FrameworkRuntimeHost RuntimeHost => _identity.RuntimeHost;
+        internal PlayerParticipationRuntimeContext ParticipationContext => _identity.ParticipationContext;
+        internal LocalPlayerProvisioningRuntimeHostModule Manager => _identity.Manager;
+        internal int RouteOccurrenceSequence => _identity.RouteOccurrenceSequence;
+        internal int ActivityTransitionSequence => _identity.ActivityTransitionSequence;
         internal bool IsDisposed => _disposed;
 
         internal static PlayerSessionJoinBindingLeaseValidation TryCapture(
@@ -110,7 +135,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return PlayerSessionJoinBindingLeaseValidation.RejectedUnavailable;
             }
 
-            lease = new PlayerSessionJoinBindingLease(
+            lease = new PlayerSessionJoinBindingLease(new PlayerSessionJoinBindingIdentity(
                 runtimeHost,
                 participationContext,
                 bindingModule,
@@ -119,7 +144,7 @@ namespace Immersive.Framework.PlayerParticipation
                 owner,
                 routeOccurrenceSequence,
                 activityTransitionSequence,
-                manager);
+                manager));
             return PlayerSessionJoinBindingLeaseValidation.Current;
         }
 
@@ -131,25 +156,25 @@ namespace Immersive.Framework.PlayerParticipation
                 return PlayerSessionJoinBindingLeaseValidation.RejectedUnavailable;
             }
 
-            if (!IsValidScopeOwnerPair(_scope, _owner))
+            if (!IsValidScopeOwnerPair(_identity.Scope, _identity.Owner))
             {
                 issue = "Player Session Join binding lease has an invalid authored scope or owner configuration.";
                 return PlayerSessionJoinBindingLeaseValidation.RejectedConfiguration;
             }
 
-            if (_recipient == null || _recipient.Component == null)
+            if (_identity.Recipient == null || _identity.Recipient.Component == null)
             {
                 issue = "Player Session Join binding recipient was destroyed or released.";
                 return PlayerSessionJoinBindingLeaseValidation.RejectedUnavailable;
             }
 
-            if (_recipient.Scope != _scope)
+            if (_identity.Recipient.Scope != _identity.Scope)
             {
                 issue = "Player Session Join binding recipient scope no longer matches its lease.";
                 return PlayerSessionJoinBindingLeaseValidation.RejectedConfiguration;
             }
 
-            if (!_recipient.TryValidateScope(out issue))
+            if (!_identity.Recipient.TryValidateScope(out issue))
             {
                 issue = string.IsNullOrWhiteSpace(issue)
                     ? "Player Session Join binding recipient scope no longer matches its lease."
@@ -157,26 +182,33 @@ namespace Immersive.Framework.PlayerParticipation
                 return PlayerSessionJoinBindingLeaseValidation.RejectedConfiguration;
             }
 
-            if (_recipient.Component == null ||
+            if (_identity.Recipient.Component == null ||
                 !TryResolveCurrentIdentity(
-                    _runtimeHost,
-                    _bindingModule,
-                    _participationContext,
-                    _recipient.Component,
-                    _scope,
-                    _owner,
+                    _identity.RuntimeHost,
+                    _identity.BindingModule,
+                    _identity.ParticipationContext,
+                    _identity.Recipient.Component,
+                    _identity.Scope,
+                    _identity.Owner,
                     out int routeOccurrenceSequence,
                     out int activityTransitionSequence,
                     out LocalPlayerProvisioningRuntimeHostModule currentManager) ||
-                routeOccurrenceSequence != _routeOccurrenceSequence ||
-                activityTransitionSequence != _activityTransitionSequence ||
-                !ReferenceEquals(currentManager, _manager))
+                !_identity.MatchesCurrent(new PlayerSessionJoinBindingIdentity(
+                    _identity.RuntimeHost,
+                    _identity.ParticipationContext,
+                    _identity.BindingModule,
+                    _identity.Recipient,
+                    _identity.Scope,
+                    _identity.Owner,
+                    routeOccurrenceSequence,
+                    activityTransitionSequence,
+                    currentManager)))
             {
                 issue = "Player Session Join binding lease is unavailable because its recipient, owner or lifecycle occurrence is no longer current.";
                 return PlayerSessionJoinBindingLeaseValidation.RejectedUnavailable;
             }
 
-            if (_manager == null || !_manager.IsReady)
+            if (_identity.Manager == null || !_identity.Manager.IsReady)
             {
                 issue = "Manager-Provisioned Player Join is unavailable because its runtime is missing or not ready.";
                 return PlayerSessionJoinBindingLeaseValidation.RejectedUnavailable;
@@ -191,15 +223,7 @@ namespace Immersive.Framework.PlayerParticipation
             return other != null &&
                 !_disposed &&
                 !other._disposed &&
-                ReferenceEquals(_runtimeHost, other._runtimeHost) &&
-                ReferenceEquals(_participationContext, other._participationContext) &&
-                ReferenceEquals(_bindingModule, other._bindingModule) &&
-                _recipient.HasSameDestination(other._recipient) &&
-                _scope == other._scope &&
-                _owner == other._owner &&
-                _routeOccurrenceSequence == other._routeOccurrenceSequence &&
-                _activityTransitionSequence == other._activityTransitionSequence &&
-                ReferenceEquals(_manager, other._manager);
+                _identity.MatchesCurrent(other._identity);
         }
 
         public void Dispose()
