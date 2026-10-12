@@ -2,10 +2,8 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Reset.Unity
 {
-    /// <summary>
-    /// API status: Experimental. Optional metadata for IUnityResettable components discovered by UnityResetSubjectAdapter.
-    /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12J optional metadata for gameplay component reset participation.")]
+    /// <summary>Optional execution metadata for custom capabilities inside a Resettable boundary.</summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-035 optional metadata for custom Resettable capabilities.")]
     public interface IUnityResettableMetadata
     {
         ResetParticipantRequiredness ResetRequiredness { get; }
@@ -13,9 +11,5 @@ namespace Immersive.Framework.Reset.Unity
         int ResetOrder { get; }
 
         string ResetDisplayName { get; }
-
-        string ResetSource { get; }
-
-        string ResetReason { get; }
     }
 }

@@ -4,6 +4,16 @@ All notable package changes are documented in this file.
 
 ## Unreleased
 
+- Removed `UnityResetSubjectAdapter` and its Adapter-only ID/discovery contracts,
+  registration port, binding, Scene Lifecycle integration and Editor authoring.
+  Removed authored Reset ID suggestion methods and the descriptor-provider
+  members used by that path; retained the shared `ResetAuthoringIdentityUtility`
+  for prefab recording and retained canonical capability execution metadata.
+  `Resettable` owner-aware Route/Activity transactions remain the sole
+  registration path. This is a deliberate breaking change under IF-GOV-001;
+  authored Adapter components and custom ID/descriptor implementations must
+  migrate as documented in Reset Usage. There is no compatibility shim. The
+  package version is unchanged in this source cut.
 - Removed the public `Immersive.Framework.InputMode` subsystem, including its
   former Stable contracts and the unused `FrameworkIdentityDomain.InputMode`
   value. Pause now owns the only required internal

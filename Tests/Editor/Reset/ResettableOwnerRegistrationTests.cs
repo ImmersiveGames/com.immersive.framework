@@ -52,7 +52,7 @@ namespace Immersive.Framework.Reset.Tests
             GameObject root = CreateObject("Root");
             Resettable resettable = AddResettable(root);
             UnityTransformResetParticipant capability = AddTransformCapability(root);
-            SetParticipantMetadata(capability, string.Empty, ResetParticipantRequiredness.Required, 0, "Transform capability");
+            SetParticipantMetadata(capability, ResetParticipantRequiredness.Required, 0, "Transform capability");
 
             Assert.IsTrue(Register(_activityB, root, out string diagnostic), diagnostic);
 
@@ -75,8 +75,8 @@ namespace Immersive.Framework.Reset.Tests
             Resettable resettable = AddResettable(root);
             UnityTransformResetParticipant transformCapability = AddTransformCapability(root);
             UnityGameObjectActiveResetParticipant activeCapability = root.AddComponent<UnityGameObjectActiveResetParticipant>();
-            SetParticipantMetadata(transformCapability, string.Empty, ResetParticipantRequiredness.Optional, 30, "Position restore");
-            SetParticipantMetadata(activeCapability, string.Empty, ResetParticipantRequiredness.Required, 5, "Active state");
+            SetParticipantMetadata(transformCapability, ResetParticipantRequiredness.Optional, 30, "Position restore");
+            SetParticipantMetadata(activeCapability, ResetParticipantRequiredness.Required, 5, "Active state");
 
             Assert.IsTrue(Register(_activityA, root, out string diagnostic), diagnostic);
 
@@ -96,35 +96,22 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
-        public void LegacyAdapterParticipantDescriptor_RequiresAndUsesAuthoredId()
+        public void Registration_CustomCapabilityUsesGeneratedIdentityAndCanonicalMetadata()
         {
-            GameObject gameObject = CreateObject("LegacyParticipant");
-            UnityTransformResetParticipant participant = AddTransformCapability(gameObject);
-            SetParticipantMetadata(participant, string.Empty, ResetParticipantRequiredness.Required, 4, "Legacy transform");
-            ResetSubject subject = new ResetSubject(
-                ResetSubjectId.From("reset-035-b.legacy-subject"),
-                ResetSubjectScope.Activity,
-                ResetSubjectOrigin.RuntimeRegistered,
-                _activityA,
-                "Legacy subject",
-                "test");
+            GameObject root = CreateObject("CustomCapabilityRoot");
+            Resettable resettable = AddResettable(root);
+            ResettableCapabilityTestBehaviour capability = root.AddComponent<ResettableCapabilityTestBehaviour>();
 
-            Assert.IsFalse(participant.TryCreateResetParticipantDescriptor(subject, out _, out ResetIssue missingIdIssue));
-            StringAssert.Contains("Participant Id", missingIdIssue.Message);
+            Assert.IsTrue(Register(_activityA, root, out string diagnostic), diagnostic);
 
-            SetParticipantMetadata(participant, "legacy.transform.authored", ResetParticipantRequiredness.Optional, 17, "Legacy transform");
-            var serialized = new SerializedObject(participant);
-            serialized.FindProperty("source").stringValue = "legacy-source";
-            serialized.FindProperty("reason").stringValue = "legacy-reason";
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            Assert.IsTrue(participant.TryCreateResetParticipantDescriptor(subject, out ResetParticipantDescriptor descriptor, out ResetIssue issue), issue.Message);
-            Assert.AreEqual("legacy.transform.authored", descriptor.ParticipantId.StableText);
+            ResetParticipantDescriptor descriptor = _registry.GetParticipants(resettable.SubjectHandle).Single();
+            Assert.AreEqual("capability-0000-ResettableCapabilityTestBehaviour", descriptor.ParticipantId.StableText);
             Assert.AreEqual(ResetParticipantRequiredness.Optional, descriptor.Requiredness);
             Assert.AreEqual(17, descriptor.Order);
-            Assert.AreEqual("Legacy transform", descriptor.DisplayName);
-            Assert.AreEqual("legacy-source", descriptor.Source);
-            Assert.AreEqual("legacy-reason", descriptor.Reason);
+            Assert.AreEqual("Custom capability", descriptor.DisplayName);
+
+            Assert.IsTrue(Execute(resettable.RuntimeSubjectId).Succeeded);
+            Assert.AreEqual(1, capability.ResetCount);
         }
 
         [Test]
@@ -291,57 +278,6 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
-        public void MixedLegacyAdapter_InSameBoundary_IsRejectedWithoutPartialRegistration()
-        {
-            GameObject valid = CreateObject("Valid");
-            AddResettable(valid);
-            AddTransformCapability(valid);
-            GameObject mixed = CreateObject("Mixed");
-            AddResettable(mixed);
-            mixed.AddComponent<UnityResetSubjectAdapter>();
-
-            bool registered = _registration.TryRegisterOwnerContent(
-                _activityA,
-                new[] { valid, mixed },
-                "test",
-                "mixed",
-                out string diagnostic);
-
-            Assert.IsFalse(registered);
-            StringAssert.Contains("mixed-legacy-adapter", diagnostic);
-            Assert.AreEqual(0, _registry.SubjectCount);
-            Assert.IsFalse(valid.GetComponent<Resettable>().IsRegistered);
-        }
-
-        [Test]
-        public void MixedLegacyAdapter_AncestorChildrenDiscovery_IsRejected()
-        {
-            GameObject legacyParent = CreateObject("LegacyParent");
-            legacyParent.AddComponent<UnityResetSubjectAdapter>();
-            GameObject child = CreateObject("Child", legacyParent.transform);
-            AddResettable(child);
-
-            Assert.IsFalse(Register(_activityA, legacyParent, out string diagnostic));
-            StringAssert.Contains("mixed-legacy-adapter", diagnostic);
-            Assert.AreEqual(0, _registry.SubjectCount);
-        }
-
-        [Test]
-        public void LegacyAdapter_OutsideResettableBoundary_DoesNotBlockRegistration()
-        {
-            GameObject legacy = CreateObject("Legacy");
-            legacy.AddComponent<UnityResetSubjectAdapter>();
-            GameObject root = CreateObject("Root");
-            AddResettable(root);
-            AddTransformCapability(root);
-
-            Assert.IsTrue(
-                _registration.TryRegisterOwnerContent(_activityA, new[] { legacy, root }, "test", "sibling", out string diagnostic),
-                diagnostic);
-            Assert.AreEqual(1, _registry.SubjectCount);
-        }
-
-        [Test]
         public void ResetExecutor_RestoresRegisteredResettableBaseline()
         {
             GameObject root = CreateObject("Root");
@@ -389,13 +325,11 @@ namespace Immersive.Framework.Reset.Tests
 
         private static void SetParticipantMetadata(
             UnityResetParticipantBehaviour participant,
-            string participantId,
             ResetParticipantRequiredness requiredness,
             int order,
             string displayName)
         {
             var serialized = new SerializedObject(participant);
-            serialized.FindProperty("participantId").stringValue = participantId;
             serialized.FindProperty("requiredness").intValue = (int)requiredness;
             serialized.FindProperty("order").intValue = order;
             serialized.FindProperty("displayName").stringValue = displayName;

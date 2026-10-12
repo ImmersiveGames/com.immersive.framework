@@ -1,7 +1,7 @@
 # Reset Usage
 
-Status: IF-ADR-035 Resettable / Composition / Target model implemented; consumer scenarios 1-8 are integrated and manually validated in planet-devourer as of 2026-10-02. UPM release validation remains separate.
-Last updated: 2026-10-02
+Status: IF-ADR-035 Resettable / Composition / Target model implemented; RESET-035-H removes the legacy Adapter path. Consumer scenarios 1-8 were integrated and manually validated in planet-devourer on the earlier canonical model as of 2026-10-02. UPM release validation remains separate.
+Last updated: 2026-10-12
 
 Reset content ownership, Reset membership, semantic target kind and target addressing are separate concerns:
 
@@ -35,7 +35,7 @@ The example is one runtime Reset subject with two participants. One request can 
 
 The normal Resettable path does not require authored participant IDs. Runtime registration wraps each collected capability with deterministic runtime participant identity. Normal authoring should focus on the capability configuration, `Display Name`, `Requiredness` and `Order`.
 
-The independent `UnityResetSubjectAdapter` path retains its authored descriptor/ID contract. Do not copy Adapter-specific ID authoring into a Resettable composition.
+Do not author participant IDs. The owner-aware Resettable transaction generates deterministic capability IDs within each Resettable boundary.
 
 ### Transform
 
@@ -84,7 +84,7 @@ A nested Resettable remains an independent executable subject. Invalid/null refe
 
 Use `ResetRequestTrigger` as the single Reset request surface.
 
-Its Reset execution port and scene-authored Reset Subject adapters are composed from each managed Scene's explicit roots. Persistent Content uses the same bind/release participants for the Session lifetime; scene release detaches request and registration ports before unload. See [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
+Its Reset execution port and scene-authored request triggers are bound from each managed Scene's explicit roots. Resettable registration is owned by the Route/Activity materialization transactions; Scene Lifecycle only binds/releases request triggers. Persistent Content keeps trigger bindings for the Session lifetime. See [IF-ADR-040](../Architecture/ADRs/IF-ADR-040-Scene-Composition-Binding-Model.md).
 
 | Target kind | Reference mode | Payload |
 |---|---|---|
@@ -155,9 +155,13 @@ Reset participants may emit focused verification evidence through the Framework'
 
 For scenario validation, record both the requested selection and the observable result. For multiple-participant cases, verify that every expected participant restored its own state under the same Resettable execution.
 
-## Registration adapter
+## Migration from the removed Adapter
 
-`UnityResetSubjectAdapter` remains available for its independent registration contract. It is not the normal IF-ADR-035 Resettable path, is not a Reset request surface, and does not replace owner-aware Resettable registration.
+RESET-035-H deliberately removes `UnityResetSubjectAdapter`, its binding and registration ports, and its independent Scene Lifecycle path. This is a breaking change under IF-GOV-001; there is no shim or parallel registration path.
+
+For each authored Adapter, remove the component and place `Resettable` at the root of the independently executable unit. Keep `UnityResetParticipantBehaviour` or custom `IUnityResettable` capabilities inside that boundary. Configure `Display Name`, `Requiredness` and `Order`; choose `ResetMembership` only when inclusion differs from owner-following behavior; address the resulting Resettable or a `ResetComposition` through `ResetTarget`.
+
+Custom `IUnityResettable` implementations no longer need `ResetParticipantId`. `IUnityResettableMetadata` now contains only `ResetRequiredness`, `ResetOrder` and `ResetDisplayName`; remove Adapter-only source/reason metadata. `UnityResetParticipantBehaviour` is now a capability base, not an `IResetParticipant` descriptor provider; custom subclasses must remove calls to `ParticipantIdText`, `TryCreateResetParticipantDescriptor`, `ResolveSource` and `ResolveReason`, and use the provided Reset context for results. `ResetAuthoringIdentityUtility.GenerateMissingSubjectId` and `GenerateMissingParticipantId` are removed because the canonical workflow authors neither identity; its shared prefab-recording helper remains. The serialized Adapter component GUID and Adapter-only participant ID/source/reason data are not migrated automatically.
 
 ## Consumer validation scenarios
 
@@ -174,7 +178,7 @@ The closed consumer proof set covers these distinct contracts:
 
 All eight scenarios are integrated in the planet-devourer authoring/proving workspace and were manually validated. This consumer closure does not claim UPM package-import validation.
 
-These scenarios are usage examples, not additional runtime APIs.
+These scenarios are usage examples, not additional runtime APIs. The earlier planet-devourer proof did not validate Adapter removal or package import against this source cut.
 
 ## Technical validation
 

@@ -833,10 +833,11 @@ Stable authored identity remains legitimate when a real cross-boundary reference
 
 Reset composition may use typed hierarchy collection when hierarchy is an explicit authoring boundary. This does not authorize hierarchy names or paths as runtime identity.
 
-The current `UnityResetSubjectAdapter` remains a separate registration surface.
-`ResetSubjectReference`, `ResetSelectionConfig`, `ObjectResetTrigger` and
-`ObjectResetGroupTrigger` have been removed. The request Inspector expresses
-Object/Composition semantic kind separately from Direct/Stable addressing.
+`UnityResetSubjectAdapter` and its independent registration surface were
+removed by RESET-035-H under IF-GOV-001. `ResetSubjectReference`,
+`ResetSelectionConfig`, `ObjectResetTrigger` and `ObjectResetGroupTrigger` have
+also been removed. The request Inspector expresses Object/Composition
+semantic kind separately from Direct/Stable addressing.
 
 IF-ADR-035 is normative for Reset-specific authoring semantics.
 

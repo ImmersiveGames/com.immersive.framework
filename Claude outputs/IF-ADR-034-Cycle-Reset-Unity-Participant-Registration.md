@@ -57,8 +57,8 @@ explicit validation → Play Mode evidence). Authored fields:
 component itself implements `ICycleResetParticipant`, building its descriptor
 from authored fields and delegating execution to `target`.
 
-It is not an `IResetParticipant`, not an `IUnityResettable`, and does not
-attach to `UnityResetSubjectAdapter`.
+It does not implement the Reset contracts and remains separate from the
+IF-ADR-035 `Resettable` / `ResetTarget` model.
 
 ### 2. Registration port — `ICycleResetRegistrationRuntimePort` (internal)
 
@@ -70,8 +70,8 @@ Unregister(handle, UnityEngine.Object owner, source, reason) -> result
 
 Implemented by `FrameworkRuntimeHost`, resolving the owner from the same
 Route/Activity runtime scope owners used by `TryResolveCurrentResetOwner`
-(including `RuntimeDefinitionToken`). Separate interface from
-`IResetRegistrationRuntimePort`.
+(including `RuntimeDefinitionToken`). The port remains Cycle-Reset-specific
+and does not depend on Object Reset registration.
 
 ### 3. Registry — `CycleResetParticipantRegistry` (internal)
 
@@ -91,12 +91,12 @@ The host injects the registry once, through a buffered binding applied whenever
 ### 4. Composition — `CycleResetBindingSceneLifecycleParticipant` (internal)
 
 A new `ISceneLifecycleParticipant` registered in `SceneLifecycleRuntime`
-beside — not inside — `ResetProductBindingSceneLifecycleParticipant`.
+beside the Reset request-trigger binding participant.
 
 - `OnSceneAvailable(scene, roots)`: typed collection of
   `UnityCycleResetParticipant` under the explicit lifecycle-owned roots that
-  Scene Lifecycle supplies (the same boundary already used for Reset adapters
-  and Cycle Reset triggers); binds the port; each component registers itself.
+  Scene Lifecycle supplies; binds the Cycle Reset port; each component
+  registers itself.
 - `OnSceneReleasing(scene, roots)`: unregisters every participant under those roots.
 - Component `OnDisable`/`OnDestroy`: unregisters through its bound handle.
 
@@ -126,8 +126,8 @@ changes, and any change to `CycleResetPlan`/`CycleResetRuntime`.
 ## Open points for the implementation cut
 
 1. Activity-scene timing: confirm the Activity owner is resolvable at
-   `OnSceneAvailable`; otherwise adopt the deferred-registration refresh
-   already used by `ResetProductBindingSceneLifecycleParticipant`.
+   `OnSceneAvailable`; if not, define a Cycle-Reset-owned deferred registration
+   refresh without depending on the removed Object Reset Adapter path.
 2. Handle type: reuse a Cycle-Reset-local handle struct (do not reuse `ResetRegistrationHandle`).
 3. API status: component and `IUnityCycleResettable` start as Experimental (IF-GOV-001).
 

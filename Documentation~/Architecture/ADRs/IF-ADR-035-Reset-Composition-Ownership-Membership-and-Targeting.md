@@ -364,7 +364,7 @@ They are internal/runtime concerns by default.
 
 Normal authoring must not require consumers to invent textual identifiers solely so Reset can execute.
 
-Under the Resettable path, collected capabilities receive deterministic runtime participant identity from the Resettable registration boundary; authored participant IDs are not required for normal Resettable authoring. The independent UnityResetSubjectAdapter path retains its authored participant descriptor/identity contract.
+Collected capabilities receive deterministic runtime participant identity from the Resettable registration boundary. Authored participant IDs are not part of the canonical Reset capability contract.
 
 Stable authored identity remains valid only when identity itself is a real cross-boundary gameplay/integration requirement.
 
@@ -382,7 +382,7 @@ Route and Activity content must be registered at owner-aware transaction boundar
 
 The existing Pause Activity binding transaction is the architectural precedent.
 
-`ResetProductBindingSceneLifecycleParticipant` may remain useful for product binding that does not establish ownership, but generic scene availability is not the authority for assigning Reset ownership.
+Scene Lifecycle binds and releases Reset request triggers only. It does not register Resettable subjects or assign Reset ownership; owner-aware Route/Activity transactions retain that responsibility.
 
 ## 12. Runtime-created content
 
@@ -571,16 +571,13 @@ Integrate Resettable registration with owner-aware runtime materialization.
 
 Prove owner propagation and release.
 
-### RESET-035-H — legacy migration and removal
+### RESET-035-H — legacy Adapter removal — 2026-10-12
 
-After QA and consumer validation:
+**Decision:** remove `UnityResetSubjectAdapter` and its separate subject-ID/discovery authoring, binding, registry bridge and Scene Lifecycle participant. `Resettable` owner-aware Route/Activity transactions are the only composition registration path. `ResetComposition`, `ResetTarget`, `ResetMembership`, `ResetRegistry`, `ResetExecutor` and existing capabilities remain authoritative.
 
-- migrate planet-devourer;
-- deprecate/remove UnityResetSubjectAdapter normal authoring;
-- update Reset-Usage.
+This is a deliberate breaking change under IF-GOV-001. No obsolete Adapter type or compatibility shim remains. Consumers remove serialized Adapter components and add `Resettable` at each independently executable boundary, keep supported capabilities inside that hierarchy, express inclusion with `ResetMembership`, and target them with `ResetTarget`. Custom `IUnityResettable` implementations no longer author `ResetParticipantId`; `IUnityResettableMetadata` contains only execution metadata used by the canonical path. Adapter-only Subject/Participant identity, identity suggestion methods, descriptor-provider members, direct registry port, actor identity bridge and retry/binding lifecycle are removed. The shared `ResetAuthoringIdentityUtility` remains for prefab recording.
 
-Removal of the remaining registration authoring is not allowed before its
-equivalent contracts are validated.
+The source and serialized-reference audit found no Adapter API or component GUID references in QAFramework, planet-devourer or PEGA. QAFramework's custom capability was migrated off its now-unneeded `ResetParticipantId` member. FirstGame and PEGA resolve the published `1.1.0-preview.8`, so neither compiles this local source cut and neither is claimed as candidate consumer validation.
 
 ## 19. QA obligations
 
@@ -623,7 +620,7 @@ QA must distinguish behavioral contracts from legacy authoring structure.
 - registration moves deeper into Route/Activity transaction integration;
 - ownership and Reset membership become separate concepts that tooling/documentation must present clearly;
 - cross-scene specific targeting still requires stable identity;
-- existing UnityResetSubjectAdapter registration authoring remains for separate migration work;
+- legacy Adapter-authored subjects require migration to owner-aware Resettable content;
 - ordering needs an explicit runtime contract rather than relying on authored ID text.
 
 ### Risks
@@ -634,9 +631,8 @@ QA must distinguish behavioral contracts from legacy authoring structure.
 - runtime materialization bypassing Reset registration;
 - Activity Restart resetting state that lifecycle would immediately recreate.
 
-RESET-035-H remains pending for consumer migration and the separate
-UnityResetSubjectAdapter authoring path; ObjectResetTrigger,
-ObjectResetGroupTrigger and ResetSelectionConfig have been removed in this cut.
+RESET-035-H removes the separate Adapter path; ObjectResetTrigger,
+ObjectResetGroupTrigger and ResetSelectionConfig were removed in earlier cuts.
 
 ## 21. Supersession and reconciled boundaries
 
@@ -648,7 +644,7 @@ Reconciled authority and remaining requirements:
 - **IF-ADR-014 (reconciled 2026-10-01):** `StableObjectBinding` is the generic owner-transaction projection from `ObjectEntryId` to a live physical occurrence; Reset consumes it without owning its lifecycle.
 - **IF-ADR-001:** add owner-aware transaction registration and rollback invariant; current state is not ownership authority for target content during transition.
 - **IF-ADR-002:** reconcile typed hierarchy/composition as authoring boundary without making hierarchy runtime identity.
-- **IF-ADR-010:** classify Resettable / ResetComposition / ResetTarget as the intended Reset product surface; generated runtime identity belongs in Advanced/Diagnostics.
+- **IF-ADR-010:** classify Resettable / ResetComposition / ResetTarget as the sole Reset product surface; generated runtime identity belongs in diagnostics, with no independent Adapter registration surface.
 - **IF-ADR-034 draft:** do not advance the current per-GameObject Cycle Reset registration proposal; Cycle Reset remains separate and must be reconsidered after RESET-035 boundaries exist.
 - **Reset-Usage.md:** migrate from authored subject ID/scope/group-list instructions to Resettable / ResetComposition / ResetTarget.
 

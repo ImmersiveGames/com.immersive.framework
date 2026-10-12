@@ -85,8 +85,7 @@ namespace Immersive.Framework.Reset.Unity
             {
                 Resettable resettable = resettables[index];
                 var capabilities = new List<MonoBehaviour>();
-                var legacyAdapters = new List<UnityResetSubjectAdapter>();
-                ResettableBoundary.Collect(resettable, capabilities, legacyAdapters);
+                ResettableBoundary.Collect(resettable, capabilities);
                 capabilitiesByResettable.Add(capabilities);
 
                 if (resettable.IsRegistered)
@@ -94,13 +93,6 @@ namespace Immersive.Framework.Reset.Unity
                     issueCount++;
                     issues.Append(
                         $" resettable='{resettable.DisplayName}' issue='already-registered' owner='{resettable.Owner.StableText}'.");
-                }
-
-                if (legacyAdapters.Count > 0)
-                {
-                    issueCount++;
-                    issues.Append(
-                        $" resettable='{resettable.DisplayName}' issue='mixed-legacy-adapter' detail='UnityResetSubjectAdapter inside the Resettable boundary ({legacyAdapters.Count}); use either Resettable or the legacy adapter, not both.'.");
                 }
 
                 ResetMembership resolvedMembership = membershipByResettable[resettable];
@@ -111,14 +103,6 @@ namespace Immersive.Framework.Reset.Unity
                         $" resettable='{resettable.DisplayName}' issue='membership-owner-incompatible' membership='{resolvedMembership}' owner='{owner.StableText}'. Activity-owned content cannot have Route reset membership.");
                 }
 
-                UnityResetSubjectAdapter coveringAncestor =
-                    ResettableBoundary.FindCoveringLegacyAncestor(resettable);
-                if (coveringAncestor != null)
-                {
-                    issueCount++;
-                    issues.Append(
-                        $" resettable='{resettable.DisplayName}' issue='mixed-legacy-adapter' detail='ancestor UnityResetSubjectAdapter \"{coveringAncestor.name}\" uses Children discovery and would also collect this Resettable boundary.'.");
-                }
             }
 
             if (issueCount > 0)

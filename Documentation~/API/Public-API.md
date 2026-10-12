@@ -160,6 +160,8 @@ Guides: [Progression Save authoring](../Guides/Progression-Save-Authoring.md), [
 
 Reset authoring is Experimental. The supported consumer model is semantic authoring around Resettable, capabilities, compositions and Reset targets; registry mechanics and runtime-generated identities are not the normal gameplay API.
 
+`UnityResetSubjectAdapter` and its independent registration contract were deliberately removed under RESET-035-H and IF-GOV-001. Existing authored Adapter components and custom implementations of its ID/registration contracts must migrate to `Resettable` owner-aware composition; no compatibility API is provided. See the migration guidance in [Reset Usage](../Guides/Reset-Usage.md).
+
 | Surface | Category / maturity | Purpose |
 |---|---|---|
 | `Resettable` | Authoring component · Experimental | One independently executable Reset subject and hierarchy boundary for local Reset capabilities. Nested Resettables form independent boundaries. |
@@ -168,9 +170,10 @@ Reset authoring is Experimental. The supported consumer model is semantic author
 | `ResetTarget`, `ResetObjectTarget`, `ResetCompositionTarget` | Target values · Experimental | Express semantic target intent and Direct/Stable addressing without exposing registry mechanics. |
 | `ResetMembership` | Authoring policy · Experimental | Controls CurrentActivity/CurrentRoute inclusion independently from content ownership. |
 | `ResetReferenceMode` | Addressing policy · Experimental | Selects Direct typed references or Stable IF-ADR-014 addressing for Object/Composition. |
+| `UnityResetParticipantBehaviour`, `IUnityResettable` | Capability contracts · Experimental | Implement synchronous Reset capabilities collected within a `Resettable` hierarchy boundary; authored participant IDs are not required. |
+| `IUnityResettableMetadata` | Optional capability metadata · Experimental | Supplies `ResetRequiredness`, `ResetOrder` and `ResetDisplayName` for a custom `IUnityResettable`. |
 | `UnityTransformResetParticipant` | Reset capability · Experimental | Restores an authored Transform baseline. |
 | `UnityGameObjectActiveResetParticipant` | Reset capability · Experimental | Restores an authored GameObject active-state baseline. |
-| `UnityResetSubjectAdapter` | Independent registration adapter · Experimental | Retained independent subject-registration contract; not the normal Resettable path and not a request surface. |
 
 Under `Resettable`, collected capability identity is runtime-generated/deterministic; consumers do not need to author participant IDs for the normal path.
 

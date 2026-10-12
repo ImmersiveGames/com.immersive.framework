@@ -1,85 +1,23 @@
-using System;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using UnityEngine;
 
 namespace Immersive.Framework.Reset.Unity
 {
-    /// <summary>
-    /// API status: Experimental. Base Unity behaviour for local, synchronous Reset participants.
-    /// It has no ObjectEntryDeclaration target and receives the subject from UnityResetSubjectAdapter.
-    /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12B Unity reset participant without ObjectEntryDeclaration target.")]
-    public abstract class UnityResetParticipantBehaviour : MonoBehaviour, IResetParticipant
+    /// <summary>Base Unity behavior for a synchronous capability discovered by a Resettable boundary.</summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-035 Resettable capability authoring behavior.")]
+    public abstract class UnityResetParticipantBehaviour : MonoBehaviour
     {
-        [Header("Reset Participant")]
-        [SerializeField] private string participantId = "participant";
+        [Header("Reset Capability")]
         [SerializeField] private ResetParticipantRequiredness requiredness = ResetParticipantRequiredness.Required;
         [SerializeField] private int order;
         [SerializeField] private string displayName;
-        [SerializeField] private string source = nameof(UnityResetParticipantBehaviour);
-        [SerializeField] private string reason = "unity-reset-participant";
-
-        public string ParticipantIdText => participantId;
 
         public ResetParticipantRequiredness Requiredness => requiredness;
 
         public int Order => order;
 
         public string DisplayName => ResolveDisplayName();
-
-        public virtual bool TryCreateResetParticipantDescriptor(
-            ResetSubject subject,
-            out ResetParticipantDescriptor descriptor,
-            out ResetIssue issue)
-        {
-            descriptor = default;
-            issue = default;
-
-            if (!subject.IsValid)
-            {
-                issue = ResetIssue.Error(
-                    ResetIssueKind.InvalidSubject,
-                    $"Unity reset participant '{ResolveDisplayName()}' requires a valid ResetSubject.");
-                return false;
-            }
-
-            string normalizedParticipantId = participantId.NormalizeText();
-            if (string.IsNullOrWhiteSpace(normalizedParticipantId))
-            {
-                issue = ResetIssue.Error(
-                    ResetIssueKind.InvalidParticipant,
-                    $"Unity reset participant on GameObject '{ResolveGameObjectName()}' requires a non-empty Participant Id.");
-                return false;
-            }
-
-            if (!Enum.IsDefined(typeof(ResetParticipantRequiredness), requiredness)
-                || requiredness == ResetParticipantRequiredness.Unknown)
-            {
-                issue = ResetIssue.Error(
-                    ResetIssueKind.InvalidParticipant,
-                    $"Unity reset participant '{normalizedParticipantId}' requires explicit requiredness.");
-                return false;
-            }
-
-            try
-            {
-                descriptor = new ResetParticipantDescriptor(
-                    ResetParticipantId.From(normalizedParticipantId),
-                    subject.SubjectId,
-                    requiredness,
-                    order,
-                    ResolveDisplayName(),
-                    source.NormalizeTextOrFallback(GetType().Name),
-                    reason.NormalizeTextOrFallback("unity-reset-participant"));
-                return true;
-            }
-            catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
-            {
-                issue = ResetIssue.Error(ResetIssueKind.InvalidParticipant, exception.Message);
-                return false;
-            }
-        }
 
         public abstract ResetParticipantResult Reset(ResetContext context);
 
@@ -90,48 +28,18 @@ namespace Immersive.Framework.Reset.Unity
 
         protected string ResolveDisplayName()
         {
-            if (!string.IsNullOrWhiteSpace(displayName))
-            {
-                return displayName.Trim();
-            }
-
-            return !string.IsNullOrWhiteSpace(participantId)
-                ? participantId.Trim()
-                : GetType().Name;
-        }
-
-        protected string ResolveSource(string fallback)
-        {
-            return source.NormalizeTextOrFallback(fallback);
-        }
-
-        protected string ResolveReason(string fallback)
-        {
-            return reason.NormalizeTextOrFallback(fallback);
-        }
-
-        private string ResolveGameObjectName()
-        {
-            return gameObject != null && !string.IsNullOrWhiteSpace(gameObject.name)
-                ? gameObject.name.Trim()
-                : "<missing>";
+            return displayName.NormalizeTextOrFallback(GetType().Name);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         internal void ConfigureDefaults(
-            string defaultParticipantId,
             ResetParticipantRequiredness defaultRequiredness,
             int defaultOrder,
-            string defaultDisplayName,
-            string defaultSource,
-            string defaultReason)
+            string defaultDisplayName)
         {
-            participantId = defaultParticipantId;
             requiredness = defaultRequiredness;
             order = defaultOrder;
             displayName = defaultDisplayName;
-            source = defaultSource;
-            reason = defaultReason;
         }
 #endif
     }

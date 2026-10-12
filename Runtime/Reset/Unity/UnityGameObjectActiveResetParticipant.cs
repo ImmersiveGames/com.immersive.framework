@@ -22,12 +22,9 @@ namespace Immersive.Framework.Reset.Unity
         private void Reset()
         {
             ConfigureDefaults(
-                "game-object-active",
                 ResetParticipantRequiredness.Required,
                 10,
-                "GameObject Active",
-                nameof(UnityGameObjectActiveResetParticipant),
-                "unity-game-object-active-reset");
+                "GameObject Active");
             target = gameObject;
             CaptureBaseline();
         }
@@ -73,7 +70,7 @@ namespace Immersive.Framework.Reset.Unity
 
             FrameworkLogger.Create<UnityGameObjectActiveResetParticipant>().Debug(
                 "Unity GameObject active reset immediate verification.",
-                LogFields.Field("participantId", ParticipantIdText),
+                LogFields.Field("participantId", context.Participant.ParticipantId.StableText),
                 LogFields.Field("targetName", resolvedTarget.name),
                 LogFields.Field("baselineActive", baselineActive),
                 LogFields.Field("beforeActive", beforeActive),

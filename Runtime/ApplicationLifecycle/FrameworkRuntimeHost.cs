@@ -58,7 +58,6 @@ namespace Immersive.Framework.ApplicationLifecycle
         private PauseSurfaceRuntime _pauseSurfaceRuntime;
         private PauseSurfaceSceneLifecycleParticipant _pauseSurfaceSceneLifecycleParticipant;
         private SceneLifecycleRuntime _sceneLifecycleRuntime;
-        private ResetProductBindingSceneLifecycleParticipant _resetProductBindingSceneLifecycleParticipant;
         private bool _persistentContentScopeComposed;
         private PauseProductBindingRuntimeContext _pauseProductBindingRuntime;
         private PauseActivityBindingRuntimeContext _pauseActivityBindingRuntime;
@@ -457,60 +456,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             _gameFlowRuntime?.SetCycleResetParticipantSource(participantSource);
         }
 
-        internal ResetRegistryOperationResult RegisterResetSubject(
-            ResetSubject subject,
-            UnityEngine.Object owner,
-            string source,
-            string reason)
-        {
-            return ResetRegistry.RegisterSubject(subject, owner, source, reason);
-        }
-
-        internal ResetRegistryOperationResult RegisterRuntimeResetSubject(
-            string authoredPrefix,
-            ResetSubjectScope scope,
-            RuntimeContentOwner owner,
-            UnityEngine.Object ownerObject,
-            string displayName,
-            string diagnosticTag,
-            string source,
-            string reason)
-        {
-            return ResetRegistry.RegisterRuntimeSubject(
-                authoredPrefix,
-                scope,
-                owner,
-                ownerObject,
-                displayName,
-                diagnosticTag,
-                source,
-                reason);
-        }
-
-        internal ResetRegistryOperationResult RegisterResetParticipant(
-            ResetRegistrationHandle subjectHandle,
-            IResetParticipant participant,
-            UnityEngine.Object owner,
-            string source,
-            string reason)
-        {
-            return ResetRegistry.RegisterParticipant(subjectHandle, participant, owner, source, reason);
-        }
-
-        internal ResetRegistryOperationResult UnregisterResetRegistration(
-            ResetRegistrationHandle handle,
-            UnityEngine.Object owner,
-            string source,
-            string reason)
-        {
-            return _resetRegistry == null
-                ? ResetRegistryOperationResult.AlreadyUnregistered(
-                    handle,
-                    ResetIssue.Warning(ResetIssueKind.InvalidHandle, "Reset registry is unavailable."),
-                    "Reset unregister ignored because the ResetRegistry has not been created.")
-                : _resetRegistry.Unregister(handle, owner, source, reason);
-        }
-
         internal bool TryResolveCurrentResetOwner(
             ResetSubjectScope scope,
             out RuntimeContentOwner owner,
@@ -600,7 +545,6 @@ namespace Immersive.Framework.ApplicationLifecycle
             var sceneResult = declarationSource.CollectScoped(context);
             _objectEntryRuntimeContextSnapshot = sceneResult.ToRuntimeContextSnapshot(source);
             _objectEntryRuntimeContextRevision++;
-            _resetProductBindingSceneLifecycleParticipant?.RefreshSubjectRegistrationsForCurrentOwners(source);
             return _objectEntryRuntimeContextSnapshot;
         }
         /// <summary>
@@ -1919,15 +1863,11 @@ namespace Immersive.Framework.ApplicationLifecycle
             _pauseActivityBindingModule = new PauseActivityBindingRuntimeHostModule(
                 _pauseActivityBindingRuntime,
                 _pauseProductBindingRuntime);
-            _resetProductBindingSceneLifecycleParticipant =
-                new ResetProductBindingSceneLifecycleParticipant(
-                    (IResetRegistrationRuntimePort)this);
             _pauseSurfaceSceneLifecycleParticipant =
                 new PauseSurfaceSceneLifecycleParticipant(_pauseProductBindingRuntime);
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
                 _pauseSurfaceSceneLifecycleParticipant,
-                _resetProductBindingSceneLifecycleParticipant,
                 new ResetRequestTriggerSceneLifecycleParticipant(this),
                 new SessionCameraAssignmentCommandSceneLifecycleParticipant(this),
                 new RouteRequestSceneLifecycleParticipant(this),

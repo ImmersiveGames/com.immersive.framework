@@ -32,12 +32,9 @@ namespace Immersive.Framework.Reset.Unity
         private void Reset()
         {
             ConfigureDefaults(
-                "transform",
                 ResetParticipantRequiredness.Required,
                 0,
-                "Transform",
-                nameof(UnityTransformResetParticipant),
-                "unity-transform-reset");
+                "Transform");
             target = transform;
             CaptureBaseline();
         }
@@ -120,7 +117,7 @@ namespace Immersive.Framework.Reset.Unity
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             FrameworkLogger.Create<UnityTransformResetParticipant>().Debug(
                 "Unity Transform reset immediate verification.",
-                LogFields.Field("participantId", ParticipantIdText),
+                LogFields.Field("participantId", context.Participant.ParticipantId.StableText),
                 LogFields.Field("targetName", resolvedTarget.name),
                 LogFields.Field("baselineLocalPosition", baselineLocalPosition.ToString()),
                 LogFields.Field("beforeLocalPosition", beforePosition.ToString()),

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <LangVersion>9.0</LangVersion>
@@ -296,7 +296,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\LocalContribution\LocalContributionRequirement.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\CycleReset\CycleResetRequest.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ContentFlow\FrameworkContentId.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetSubjectIdGenerationMode.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\LocalContribution\LocalContributionDiscoveryIssue.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\IUnityResettable.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Product\CameraOperationStatus.cs" />
@@ -339,7 +338,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Subjects\CameraSubject.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ActivityFlow\ActivityOperationSceneAction.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\RuntimeMaterializationResource.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetSubjectAdapterQaSmokeRunner.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ActivityFlow\ActivitySceneLedgerSnapshot.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ActivityFlow\ActivityContentExecutionRequestFactory.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Authoring\PlayerGameplayInputReader.cs" />
@@ -422,7 +420,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\SceneLifecycle\SceneLifecycleEventsParticipant.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Gate\GateDecision.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\RuntimeContentState.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetSubjectAdapterBindingResult.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\GameFlow\GameFlowRuntime.ActivityEntryReadinessPort.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\RuntimeRootRegistry.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Snapshot\SnapshotSchemaId.cs" />
@@ -510,7 +507,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Transition\NoOpTransitionOrchestrator.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\ResetSubjectResult.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Publishing\CameraRequestPublisherResult.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResettableComponentParticipant.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\ResetExecutionResult.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RouteLifecycle\RouteExitedEvent.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\RuntimeDefinitionToken.cs" />
@@ -606,7 +602,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\CycleReset\CycleResetIssue.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Presentation\CameraViewPresentationInputResult.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ActivityFlow\ActivityFlowRuntime.ActivationGate.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Composition\ResetProductBindingSceneLifecycleParticipant.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ProgressionSave\JsonProgressionSaveStore.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Presentation\CameraViewSubjectCardinality.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Contracts\PlayerActorPreparationSnapshot.cs" />
@@ -797,7 +792,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RouteLifecycle\RouteContentMaterializationPlan.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Diagnostics\FrameworkQaCanvasBindingResult.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Contracts\ActivityPlayerAdmissionStageToken.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\IResetRegistrationRuntimePort.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\ResetSubjectReference.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\InputMode\InputModeRuntimeContext.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Snapshot\SnapshotScope.cs" />
@@ -851,7 +845,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Presentation\CameraViewTargetProjector.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ActivityFlow\ActivitySceneLedgerEntryStatus.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\GameFlow\FrameworkActivityRestartFlowResult.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetSubjectAdapter.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ObjectEntry\ObjectEntryDeclaration.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\IRuntimeMaterializationAdapter.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Camera\Product\CameraTargetRequirement.cs" />
@@ -1008,7 +1001,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Transition\TransitionPlan.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\LocalContribution\LocalContributionDiscoveryIssueKind.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Runtime\PlayerActorPreparationRuntimeContext.ScenePlayerActorAdoption.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetParticipantDiscoveryMode.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ContentFlow\ContentReleaseStatus.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\ApiStatus\FrameworkApiStatusAttribute.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Snapshot\ISnapshotParticipant.cs" />
@@ -1037,7 +1029,6 @@
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Runtime\PlayerActorPreparationRuntimeContext.CurrentActorEvidence.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Runtime\LocalPlayerProvisioningBridge.SessionPlayerLeave.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Diagnostics\InputModeContractQaSmokeRunner.cs" />
-    <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\Reset\Unity\UnityResetSubjectAdapterBinding.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\RuntimeContent\LifecycleMaterializationReleaseExecutionStatus.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Runtime\LocalPlayerProvisioningRuntimeHostModule.LifecycleProjection.cs" />
     <Compile Include="C:\Projetos\ImmersivePackages\com.immersive.framework\Runtime\PlayerParticipation\Contracts\PlayerSessionInitializationResult.cs" />

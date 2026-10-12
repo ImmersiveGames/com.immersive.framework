@@ -2,18 +2,10 @@ using Immersive.Framework.ApiStatus;
 
 namespace Immersive.Framework.Reset.Unity
 {
-    /// <summary>
-    /// API status: Experimental. Implement this on gameplay MonoBehaviours that should participate
-    /// in a UnityResetSubjectAdapter reset without adding a separate UnityResetParticipantBehaviour.
-    /// </summary>
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "preview.12J gameplay component reset participation through UnityResetSubjectAdapter.")]
+    /// <summary>Capability contract for a gameplay component discovered inside a Resettable boundary.</summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-035 custom Resettable capability.")]
     public interface IUnityResettable
     {
-        /// <summary>
-        /// Stable participant id under the owning ResetSubject. It must be unique for that subject.
-        /// </summary>
-        string ResetParticipantId { get; }
-
         /// <summary>
         /// Executes this component's reset synchronously. Awaitable orchestration remains owned by ResetExecutor.
         /// </summary>

@@ -17,9 +17,7 @@ QAFramework resolves the local checkout and FirstGame resolves published
 inspected assets. The user reports QAFramework Unity Test Runner EditMode
 **309/309 passed, zero failures**, including `PauseProductTransactionTests`
 **14/14** for this physical-integrity source cut. This is manual reported
-evidence; raw log and execution SHA were not supplied. Play Mode integration
-remains pending. PEGA source/package inspection is **BLOCKED BY ENVIRONMENT
-ACCESS** and must precede its migration claim.
+evidence; raw log and execution SHA were not supplied. Play Mode integration remains pending. PEGA resolves published `1.1.0-preview.8`; source and GUID inspection for RESET-035-H found no removed Adapter references, but consumer validation against this local candidate remains pending.
 
 `PauseProductTransactionTests` now contains 14 cases, five added for physical
 Gate read-back, bounded retry, recoverable release, retry authority and
@@ -95,6 +93,32 @@ Distribution status: **1.1.0-preview.8 PUBLISHED / PENDING UNITY COMPILE/IMPORT 
 ## Current Reset integration QA evidence
 
 On 2026-10-06 the current RESET-035-B extensions were executed in Unity Play Mode. `QA-NEW-002` passed the controlled Activity readiness/rollback and owner-release path with `BaselineRestored`; `QA-NEW-003` passed Route A → B → new A with owner survival, exact lifecycle observations and `BaselineRestored`. Both ended with empty `firstDivergence` and `cleanupIssue`. This closes the integration execution gate represented by those two fixtures without relabeling older historical certifications.
+
+## Current Reset source cut — RESET-035-H legacy Adapter removal
+
+`UnityResetSubjectAdapter`, its independent ID/discovery/registration bridge,
+and its Scene Lifecycle binding participant are removed. Resettable owner-aware
+Route/Activity transactions remain the only subject registration authority;
+ResetComposition, ResetTarget, ResetMembership, ResetRegistry, ResetExecutor
+and existing capabilities remain. IF-ADR-035, Public-API, Reset Usage and the
+Unreleased changelog record the deliberate breaking change and migration under
+IF-GOV-001. Package version remains `1.1.0-preview.8`.
+
+Static consumer inspection found no Adapter API reference or removed Adapter
+component GUID in QAFramework, FirstGame or PEGA. QAFramework's one custom
+`IUnityResettable` fixture was migrated off its obsolete `ResetParticipantId`
+property. FirstGame's pre-existing settings/package-manager edits were
+preserved. QAFramework resolves the local package checkout; FirstGame and PEGA
+currently resolve registry `1.1.0-preview.8` and therefore do not compile the
+candidate source cut.
+
+The user reports Unity validation for this Adapter-removal cut: QAFramework
+EditMode **306/306 PASS**, Reset EditMode **69/69 PASS**, `QA-NEW-002` Play Mode
+**PASS**, and `QA-NEW-003` Play Mode **PASS**. This is manually reported
+evidence; raw logs and an execution SHA were not supplied. FirstGame consumer
+validation against an immutable candidate remains **PENDING**. PEGA has no
+source/GUID reference in the inspected checkout, but its registry installation
+likewise does not validate the new package source.
 
 ## Current Player state
 
