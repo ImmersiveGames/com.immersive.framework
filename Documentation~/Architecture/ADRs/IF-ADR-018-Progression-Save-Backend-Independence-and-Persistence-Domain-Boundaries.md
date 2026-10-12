@@ -2,18 +2,19 @@
 
 Status: **Accepted**  
 Date: 2026-08-11  
+Amended: **2026-10-12 — retired the preparatory Experimental Snapshot implementation; the conceptual persistence boundary remains separate from Progression Save.**
 Type: architecture / product direction / package-to-ADR reverse reconciliation  
 Related decisions: IF-ADR-014, IF-ADR-017  
 Source finding: Package → ADR Reverse Audit RA-02
 
 ## Context
 
-The package contains three persistence-related domains:
+The architecture distinguishes three persistence-related domains:
 
 ```text
-Immersive.Framework.Preferences
-Immersive.Framework.Snapshot
-Immersive.Framework.ProgressionSave
+Preferences domain
+Snapshot domain
+Progression Save domain
 ```
 
 Their separation is intentional.
@@ -94,9 +95,19 @@ The store only persists/retrieves the preference value.
 
 ### 3. Snapshot
 
-Snapshot owns capture/restore contracts.
+Snapshot remains the distinct conceptual domain for capture and restore
+representation of gameplay/runtime state. It is not Progression Save and does not
+own durable progression persistence.
 
-A Snapshot participant answers:
+On 2026-10-12, the preparatory Experimental Snapshot implementation was retired.
+The package no longer provides `ISnapshotParticipant` or its associated scope,
+identity, envelope, payload, context, descriptor or result types. It currently has
+no Snapshot participants, API contract, runtime or orchestration. This withdrawal
+does not merge Snapshot with Progression Save or remove the conceptual boundary.
+Any future implementation requires concrete consumer requirements and a separately
+reviewed design.
+
+In a future Snapshot design, a participant would answer:
 
 ```text
 what local state can I capture?
@@ -115,8 +126,9 @@ encryption provider
 autosave schedule
 ```
 
-Future Snapshot orchestration may aggregate participant output into a
-`ProgressionSavePayload`, but that orchestration remains a separate authority.
+Future Snapshot orchestration may aggregate explicitly supplied participant output
+into a `ProgressionSavePayload`, but that orchestration remains a separate
+authority and is not implemented by this package.
 
 ### 4. Progression Save is the canonical framework persistence contract
 
@@ -389,7 +401,7 @@ Preferences
   EXPERIMENTAL, separate domain
 
 Snapshot
-  EXPERIMENTAL, separate domain
+  preparatory Experimental implementation retired 2026-10-12; conceptual separate domain retained
 ```
 
 Do not mark the current API Stable merely because this ADR accepts the product
@@ -420,6 +432,9 @@ It must be designed when the authoring/composition cut is implemented.
 
 ## Future Snapshot integration
 
+This relationship is conceptual only; the package currently implements none of
+the Snapshot stages shown here.
+
 The intended relationship is:
 
 ```text
@@ -436,7 +451,8 @@ IProgressionSaveStore
 selected backend
 ```
 
-The selected backend never discovers gameplay Snapshot participants itself.
+If a future Snapshot participant/orchestration design is implemented, the selected
+Progression Save backend must not discover gameplay participants itself.
 
 ## Future Preferences integration
 
@@ -647,13 +663,13 @@ cross-device conflict resolution
 
 ```text
 Preferences remains separate from Progression Save
-Snapshot remains separate from backend storage
+Snapshot remains a conceptual domain separate from Progression Save backend storage
 Progression Save is recognized as canonical framework persistence contract
 JSON is recognized as official built-in minimum backend
 third-party systems replace the backend through adapters
 no framework consumer depends on a concrete backend
 no silent fallback to JSON
-current Experimental APIs are not prematurely frozen
+Experimental APIs that remain in the package are not prematurely frozen
 JSON consistency hardening is explicitly required before certification
 ```
 
