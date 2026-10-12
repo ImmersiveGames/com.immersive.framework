@@ -6,7 +6,7 @@ Accepted: **2026-10-11**
 Type: Player Participation / public compatibility boundary / scoped authoring  
 Related decisions: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md), IF-ADR-003, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
 Current evidence and gates: [Player full recertification matrix (P6/P7)](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
-Implementation route: [IF-PLAN-ADR-046 v3](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md) — approved; [Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) accepted and supplements §6 migration policy; maturity remains a separate decision under IF-GOV-001
+Implementation route: [IF-PLAN-ADR-046 v3](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md) — approved; [Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements §6 migration policy; [Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) supplements §7 physical-compensation evidence; maturity remains a separate decision under IF-GOV-001
 
 > Acceptance authorizes this architectural direction and contract design only. It does not certify, implement, or promote any API to Stable, and authorizes no Runtime/API/test/consumer changes or release. IF-GOV-001 remains authoritative for maturity and compatibility policy.
 
@@ -235,7 +235,7 @@ Before the proposed API can be promoted or advertised as Stable:
 - Test direct trigger invocation without consumer code calling `TryGetAccess`/`IPlayerSessionScopedAccess`; test Route and Activity binding, mismatch, stale owner, Manager unavailability, disposal and destruction.
 - Preserve current Join/rollback suites and verify Session reservation release, no Host staged/joined, pending state cleared, original failure retained, and retry behavior after recoverable failure.
 - Replay the existing Slice 1 after the bridge correction on an immutable Framework SHA; retain raw output, timestamps and execution provenance.
-- Add integrated Play Mode evidence that Manager-owned physical compensation destroys the exact operation-owned PlayerInput/Host on callback-then-throw and other covered failure paths. A fake backend request alone does not satisfy this gate.
+- Accept physical compensation by the evidence composition and residual-risk decision in [Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md). This gate is **ACCEPTED BY COMPOSITE EVIDENCE**, not an integrated Play Mode PASS.
 - Decide whether a failed Session commit is reachable and add a deterministic package-owned seam/test if it is inside the public guarantee.
 - Compile/import and run FirstGame against the same candidate SHA. Verify the existing Experimental consumer still works and, if a sample adopts the new component, verify the direct stable Join call, Session observation boundary, rejection and cleanup.
 - Record public API/asmdef dependency on Input System and review the package minimum supported version, changelog and migration notes.
@@ -260,3 +260,5 @@ This ADR proposes only the compatibility surface and its scoped projection. IF-A
 The user accepted architecture direction B, its bounded signatures, full mapping, scoped lease model and migration policy on 2026-10-11. This ADR is **Accepted as an architecture/contract decision**. Acceptance authorizes neither implementation nor certification, `FrameworkApiStatus` changes, consumer migration, release nor Stable promotion. Those require separate authorization and evidence under IF-GOV-001. No API status or Runtime code changed while accepting this ADR.
 
 **Amendment 001 accepted:** the finite convergence and retirement policy in [IF-ADR-046 Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements §§6.1–6.5 without rewriting this original decision history. Apply the amendment for the current migration/retirement direction. The approved execution route is v3; its stages remain separately task-gated.
+
+**Amendment 002 accepted:** [IF-ADR-046 Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) supplements §7 by accepting composed evidence for the physical-compensation gate and recording its residual risks. It does not report an integrated Play Mode PASS or promote `PlayerSessionJoinTrigger`; independent candidate-provenance, FirstGame integration and remaining §7 decisions still apply.

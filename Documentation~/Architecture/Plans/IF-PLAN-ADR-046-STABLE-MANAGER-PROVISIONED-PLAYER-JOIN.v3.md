@@ -5,7 +5,7 @@ Version: **v3**
 Date: **2026-10-11**
 Supersedes: [v2](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v2.md)
 Decision: [IF-ADR-046](../ADRs/IF-ADR-046-Stable-Manager-Provisioned-Player-Join-Boundary.md)
-Accepted amendment: [IF-ADR-046 Amendment 001](../ADRs/IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md)
+Accepted amendments: [IF-ADR-046 Amendment 001](../ADRs/IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) (migration policy); [Amendment 002](../ADRs/IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) (§7 evidence criterion)
 Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 Mutable status/evidence: [Framework tracker](../Tracking/IF-TRACK-Framework.md) and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 
