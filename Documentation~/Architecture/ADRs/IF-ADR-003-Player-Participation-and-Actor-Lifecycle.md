@@ -2,7 +2,7 @@
 
 Status: **Accepted / Reconciled / Implemented; current QA coverage is bounded and full Player recertification remains open**
 Last updated: **2026-10-12**
-Amended: **2026-10-12 — Stable GameApplicationAsset serialization, Experimental Actor-selection policy boundary and retirement of standalone ActorReadiness APIs.**
+Amended: **2026-10-12 — Stable GameApplicationAsset serialization, Experimental Actor-selection policy boundary, retirement of standalone ActorReadiness APIs and ActivityPlayerAdmissionStage.**
 Related decisions: IF-ADR-001, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, IF-ADR-024, IF-ADR-038
 Historical aggregate evidence: [Player Aggregate Recertification — 2026-08-24](../Reconciliation/IF-PLAYER-CURRENT-AGGREGATE-RECERTIFICATION-2026-08-24.md); current QA-001 coverage: [Player Full Recertification — 2026-10-11](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
 Actor-selection closure: [IF-ADR-015B — 2026-08-26](../Reconciliation/IF-ADR-015B-Player-Actor-Selection-Public-Surface-Certification-2026-08-26.md)  
@@ -113,17 +113,22 @@ consumer scene authors exact Local Player Host
 
 A failed Scene-Provided admission does not transfer ownership. Supplying scene unload must not silently end an already admitted Session Player.
 
-### Activity Player Admission Stage disposition — 2026-10-12
+### Activity Player Admission Stage removal — 2026-10-12
 
-The P3K.7B `ActivityPlayerAdmissionStage*` implementation remains frozen as
-Experimental/preparatory. This records neither functional replacement by
-`ActivityPlayerLifecycleAdmissionRuntime` nor equivalence between the two
-boundaries. The current GameFlow lifecycle-admission path remains authoritative
-for its implemented prepare/commit/rollback behavior; the Stage runtime has no
-current composition call site. Preserve the Stage sources and their existing
-maturity until an explicit architecture decision establishes whether the
-pre-activation staging responsibility is still required. This disposition does
-not promote, reclassify or remove any API.
+The approved decision is to remove the complete Experimental
+`ActivityPlayerAdmissionStage` cluster. It had no active composition, no known
+Framework or consumer call sites, and no demonstrated responsibility exclusive
+of the canonical Activity Player Lifecycle/GameFlow path. The removal is a
+deliberate breaking change to its public preparatory types and internal
+mechanisms; no replacement API or staging authority is introduced.
+
+The canonical `ActivityPlayerLifecycleAdmissionRuntime` and GameFlow
+prepare/authorize/commit/rollback path remain authoritative. Session Join/Leave,
+Actor Selection, Activity participation/readiness and their existing owners are
+unchanged. The Activity Player admission evaluator and its evaluation results
+remain because the active Activity Player Lifecycle reconciliation consumes
+them; only Stage-exclusive flow gate/decision/disposition and Stage endpoints,
+scope, context and result contracts are removed.
 
 ## Actor selection
 
@@ -158,9 +163,10 @@ ADR and migration. [IF-ADR-015B](../Reconciliation/IF-ADR-015B-Player-Actor-Sele
 certifies the bounded public Actor-selection command surface; it does not
 promote this policy or adjacent surfaces.
 
-`PlayerActorSelectionDuplicatePolicy` currently has no
-`FrameworkApiStatusAttribute`. This decision establishes the maturity of its
-Actor-selection contract only; it does not authorize metadata or code changes.
+`PlayerActorSelectionDuplicatePolicy` is annotated Experimental in the current
+Runtime source. This matches the maturity of the Actor-selection behavior;
+`GameApplicationAsset` and its serialized policy data remain Stable. The
+annotation does not promote the authoring asset or adjacent Player contracts.
 
 ### Preparation barrier
 

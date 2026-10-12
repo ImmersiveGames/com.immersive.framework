@@ -66,12 +66,13 @@ behavior remains Experimental. These boundaries do not alter Session
 provisioning ownership, promote Player participation/readiness, or reduce any
 other Stable `ActivityAsset` guarantee.
 
-The enum types `ActivityParticipationProjectionMode`,
-`ActivityParticipationZeroParticipantPolicy`,
-`PlayerParticipationRequirementLevel`, and `ActivityPlayerRelocationPolicy`
-currently lack `FrameworkApiStatusAttribute`. This ADR establishes the maturity
-of the scoped behaviors, not type-level metadata; reconciliation of those
-attributes remains separate and must not be inferred for other types.
+The current Runtime source annotates `ActivityParticipationProjectionMode`,
+`ActivityParticipationZeroParticipantPolicy`, and
+`PlayerParticipationRequirementLevel` as Experimental under this ADR, and
+`ActivityPlayerRelocationPolicy` as Experimental under IF-ADR-021. These
+attributes match the behavior classifications above. They do not change the
+Stable serialization guarantee for the existing `ActivityAsset` fields or
+promote adjacent Player contracts.
 
 ## Session boundary
 

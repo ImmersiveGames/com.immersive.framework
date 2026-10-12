@@ -1,26 +1,26 @@
 # IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary
 
-Status: **Accepted — architecture and contract design; implementation and maturity promotion pending separate authorization**
+Status: **Accepted — implemented; bounded Manager-Provisioned Join closure promoted Stable**
 Proposed: **2026-10-11**  
 Accepted: **2026-10-11**
 Type: Player Participation / public compatibility boundary / scoped authoring  
 Related decisions: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md), IF-ADR-003, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020  
 Current evidence and gates: [Player full recertification matrix (P6/P7)](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md)
-Implementation route: [IF-PLAN-ADR-046 v3](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md) — approved; [Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements §6 migration policy; [Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) supplements §7 physical-compensation evidence; maturity remains a separate decision under IF-GOV-001
+Implementation route: [IF-PLAN-ADR-046 v3](../Plans/IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md) — approved; [Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) defines finite migration and retirement; [Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) records accepted composite evidence; [Amendment 003](IF-ADR-046-AMENDMENT-003-PARTIAL-PROVENANCE-ACCEPTANCE.md) records the scoped provenance exception and Stable decision in accordance with IF-GOV-001
 
-> Acceptance authorizes this architectural direction and contract design only. It does not certify, implement, or promote any API to Stable, and authorizes no Runtime/API/test/consumer changes or release. IF-GOV-001 remains authoritative for maturity and compatibility policy.
+> The initial 2026-10-11 acceptance established the architecture and contract design, but did not itself authorize implementation or Stable promotion. The later [Stable-promotion decision](IF-ADR-046-STABLE-PROMOTION-DECISION.md) and accepted evidence amendments record the completed implementation and promote only the bounded closure listed there. IF-GOV-001 remains authoritative for maturity and compatibility policy.
 
 ## 1. Context
 
-The current Manager-Provisioned entry point is `ILocalPlayerJoinAccess.RequestJoin(LocalPlayerJoinRequest) -> LocalPlayerJoinResult`. The current result publishes reservation/commit/rollback records, Session/Slot snapshots, Actor selection evidence, Host and `PlayerInput` references, callback evidence and assignment projections. These members are all on one Experimental result type. Stabilizing that type would commit consumers to a substantially broader Session/Slot/assignment closure than the Join operation needs.
+At proposal time, the Manager-Provisioned entry point was `ILocalPlayerJoinAccess.RequestJoin(LocalPlayerJoinRequest) -> LocalPlayerJoinResult`. Its result published reservation/commit/rollback records, Session/Slot snapshots, Actor selection evidence, Host and `PlayerInput` references, callback evidence and assignment projections, all on one Experimental result type. Stabilizing that type would have committed consumers to a substantially broader Session/Slot/assignment closure than the Join operation needs.
 
-Consumers also need a scoped route to the capability. Today `PlayerSessionScopedAccessRuntimeHostModule` discovers `PlayerSessionScopedAccessConsumer` components inside the current Route/Activity discovery scopes, validates their authored scope, binds an access object to a `RuntimeContentOwner`, and releases stale bindings. Its public typed access is `IPlayerSessionScopedAccess`, an Experimental interface covering many unrelated operations. A consumer of stable Join must not need to resolve that broad interface merely to invoke Join.
+Consumers also need a scoped route to the capability. The existing `PlayerSessionScopedAccessRuntimeHostModule` discovers `PlayerSessionScopedAccessConsumer` components inside the current Route/Activity discovery scopes, validates their authored scope, binds an access object to a `RuntimeContentOwner`, and releases stale bindings. Its broad typed access remains Experimental and covers several separate operations. A consumer of Stable Join does not need that interface merely to invoke Join.
 
-The current authoritative operation remains in `LocalPlayerProvisioningBridge`, called by `ManagerPlayerSessionScopedAccess.RequestJoin`; `LocalPlayerProvisioningPreparationExtensions.RegisterJoinWithActorPreparation` registers Host preparation lifecycle evidence and rolls back if that internal registration fails. The new surface must only project this operation and preserve the existing authority.
+The authoritative operation remains in `LocalPlayerProvisioningBridge`, called by the Manager scoped Join port; `LocalPlayerProvisioningPreparationExtensions.RegisterJoinWithActorPreparation` registers Host preparation lifecycle evidence and rolls back if that internal registration fails. The public surface projects this operation and preserves the existing authority.
 
 ## 2. Accepted decision
 
-Add a narrow Stable authored command component with a typed synchronous outcome. Bind it through the existing Route/Activity lifecycle discovery and ownership checks, but give it only a private, narrow join projection. Do not make `IPlayerSessionScopedAccess` or `LocalPlayerJoinResult` part of its public invocation signature.
+The implemented contract is a narrow Stable authored command component with a typed synchronous outcome. It is bound through the existing Route/Activity lifecycle discovery and ownership checks, and receives only a private, narrow Join projection. `IPlayerSessionScopedAccess` and `LocalPlayerJoinResult` are not part of its public invocation signature.
 
 The component MUST:
 
@@ -35,9 +35,9 @@ The component MUST:
 
 The component MUST NOT create a second Session, reservation mechanism, Manager, global registry, fallback path or Player-state store. `LocalPlayerProvisioningBridge` remains the operation and compensation authority. Scene-Provided Join remains a separate lifecycle and is never a fallback.
 
-## 3. Accepted contract shape (not implemented)
+## 3. Implemented contract and Stable closure
 
-The names below are the accepted complete first-version contract design. `FrameworkApiStatus(Stable)` in the illustrative declarations means intended eventual classification only; current attributes remain Experimental until a separate authorized promotion after implementation/certification. Implementation and any `FrameworkApiStatus` promotion require separate authorization and certification gates.
+The declarations below record the accepted first-version contract shape, now implemented. The current Runtime attributes classify this bounded closure as Stable under the separate promotion decision. No adjacent Session, Slot, Actor, Leave, participation, readiness or broad scoped-access contract is promoted by this decision.
 
 ```csharp
 using UnityEngine;
@@ -130,7 +130,7 @@ public enum LocalPlayerJoinAdmissionState
 }
 ```
 
-`LocalPlayerProvisioningConsumerScope` is included in the proposed Stable authoring closure as a whole enum because `FrameworkApiStatus` classifies the type, not individual values. The closure includes `Unspecified = 0`, `Route = 10` and `Activity = 20`; all names and numeric values become compatibility commitments. `Unspecified` remains invalid for effective binding, as do unrecognized serialized values; both fail closed as configuration rejection. Future values may only be appended without renumbering existing values and require an explicit compatibility/migration review. No value is removed or renumbered.
+`LocalPlayerProvisioningConsumerScope` is included in the Stable authoring closure as a whole enum because `FrameworkApiStatus` classifies the type, not individual values. The closure includes `Unspecified = 0`, `Route = 10` and `Activity = 20`; all names and numeric values are compatibility commitments. `Unspecified` remains invalid for effective binding, as do unrecognized serialized values; both fail closed as configuration rejection. Future values may only be appended without renumbering existing values and require an explicit compatibility/migration review. No value is removed or renumbered.
 
 The `LocalPlayerJoinRequest` contract closure includes every current public member:
 
@@ -147,7 +147,7 @@ The new public contract therefore does not delete, rename, or change the existin
 
 The Stable component is standalone and does not inherit the public `PlayerSessionScopedAccessConsumer` surface, avoiding inherited `TryGetAccess`/`TryGetJoinAccess` APIs in its public closure.
 
-The proposed Stable closure is therefore: `PlayerSessionJoinTrigger`, the entire `LocalPlayerProvisioningConsumerScope` enum, `LocalPlayerJoinRequest` and every public member listed above, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode`, `LocalPlayerJoinAdmissionState`, Unity `MonoBehaviour`, and Unity Input System `InputDevice`. The Framework already declares `com.unity.inputsystem` 1.19.0 as a package dependency; that upstream request-hint type is an explicit compatibility dependency, not an accidental transitive reference. The package minimum/support range must explicitly include the Unity Input System API version used by the public signature; changing that dependency floor later is a compatibility decision. Unity base types are part of the declared package Unity compatibility range, not framework-owned types.
+The promoted Stable closure is therefore: `PlayerSessionJoinTrigger`, the entire `LocalPlayerProvisioningConsumerScope` enum, `LocalPlayerJoinRequest` and every public member listed above, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode`, `LocalPlayerJoinAdmissionState`, Unity `MonoBehaviour`, and Unity Input System `InputDevice`. The Framework already declares `com.unity.inputsystem` 1.19.0 as a package dependency; that upstream request-hint type is an explicit compatibility dependency, not an accidental transitive reference. The package minimum/support range must explicitly include the Unity Input System API version used by the public signature; changing that dependency floor later is a compatibility decision. Unity base types are part of the declared package Unity compatibility range, not framework-owned types.
 
 The outcome intentionally omits operation IDs: `RequestJoin` is synchronous and returns its result directly to the caller. Operation identity remains Experimental diagnostic evidence. If the operation becomes asynchronous or detached from the call stack, a separately reviewed correlation contract is required.
 
@@ -174,13 +174,13 @@ The outcome intentionally omits operation IDs: `RequestJoin` is synchronous and 
 | `RejectedUnexpectedJoin` | Not returned by this synchronous command: it represents an uncorrelated callback recorded as `LastUnexpectedJoinResult` | Remains Experimental diagnostic evidence; if an impossible adapter path returns it, map to `FailedUnknown`, never `Joined` |
 | Any future or unrecognized status | `FailedUnknown` | `Unknown`; fail closed, never infer success |
 
-The current `LocalPlayerJoinStatus` calls a null provisioner result a rejection. The proposal classifies it as `FailedAdmission` because the request reached the Manager backend and it failed to produce the requested Player. This is a deliberate semantic normalization for a new boundary; it does not rewrite or reclassify the Experimental result.
+The Experimental `LocalPlayerJoinStatus` calls a null provisioner result a rejection. The Stable outcome maps it to `FailedAdmission` because the request reached the Manager backend and it failed to produce the requested Player. This deliberate semantic normalization does not rewrite or reclassify the Experimental result.
 
-`FailedRollback` currently identifies failed Session reservation/Slot recovery; `ILocalPlayerProvisioningBackend.RejectPlayer` returns `void`, so the existing outcome cannot report whether physical destruction succeeded. The Stable contract will not expose `PlayerInput`, Host references, destruction flags, assignment, snapshots or raw `Message` text. It will not promise physical absence of orphans until Unity integrated QA observes the exact Manager-owned object being destroyed. If later QA requires a reportable physical-compensation failure, the backend/result seam must be designed in a separate review rather than inferred from this status.
+`FailedRollback` identifies failed Session reservation/Slot recovery; `ILocalPlayerProvisioningBackend.RejectPlayer` returns `void`, so the outcome cannot report whether physical destruction succeeded. The Stable contract does not expose `PlayerInput`, Host references, destruction flags, assignment, snapshots or raw `Message` text. It does not promise physical absence of orphans; physical compensation was accepted by composite evidence with residual risks recorded in Amendment 002. A reportable physical-compensation failure would require a separate contract review.
 
 ## 5. Scoped discovery and Runtime adaptation
 
-The stable component will use the same authored Route/Activity scope and discovery scopes as current Player Session consumers. The existing `PlayerSessionScopedAccessRuntimeHostModule` remains the only binder/owner:
+The Stable component uses the same authored Route/Activity scope and discovery scopes as current Player Session consumers. The existing `PlayerSessionScopedAccessRuntimeHostModule` remains the only binder/owner:
 
 ```text
 RouteContentDiscoveryScope / ActivityContentDiscoveryScope
@@ -193,7 +193,7 @@ RouteContentDiscoveryScope / ActivityContentDiscoveryScope
   -> scope/owner change or destruction invalidates the binding
 ```
 
-Implementation requirement: refactor only the module's **internal binding recipient** so both the current broad consumer and the new standalone trigger share owner validation and lifetime release logic. The new trigger receives only a private/internal join projection; it is not given `IPlayerSessionScopedAccess`. It introduces no public resolver, global lookup or alternative Join state.
+The module's **internal binding recipient** shares owner validation and lifetime release logic between broad scoped consumers and the standalone trigger. The trigger receives only a private/internal Join projection; it is not given `IPlayerSessionScopedAccess`. It introduces no public resolver, global lookup or alternative Join state.
 
 `RuntimeContentOwner` alone is insufficient as an occurrence lease: its `RuntimeDefinitionToken` is derived from the Route/Activity asset, so re-entering the same asset can reproduce the same owner value. The current code confirms a Route occurrence sequence (`RouteLifecycleRuntime._routeOccurrenceSequence` / `RoutePlayerSpatialEntryContext.OccurrenceSequence`) and an Activity occurrence sequence (`ActivityReadinessOccurrence.TransitionSequence`). The private binding lease MUST include and compare the exact current occurrence identity in addition to `RuntimeContentOwner`: Route scope uses the exact active Route occurrence sequence; Activity scope uses the exact active Route occurrence and Activity transition sequence. Validate against the current lifecycle runtime on every invocation. A return to the same definition in a later occurrence must invalidate the former lease. This is local lifecycle state already owned by Route/Activity, not a new global generation or public identity.
 
@@ -217,48 +217,55 @@ Every invocation path (`RequestJoin`, `Invoke`, `InvokeFromDevice`) that returns
 
 ## 6. Migration and compatibility
 
-Migration is additive:
+The finite migration and retirement policy in Amendment 001 supersedes the
+original additive-migration proposal:
 
-1. Ship the new trigger/outcome API while retaining `PlayerSessionJoinCommandTrigger`, `ILocalPlayerJoinAccess`, `LocalPlayerJoinResult`, `LocalPlayerJoinStatus` and current authoring fields as Experimental and operational.
-2. Existing scenes, scripts and serialized references continue to use their current types without forced migration.
-3. Consumers that need only stable Join may adopt `PlayerSessionJoinTrigger.RequestJoin` or its UnityEvent entry points. Consumers that use Slot IDs, Unity player indices, Session observation, Host/`PlayerInput`, or richer failure text continue on Experimental surfaces until each has its own supported contract.
-4. FirstGame's current tutorial also reads `IPlayerSessionScopedAccess` for Session updates and uses `Slot.PlayerSlotId`/`UnityPlayerIndex` for presentation. It therefore cannot migrate its entire tutorial to this boundary alone. A later optional migration can use the new trigger for Join while retaining its separate Experimental observation/display dependencies; no consumer edit is required to introduce the additive API.
-5. Do not remove, redirect or silently change the old API during this ADR. Any deprecation/removal requires a later migration proposal and consumer review.
+1. `PlayerSessionJoinTrigger` is the sole public Manager-Provisioned Join
+   invocation boundary after convergence.
+2. The old Join-only command/access entry points and their public
+   `LocalPlayerJoinResult` exposure are retired after consumer migration. Their
+   package-owned implementation evidence may remain internal where still used.
+3. `IPlayerSessionScopedAccess`, Session observation, Slot/Actor evidence,
+   Leave, Joining policy, Actor Selection/replacement and Gameplay Availability
+   remain Experimental contracts with separate responsibilities; they are not
+   removed merely because they share implementation types with Join.
+4. Consumer scenes, scripts, prefabs, UnityEvents and script references were
+   within the migration gate defined by Amendment 001. This paragraph does not
+   claim that consumers outside the inspected QAFramework/FirstGame snapshots
+   have been migrated.
 
-No FirstGame or QAFramework changes are part of this proposal.
+## 7. Certification and promotion disposition
 
-## 7. Certification gates
-
-Before the proposed API can be promoted or advertised as Stable:
-
-- Add package-owned tests for every mapping row, null/sentinel/unrecognized handling, `OriginalCode`, all `AdmissionState` combinations, and the invariant that only `Joined` reports `Admitted`.
-- Test direct trigger invocation without consumer code calling `TryGetAccess`/`IPlayerSessionScopedAccess`; test Route and Activity binding, mismatch, stale owner, Manager unavailability, disposal and destruction.
-- Preserve current Join/rollback suites and verify Session reservation release, no Host staged/joined, pending state cleared, original failure retained, and retry behavior after recoverable failure.
-- Replay the existing Slice 1 after the bridge correction on an immutable Framework SHA; retain raw output, timestamps and execution provenance.
-- Accept physical compensation by the evidence composition and residual-risk decision in [Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md). This gate is **ACCEPTED BY COMPOSITE EVIDENCE**, not an integrated Play Mode PASS.
-- Decide whether a failed Session commit is reachable and add a deterministic package-owned seam/test if it is inside the public guarantee.
-- Compile/import and run FirstGame against the same candidate SHA. Verify the existing Experimental consumer still works and, if a sample adopts the new component, verify the direct stable Join call, Session observation boundary, rejection and cleanup.
-- Record public API/asmdef dependency on Input System and review the package minimum supported version, changelog and migration notes.
-
-Prior reported evidence remains bounded: NUnit `229/229`, PlayerParticipation `38/38`, Join `26/26`, rollback `9/9` were reported by the user with partial provenance; Slice 1 `8/8` predates the bridge fix. They do not certify this proposed API, new binding path, physical destruction or FirstGame compatibility at a fixed SHA.
+The implementation, certification claims, evidence provenance limits and
+Stable scope are recorded in the [Stable-promotion decision](IF-ADR-046-STABLE-PROMOTION-DECISION.md)
+and accepted [Amendments 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md),
+[002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) and
+[003](IF-ADR-046-AMENDMENT-003-PARTIAL-PROVENANCE-ACCEPTANCE.md). Those records
+supersede this ADR's original pre-implementation gate wording. In particular,
+physical compensation was accepted by composed evidence, not reported as an
+integrated Play Mode PASS, and partial execution provenance was explicitly
+accepted for this closure only. No new evidence or broader maturity claim is
+implied here.
 
 ## 8. Consequences and risks
 
 - The public Stable surface remains small and does not stabilize Session, Slot, assignment, Actor, Host, `PlayerInput` evidence or broad Session access.
-- Input System `InputDevice` becomes an intentional upstream dependency of the Stable request API; the package must preserve supported compatibility with its declared Input System range.
-- The new standalone trigger requires a narrowly scoped internal binding-recipient adaptation. The risk is duplicating the existing lifecycle binder; implementation must share exact scope ownership/disposal rules instead of creating another lifecycle owner.
+- Input System `InputDevice` is an intentional upstream dependency of the Stable request API; the package must preserve supported compatibility with its declared Input System range.
+- The standalone trigger uses the existing lifecycle binder through a narrowly scoped internal binding recipient. Its scope ownership/disposal rules remain shared with the existing binder; no second lifecycle owner is introduced.
 - A typed `Unknown`/`FailedRollback` result can report that admission/recovery is uncertain; it cannot claim physical cleanup while the backend contract provides no observable destruction result.
-- Additive migration avoids breaking current assets but creates a temporary choice between Experimental and proposed Stable authoring components. Inspector labeling and public guide must clearly identify the supported Stable component without implying that the entire multiplayer tutorial is Stable.
+- The finite migration avoids a permanent choice between multiple public Manager-Provisioned Join boundaries. Inspector labeling and public guidance must identify the supported Stable component without implying that the entire multiplayer tutorial is Stable.
 - Stable enum expansion and outcome semantics require compatibility review; unknown current/future internal statuses fail closed as `FailedUnknown`.
 
 ## 9. Relationship to existing decisions
 
-This ADR proposes only the compatibility surface and its scoped projection. IF-ADR-003/016 continue to own Session configuration and provisioning-mode policy; IF-ADR-015 continues to separate commands from observation; IF-ADR-019/020 continue to own Player lifetime and explicit Leave. No accepted lifecycle semantics are replaced. IF-GOV-001 continues to define Stable compatibility expectations. The current Player recertification matrix owns mutable evidence and gates; this ADR does not duplicate that status board.
+This ADR defines only the compatibility surface and its scoped projection. IF-ADR-003/016 continue to own Session configuration and provisioning-mode policy; IF-ADR-015 continues to separate commands from observation; IF-ADR-019/020 continue to own Player lifetime and explicit Leave. No accepted lifecycle semantics are replaced. IF-GOV-001 continues to define Stable compatibility expectations. The Player recertification matrix owns mutable evidence and gates; this ADR does not duplicate that status board.
 
 ## 10. Approval state
 
-The user accepted architecture direction B, its bounded signatures, full mapping, scoped lease model and migration policy on 2026-10-11. This ADR is **Accepted as an architecture/contract decision**. Acceptance authorizes neither implementation nor certification, `FrameworkApiStatus` changes, consumer migration, release nor Stable promotion. Those require separate authorization and evidence under IF-GOV-001. No API status or Runtime code changed while accepting this ADR.
+The user accepted architecture direction B, its bounded signatures, full mapping, scoped lease model and migration policy on 2026-10-11. That initial acceptance did not itself authorize implementation, certification, `FrameworkApiStatus` changes, consumer migration, release or Stable promotion. The subsequent implementation and bounded Stable promotion are recorded in the linked decision/amendments and current Runtime attributes. This history remains scoped to `PlayerSessionJoinTrigger` and its declared closure.
 
-**Amendment 001 accepted:** the finite convergence and retirement policy in [IF-ADR-046 Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements §§6.1–6.5 without rewriting this original decision history. Apply the amendment for the current migration/retirement direction. The approved execution route is v3; its stages remain separately task-gated.
+**Amendment 001 accepted:** the finite convergence and retirement policy in [IF-ADR-046 Amendment 001](IF-ADR-046-AMENDMENT-001-ONE-PUBLIC-JOIN-BOUNDARY.md) supplements the original migration decision. The approved execution route was v3; the current bounded Stable disposition and evidence are recorded in the linked promotion decision and amendments.
 
-**Amendment 002 accepted:** [IF-ADR-046 Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) supplements §7 by accepting composed evidence for the physical-compensation gate and recording its residual risks. It does not report an integrated Play Mode PASS or promote `PlayerSessionJoinTrigger`; independent candidate-provenance, FirstGame integration and remaining §7 decisions still apply.
+**Amendment 002 accepted:** [IF-ADR-046 Amendment 002](IF-ADR-046-AMENDMENT-002-COMPOSITE-PHYSICAL-COMPENSATION-EVIDENCE.md) supplements §7 by accepting composed evidence for the physical-compensation gate and recording its residual risks. It does not report an integrated Play Mode PASS.
+
+**Amendment 003 accepted:** [IF-ADR-046 Amendment 003](IF-ADR-046-AMENDMENT-003-PARTIAL-PROVENANCE-ACCEPTANCE.md) records the bounded provenance exception and the separate Stable-promotion decision. Both decisions apply only to the closure enumerated in that record.
