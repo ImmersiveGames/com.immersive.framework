@@ -873,11 +873,8 @@ namespace Immersive.Framework.PlayerParticipation
             $"Player Session scoped access is bound to '{owner.StableText}'.";
     }
 
-    internal sealed class ManagerPlayerSessionScopedAccess :
-        PlayerSessionScopedAccess,
-        ILocalPlayerJoinAccess
+    internal sealed class ManagerPlayerSessionScopedAccess : PlayerSessionScopedAccess
     {
-        private readonly PlayerSessionJoinBindingLease _joinBindingLease;
         private readonly LocalPlayerProvisioningRuntimeHostModule _manager;
 
         internal ManagerPlayerSessionScopedAccess(
@@ -890,30 +887,12 @@ namespace Immersive.Framework.PlayerParticipation
                 joinBindingLease.Owner,
                 consumer)
         {
-            _joinBindingLease = joinBindingLease ?? throw new ArgumentNullException(nameof(joinBindingLease));
+            if (joinBindingLease == null)
+                throw new ArgumentNullException(nameof(joinBindingLease));
             _manager = joinBindingLease.Manager ?? throw new ArgumentNullException(nameof(joinBindingLease));
         }
 
         internal override bool HasJoinCapability => _manager.IsReady;
-
-        public LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request)
-        {
-            if (!TryGetContext(out string issue))
-            {
-                return LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
-            }
-
-            if (_joinBindingLease.ValidateCurrent(out issue) !=
-                PlayerSessionJoinBindingLeaseValidation.Current)
-            {
-                return LocalPlayerJoinResult.RuntimeUnavailable(request, issue);
-            }
-
-            return _manager.IsReady
-                ? _manager.RegisterJoinWithActorPreparation(_manager.TryJoin(request))
-                : LocalPlayerJoinResult.RuntimeUnavailable(request,
-                    "Manager-Provisioned Player join capability is unavailable.");
-        }
     }
 
     internal static class PlayerSessionScopedObservationProjection

@@ -85,11 +85,6 @@ namespace Immersive.Framework.PlayerParticipation
                 ? _runtimeModule.Diagnostic
                 : _runtimeDiagnostic;
 
-        public LocalPlayerJoinResult LastJoinResult =>
-            RuntimeReady
-                ? _runtimeModule.LastJoinResult
-                : null;
-
         public PlayerParticipationSnapshot RuntimeSnapshot
         {
             get
@@ -192,36 +187,6 @@ namespace Immersive.Framework.PlayerParticipation
                         source,
                         reason,
                         RuntimeDiagnostic);
-        }
-
-        /// <summary>
-        /// Executes one explicitly authorized local Player join against the
-        /// Session runtime. A successful result is registered with the
-        /// host-scoped Actor preparation authority before this endpoint
-        /// returns.
-        /// </summary>
-        public LocalPlayerJoinResult RequestJoin(
-            LocalPlayerJoinRequest request)
-        {
-            if (!RuntimeReady)
-            {
-                return LocalPlayerJoinResult.RuntimeUnavailable(
-                    request,
-                    RuntimeDiagnostic);
-            }
-
-            LocalPlayerJoinResult result =
-                _runtimeModule.TryJoin(request);
-            return _runtimeModule
-                .RegisterJoinWithActorPreparation(result);
-        }
-
-        public LocalPlayerJoinResult RequestJoin(
-            string source,
-            string reason)
-        {
-            return RequestJoin(
-                new LocalPlayerJoinRequest(source, reason));
         }
 
         /// <summary>

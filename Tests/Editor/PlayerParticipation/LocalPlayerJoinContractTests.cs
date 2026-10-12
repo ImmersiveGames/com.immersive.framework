@@ -99,6 +99,38 @@ namespace Immersive.Framework.PlayerParticipation.Tests
             Assert.That(result.Succeeded, Is.False);
         }
 
+        [Test]
+        public void PublicJoinInvocationSurfaceContainsOnlyTheScopedTrigger()
+        {
+            var runtimeAssembly = typeof(PlayerSessionJoinTrigger).Assembly;
+            const string playerNamespace = "Immersive.Framework.PlayerParticipation.";
+
+            Assert.That(runtimeAssembly.GetType(
+                playerNamespace + "PlayerSessionJoinCommandTrigger"), Is.Null);
+            Assert.That(runtimeAssembly.GetType(
+                playerNamespace + "ILocalPlayerJoinAccess"), Is.Null);
+            Assert.That(typeof(PlayerSessionScopedAccessConsumer)
+                .GetMethod("TryGetJoinAccess"), Is.Null);
+            Assert.That(typeof(LocalPlayerProvisioningAuthoring)
+                .GetMethod("RequestJoin"), Is.Null);
+            Assert.That(typeof(LocalPlayerProvisioningAuthoring)
+                .GetProperty("LastJoinResult"), Is.Null);
+
+            var internalResult = runtimeAssembly.GetType(
+                playerNamespace + "LocalPlayerJoinResult");
+            Assert.That(internalResult, Is.Not.Null);
+            Assert.That(internalResult.IsPublic, Is.False);
+
+            var request = typeof(PlayerSessionJoinTrigger).GetMethod(
+                "RequestJoin", new[] { typeof(LocalPlayerJoinRequest) });
+            Assert.That(request, Is.Not.Null);
+            Assert.That(request.ReturnType, Is.EqualTo(typeof(LocalPlayerJoinOutcome)));
+            var lastJoinStatus = typeof(PlayerActorPreparationRuntimeHostSnapshot)
+                .GetProperty(nameof(PlayerActorPreparationRuntimeHostSnapshot.LastJoinStatus));
+            Assert.That(lastJoinStatus, Is.Not.Null);
+            Assert.That(lastJoinStatus.PropertyType, Is.EqualTo(typeof(LocalPlayerJoinStatus)));
+        }
+
         private static LocalPlayerJoinResult CreateResult(LocalPlayerJoinStatus status)
         {
             return new LocalPlayerJoinResult(

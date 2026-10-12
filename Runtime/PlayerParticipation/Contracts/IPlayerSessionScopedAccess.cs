@@ -54,16 +54,4 @@ namespace Immersive.Framework.PlayerParticipation
         PlayerActorSelectionResult RequestClearActorSelection(
             PlayerActorSelectionRequest request);
     }
-
-    /// <summary>
-    /// Manager-Provisioned capability that creates a technical Local Player
-    /// Host through the existing PlayerInputManager bridge.
-    /// </summary>
-    [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "ACCESS-2 explicit Manager-Provisioned local Player join capability.")]
-    public interface ILocalPlayerJoinAccess
-    {
-        LocalPlayerJoinResult RequestJoin(LocalPlayerJoinRequest request);
-    }
 }

@@ -61,17 +61,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             PlayerSessionCommandTriggerBase trigger,
             SerializedObject commandSerializedObject)
         {
-            if (trigger is PlayerSessionJoinCommandTrigger)
-            {
-                FrameworkAuthoringInspectorGui.Section("Control Scheme Hint");
-                DrawProperty(
-                    commandSerializedObject.FindProperty("controlScheme"),
-                    new GUIContent(
-                        "Control Scheme Hint",
-                        "Optional input hint forwarded to the Local Player Join request."));
-                return;
-            }
-
             if (trigger is PlayerSessionSelectActorCommandTrigger)
             {
                 FrameworkAuthoringInspectorGui.Section("Player Slot Profile");
@@ -241,7 +230,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             {
                 PlayerSessionOpenJoiningCommandTrigger => "OPEN JOINING COMMAND",
                 PlayerSessionCloseJoiningCommandTrigger => "CLOSE JOINING COMMAND",
-                PlayerSessionJoinCommandTrigger => "JOIN COMMAND",
                 PlayerSessionSelectActorCommandTrigger => "SELECT ACTOR COMMAND",
                 PlayerSessionDefaultActorSelectionCommandTrigger => "DEFAULT ACTOR SELECTION COMMAND",
                 PlayerSessionReplaceActorSelectionCommandTrigger => "REPLACE ACTOR SELECTION COMMAND",
@@ -261,8 +249,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 PlayerSessionCloseJoiningCommandTrigger command when
                     command.LastCloseJoiningResult != null =>
                     nameof(PlayerParticipationOperationResult),
-                PlayerSessionJoinCommandTrigger command when
-                    command.LastJoinResult != null => nameof(LocalPlayerJoinResult),
                 PlayerSessionSelectActorCommandTrigger command when
                     command.LastActorSelectionResult != null =>
                     nameof(PlayerActorSelectionResult),

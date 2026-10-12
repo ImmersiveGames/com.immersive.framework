@@ -40,7 +40,6 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal string Diagnostic => _diagnostic;
         internal LocalPlayerProvisioningAuthoring Authoring => _authoring;
-        internal LocalPlayerJoinResult LastJoinResult => _bridge?.LastResult;
         internal int RequestCount => _requestCount;
 
         internal static bool TryAttach(

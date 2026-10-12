@@ -4,14 +4,14 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Complete technical evidence for one local Player provisioning/admission operation.
-    /// PlayerInput and LocalPlayerHostAuthoring are stable host evidence. Logical Actor identity,
-    /// ActorProfile selection and Actor materialization are intentionally absent.
+    /// Internal technical evidence for one Manager-Provisioned Join and its rollback.
+    /// It is projected to the bounded public outcome; Actor identity, selection and
+    /// materialization remain separate responsibilities.
     /// </summary>
     [FrameworkApiStatus(
-        FrameworkApiStatus.Experimental,
-        "P3G/P3J local Player join result with stable Local Player Host evidence.")]
-    public sealed class LocalPlayerJoinResult
+        FrameworkApiStatus.Internal,
+        "Internal technical evidence for Manager-Provisioned Join projection and rollback.")]
+    internal sealed class LocalPlayerJoinResult
     {
         internal LocalPlayerJoinResult(
             LocalPlayerJoinStatus status,

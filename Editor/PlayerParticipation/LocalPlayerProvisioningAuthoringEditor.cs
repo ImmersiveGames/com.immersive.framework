@@ -449,22 +449,6 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 EditorGUILayout.IntField(
                     "Joined Slots",
                     snapshot.JoinedCount);
-
-                EditorGUILayout.TextField(
-                    "Last Join Status",
-                    authoring.LastJoinResult != null
-                        ? authoring.LastJoinResult.Status
-                            .ToString()
-                        : "None");
-
-                EditorGUILayout.ObjectField(
-                    "Last Local Player Host",
-                    authoring.LastJoinResult != null
-                        ? authoring.LastJoinResult
-                            .LocalPlayerHost
-                        : null,
-                    typeof(LocalPlayerHostAuthoring),
-                    true);
             }
 
             if (!string.IsNullOrWhiteSpace(

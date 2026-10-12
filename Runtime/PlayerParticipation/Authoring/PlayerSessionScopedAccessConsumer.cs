@@ -303,31 +303,6 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        /// <summary>
-        /// Returns the explicit Manager-Provisioned join capability when the
-        /// current scoped provider can create a Local Player Host.
-        /// </summary>
-        public bool TryGetJoinAccess(
-            out ILocalPlayerJoinAccess joinAccess,
-            out string issue)
-        {
-            joinAccess = null;
-            if (!TryGetAccess(out IPlayerSessionScopedAccess access, out issue))
-            {
-                return false;
-            }
-
-            if (access is ILocalPlayerJoinAccess resolvedJoinAccess)
-            {
-                joinAccess = resolvedJoinAccess;
-                issue = string.Empty;
-                return true;
-            }
-
-            issue = "Manager-Provisioned Player join capability is unavailable for this Player Session scope.";
-            return false;
-        }
-
         internal bool TryBind(
             IPlayerSessionScopedAccess scopedAccess,
             LocalPlayerProvisioningConsumerScope actualScope,

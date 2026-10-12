@@ -103,13 +103,6 @@ namespace Immersive.Framework.PlayerParticipation
                 : "Player participation command returned no typed result.";
         }
 
-        protected static string Describe(LocalPlayerJoinResult result)
-        {
-            return result != null
-                ? result.ToDiagnosticString()
-                : "Local Player Join returned no typed result.";
-        }
-
         protected static string Describe(PlayerActorSelectionResult result)
         {
             return result != null
@@ -129,14 +122,6 @@ namespace Immersive.Framework.PlayerParticipation
             if (result == null) return "Missing";
             if (result.Succeeded) return "Succeeded";
             if (result.IgnoredNoChange) return "IgnoredNoChange";
-            if (result.Failed) return "Failed";
-            return result.Rejected ? "Rejected" : "Incomplete";
-        }
-
-        protected static string Outcome(LocalPlayerJoinResult result)
-        {
-            if (result == null) return "Missing";
-            if (result.Succeeded) return "Succeeded";
             if (result.Failed) return "Failed";
             return result.Rejected ? "Rejected" : "Incomplete";
         }

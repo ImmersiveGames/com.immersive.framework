@@ -271,3 +271,15 @@ O QAFramework resolve atualmente `file:C:/Projetos/ImmersivePackages/com.immersi
 - **Já Stable; não recandidatar:** authoring Stable no escopo da Public API e valores/trigger de IF-ADR-044.
 
 Nenhuma API foi promovida. A recertificação Player integral permanece **BLOCKED para aceite final** por proveniência incompleta, Slice 1 sem replay pós-correção e cobertura fora do escopo; o defeito interno de callback/rollback foi corrigido, mas não certifica por si só a promoção de Join a Stable.
+
+## 12. IF-ADR-046 — atualização de migração e retirada (2026-10-12)
+
+Esta atualização complementa o inventário estático da seção 4 sem reescrever seus resultados históricos. O usuário reportou FirstGame consolidado no commit `c0d14a057197624ff2f070a6e601d7d225f972db`, com Join/Leave/Rejoin validados no Local Multiplayer. Character Selection não tem validação manual independente registrada. No QAFramework, o usuário reportou IF-ADR-042 **7/7**, IF-ADR-043 **7/7** e IF-ADR-044 **8/8**, todos `BaselineRestored` (22/22 total), com proveniência parcial e sem SHA retrospectivo.
+
+Na revisão estática atual, o Framework está no HEAD `b7dc4c88d0ecc44948ba846c617afa6155a153f5`, com mudanças locais de retirada ainda não commitadas. Os checkouts QAFramework e FirstGame estão, respectivamente, em `1f905eb415a8212ee365fa67516636af849e7773` e `c0d14a057197624ff2f070a6e601d7d225f972db`; buscas em código e assets serializados não encontraram o trigger/GUID antigo, `ILocalPlayerJoinAccess`, `TryGetJoinAccess` ou chamadas de `LocalPlayerProvisioningAuthoring.RequestJoin` nesses consumidores. PEGA também não apresentou matches nos diretórios de projeto pesquisados, mas `git status` não pôde ser obtido e o cache do pacote não estava disponível; manifesto/lock resolvem `1.1.0-preview.7`, anterior a I3.
+
+A retirada local elimina `PlayerSessionJoinCommandTrigger` e seu `.meta`, `ILocalPlayerJoinAccess`, `PlayerSessionScopedAccessConsumer.TryGetJoinAccess`, `LocalPlayerProvisioningAuthoring.RequestJoin`/`LastJoinResult` públicos e a exposição pública de `LocalPlayerJoinResult` (agora interna). `LocalPlayerJoinStatus` permanece Experimental porque `PlayerActorPreparationRuntimeHostSnapshot.LastJoinStatus` ainda o expõe. O `HasJoinCapability` continua somente como estado de leitura no snapshot amplo Experimental; não é uma operação de Join. Bridge, Manager, reserva, Host preparation/rollback, nova `PlayerSessionJoinTrigger` e as responsabilidades independentes de Session/Slot/Actor/Leave permanecem.
+
+O teste package-owned `LocalPlayerJoinContractTests.PublicJoinInvocationSurfaceContainsOnlyTheScopedTrigger` foi acrescentado para proteger a ausência das superfícies antigas e a permanência do resultado/status apropriados. Ele não foi executado pelo agente.
+
+As execuções 22/22 e Local Multiplayer acima antecedem estes bytes e não certificam a remoção. Unity import/compilação dos consumidores e regressão QA pós-retirada permanecem pendentes. I4.2 LEASE continua `BLOCKED 3/3`, P1/P2 seguem riscos residuais sob revisão estática e nenhuma API foi promovida a Stable.

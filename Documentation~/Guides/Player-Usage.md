@@ -241,28 +241,30 @@ sources of truth.
 
 ## Player Session commands
 
-The scene-facing commands are explicit UnityEvent components. Each derives from
-`PlayerSessionScopedAccessConsumer`, has an authored Route or Activity `Scope`,
-and runs only when its public `Invoke()` method is called. Put the component in
-content owned and discovered by that scope. The base component exposes an
-optional diagnostic `Reason`; it does not own Session state.
+The scene-facing Session commands are explicit components. The Join boundary is
+standalone and binds to its authored Route or Activity occurrence. Other commands
+derive from `PlayerSessionScopedAccessConsumer` and use their scoped access only
+for their own operation. Put each component in content owned and discovered by its
+scope. These components do not own Session state.
 
 | Component | Request |
 |---|---|
 | `PlayerSessionOpenJoiningCommandTrigger` / `PlayerSessionCloseJoiningCommandTrigger` | Open or close Session admission. Closing does not remove already joined Players. |
-| `PlayerSessionJoinCommandTrigger` | Request Manager-Provisioned Join. `InvokeFromDevice(InputDevice)` is the explicit device-aware entry point. |
+| `PlayerSessionJoinTrigger` | Request Manager-Provisioned Join through the current Route/Activity occurrence. `InvokeFromDevice(InputDevice)` preserves the explicit device; `RequestJoin(LocalPlayerJoinRequest)` returns `LocalPlayerJoinOutcome`. |
 | `PlayerSessionLeaveCommandTrigger` | Leave the currently joined occurrence for its required `PlayerSlotProfile`. |
 | `PlayerSessionSelectActorCommandTrigger` | Select an explicit `ActorProfile` for a `PlayerSlotProfile`. |
 | `PlayerSessionDefaultActorSelectionCommandTrigger` | Apply the Slot's configured default Actor selection. |
 | `PlayerSessionReplaceActorSelectionCommandTrigger` | Replace a selected Actor Profile through the selection command. |
 | `PlayerSessionClearActorSelectionCommandTrigger` | Clear Actor selection for the explicit Slot. |
 
-Wire each `Invoke()` to a UnityEvent or UI action. Configure typed Profile
-references; these components do not accept raw Slot identity strings. Manager-
-Provisioned Join is exposed through `ILocalPlayerJoinAccess` and does not turn a
-Scene-Provided candidate into a fallback path. For direct game logic, use the
-scoped `IPlayerSessionScopedAccess` received through the current composition;
-there is no global Player lookup.
+Wire command `Invoke()` methods to UnityEvents or UI actions. Configure typed
+Profile references; these components do not accept raw Slot identity strings.
+The Join trigger requires an explicit Route or Activity scope and does not turn a
+Scene-Provided candidate into a fallback path. Its `Joined` outcome means the
+technical Session Join completed; it does not assert Actor preparation or
+gameplay admission. Use `IPlayerSessionScopedAccess` for its separate Session,
+Slot/Actor, Leave, Joining and Gameplay Availability responsibilities; it is not
+needed to locate or invoke Join.
 
 ## Occurrence identity
 
