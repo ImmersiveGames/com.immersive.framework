@@ -34,7 +34,6 @@ namespace Immersive.Framework.Identity
         ProgressionSave = 190,
         Loading = 200,
         UnityInput = 210,
-        InputMode = 220,
         Actor = 230,
         PlayerSlot = 240,
         ActorProfile = 250

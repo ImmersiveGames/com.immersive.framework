@@ -2,6 +2,19 @@
 
 All notable package changes are documented in this file.
 
+## Unreleased
+
+- Removed the public `Immersive.Framework.InputMode` subsystem, including its
+  former Stable contracts and the unused `FrameworkIdentityDomain.InputMode`
+  value. Pause now owns the only required internal
+  transaction. The Pause/Input Gate/physical PlayerInput authority boundaries
+  are unchanged. This is a breaking API change; see IF-ADR-005 and the Pause
+  Usage migration section. Package version is unchanged in this source cut.
+- Added focused Pause transaction tests. QAFramework's user-reported Unity
+  Test Runner EditMode result is 304/304 passed, zero failures, including
+  `PauseProductTransactionTests` 9/9; Play Mode integration validation remains
+  pending.
+
 ## [1.1.0-preview.8] - 2026-10-12 — published
 
 This preview release converges Manager-Provisioned Player Join on the

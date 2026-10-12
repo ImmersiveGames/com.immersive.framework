@@ -4,6 +4,21 @@ Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.8 publi
 
 Last updated: **2026-10-12**
 
+## Current Framework source cut — InputMode removal
+
+The Framework source removes `Runtime/InputMode`, including its former Stable
+contracts, and places the remaining transaction evidence inside Pause. The
+decision and consumer migration are recorded in [IF-ADR-005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md#2026-10-12-inputmode-removal-amendment).
+QAFramework resolves the local checkout and FirstGame resolves published
+`1.1.0-preview.8`; neither has a direct InputMode source reference in the
+inspected assets. User-reported QAFramework Unity Test Runner EditMode result:
+**304/304 passed, zero failures**, including `PauseProductTransactionTests`
+**9/9**. This covers package import/compile and focused transaction/failure
+tests for the QA-resolved local source; Play Mode integration remains pending.
+PEGA source/package inspection is **BLOCKED BY ENVIRONMENT ACCESS** and must
+precede its migration claim. No independent raw log or execution SHA was
+supplied.
+
 ## Authority and status model
 
 ```text

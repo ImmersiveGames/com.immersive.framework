@@ -1,4 +1,5 @@
-using Immersive.Framework.InputMode;
+using System;
+using Immersive.Framework.Common;
 
 namespace Immersive.Framework.Pause
 {
@@ -73,7 +74,7 @@ namespace Immersive.Framework.Pause
         Unknown = 0,
 
         /// <summary>
-        /// Pause was applied together with the canonical PlayerInput/InputMode
+        /// Pause was applied together with the canonical PlayerInput
         /// transaction.
         /// </summary>
         Applied = 10,
@@ -90,17 +91,70 @@ namespace Immersive.Framework.Pause
         Failed = 50
     }
 
+    internal readonly struct PauseProductTransaction : IEquatable<PauseProductTransaction>
+    {
+        internal PauseProductTransaction(
+            long sequence,
+            PauseSnapshot previousPause,
+            PauseState targetState,
+            string source,
+            string reason)
+        {
+            if (sequence <= 0)
+                throw new ArgumentOutOfRangeException(nameof(sequence));
+            if (!previousPause.IsValid)
+                throw new ArgumentException("Pause transaction requires a valid previous snapshot.", nameof(previousPause));
+            if (targetState is not (PauseState.Running or PauseState.Paused))
+                throw new ArgumentOutOfRangeException(nameof(targetState));
+
+            Sequence = sequence;
+            PreviousPause = previousPause;
+            TargetState = targetState;
+            Source = source.NormalizeTextOrFallback(nameof(PauseProductTransaction));
+            Reason = reason.NormalizeTextOrFallback("pause-product-transaction");
+        }
+
+        internal long Sequence { get; }
+        internal PauseSnapshot PreviousPause { get; }
+        internal PauseState TargetState { get; }
+        internal string Source { get; }
+        internal string Reason { get; }
+        internal bool IsValid => Sequence > 0 && PreviousPause.IsValid &&
+            TargetState is PauseState.Running or PauseState.Paused;
+
+        public bool Equals(PauseProductTransaction other) =>
+            Sequence == other.Sequence &&
+            PreviousPause.Equals(other.PreviousPause) &&
+            TargetState == other.TargetState &&
+            string.Equals(Source, other.Source, StringComparison.Ordinal) &&
+            string.Equals(Reason, other.Reason, StringComparison.Ordinal);
+
+        public override bool Equals(object obj) => obj is PauseProductTransaction other && Equals(other);
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hashCode = Sequence.GetHashCode();
+                hashCode = hashCode * 397 ^ PreviousPause.GetHashCode();
+                hashCode = hashCode * 397 ^ (int)TargetState;
+                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Source ?? string.Empty);
+                hashCode = hashCode * 397 ^ StringComparer.Ordinal.GetHashCode(Reason ?? string.Empty);
+                return hashCode;
+            }
+        }
+    }
+
     internal readonly struct PauseProductRequestResult
     {
         internal PauseProductRequestResult(
             PauseProductRequestStatus status,
             PauseResult pauseResult,
-            InputModeRuntimeOperationResult inputModeResult,
+            PauseProductTransaction transaction,
             string diagnostic)
         {
             Status = status;
             PauseResult = pauseResult;
-            InputModeResult = inputModeResult;
+            Transaction = transaction;
             Diagnostic = diagnostic ?? string.Empty;
         }
 
@@ -108,7 +162,7 @@ namespace Immersive.Framework.Pause
 
         internal PauseResult PauseResult { get; }
 
-        internal InputModeRuntimeOperationResult InputModeResult { get; }
+        internal PauseProductTransaction Transaction { get; }
 
         internal string Diagnostic { get; }
 

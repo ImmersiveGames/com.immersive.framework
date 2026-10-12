@@ -21,7 +21,7 @@ On the same Local Player Host GameObject, add:
 
 Configure the Gate Adapter with the exact `PlayerInput` and Gameplay Action Map. On `PlayerPauseInput`, assign the Pause `InputActionReference` (for example, the `Global/Pause` action). The Global map is derived from that action; do not configure a second map by name.
 
-The binding belongs to the admitted Session Local Player Host lifetime. Activity scene changes do not release it while that Host remains current. Pause/Input/Gate apply as a transaction; an invalid or missing binding is reported and does not switch to an unrelated input map.
+The binding belongs to the admitted Session Local Player Host lifetime. Activity scene changes do not release it while that Host remains current. A Pause-owned transaction applies logical Pause and the physical Action Map posture together. On failure it compensates the logical snapshot and physical posture; an invalid or missing binding is reported and does not switch to an unrelated input map. `PauseRuntime` owns logical Pause, the Input Gate evaluates logical blockers, and the adapter/writer alone applies physical `PlayerInput` state.
 
 ## Pause request trigger
 
@@ -60,3 +60,15 @@ Both adapters only present a Pause snapshot. They do not own Pause state, input,
 ## Related architecture
 
 - [IF-ADR-005 — Input, Pause, Gate and Reset](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md)
+
+## Migration from InputMode
+
+`Immersive.Framework.InputMode` and all of its types, including formerly Stable
+types such as `InputModeKind`, `InputModeDefinitions` and `InputModeRules`, are
+removed. There is no compatibility namespace or replacement mode API. Migrate
+Pause callers to `PauseRequest`, `PauseRequestTrigger`, `PlayerPauseInput` and
+Pause snapshots/results. Use Gate contracts for logical admission and the
+configured `UnityPlayerInputGateAdapter` for physical application; do not map
+the removed `FrontendMenu` or `InputLocked` values to Pause states. This is a
+breaking API change under IF-GOV-001; update the Framework package before
+compiling consumers that referenced those types.

@@ -134,14 +134,14 @@ Guide: [Camera Usage](../Guides/Camera-Usage.md).
 | `PlayerInputActionMapReference` | Input reference value · Stable, single-player scope | Identifies a map by stable map ID rather than runtime name lookup. |
 | `UnityPauseSurfaceAdapter`, `UnityPauseResidentSurfaceAdapter` | Unity presentation adapters · Stable | Project Pause state onto explicit authored surfaces. |
 | `IPauseSurfaceAdapter` | Consumer adapter contract · Stable | Presents a Pause snapshot; does not own Pause, input or time scale. |
-| `InputModeKind`, `InputModeDefinitions`, `InputModeRules`, `InputModeRequestStatus`, `InputModeRequestResult`, `InputModeRequestIssueKind` | InputMode vocabulary/helpers/results · Stable within the current single-player Pause/Input/Gate scope | Type-level Stable declarations only. They do not make Experimental definitions, requests, runtime transactions, or unimplemented mode-to-Action-Map behavior Stable. |
 | `PauseState`, `PauseSnapshot`, `PauseRequest`, `PauseRequestId`, `PauseRequestKind`, `PauseRequestStatus`, `PauseResult`, `PauseIssue`, `PauseIssueSeverity`, `PauseInputActionId`, `PauseInputCommandKind`, `PauseInputIntent`, `PauseInputSignal`, `PauseInputSourceKind`, `PauseActivityBindingIntent`, `PauseActivityBindingIntentResolution`, `PauseActivityBindingIntentStatus`, `PauseActivityBindingRequiredness`, `PausePresentationIntent`, `PauseVisualSurfaceKind`, `PauseGateBlockerPolicy` | Pause supporting values/policy · Stable, single-player scope | Typed request and observation vocabulary plus passive logical Gate projection. The policy does not own Pause/Gate state or physical input; see [IF-ADR-005](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md). |
 | `ActivityPauseAuthoringValidator` | Explicit-root authoring validator · Stable | Resolves supplied Activity Pause declarations only; it does not perform global discovery or create runtime bindings. |
-| `InputModeDefinition`, `InputModeId`, `InputModeRequest`, `InputModeRequestEvaluator`, `InputModeState`, `InputModeRuntimeContext`, `InputModeRuntimeSnapshot`, `InputModeRuntimeTransaction`, `InputModeRuntimeOperationResult`, `InputModeRuntimeOperationStatus`, `InputModeRequestIssue` | InputMode definitions and runtime · Experimental | Currently used as Pause transaction infrastructure; no independent consumer feature or physical input writer is established. |
-
-These Stable surfaces do not define multiplayer Pause policy.
-The `InputModeRuntimeContext` remains Experimental; its current use by Pause
-does not create a separate InputMode product contract. See [IF-ADR-005](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md) for the distinction between logical Gate authorization and physical input application, including the unresolved persistent-binding failure policy.
+These Stable surfaces do not define multiplayer Pause policy. InputMode was
+removed as a public subsystem, including its former Stable vocabulary. The
+Pause binding performs its internal transaction within the Pause owner; the
+Gate remains logical authorization, and the Unity adapter/writer remains the
+only authority that applies physical `PlayerInput` posture. See [IF-ADR-005](../Architecture/ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md)
+for the explicit breaking decision and migration.
 
 Guide: [Input and Pause](../Guides/Pause-Usage.md).
 

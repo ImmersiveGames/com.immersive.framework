@@ -1,9 +1,9 @@
 # IF-ADR-005 — Input, Pause, Gate and Reset
 
 Status: **Accepted**  
-Last updated: 2026-09-26  
-Package implementation: **COMPLETE FOR CURRENT ACCEPTED PACKAGE SCOPE**  
-Current technical conformity: **CLOSED FOR CURRENT ACCEPTED STAGE A BOUNDARY**  
+Last updated: 2026-10-12
+Package implementation: **INPUTMODE REMOVAL IMPLEMENTED; QA EDITMODE 304/304 USER-REPORTED**
+Current technical conformity: **PLAY MODE AND PEGA CONSUMER VALIDATION PENDING FOR THE 2026-10-12 PAUSE TRANSACTION CUT**
 Pause product feature: **STABLE**  
 Any numeric planning assessment below is a planning estimate only; it is not certification or a conformance score.  
 Current planning assessment: **30/30 Package · 20/20 Surface · 15/15 QA**  
@@ -651,3 +651,62 @@ Session Host release/Leave terminates the physical Pause binding. A later Join
 creates a fresh Host occurrence and a fresh binding. Pause admission remains
 unchanged: physical input may exist while no Activity is active, but the Pause
 request is still rejected by the existing Activity admission contract.
+
+## 2026-10-12 InputMode removal amendment
+
+**Decision: Remove InputMode as a public and independent subsystem.** This
+decision intentionally breaks every former InputMode consumer contract,
+including the types previously marked Stable (`InputModeKind`,
+`InputModeDefinitions`, `InputModeRules` and the Stable request result/status
+vocabulary), and removes the unused Stable `FrameworkIdentityDomain.InputMode`
+member. IF-GOV-001 §2 and §7 require an explicit architecture and migration
+decision for this Stable break; changing only maturity attributes or retaining
+an obsolete façade would not satisfy that requirement. No compatibility API is
+retained.
+
+The supported Pause contract is preserved. `PauseProductBindingRuntimeContext`
+owns a Pause-specific transaction containing the prior `PauseSnapshot`, target
+`PauseState`, source/reason and a local sequence. It serializes Pause requests,
+commits only after logical Pause and physical application succeed, and retains
+the existing logical/physical compensation paths. This transaction is private
+Pause implementation evidence, not a general input state or a second Pause
+runtime authority.
+
+Responsibilities remain separate:
+
+```text
+PauseRuntime
+  -> single writer of logical Running/Paused state and Pause blockers
+
+Input Gate
+  -> logical admission/blocker evaluation; no physical PlayerInput writes
+
+UnityPlayerInputGateAdapter / UnityPlayerInputStateWriter
+  -> physical PlayerInput Action Map application and exact posture receipts
+```
+
+Binding-time posture capture/restoration remains distinct from the Pause-time
+Action Map receipt. Release restores the original binding posture; Activity exit
+restores the Pause-time posture without releasing the Session Host binding.
+Application-only Pause remains supported when no PlayerInput binding exists.
+
+### Consumer migration
+
+Consumers must remove imports and use of `Immersive.Framework.InputMode` and
+all its types, and stop creating identities in the removed InputMode domain.
+Pause callers use `PauseRequest`, `PauseRequestTrigger`,
+`PlayerPauseInput`, and Pause snapshots/results. Logical authorization uses the
+Gate contracts; physical action-map behavior uses the explicitly configured
+adapter/writer path. `FrontendMenu` and `InputLocked` have no direct replacement
+and must not be translated into `PauseState` values. Consumers must resolve a
+Framework package revision containing this breaking removal before compiling.
+
+QAFramework and FirstGame source inspections found no direct InputMode
+references. The user reports QAFramework Unity Test Runner EditMode **304/304
+passed, zero failures**, including `PauseProductTransactionTests` **9/9**; this
+is accepted as reported test evidence for the local package cut. QA Pause/Input
+Gate Play Mode integration remains to be revalidated. PEGA inspection and
+consumer validation remain pending because its project directory was
+inaccessible in the execution environment. No independent test log or
+execution SHA was supplied. The reported EditMode result does not certify
+Play Mode behavior or PEGA compatibility.

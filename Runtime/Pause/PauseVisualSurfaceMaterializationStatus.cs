@@ -4,7 +4,7 @@ namespace Immersive.Framework.Pause
 {
     /// <summary>
     /// API status: Experimental. Result vocabulary for explicit Pause visual surface materialization.
-    /// This does not toggle Pause, change InputMode, alter Time.timeScale or wire into Route/Activity lifecycle.
+    /// This does not toggle Pause, alter Time.timeScale or wire into Route/Activity lifecycle.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Experimental, "F10E Pause visual surface materialization status; explicit visual proof only.")]
     internal enum PauseVisualSurfaceMaterializationStatus
