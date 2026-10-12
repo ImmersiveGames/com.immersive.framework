@@ -2,9 +2,9 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.8] - 2026-10-12 — prepared, unpublished
+## [1.1.0-preview.8] - 2026-10-12 — published
 
-This preview candidate converges Manager-Provisioned Player Join on the
+This preview release converges Manager-Provisioned Player Join on the
 `PlayerSessionJoinTrigger`. IF-ADR-046 records **APPROVED — Player Join Stable**
 for the bounded Join request closure only. The evidence amendment accepts
 declared partial provenance for the supplied runs; it does not associate them

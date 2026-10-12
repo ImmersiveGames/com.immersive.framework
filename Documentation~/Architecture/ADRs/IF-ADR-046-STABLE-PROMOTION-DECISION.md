@@ -43,3 +43,19 @@ Stable: `PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`, `Loc
 - FirstGame: branch `main`, HEAD `c0d14a057197624ff2f070a6e601d7d225f972db`, árvore limpa, `ahead 1` de `origin/main`.
 
 Nenhum HEAD acima é declarado como SHA usado nas execuções Unity relatadas. FirstGame/PEGA não foram modificados.
+
+## Registro posterior de distribuição — 2026-10-12
+
+`com.immersive.framework@1.1.0-preview.8` foi publicado depois desta decisão,
+pela tag anotada `v1.1.0-preview.8` apontada ao commit
+`f01b0bf1c54ea2cbf8c47aac851a21355323ec83`. O workflow
+[38278260074](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38278260074)
+concluiu com sucesso e o registry OpenUPM resolve essa versão. Esta anotação
+atualiza somente o estado de distribuição; a decisão Stable continua restrita
+à closure `PlayerSessionJoinTrigger` e não promove o Framework inteiro.
+
+O workflow confirmou o conteúdo do archive e a presença de
+`package/.attestation.p7m`; não executou verificação criptográfica independente
+da assinatura. O archive GitHub e o tarball do OpenUPM foram comparados e têm
+SHA-256 `6a8b268200251e536b431678acadeee05f0ae2181100a165814af8fef73efc1c`.
+Importação/compilação e inicialização em Unity consumidor permanecem pendentes.

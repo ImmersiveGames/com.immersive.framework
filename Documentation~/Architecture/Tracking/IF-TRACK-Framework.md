@@ -1,6 +1,6 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.7 published; IF-ADR-046 Player Join closure APPROVED Stable; preview .8 unpublished; Framework-wide readiness remains separate**
+Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.8 published; IF-ADR-046 Player Join closure APPROVED Stable; Framework-wide readiness remains separate**
 
 Last updated: **2026-10-12**
 
@@ -29,14 +29,33 @@ The public OpenUPM graph is published:
 | `com.immersive.audio` | `0.2.2` | [v0.2.2](https://github.com/ImmersiveGames/com.immersive.audio/releases/tag/v0.2.2) | [package](https://openupm.com/packages/com.immersive.audio/) |
 | `com.immersive.framework` | `1.0.2` | [v1.0.2](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.0.2) | [package](https://openupm.com/packages/com.immersive.framework/) |
 
-Preview **`1.1.0-preview.7`** is published to GitHub Releases and OpenUPM. Its
-signed archive is attached to [the GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.7),
-and OpenUPM resolves `.7` as the current preview. It depends on Foundation
+Preview **`1.1.0-preview.8`** is published to GitHub Releases and OpenUPM. Its
+archive is attached to [the GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.8),
+and OpenUPM resolves `.8` as the current preview. It depends on Foundation
 `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7` and Input System `1.19.0`. The
 `v1.1.0-preview.1` tag
 stopped at signed-archive verification; no GitHub Release or OpenUPM publication
 was created for it. Package import/compile and broader Camera/Player validation
 remain pending.
+
+### Preview `1.1.0-preview.8` publication record
+
+- Source commit: `f01b0bf1c54ea2cbf8c47aac851a21355323ec83`; annotated tag
+  `v1.1.0-preview.8` points to that commit.
+- [Signed-release workflow run 38278260074](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38278260074)
+  completed successfully, including `upm pack`, archive content checks, GitHub
+  Release upload and OpenUPM publication.
+- OpenUPM resolves `1.1.0-preview.8` with repository revision
+  `f01b0bf1c54ea2cbf8c47aac851a21355323ec83`. The GitHub Release asset and
+  OpenUPM tarball were byte-identical: 1,714,369 bytes, SHA-256
+  `6a8b268200251e536b431678acadeee05f0ae2181100a165814af8fef73efc1c`.
+- Workflow verification confirmed the expected archive entries and presence
+  of `package/.attestation.p7m`. The workflow does not perform an independent
+  cryptographic signature-verification command; this record does not claim it
+  did.
+- Consumer installation validation remains **PENDING** until a Unity
+  `6000.5.0f1` project confirms the exact resolved version, import/compilation
+  without errors or signature warnings, and Framework initialization.
 
 Registry dependency graph:
 
@@ -49,7 +68,7 @@ com.immersive.audio 0.2.2
 └── com.immersive.pooling 0.2.1
 ```
 
-Distribution status: **PUBLISHED / PENDING UNITY COMPILE/IMPORT VALIDATION**.
+Distribution status: **1.1.0-preview.8 PUBLISHED / PENDING UNITY COMPILE/IMPORT VALIDATION**.
 
 ## Current Reset integration QA evidence
 
