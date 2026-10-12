@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Camera;
 
 namespace Immersive.Framework.CameraAuthoring
 {
     /// <summary>Validates an explicit definition scope without resolving assets through IDs.</summary>
+    [FrameworkApiStatus(FrameworkApiStatus.Internal, "Framework runtime validation helper for Camera Output definition identities.")]
     public static class CameraOutputDefinitionValidation
     {
         public static void ValidateOutputs(IEnumerable<CameraOutputDefinition> definitions)
