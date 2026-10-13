@@ -1,8 +1,51 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — stable OpenUPM release 1.0.2; preview 1.1.0-preview.8 published; IF-ADR-046 Player Join closure APPROVED Stable; Framework-wide readiness remains separate**
+Status: **Active — 1.1.0 approved as first official Stable baseline / publication pending; preview 1.1.0-preview.8 remains latest published; IF-ADR-046 Player Join closure APPROVED Stable**
 
 Last updated: **2026-10-12**
+
+## 1.1.0 first Stable release readiness
+
+IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. The
+release is currently **NO-GO**: the source package metadata is still
+`1.1.0-preview.8`, and no 1.1.0 candidate has completed the gates below. The
+published 1.0.2 and preview artifacts remain historical; a generic migration
+from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
+for an individual Stable contract or serialized-data guarantee.
+
+| Gate | GO criteria | Current evidence / disposition |
+|---|---|---|
+| Runtime integrity | Candidate imports and compiles in the supported Unity `6000.5` line; all release-blocking defects in Stable behavior are resolved; lifecycle rollback/retry/cleanup paths covered at their contract scope. | User-reported source-cut EditMode: 310/310 overall, Pause 18/18, Player Participation 101/101; QA-IF-ADR-036 Play Mode 8/8 with request accepted/completed, `BaselineRestored`, no divergences. These counts lack raw logs and immutable candidate identity and do not replace candidate import/compile. |
+| Contracts and architecture | `FrameworkApiStatusAttribute`, Public-API, accepted ADRs and observed implementation agree for every Stable contract included in 1.1.0; no Experimental/Internal promotion inferred from package version; breaking changes have explicit accepted decisions and consumer disposition. | Baseline policy accepted in IF-ADR-047; individual maturity remains unchanged. The 1.1.0 candidate contract inventory and source-to-package review remain pending. |
+| QA coverage | Focused automated and integrated evidence covers each release Stable guarantee and its material failure/cleanup paths; evidence names exact candidate/package resolution where the claim depends on it. All failures are resolved or explicitly accepted by the responsible authority under the owning ADR. | The user-reported results above are useful scoped evidence, but no exact release candidate SHA, package resolution record or raw execution output is attached. Broader/Experimental-only coverage is not required unless it affects a Stable guarantee or an explicit gate. |
+| Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; published GitHub/OpenUPM artifact identity is recorded and an installed consumer resolves/imports/compiles the exact artifact. | Not run: version metadata and tag remain unchanged by the documentation decision; candidate archive, workflow and registry publication do not exist yet. |
+
+**GO only when all four gates pass** and no unresolved Stable-contract, package
+resolution, import/compile or artifact-identity blocker remains. **NO-GO** for
+any unexplained failure or mismatch in those areas. A known, bounded risk in an
+Experimental contract may be documented and accepted only when it does not
+undermine a Stable guarantee or a specific accepted release gate.
+
+### Release-candidate sequence
+
+1. Freeze the candidate source; review the per-contract Stable inventory and
+   `package.json` dependency graph against accepted ADRs and Public-API.
+2. Run the focused package and QAFramework lanes required by those Stable
+   guarantees in the supported Unity version; record exact source revision,
+   resolved package source/version, result and available raw evidence.
+3. Run consumer import/compile and targeted smoke validation against the same
+   immutable candidate. Keep unrelated or unsupported Experimental scenarios
+   out of the release claim unless they affect Stable behavior.
+4. Set package metadata and annotated release tag to the approved `1.1.0`
+   source; verify signed-release workflow archive contents, hash/provenance,
+   GitHub Release/OpenUPM artifact identity and installed package resolution.
+5. Record gate disposition and residual risks here before declaring GO. Publish
+   only after the gates pass; do not infer publication or validation from the
+   existence of a local source SHA or old preview evidence.
+
+The GitHub workflow's presence/attestation-file check is not itself proof of
+independent cryptographic signature verification; record only what the run and
+consumer installation actually establish.
 
 ## Current Framework source cut — Pause physical restoration integrity
 
@@ -14,15 +57,17 @@ receipts while restoration is recoverable. The decision and consumer migration
 are recorded in [IF-ADR-005](../ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md#2026-10-12-persistent-input-gate-failure-and-physical-release-amendment).
 QAFramework resolves the local checkout and FirstGame resolves published
 `1.1.0-preview.8`; neither has a direct InputMode source reference in the
-inspected assets. The user reports QAFramework Unity Test Runner EditMode
-**309/309 passed, zero failures**, including `PauseProductTransactionTests`
-**14/14** for this physical-integrity source cut. This is manual reported
-evidence; raw log and execution SHA were not supplied. Play Mode integration remains pending. PEGA resolves published `1.1.0-preview.8`; source and GUID inspection for RESET-035-H found no removed Adapter references, but consumer validation against this local candidate remains pending.
+inspected assets. The latest user-reported QA evidence for the current source
+cut is recorded in the release-readiness gate above. This evidence has no raw
+log or immutable candidate SHA and is not candidate-specific release
+certification. Play Mode coverage outside the reported QA-IF-ADR-036 proof
+remains separately scoped. PEGA resolves published `1.1.0-preview.8`; source
+and GUID inspection for RESET-035-H found no removed Adapter references, but
+consumer validation against this local candidate remains pending.
 
-`PauseProductTransactionTests` now contains 14 cases, five added for physical
-Gate read-back, bounded retry, recoverable release, retry authority and
-destroyed-target handling. Activity-exit and Session Host recovery scenarios
-still require Unity/QAFramework execution beyond the reported EditMode suite.
+`PauseProductTransactionTests` coverage is reported as 18/18 for this source
+cut. Activity-exit and Session Host recovery scenarios still require
+Unity/QAFramework execution beyond the reported suites where applicable.
 
 ## Authority and status model
 
@@ -276,7 +321,8 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 043 | ACCEPTED / IMPLEMENTED / TESTED / INTEGRATED / VALIDATED | Individual Output participation manually validated; Framework EditMode 175/175, Camera 78/78, PlayerCameraOutputIntegration 3/3, SessionCameraAssignmentRuntime 37/37; focused QAFramework 7/7 PASS on 2026-10-07 with 10/10 monitored frames covered and `BaselineRestored` | focused physical-participation gate closed; broader IF-ADR-038 recertification remains separate |
 | 044 | ACCEPTED / IMPLEMENTED / INTEGRATED / VALIDATED | Public occurrence-scoped block/release token, Session-lifetime composition, canonical input adapter projection and Leave cleanup; QAFramework IF-ADR-044 **8/8 PASS** with `BaselineRestored`; `PlayerGameplayAvailabilityBlockTrigger` manually validated in Local Multiplayer on 2026-10-08 for P1/P2 Block/Release, independent ownership, teardown cleanup and Pause composition | current; gameplay turn/active-player cycling remains consumer-owned and outside Framework scope |
 | 045 | ACCEPTED / D IMPLEMENTED / D2 STATIC AUDIT COMPLETE / D4-D5 TEST FIXES IMPLEMENTED / D7 PARTIAL QA CERTIFICATION 6/7 / D8 PACKAGE-LEVEL / D9 EDIT MODE RESULTS USER-REPORTED / D10 DOCUMENTS RECONCILED | Persistent Content uses path/name, explicit idempotent migration and path-driven Scene Picker; runtime retains source roots through Session composition before application-lifetime transfer. D7: Prepare/cleanup PASS, scoped migration 4/4 PASS, and six runtime checkpoints PASS including exact unload/root transfer, Route/Activity transitions, and Route A baseline restoration; Session shutdown/release remains BLOCKED, so QAFramework stays 6/7. D8 assigns that internal Session release contract to PACKAGE-LEVEL tests because consumers have no supported shutdown request/result. D9 source adds release-failure aggregation/retry, participant-clear, root-survival and repeated-release assertions. D10 records the user-reported Unity Edit Mode result: 194 passed, 0 failed, 0 ignored; named evidence: `SessionCompositionReleaseTests` PASS, Audio 5/5, `PersistentContentSceneReferenceTests` 12/12. | Implemented, test source, reported execution and Play Mode evidence are distinct; this is not full IF-ADR-045 certification. `FrameworkRuntimeHost.OnDestroy → ReleaseSessionScope` integration remains uncovered. Package transfer Edit Mode regression, other ADR-045 gates, four legacy QA setup references, Standalone/WebGL Player Build validation and independent reproduction of the consumer incident remain pending. Do not change QAFramework 6/7 or rewrite the approved plan; it directs progress records to this tracker. |
-| 046 | ACCEPTED — I1/I2/I3 implemented; public entrypoint retirement committed; user-reported post-removal EditMode 292/292 and PlayerParticipation 101/101 PASS; I4 accepted by composed evidence; QA 042/043/044 22/22 PASS with cleanup; Session commit failure INALCANÇÁVEL through the public boundary under reviewed synchronous Unity invariants; I6 maturity decision remains separate | One public Manager-Provisioned Join invocation boundary; existing canonical Manager/Bridge/provisioning authority preserved; unrelated Session/Slot/Actor/Leave/Gameplay Availability contracts preserved | See convergence audit and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md). Prior runs retain partial provenance. I4.2 LEASE remains historically BLOCKED 3/3; P1/P2 remain static-review residuals. Physical compensation is accepted by composite evidence under Amendment 002. Candidate-linked Slice 1 replay and post-removal QA/Framework evidence plus FirstGame import/compile/Join/Leave/Rejoin are needed for the final evidence packet; no historic SHA is inferred. FirstGame resolves the local Framework checkout; its settings change selects Local Multiplayer and remains unmodified. New trigger remains Experimental pending an explicit IF-GOV-001 decision. |
+| 046 | ACCEPTED — bounded Player Join closure APPROVED Stable; I1/I2/I3 implemented; public entrypoint retirement committed; I4 accepted by composed evidence; physical compensation accepted under Amendment 002; partial provenance expressly accepted under Amendment 003 | Only `PlayerSessionJoinTrigger` and the explicitly listed Join contract closure are Stable; Session/Slot/Actor/Leave/participation/readiness, broad scoped access and the Framework remain at their separately declared maturities | See [Stable-promotion decision](../ADRs/IF-ADR-046-STABLE-PROMOTION-DECISION.md), convergence audit and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md). Preserve the accepted residuals and provenance scope recorded there; this bounded decision does not promote adjacent APIs or the Framework. |
+| 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Release publication pending; apply the four GO/NO-GO gates above. |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 

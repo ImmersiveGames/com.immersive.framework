@@ -4,12 +4,16 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-Current package version and latest published preview: `1.1.0-preview.7`.
-Latest stable package release: `1.0.2`. The preview
-line contains experimental API and serialized-authoring changes; Unity package
-import/compile and broader IF-ADR-038 Camera recertification remain pending.
-Earlier release history and validation limits are recorded in the
-[changelog](CHANGELOG.md) and [framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md).
+**Official Stable baseline approved:** `1.1.0` (publication pending). The
+current source package metadata remains `1.1.0-preview.8`; the latest published
+preview is also `.8`. Versions before 1.1.0, including 1.0.2 and
+`1.1.0-preview.*`, are retained as historical prototyping and validation
+records and carry no compatibility or generic migration obligation to the new
+baseline. From 1.1.0 forward, guarantees follow SemVer and the individual
+Stable/Experimental/Internal classification; see [IF-ADR-047](Documentation~/Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md)
+and [IF-GOV-001](Documentation~/Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+Release readiness and remaining gates are recorded in the
+[framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md).
 
 The package provides runtime authorities, designer-facing authoring surfaces,
 Editor workflows, diagnostics and validation. It consumes the technical
@@ -28,8 +32,9 @@ There is no support or validation matrix for earlier Unity versions.
 
 ## Installation
 
-Configure OpenUPM once in `Packages/manifest.json`, using the `com.immersive`
-scope, then declare only the Framework package:
+After the 1.1.0 release is published, configure OpenUPM once in
+`Packages/manifest.json`, using the `com.immersive` scope, then declare the
+Framework package:
 
 ```json
 {
@@ -41,22 +46,23 @@ scope, then declare only the Framework package:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.0.2"
+    "com.immersive.framework": "1.1.0"
   }
 }
 ```
 
-The stable `1.0.2` release resolves Foundation `0.2.1` and Logging `0.2.2`.
-The preview line targets Foundation `0.2.2` and Logging `0.2.3`. As a Git fallback for the stable release, use
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.0.2`; Git
-consumers must declare the custom Git dependencies themselves because Unity
-cannot resolve their semantic versions from Git alone.
+The current preview source declares Foundation `0.2.2`, Logging `0.2.3`,
+Cinemachine `3.1.7` and Input System `1.19.0`; confirm the dependency graph
+against the immutable 1.1.0 candidate before release. Do not install 1.1.0
+until its publication and exact package contents have been verified. Git
+consumers must declare custom Git dependencies themselves because Unity cannot
+resolve their semantic versions from Git alone. Earlier package releases
+remain in the [changelog](CHANGELOG.md) as history; they are not migration
+baselines for 1.1.0.
 
-Use preview `1.1.0-preview.7` through OpenUPM or through the Git tag
-`https://github.com/ImmersiveGames/com.immersive.framework.git#v1.1.0-preview.7`.
-Preview APIs and serialized authoring may still change. The signed package is
-available in the [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.7)
-and OpenUPM.
+The currently published preview is `1.1.0-preview.8`. Its API and serialized
+authoring are not Stable compatibility commitments. See the [preview release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.8)
+for historical installation details.
 
 ## Getting started
 
@@ -73,7 +79,7 @@ to find the canonical guide for each domain.
 | Readiness and Loading | readiness participants, loading policies and loading surface adapters | commit/readiness gates, progress, interruption and terminal failure evidence |
 | Player | `PlayerSessionProfile`, Slot/Actor profiles, Local Player and Scene-Provided authoring | Join/Leave, Actor selection, physical preparation, relocation and scoped observation |
 | Camera | Session Camera Assignments, Camera Definitions, Outputs and `CameraRigComposer` | Assignment/Occurrence lifetime, membership and Subject resolution, transactional replacement and Output/Fallback application |
-| Input and Pause | input-mode policy, `PlayerPauseInput`, pause triggers and presentation adapters | transactional input state, pause ownership and resident/activity presentation |
+| Input and Pause | `PlayerPauseInput`, pause triggers and presentation adapters | transactional input state, pause ownership and resident/activity presentation |
 | Transition | transition policies and explicit effect adapters | transition planning, gating, effects and continuity |
 | Reset | reset subjects/participants, Object Reset, Cycle Reset and Activity Restart triggers | scoped reset registration and explicit execution |
 | Progression Save | `ProgressionSaveProfile` and backend adapter contract | save orchestration with built-in JSON or a game/third-party backend |
@@ -131,6 +137,9 @@ surface with `FrameworkApiStatusAttribute`:
 
 Do not treat a stable package version as promotion of every Experimental type.
 See [API Maturity and Validation Governance](Documentation~/Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
+Compatibility begins at the approved 1.1.0 baseline; earlier releases do not
+create a migration obligation to it. The release decision and SemVer rules are
+in [IF-ADR-047](Documentation~/Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md).
 
 ## Validation status
 

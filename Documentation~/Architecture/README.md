@@ -9,6 +9,7 @@ Use this page to navigate architecture records. It does not own mutable implemen
 - `Reconciliation/` preserves dated, bounded evidence and historical reconciliation. A record proves only the stated boundary at its stated date.
 - [Plans](Plans/README.md) index implementation plans. Follow only plans explicitly marked active; historical and superseded plans remain traceability records.
 - [Governance](Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md) defines public API maturity, validation, and risk-proportionate evidence policy.
+- [IF-ADR-047](ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md) records 1.1.0 as the first official Stable baseline and the SemVer policy from that baseline.
 - [Archive](Archive/README.md) retains superseded documents and dated tracker deltas for traceability; archived material is not current guidance.
 - `Audits/` contains scoped audit records; check tracker and ADR status before treating an audit as current.
 
@@ -22,7 +23,7 @@ Use this page to navigate architecture records. It does not own mutable implemen
 - Persistence and performance: [ADR-017](ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md), [ADR-018](ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md).
 - Transition observation: [ADR-041](ADRs/IF-ADR-041-Route-Scoped-Activity-Transition-Observation.md).
 
-This is a navigation aid, not a replacement for reading the linked decisions. Confirm each decision's status in the tracker; ADR-036 is Proposed and must not be treated as a settled consumer contract.
+This is a navigation aid, not a replacement for reading the linked decisions. Confirm each decision's status in the tracker; IF-ADR-036 is Accepted and defines the separation between structural GameplayReady and operational RuntimeGameplayAvailable.
 
 ## Document maintenance
 

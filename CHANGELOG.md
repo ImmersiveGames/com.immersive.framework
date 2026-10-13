@@ -4,6 +4,12 @@ All notable package changes are documented in this file.
 
 ## Unreleased
 
+- Product decision approved: `1.1.0` will be the first official Stable
+  baseline, pending release-candidate gates and publication. Compatibility
+  guarantees begin there and remain per contract/API maturity. Earlier
+  versions, including `1.0.2` and `1.1.0-preview.*`, stay in this changelog as
+  history but create no compatibility or generic migration obligation to the
+  baseline. See IF-ADR-047 and the tracker for objective GO/NO-GO criteria.
 - Removed `UnityResetSubjectAdapter` and its Adapter-only ID/discovery contracts,
   registration port, binding, Scene Lifecycle integration and Editor authoring.
   Removed authored Reset ID suggestion methods and the descriptor-provider
@@ -20,11 +26,12 @@ All notable package changes are documented in this file.
   transaction. The Pause/Input Gate/physical PlayerInput authority boundaries
   are unchanged. This is a breaking API change; see IF-ADR-005 and the Pause
   Usage migration section. Package version is unchanged in this source cut.
-- Added focused Pause transaction tests. The user reports QAFramework Unity
-  Test Runner EditMode 309/309 passed, zero failures, including
-  `PauseProductTransactionTests` 14/14 for the physical-integrity source cut.
-  Play Mode integration validation remains pending; raw logs and execution SHA
-  were not supplied.
+- User-reported Unity evidence for the current pre-release source: QAFramework
+  EditMode 310/310 PASS, Pause EditMode 18/18 PASS, Player Participation
+  EditMode 101/101 PASS, and QA-IF-ADR-036 Play Mode 8/8 PASS with request B
+  accepted/completed, `BaselineRestored` cleanup and no divergences. Raw logs,
+  exact execution SHA and immutable candidate resolution were not supplied;
+  this evidence is not yet candidate-specific release certification.
 - Hardened physical Gate and Pause release integrity: `AlreadyBlocked` now
   requires Action Map read-back; PlayerInput posture restoration compensates
   partial writes; binding tokens and receipts remain owned after recoverable

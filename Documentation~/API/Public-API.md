@@ -2,6 +2,17 @@
 
 This is a curated map of supported consumer surfaces, not a list of every public C# type. Follow the linked guide for normal usage and check each row’s maturity before depending on it.
 
+## Compatibility baseline
+
+Framework `1.1.0` is the first official Stable baseline. Compatibility
+guarantees begin at 1.1.0 and apply to each contract classified Stable under
+[IF-GOV-001](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
+and [IF-ADR-047](../Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md).
+Earlier releases, including 1.0.2 and `1.1.0-preview.*`, remain historical and
+do not establish a compatibility or migration obligation to this baseline.
+This baseline does not change the per-type categories below or promote an
+Experimental or Internal contract.
+
 ## Maturity and categories
 
 The package uses type-level `FrameworkApiStatusAttribute` metadata to classify types as `Stable`, `Experimental`, `Internal`, `Deferred`, `Removed` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).

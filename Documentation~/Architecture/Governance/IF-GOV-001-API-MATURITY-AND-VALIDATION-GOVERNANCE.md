@@ -58,11 +58,13 @@ retrospectively reduce any existing Stable guarantee.
 
 For this decision, the Stable authoring contracts of `ActivityAsset` and
 `GameApplicationAsset` cover preservation and interpretation of their existing
-serialized consumer data, including fields whose configured behavior belongs to
-an Experimental contract. This does not promote those field behaviors. A
-change that makes existing authored data unreadable or changes its stored
-intent is a breaking change to the affected Stable authoring contract and
-requires an explicit ADR and migration. This guarantee concerns the package's
+serialized consumer data **from the 1.1.0 baseline onward**, including fields
+whose configured behavior belongs to an Experimental contract. This does not
+promote those field behaviors. A change that makes data authored/accepted under
+the 1.1.0 Stable baseline unreadable or changes its stored intent is a breaking
+change to the affected Stable authoring contract and requires an explicit ADR
+and migration. This does not require 1.1.0 to read, preserve or migrate assets
+from releases preceding the baseline. The guarantee concerns the package's
 serialized data schema, not byte-for-byte Unity YAML formatting. Field-specific
 behavior and its maturity remain governed by the relevant feature ADR.
 
@@ -100,6 +102,24 @@ categories:
   implementation decision.
 - Deprecation does not by itself remove or weaken any Stable compatibility
   guarantee.
+
+### Initial official Stable baseline
+
+Per [IF-ADR-047](../ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md),
+package version **1.1.0 is the first official Stable baseline**. Compatibility
+guarantees start at that baseline and apply only to the individual contracts
+classified `Stable`; package release status does not promote Experimental,
+Internal or other contracts. Versions published before 1.1.0—including 1.0.2
+and `1.1.0-preview.*`—remain historical records, but create no compatibility or
+migration obligation to the new baseline. This does not erase or relabel their
+publication history.
+
+After 1.1.0, version changes follow SemVer as scoped by IF-ADR-047: patch
+releases preserve Stable contracts, minor releases add compatible Stable
+contracts, and changes that break an existing Stable guarantee require a major
+version or an explicitly approved exception. Experimental contracts may evolve
+without Stable compatibility guarantees; their status is never inferred from
+the package version.
 
 ### Governance rule
 
@@ -188,6 +208,9 @@ No synthetic Inspector-understandability test is required.
 - Changes to `FrameworkApiStatus` meanings are architecture-governance changes.
 - The consumer contract is the scope for evaluating Stable compatibility;
   breaking changes to Stable guarantees require explicit ADR/migration handling.
+- The 1.1.0 initial-baseline disposition and post-baseline SemVer rules are
+  defined by IF-ADR-047; they do not alter per-type maturity meanings or
+  classifications.
 - Do not promote or downgrade other contracts based only on their membership in
   the same feature or their use of a type with another maturity.
 - Reconcile any divergence among type attributes, contract documentation, and
