@@ -1,4 +1,4 @@
-name: Sign and release UPM package
+name: Build, certify and publish signed UPM package
 
 on:
   push:
@@ -6,34 +6,47 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: signed-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Sign, release and publish
+  build-candidate:
+    name: Build immutable signed candidate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       UPM_SERVICE_ACCOUNT_KEY_ID: ${{ secrets.UPM_SERVICE_ACCOUNT_KEY_ID }}
       UPM_SERVICE_ACCOUNT_KEY_SECRET: ${{ secrets.UPM_SERVICE_ACCOUNT_KEY_SECRET }}
       UPM_ORG_ID: ${{ secrets.UPM_ORG_ID }}
-      DIST_DIR: /tmp/signed-upm-dist
+      DIST_DIR: ${{ runner.temp }}/signed-upm-dist
+
+    outputs:
+      package-name: ${{ steps.package.outputs.name }}
+      package-version: ${{ steps.package.outputs.version }}
+      source-sha: ${{ steps.package.outputs.source-sha }}
+      artifact-name: ${{ steps.provenance.outputs.artifact-name }}
+      artifact-sha256: ${{ steps.provenance.outputs.sha256 }}
 
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Read and verify package metadata
         id: package
         shell: bash
         run: |
+          set -euo pipefail
           package_name="$(jq -r '.name' package.json)"
           package_version="$(jq -r '.version' package.json)"
           tag_version="${GITHUB_REF_NAME#v}"
+          source_sha="$(git rev-parse HEAD)"
+          tag_sha="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
 
           test -n "$package_name"
           test -n "$package_version"
@@ -41,33 +54,64 @@ jobs:
             printf 'Tag version %s does not match package version %s\n' "$tag_version" "$package_version" >&2
             exit 1
           fi
+          if [ "$source_sha" != "$GITHUB_SHA" ] || [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            printf 'Checked-out/tag commit %s does not match triggering commit %s\n' "$source_sha" "$GITHUB_SHA" >&2
+            exit 1
+          fi
 
+          dependencies="$(jq -cS '.dependencies // {}' package.json)"
           echo "PACKAGE_NAME=$package_name" >> "$GITHUB_ENV"
           echo "PACKAGE_VERSION=$package_version" >> "$GITHUB_ENV"
+          echo "PACKAGE_DEPENDENCIES=$dependencies" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
           echo "name=$package_name" >> "$GITHUB_OUTPUT"
           echo "version=$package_version" >> "$GITHUB_OUTPUT"
-          printf 'Package: %s@%s\n' "$package_name" "$package_version"
+          echo "source-sha=$source_sha" >> "$GITHUB_OUTPUT"
+          printf 'Package: %s@%s\nSource SHA: %s\nDependencies: %s\n' "$package_name" "$package_version" "$source_sha" "$dependencies"
 
-      - name: Install Unity UPM CLI
+      - name: Resolve and install Unity UPM CLI
         shell: bash
         run: |
-          curl -fsSL https://cdn.packages.unity.com/upm-cli/install.sh -o /tmp/upm-cli-install.sh
-          bash /tmp/upm-cli-install.sh
+          set -euo pipefail
+          curl -fsSL https://cdn.packages.unity.com/upm-cli/install.sh -o "$RUNNER_TEMP/upm-cli-install.sh"
+          curl -fsSL https://cdn.packages.unity.com/upm-cli/latest.txt -o "$RUNNER_TEMP/upm-cli-version.txt"
+          upm_cli_version="$(tr -d '[:space:]' < "$RUNNER_TEMP/upm-cli-version.txt")"
+          if [[ "$upm_cli_version" != v* ]]; then
+            upm_cli_version="v$upm_cli_version"
+          fi
+          if [[ ! "$upm_cli_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf 'Unity UPM CLI returned an invalid version: %s\n' "$upm_cli_version" >&2
+            exit 1
+          fi
+          bash "$RUNNER_TEMP/upm-cli-install.sh" "$upm_cli_version"
           echo "$HOME/.upm/bin" >> "$GITHUB_PATH"
+          echo "UPM_CLI_VERSION=$upm_cli_version" >> "$GITHUB_ENV"
 
-      - name: Verify Unity UPM CLI
-        run: upm --help
-
-      - name: Sign package
+      - name: Verify installed UPM CLI
         shell: bash
         run: |
+          set -euo pipefail
+          installed_version="$(upm --version | tr -d '[:space:]')"
+          if [[ "$installed_version" != v* ]]; then
+            installed_version="v$installed_version"
+          fi
+          if [ "$installed_version" != "$UPM_CLI_VERSION" ]; then
+            printf 'Installed UPM CLI %s does not match resolved version %s\n' "$installed_version" "$UPM_CLI_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Pack and sign candidate
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p "$DIST_DIR"
           upm pack . --organization-id "$UPM_ORG_ID" --destination "$DIST_DIR"
 
-      - name: Verify signed archive
-        id: archive
+      - name: Verify candidate and record provenance
+        id: provenance
         shell: bash
         run: |
+          set -euo pipefail
           shopt -s nullglob
           archives=("$DIST_DIR"/*.tgz "$DIST_DIR"/*.tar.gz)
           if [ "${#archives[@]}" -ne 1 ]; then
@@ -78,7 +122,6 @@ jobs:
           archive="${archives[0]}"
           archive_index="$DIST_DIR/archive-index.txt"
           tar -tzf "$archive" > "$archive_index"
-
           required_entries=(
             package/package.json
             package/README.md
@@ -96,6 +139,7 @@ jobs:
             package/Tests/Editor/PlayerParticipation/Immersive.Framework.PlayerParticipation.Editor.Tests.asmdef.meta
             package/Documentation~/API/Public-API.md
             package/Documentation~/README.md
+            package/.attestation.p7m
           )
           for entry in "${required_entries[@]}"; do
             if ! grep -Fx "$entry" "$archive_index" >/dev/null; then
@@ -111,27 +155,235 @@ jobs:
             exit 1
           fi
 
-          grep -Fx 'package/.attestation.p7m' "$archive_index" >/dev/null
-
           archive_name="$(tar -xOzf "$archive" package/package.json | jq -r '.name')"
           archive_version="$(tar -xOzf "$archive" package/package.json | jq -r '.version')"
-          test "$archive_name" = "$PACKAGE_NAME"
-          test "$archive_version" = "$PACKAGE_VERSION"
-          echo "path=$archive" >> "$GITHUB_OUTPUT"
-          printf 'Signed archive: %s\n' "$(basename "$archive")"
+          if [ "$archive_name" != "$PACKAGE_NAME" ] || [ "$archive_version" != "$PACKAGE_VERSION" ]; then
+            printf 'Archive identity %s@%s does not match manifest %s@%s\n' "$archive_name" "$archive_version" "$PACKAGE_NAME" "$PACKAGE_VERSION" >&2
+            exit 1
+          fi
 
-      - name: Create GitHub Release and upload signed archive
+          candidate_dir="$DIST_DIR/candidate"
+          mkdir -p "$candidate_dir"
+          cp "$archive" "$candidate_dir/"
+          archive_path="$candidate_dir/$(basename "$archive")"
+          archive_sha256="$(sha256sum "$archive_path" | awk '{print $1}')"
+          jq -n \
+            --arg package "$PACKAGE_NAME" \
+            --arg version "$PACKAGE_VERSION" \
+            --arg tag "$GITHUB_REF_NAME" \
+            --arg source_sha "$SOURCE_SHA" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg upm_cli "$UPM_CLI_VERSION" \
+            --arg runner_image "$RUNNER_OS/$RUNNER_ARCH" \
+            --arg archive "$(basename "$archive_path")" \
+            --arg sha256 "$archive_sha256" \
+            --argjson dependencies "$PACKAGE_DEPENDENCIES" \
+            '{package: $package, version: $version, tag: $tag, sourceCommit: $source_sha, dependencies: $dependencies, buildTool: {name: "Unity UPM CLI", version: $upm_cli}, runnerImage: $runner_image, workflowRunId: $run_id, workflowRunAttempt: $run_attempt, archive: $archive, sha256: $sha256}' \
+            > "$candidate_dir/provenance.json"
+          printf '%s  %s\n' "$archive_sha256" "$(basename "$archive_path")" > "$candidate_dir/SHA256SUMS"
+
+          artifact_name="signed-upm-candidate-${GITHUB_REF_NAME}-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "sha256=$archive_sha256" >> "$GITHUB_OUTPUT"
+          {
+            printf '## Signed UPM candidate\n\n'
+            printf '| Field | Value |\n|---|---|\n'
+            printf '| Package | `%s@%s` |\n' "$PACKAGE_NAME" "$PACKAGE_VERSION"
+            printf '| Source commit | `%s` |\n' "$SOURCE_SHA"
+            printf '| Tag | `%s` |\n' "$GITHUB_REF_NAME"
+            printf '| Dependencies | `%s` |\n' "$PACKAGE_DEPENDENCIES"
+            printf '| Unity UPM CLI | `%s` |\n' "$UPM_CLI_VERSION"
+            printf '| Archive | `%s` |\n' "$(basename "$archive_path")"
+            printf '| SHA-256 | `%s` |\n' "$archive_sha256"
+            printf '\nDownload artifact `%s` to install this exact candidate in consumer projects.\n' "$artifact_name"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload immutable candidate for consumer certification
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.provenance.outputs.artifact-name }}
+          path: ${{ env.DIST_DIR }}/candidate/
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Approve and promote the certified artifact
+    needs: build-candidate
+    if: ${{ !contains(github.ref_name, '-') && vars.STABLE_ARTIFACT_PROMOTION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: framework-stable-release
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DIST_DIR: ${{ runner.temp }}/signed-upm-candidate
+
+    steps:
+      - name: Check out the exact tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Download candidate artifact from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-candidate.outputs.artifact-name }}
+          path: ${{ env.DIST_DIR }}
+
+      - name: Verify approved candidate, tag and artifact identity
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          tag_sha="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
+          manifest_name="$(jq -r '.name' package.json)"
+          manifest_version="$(jq -r '.version' package.json)"
+          provenance="$DIST_DIR/provenance.json"
+          test -f "$provenance"
+          archive_name="$(jq -r '.archive' "$provenance")"
+          archive="$DIST_DIR/$archive_name"
+          test -f "$archive"
+
+          if [ "$source_sha" != "$GITHUB_SHA" ] || [ "$tag_sha" != "$GITHUB_SHA" ] || [ "$(jq -r '.sourceCommit' "$provenance")" != "$GITHUB_SHA" ]; then
+            printf 'Candidate source/tag SHA does not match triggering SHA %s\n' "$GITHUB_SHA" >&2
+            exit 1
+          fi
+          if [ "$(jq -r '.tag' "$provenance")" != "$GITHUB_REF_NAME" ] || [ "$(jq -r '.package' "$provenance")" != "$manifest_name" ] || [ "$(jq -r '.version' "$provenance")" != "$manifest_version" ]; then
+            printf 'Candidate provenance does not match tag/package manifest identity\n' >&2
+            exit 1
+          fi
+          if [ "$(jq -cS '.dependencies' "$provenance")" != "$(jq -cS '.dependencies // {}' package.json)" ]; then
+            printf 'Candidate provenance dependency graph differs from tagged source\n' >&2
+            exit 1
+          fi
+
+          expected_sha="$(jq -r '.sha256' "$provenance")"
+          actual_sha="$(sha256sum "$archive" | awk '{print $1}')"
+          recorded_sha="$(awk 'NR == 1 {print $1}' "$DIST_DIR/SHA256SUMS")"
+          if [ "$actual_sha" != "$expected_sha" ] || [ "$actual_sha" != "$recorded_sha" ] || [ "$actual_sha" != "${{ needs.build-candidate.outputs.artifact-sha256 }}" ]; then
+            printf 'Candidate archive SHA-256 mismatch: expected %s, actual %s\n' "$expected_sha" "$actual_sha" >&2
+            exit 1
+          fi
+
+          archive_identity="$(tar -xOzf "$archive" package/package.json | jq -cS '{name, version, dependencies: (.dependencies // {})}')"
+          manifest_identity="$(jq -cS '{name, version, dependencies: (.dependencies // {})}' package.json)"
+          if [ "$archive_identity" != "$manifest_identity" ]; then
+            printf 'Candidate embedded package identity/dependencies do not match tagged source\n' >&2
+            exit 1
+          fi
+          echo "name=$manifest_name" >> "$GITHUB_OUTPUT"
+          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "filename=$archive_name" >> "$GITHUB_OUTPUT"
+          echo "sha256=$actual_sha" >> "$GITHUB_OUTPUT"
+          printf 'Approved candidate verified: %s@%s, SHA-256 %s\n' "$manifest_name" "$manifest_version" "$actual_sha"
+
+      - name: Require OpenUPM GitHub Release asset tracking
+        shell: bash
+        run: |
+          set -euo pipefail
+          metadata="$(curl -fsSL https://raw.githubusercontent.com/openupm/openupm/master/data/packages/com.immersive.framework.yml)"
+          if ! grep -Eq '^trackingMode:[[:space:]]*githubRelease[[:space:]]*$' <<< "$metadata"; then
+            printf 'OpenUPM metadata does not use trackingMode: githubRelease; refusing publication.\n' >&2
+            exit 1
+          fi
+          if ! grep -Eq "^githubReleaseAssetName:[[:space:]]*['\"]?com\.immersive\.framework-" <<< "$metadata"; then
+            printf 'OpenUPM metadata does not constrain the release asset to the Framework tarball prefix; refusing publication.\n' >&2
+            exit 1
+          fi
+
+      - name: Ensure any existing Release already contains this exact artifact
+        id: release_asset
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.candidate.outputs.filename }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          verify_dir="$RUNNER_TEMP/release-asset-check"
+          error_file="$RUNNER_TEMP/release-lookup-error.txt"
+          mkdir -p "$verify_dir"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" >/dev/null 2>"$error_file"; then
+            gh release download "$GITHUB_REF_NAME" --pattern "$ARCHIVE_NAME" --dir "$verify_dir"
+            existing_archive="$verify_dir/$ARCHIVE_NAME"
+            test -f "$existing_archive"
+            existing_sha="$(sha256sum "$existing_archive" | awk '{print $1}')"
+            if [ "$existing_sha" != "$EXPECTED_SHA256" ]; then
+              printf 'Existing GitHub Release asset hash %s differs from approved candidate %s\n' "$existing_sha" "$EXPECTED_SHA256" >&2
+              exit 1
+            fi
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          elif grep -q 'HTTP 404' "$error_file"; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          else
+            cat "$error_file" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release and attach the approved archive
+        if: ${{ steps.release_asset.outputs.exists == 'false' }}
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.package.outputs.name }} ${{ steps.package.outputs.version }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          name: ${{ steps.candidate.outputs.name }} ${{ steps.candidate.outputs.version }}
+          prerelease: false
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: ${{ steps.archive.outputs.path }}
+          files: ${{ steps.candidate.outputs.archive }}
 
-      - name: Publish signed archive through OpenUPM
+      - name: Verify GitHub Release asset hash
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.candidate.outputs.filename }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          verify_dir="$RUNNER_TEMP/release-asset-verified"
+          mkdir -p "$verify_dir"
+          gh release download "$GITHUB_REF_NAME" --pattern "$ARCHIVE_NAME" --dir "$verify_dir"
+          actual_sha="$(sha256sum "$verify_dir/$ARCHIVE_NAME" | awk '{print $1}')"
+          if [ "$actual_sha" != "$EXPECTED_SHA256" ]; then
+            printf 'GitHub Release asset hash %s differs from approved candidate %s\n' "$actual_sha" "$EXPECTED_SHA256" >&2
+            exit 1
+          fi
+
+      - name: Publish the Release asset through OpenUPM
+        id: openupm
         uses: openupm/openupm-action@v1
         with:
-          package: ${{ steps.package.outputs.name }}
+          package: ${{ steps.candidate.outputs.name }}
           tag: ${{ github.ref_name }}
           timeout-minutes: 30
+
+      - name: Verify OpenUPM publishes the same tarball bytes
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.candidate.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+          OPENUPM_SIGNED: ${{ steps.openupm.outputs.signed }}
+        run: |
+          set -euo pipefail
+          if [ "$OPENUPM_SIGNED" != 'true' ]; then
+            printf 'OpenUPM did not report the published package as signed.\n' >&2
+            exit 1
+          fi
+          metadata_url="https://package.openupm.com/$PACKAGE_NAME"
+          metadata="$(curl --retry 8 --retry-delay 5 --retry-all-errors -fsSL "$metadata_url")"
+          tarball_url="$(jq -r --arg version "$PACKAGE_VERSION" '.versions[$version].dist.tarball // empty' <<< "$metadata")"
+          if [ -z "$tarball_url" ]; then
+            printf 'OpenUPM metadata has no tarball URL for %s@%s\n' "$PACKAGE_NAME" "$PACKAGE_VERSION" >&2
+            exit 1
+          fi
+          curl --retry 8 --retry-delay 5 --retry-all-errors -fsSL "$tarball_url" -o "$RUNNER_TEMP/openupm-published.tgz"
+          published_sha="$(sha256sum "$RUNNER_TEMP/openupm-published.tgz" | awk '{print $1}')"
+          if [ "$published_sha" != "$EXPECTED_SHA256" ]; then
+            printf 'OpenUPM tarball SHA-256 %s differs from approved artifact %s\n' "$published_sha" "$EXPECTED_SHA256" >&2
+            exit 1
+          fi
+          printf 'GitHub Release and OpenUPM both distribute approved SHA-256 %s\n' "$EXPECTED_SHA256" >> "$GITHUB_STEP_SUMMARY"

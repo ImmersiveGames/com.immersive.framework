@@ -29,6 +29,16 @@ Session Player lifetime, Join, Leave, provisioning or Actor Selection.
 
 ### Maturity and serialized authoring boundary
 
+The Stable `RouteAsset` authoring contract preserves and interprets its
+existing serialized schema and stored intent from the 1.1.0 baseline onward,
+including the `playerSpatialEntryPolicy` and `transitionGateMode` fields. This
+does not promote either configured behavior. `RoutePlayerSpatialEntryPolicy`
+remains Experimental; `TransitionGateMode` remains Experimental under the
+existing [Gate](IF-ADR-005-Input-Pause-Gate-and-Reset.md) and
+[Loading/Transition](IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md)
+decisions. As with other Stable authoring data, this guarantee does not apply
+to assets from releases before 1.1.0.
+
 Activity relocation behavior remains Experimental. Its policy is stored by the
 Stable `ActivityAsset` authoring surface; therefore, the existing serialized
 policy field and its stored values remain within the Stable authoring data

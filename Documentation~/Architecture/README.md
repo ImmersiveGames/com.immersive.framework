@@ -10,6 +10,7 @@ Use this page to navigate architecture records. It does not own mutable implemen
 - [Plans](Plans/README.md) index implementation plans. Follow only plans explicitly marked active; historical and superseded plans remain traceability records.
 - [Governance](Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md) defines public API maturity, validation, and risk-proportionate evidence policy.
 - [IF-ADR-047](ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md) records 1.1.0 as the first official Stable baseline and the SemVer policy from that baseline.
+- [IF-ADR-048](ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md) defines the Accepted readiness phases and explicit GO/NO-GO gate for that baseline; acceptance does not certify phase completion or authorize publication.
 - [Archive](Archive/README.md) retains superseded documents and dated tracker deltas for traceability; archived material is not current guidance.
 - `Audits/` contains scoped audit records; check tracker and ADR status before treating an audit as current.
 
@@ -22,6 +23,7 @@ Use this page to navigate architecture records. It does not own mutable implemen
 - Input, Pause and Reset: [ADR-005](ADRs/IF-ADR-005-Input-Pause-Gate-and-Reset.md), [ADR-035](ADRs/IF-ADR-035-Reset-Composition-Ownership-Membership-and-Targeting.md).
 - Persistence and performance: [ADR-017](ADRs/IF-ADR-017-Application-Frame-Rate-Project-Authority.md), [ADR-018](ADRs/IF-ADR-018-Progression-Save-Backend-Independence-and-Persistence-Domain-Boundaries.md).
 - Transition observation: [ADR-041](ADRs/IF-ADR-041-Route-Scoped-Activity-Transition-Observation.md).
+- Stable release readiness: [ADR-047](ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md) (Accepted baseline policy); [ADR-048](ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md) (Accepted readiness roadmap; execution and release decision remain pending).
 
 This is a navigation aid, not a replacement for reading the linked decisions. Confirm each decision's status in the tracker; IF-ADR-036 is Accepted and defines the separation between structural GameplayReady and operational RuntimeGameplayAvailable.
 

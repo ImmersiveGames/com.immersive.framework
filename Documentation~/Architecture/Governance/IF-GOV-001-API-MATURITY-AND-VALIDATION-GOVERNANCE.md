@@ -56,14 +56,17 @@ break Stable commitments. A contract does not become Stable merely because it
 uses a Stable type. Conversely, documenting a narrower boundary must not
 retrospectively reduce any existing Stable guarantee.
 
-For this decision, the Stable authoring contracts of `ActivityAsset` and
-`GameApplicationAsset` cover preservation and interpretation of their existing
-serialized consumer data **from the 1.1.0 baseline onward**, including fields
-whose configured behavior belongs to an Experimental contract. This does not
-promote those field behaviors. A change that makes data authored/accepted under
-the 1.1.0 Stable baseline unreadable or changes its stored intent is a breaking
-change to the affected Stable authoring contract and requires an explicit ADR
-and migration. This does not require 1.1.0 to read, preserve or migrate assets
+For this decision, the Stable authoring contracts of `GameApplicationAsset`,
+`RouteAsset`, and `ActivityAsset` cover preservation and interpretation of their
+existing serialized consumer data **from the 1.1.0 baseline onward**, including
+fields whose configured behavior belongs to an Experimental contract. This does
+not promote those field behaviors. In particular, serialized
+`RoutePlayerSpatialEntryPolicy` data in `RouteAsset` and `TransitionGateMode`
+data in `RouteAsset`/`ActivityAsset` remain within their Stable schemas while
+the configured operational semantics remain Experimental. A change that makes
+data authored/accepted under the 1.1.0 Stable baseline unreadable or changes its
+stored intent is a breaking change to the affected Stable authoring contract
+and requires an explicit ADR and migration. This does not require 1.1.0 to read, preserve or migrate assets
 from releases preceding the baseline. The guarantee concerns the package's
 serialized data schema, not byte-for-byte Unity YAML formatting. Field-specific
 behavior and its maturity remain governed by the relevant feature ADR.

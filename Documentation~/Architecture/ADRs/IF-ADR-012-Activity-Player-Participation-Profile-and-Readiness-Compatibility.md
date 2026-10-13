@@ -47,6 +47,11 @@ the Stable asset that stores them:
   `playerParticipationExplicitSlotProfiles` references.
 - Progressive Player readiness, stored in
   `playerParticipationRequirementLevel`.
+- Activity Transition Gate selection, stored in `transitionGateMode`. Its
+  operational behavior remains Experimental under the existing [Gate](IF-ADR-005-Input-Pause-Gate-and-Reset.md)
+  and [Loading/Transition](IF-ADR-006-Loading-Transition-Persistence-and-Diagnostics.md)
+  decisions; the Stable Activity schema preserves its serialized value without
+  promoting those contracts.
 - Contextual Player relocation, stored in `playerRelocationPolicy`; its
   behavioral authority and limits remain
   [IF-ADR-021](IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md).

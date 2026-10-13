@@ -60,11 +60,23 @@ fabricate readiness or infer consumer intent.
 A downstream gameplay consumer remaining unbound while the Activity only requires
 `LogicalActorsPrepared` is not, by itself, evidence of a readiness regression.
 
-### Entry-gate provisional gameplay admission
+### Current boundary — IF-ADR-036
 
-Amended 2026-09-27. A Route or Activity transition may reconstruct the contextual
-gameplay chain while the Transition Gate still blocks gameplay input. That block is
-provisional and does not transfer gameplay authority to the gate.
+The entry-gate `BlockedByInputGate` readiness exception below is superseded by
+[IF-ADR-036](IF-ADR-036-Gameplay-Readiness-and-Runtime-Gameplay-Availability-Separation.md)
+and the current [IF-ADR-012](IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md)
+boundary. Structural `GameplayReady` requires the current Activity gameplay
+representation and identity-consistent admission, but does not depend on
+Transition Gate, Pause or physical input availability. Those transient
+conditions affect `RuntimeGameplayAvailable`; changing them alone does not
+re-admit the Player or reconcile Activity readiness.
+
+### Historical amendment — provisional gameplay admission (superseded 2026-10-12)
+
+Historical amendment from 2026-09-27. It stated that a Route or Activity
+transition may reconstruct the contextual gameplay chain while the Transition
+Gate still blocks gameplay input. That block is provisional and does not
+transfer gameplay authority to the gate.
 
 ```text
 BlockedByInputGate

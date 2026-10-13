@@ -17,6 +17,14 @@ Experimental or Internal contract.
 
 The package uses type-level `FrameworkApiStatusAttribute` metadata to classify types as `Stable`, `Experimental`, `Internal`, `Deferred`, `Removed` or `DevelopmentTooling`. A Stable type can still have a scope limitation, and one authoring workflow may combine types of different maturity. See [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
 
+## API maturity metadata
+
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `FrameworkApiStatus`, `FrameworkApiStatusAttribute` | Governance metadata · Stable | Define the canonical maturity categories and type-level declaration metadata, including `FrameworkApiStatusAttribute.Status` and `Note`. They do not create Runtime authority, define a feature's full contract scope, or promote dependent/annotated contracts. Changes to category meanings are governed by IF-GOV-001. |
+
+The canonical categories are:
+
 | Category | Meaning for consumers |
 |---|---|
 | Stable | Supported consumer contract; breaking changes require an explicit architecture and migration decision. |
@@ -61,7 +69,7 @@ Guide: [Application Frame Rate](../Guides/Application-Frame-Rate-Usage.md). Chec
 
 | Surface | Category / maturity | Purpose |
 |---|---|---|
-| `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | Stable authoring includes preservation and interpretation of existing serialized data. Activity Player projection and readiness remain Experimental under [IF-ADR-012](../Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md); relocation remains Experimental under [IF-ADR-021](../Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md). Stored fields do not promote those behaviors. |
+| `RouteAsset`, `ActivityAsset` | Authoring assets · Stable | From the 1.1.0 baseline, Stable authoring includes preservation and interpretation of the existing serialized schema and stored intent. `RoutePlayerSpatialEntryPolicy` and `TransitionGateMode` remain Experimental behaviors despite being stored by these assets. Activity Player projection/readiness remain Experimental under [IF-ADR-012](../Architecture/ADRs/IF-ADR-012-Activity-Player-Participation-Profile-and-Readiness-Compatibility.md); Route spatial entry and Activity relocation remain Experimental under [IF-ADR-021](../Architecture/ADRs/IF-ADR-021-Activity-Player-Actor-Initial-Placement-Authority.md). Stored fields do not promote those behaviors or require compatibility with pre-1.1.0 assets. |
 | `RouteContentProfileAsset`, `ActivityContentProfileAsset` | Profiles · Stable | Declare content owned by their Route or Activity scope. |
 | `RouteRequestTrigger`, `ActivityRequestTrigger` | Request components · Stable | Request a Route, request an Activity or clear the Activity from an authored scene/UI event; they do not own navigation authority. |
 | `FlowRequestOutcome`, `FlowRequestEventPhase` | Request event vocabulary · Stable | Coarse public outcome and event phase only; detailed framework result kinds remain outside this contract. |
@@ -97,7 +105,7 @@ Guide: [Game Flow](../Guides/Game-Flow.md), [Activity Readiness](../Guides/Activ
 | `LocalPlayerHostAuthoring` | Authoring component · Stable | Explicit technical Host boundary for PlayerInput, ActorMount and Actor Runtime Host configuration. Manager provisioning remains Experimental. |
 | `PlayerSlotProfile` | Profile · Stable for Scene-Provided use | Owns a stable Slot ID and presentation metadata; optional default Actor intent is separate from runtime allocation. |
 | `ActorProfile` | Profile · Experimental | Reusable Actor identity, classification and optional visual content. It does not own an Actor occurrence or its spatial state. |
-| `PlayerActorSelectionDuplicatePolicy` | Session Actor-selection policy · Experimental | Selects whether ActorProfile identities may repeat across joined Slots. Stored by Stable `GameApplicationAsset`; existing serialized data remains covered by its Stable authoring schema. See [IF-ADR-003](../Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md). The enum type currently has no `FrameworkApiStatusAttribute`. |
+| `PlayerActorSelectionDuplicatePolicy` | Session Actor-selection policy · Experimental | Selects whether ActorProfile identities may repeat across joined Slots. The type carries `FrameworkApiStatusAttribute(Experimental)` and is stored by Stable `GameApplicationAsset`; its existing serialized data remains covered by that asset's Stable authoring schema. See [IF-ADR-003](../Architecture/ADRs/IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md). |
 | `PlayerSessionProfile`, `PlayerHostProvisioningMode` | Session profile/configuration · Experimental | Configure supported Slots, initial Session intent and Scene-Provided or Manager-Provisioned Host mode. |
 | `LocalPlayerProvisioningAuthoring` | Authoring · Experimental | Configures explicit runtime Manager-Provisioned Player creation. |
 | `PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`, `LocalPlayerJoinRequest`, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode`, `LocalPlayerJoinAdmissionState` | Manager-Provisioned Join boundary · Stable | The single public Join request boundary under IF-ADR-046. The trigger delegates through the active Route/Activity occurrence; the bounded outcome does not expose Session/Slot, Host or Actor evidence. `InputDevice` is part of the request contract. |

@@ -9,6 +9,11 @@ Active immutable distribution plan:
 - [OpenUPM Signed Distribution v2](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v2.md)
 - [OpenUPM Signed Distribution — implementation plan](IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION-IMPLEMENTATION-2026-09-24.md)
 
+Proposed master stabilization route — analysis/review only; implementation is
+blocked until explicit integrated-plan approval:
+
+- [IF-ADR-048 — 1.1.0 Stable Readiness Master Plan v1](IF-PLAN-ADR-048-STABLE-READINESS.v1.md)
+
 Accepted architecture implementation route (implementation pending):
 
 - [IF-ADR-045 — Runtime-Safe Scene References v1](IF-PLAN-ADR-045-RUNTIME-SAFE-SCENE-REFERENCES.v1.md)
@@ -43,3 +48,7 @@ Tracker   -> current status and next work
 Guides    -> current usage
 Archive   -> historical records
 ```
+
+The proposed IF-ADR-048 master plan organizes operational investigations and
+later certification. It does not replace the ADR or tracker, close a readiness
+phase, or authorize implementation.
