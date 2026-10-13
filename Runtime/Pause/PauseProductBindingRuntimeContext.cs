@@ -432,6 +432,7 @@ namespace Immersive.Framework.Pause
                     RollbackTransaction(transaction);
                     if (_playerInput == null)
                     {
+                        _adapter.SetContractedGameplayRestoreSuppressed(false);
                         _pauseActionMapSetReceipt = default;
                         outcome = PlayerInputPostureRestoreOutcome.TargetDestroyed;
                         diagnostic = "The exact PlayerInput target was destroyed during Activity-exit cleanup; physical restoration was not confirmed. " + physicalDiagnostic;
@@ -460,6 +461,7 @@ namespace Immersive.Framework.Pause
                         : PlayerInputPostureRestoreOutcome.FailedRecoverable;
                     if (outcome == PlayerInputPostureRestoreOutcome.TargetDestroyed)
                     {
+                        _adapter.SetContractedGameplayRestoreSuppressed(false);
                         _pauseActionMapSetReceipt = default;
                         diagnostic = "The exact PlayerInput target was destroyed during Activity-exit compensation; physical restoration was not confirmed. " + diagnostic;
                         return true;
@@ -467,6 +469,7 @@ namespace Immersive.Framework.Pause
                     return false;
                 }
 
+                _adapter.SetContractedGameplayRestoreSuppressed(false);
                 _pauseActionMapSetReceipt = default;
                 outcome = PlayerInputPostureRestoreOutcome.Restored;
                 diagnostic = "Physical Pause posture restored for Activity exit.";
@@ -602,6 +605,11 @@ namespace Immersive.Framework.Pause
                             transaction,
                             $"Physical Pause posture failed. physical='{physicalDiagnostic}' compensation='{rollbackDiagnostic}'.");
                     }
+
+                    // Pause's exact PlayerInput receipt is the physical authority while
+                    // paused. Prevent the Player gameplay posture repair loop from
+                    // selecting its contracted map over this Pause-owned posture.
+                    _adapter.SetContractedGameplayRestoreSuppressed(true);
                 }
                 else if (!_adapter.TryRestoreActionMapSet(
                              _playerInput,
@@ -629,18 +637,39 @@ namespace Immersive.Framework.Pause
                         transaction,
                         $"Physical Resume posture restore failed. physical='{physicalDiagnostic}' physicalCompensation='{physicalRollbackDiagnostic}' compensation='{rollbackDiagnostic}'.");
                 }
+                else
+                {
+                    _adapter.SetContractedGameplayRestoreSuppressed(false);
+                }
 
                 if (!CommitTransaction(transaction))
                 {
                     string physicalRollbackDiagnostic;
                     if (paused)
                     {
-                        _adapter.TryRestoreActionMapSet(
+                        bool physicalRestoreConfirmed = _adapter.TryRestoreActionMapSet(
                             _playerInput,
                             physicalReceipt,
                             nameof(PauseProductBindingRuntimeContext),
                             "pause-transaction-commit-failed",
                             out physicalRollbackDiagnostic);
+                        if (physicalRestoreConfirmed)
+                        {
+                            _pauseActionMapSetReceipt = default;
+                            _adapter.SetContractedGameplayRestoreSuppressed(false);
+                        }
+                        else if (_playerInput == null)
+                        {
+                            _pauseActionMapSetReceipt = default;
+                            _adapter.SetContractedGameplayRestoreSuppressed(false);
+                        }
+                        else
+                        {
+                            // Keep the exact rollback evidence and the repair guard until
+                            // lifecycle cleanup or binding release confirms restoration.
+                            _pauseActionMapSetReceipt = physicalReceipt;
+                            _adapter.SetContractedGameplayRestoreSuppressed(true);
+                        }
                     }
                     else
                     {
@@ -652,6 +681,7 @@ namespace Immersive.Framework.Pause
                             "pause-transaction-commit-failed",
                             out _,
                             out physicalRollbackDiagnostic);
+                        _adapter.SetContractedGameplayRestoreSuppressed(true);
                     }
                     _application.TryRestorePauseSnapshot(
                         previousPause,
@@ -828,6 +858,7 @@ namespace Immersive.Framework.Pause
 
         private void ClearBinding()
         {
+            _adapter?.SetContractedGameplayRestoreSuppressed(false);
             _token = default;
             _binding = null;
             _playerInput = null;

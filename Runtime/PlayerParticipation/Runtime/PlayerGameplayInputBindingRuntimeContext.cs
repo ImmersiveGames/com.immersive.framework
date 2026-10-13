@@ -1095,6 +1095,7 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     out BindingRecord record) ||
                 record.gateAdapter == null ||
+                record.gateAdapter.IsContractedGameplayRestoreSuppressed ||
                 record.playerInput == null ||
                 record.playerInput.actions == null)
             {

@@ -65,6 +65,7 @@ namespace Immersive.Framework.UnityInput
         private bool _isBlockedByAdapter;
         private PlayerInput _blockedPlayerInput;
         private bool _isBlockedByConsumer;
+        private bool _contractedGameplayRestoreSuppressed;
         private bool _consumerBlockOwnsSuppressedPosture;
         private bool _actionMapWasEnabledBeforeBlock;
         private string _lastStatus = "NotApplied";
@@ -106,6 +107,12 @@ namespace Immersive.Framework.UnityInput
 
         internal bool IsBlockedByConsumer =>
             _isBlockedByConsumer;
+
+        internal bool IsContractedGameplayRestoreSuppressed =>
+            _contractedGameplayRestoreSuppressed;
+
+        internal void SetContractedGameplayRestoreSuppressed(bool suppressed) =>
+            _contractedGameplayRestoreSuppressed = suppressed;
 
         public string LastStatus =>
             _lastStatus.NormalizeText();

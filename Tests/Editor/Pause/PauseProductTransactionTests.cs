@@ -1,8 +1,14 @@
 using System;
+using System.Collections;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using System.Collections.Generic;
+using Immersive.Framework.Actors;
+using Immersive.Framework.Identity;
+using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.UnityInput;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -118,6 +124,7 @@ namespace Immersive.Framework.Pause.Tests
                 PauseRequest.Pause("physical-failure.pause", "test", "destroyed-player-input"));
 
             Assert.That(result.Status, Is.EqualTo(PauseProductRequestStatus.Failed));
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.False);
             Assert.That(application.RestoredSnapshots, Has.Count.EqualTo(1));
             Assert.That(application.RestoredSnapshots[0].State, Is.EqualTo(PauseState.Running));
         }
@@ -133,12 +140,14 @@ namespace Immersive.Framework.Pause.Tests
             PauseProductRequestResult pause = context.RequestPause(
                 PauseRequest.Pause("resume-failure.pause", "test", "pause-first"));
             Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.True);
             UnityEngine.Object.DestroyImmediate(_playerInput);
 
             PauseProductRequestResult resume = context.RequestPause(
                 PauseRequest.Resume("resume-failure.resume", "test", "destroyed-player-input"));
 
             Assert.That(resume.Status, Is.EqualTo(PauseProductRequestStatus.Failed));
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.True);
             Assert.That(application.RestoredSnapshots, Has.Count.EqualTo(1));
             Assert.That(application.RestoredSnapshots[0].State, Is.EqualTo(PauseState.Paused));
         }
@@ -171,6 +180,97 @@ namespace Immersive.Framework.Pause.Tests
         }
 
         [Test]
+        public void PausePosture_PreventsGameplayRuntimeRepairUntilResume()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext pauseContext = CreateBoundContext(application);
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            PlayerSlotId slot = PlayerSlotId.Player1;
+            PlayerGameplayInputBindingToken bindingToken = CreateGameplayInputBinding(
+                slot,
+                _playerInput,
+                adapter,
+                out PlayerGameplayInputBindingRuntimeContext inputContext);
+
+            PauseProductRequestResult pause = pauseContext.RequestPause(
+                PauseRequest.Pause("repair-guard.pause", "test", "pause"));
+
+            Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.True);
+            Assert.That(_playerInput.currentActionMap, Is.SameAs(_globalMap));
+            Assert.That(_gameplayMap.enabled, Is.False);
+            Assert.That(inputContext.TryReassertUngatedContractedGameplayMap(
+                slot, bindingToken, "test", "simulate-player-late-update"), Is.False);
+            Assert.That(_playerInput.currentActionMap, Is.SameAs(_globalMap));
+            Assert.That(_gameplayMap.enabled, Is.False);
+
+            PauseProductRequestResult resume = pauseContext.RequestPause(
+                PauseRequest.Resume("repair-guard.resume", "test", "resume"));
+
+            Assert.That(resume.Succeeded, Is.True, resume.Diagnostic);
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.False);
+            Assert.That(_gameplayMap.enabled, Is.True);
+
+            Assert.That(TryApplyGlobalOnly(adapter), Is.True);
+            Assert.That(inputContext.TryReassertUngatedContractedGameplayMap(
+                slot, bindingToken, "test", "simulate-post-resume-repair"), Is.True);
+            Assert.That(_gameplayMap.enabled, Is.True);
+        }
+
+        [Test]
+        public void PauseCommitFailure_RestoresPriorPostureAndClearsSuppression()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext context = CreateBoundContext(application);
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            Assert.That(adapter.TryCapturePosture(out PausePlayerInputPostureReceipt priorPosture, out string captureDiagnostic),
+                Is.True, captureDiagnostic);
+            InputActionMap priorCurrentActionMap = _playerInput.currentActionMap;
+            string priorDefaultActionMap = _playerInput.defaultActionMap;
+            application.OnApply = () => SetField(context, "_activeTransaction", default(PauseProductTransaction));
+
+            PauseProductRequestResult result = context.RequestPause(
+                PauseRequest.Pause("pause-commit-failure", "test", "invalidate-transaction-before-commit"));
+
+            Assert.That(result.Status, Is.EqualTo(PauseProductRequestStatus.Failed));
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.False);
+            Assert.That(_playerInput.currentActionMap, Is.SameAs(priorCurrentActionMap));
+            Assert.That(UnityPlayerInputStateWriter.HasExactEnabledActionMapSet(
+                _playerInput, priorPosture.EnabledActionMapNames), Is.True);
+            Assert.That(_playerInput.defaultActionMap, Is.EqualTo(priorDefaultActionMap));
+            Assert.That(_playerInput.inputIsActive, Is.EqualTo(priorPosture.InputWasActive));
+            Assert.That(application.CurrentSnapshot.State, Is.EqualTo(PauseState.Running));
+        }
+
+        [Test]
+        public void ResumeCommitFailure_RestoresPausedPostureAndRetainsSuppression()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext context = CreateBoundContext(application);
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            Assert.That(context.RequestPause(
+                PauseRequest.Pause("resume-commit-failure.pause", "test", "pause-first")).Succeeded, Is.True);
+            application.OnApply = () => SetField(context, "_activeTransaction", default(PauseProductTransaction));
+
+            PauseProductRequestResult result = context.RequestPause(
+                PauseRequest.Resume("resume-commit-failure", "test", "invalidate-transaction-before-commit"));
+
+            Assert.That(result.Status, Is.EqualTo(PauseProductRequestStatus.Failed));
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.True);
+            Assert.That(_gameplayMap.enabled, Is.False);
+            Assert.That(application.CurrentSnapshot.State, Is.EqualTo(PauseState.Paused));
+        }
+
+        [Test]
         public void ActivityExit_RestoresPausePostureWithoutReleasingHostBinding()
         {
             var application = new FakeApplication(RunningSnapshot())
@@ -182,16 +282,57 @@ namespace Immersive.Framework.Pause.Tests
             PauseProductRequestResult pause = context.RequestPause(
                 PauseRequest.Pause("activity-exit.pause", "test", "pause"));
             Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.True);
 
             Assert.That(application.TryRestorePauseSnapshot(RunningSnapshot(), "activity-exit", out _), Is.True);
             Assert.That(context.TryRestorePhysicalPostureForLifecycleExit("activity-exit", out PlayerInputPostureRestoreOutcome outcome, out string diagnostic), Is.True, diagnostic);
             Assert.That(outcome, Is.EqualTo(PlayerInputPostureRestoreOutcome.Restored));
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.False);
             Assert.That(context.HasActivePlayerInputBinding, Is.True);
             Assert.That(_globalMap.enabled, Is.True);
             Assert.That(_gameplayMap.enabled, Is.True);
             Assert.That(context.ReleaseBinding(token, "test-release", out _, out diagnostic), Is.True, diagnostic);
             Assert.That(_globalMap.enabled, Is.EqualTo(_initialGlobalEnabled));
             Assert.That(_gameplayMap.enabled, Is.EqualTo(_initialGameplayEnabled));
+        }
+
+        [Test]
+        public void ActivityExit_RestoreFailureRetainsSuppressionForRetry()
+        {
+            var application = new FakeApplication(RunningSnapshot())
+            {
+                ReturnInvalidResult = false
+            };
+            PauseProductBindingRuntimeContext context = CreateBoundContext(application);
+            PauseProductRequestResult pause = context.RequestPause(
+                PauseRequest.Pause("activity-exit-retry.pause", "test", "pause"));
+            Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            UnityPlayerInputActionMapSetWriteReceipt validReceipt =
+                GetField<UnityPlayerInputActionMapSetWriteReceipt>(context, "_pauseActionMapSetReceipt");
+            var invalidReceipt = new UnityPlayerInputActionMapSetWriteReceipt(
+                validReceipt.PlayerInputEntityId,
+                "MissingMap",
+                new[] { "MissingMap" },
+                "MissingMap",
+                new[] { "MissingMap" });
+            SetField(context, "_pauseActionMapSetReceipt", invalidReceipt);
+            Assert.That(application.TryRestorePauseSnapshot(RunningSnapshot(), "activity-exit", out _), Is.True);
+
+            bool firstRestore = context.TryRestorePhysicalPostureForLifecycleExit(
+                "activity-exit-failure", out PlayerInputPostureRestoreOutcome firstOutcome, out _);
+
+            Assert.That(firstRestore, Is.False);
+            Assert.That(firstOutcome, Is.EqualTo(PlayerInputPostureRestoreOutcome.FailedRecoverable));
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.True);
+
+            SetField(context, "_pauseActionMapSetReceipt", validReceipt);
+            Assert.That(context.TryRestorePhysicalPostureForLifecycleExit(
+                "activity-exit-retry", out PlayerInputPostureRestoreOutcome retryOutcome, out string retryDiagnostic),
+                Is.True, retryDiagnostic);
+            Assert.That(retryOutcome, Is.EqualTo(PlayerInputPostureRestoreOutcome.Restored));
+            Assert.That(adapter.IsContractedGameplayRestoreSuppressed, Is.False);
         }
 
         [Test]
@@ -263,6 +404,7 @@ namespace Immersive.Framework.Pause.Tests
 
             Assert.That(firstRelease, Is.False, firstDiagnostic);
             Assert.That(firstOutcome, Is.EqualTo(PauseBindingReleaseOutcome.FailedRecoverable));
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.True);
             Assert.That(context.ActiveToken, Is.EqualTo(token));
             Assert.That(context.HasActivePlayerInputBinding, Is.True);
             Assert.That(application.CurrentSnapshot.State, Is.EqualTo(PauseState.Paused));
@@ -282,8 +424,15 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(retry, Is.True, retryDiagnostic);
             Assert.That(retryOutcome, Is.EqualTo(PauseBindingReleaseOutcome.Restored));
             Assert.That(context.ActiveToken.IsValid, Is.False);
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.False);
             Assert.That(_globalMap.enabled, Is.EqualTo(_initialGlobalEnabled));
             Assert.That(_gameplayMap.enabled, Is.EqualTo(_initialGameplayEnabled));
+
+            Assert.That(context.TryRegister(_binding, out PauseProductBindingToken replacement, out retryDiagnostic), Is.True, retryDiagnostic);
+            Assert.That(replacement.IsValid, Is.True);
+            Assert.That(replacement, Is.Not.EqualTo(token));
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.False);
+            Assert.That(context.ReleaseBinding(replacement, "replacement-release", out _, out retryDiagnostic), Is.True, retryDiagnostic);
         }
 
         [Test]
@@ -295,6 +444,10 @@ namespace Immersive.Framework.Pause.Tests
             };
             PauseProductBindingRuntimeContext context = CreateBoundContext(application);
             PauseProductBindingToken token = context.ActiveToken;
+            PauseProductRequestResult pause = context.RequestPause(
+                PauseRequest.Pause("destroyed-paused-binding.pause", "test", "pause-before-target-destroyed"));
+            Assert.That(pause.Succeeded, Is.True, pause.Diagnostic);
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.True);
             UnityEngine.Object.DestroyImmediate(_playerInput);
 
             bool released = context.ReleaseBinding(
@@ -306,8 +459,91 @@ namespace Immersive.Framework.Pause.Tests
             Assert.That(released, Is.True, diagnostic);
             Assert.That(outcome, Is.EqualTo(PauseBindingReleaseOutcome.TargetDestroyed));
             Assert.That(context.ActiveToken.IsValid, Is.False);
+            Assert.That(_host.GetComponent<UnityPlayerInputGateAdapter>().IsContractedGameplayRestoreSuppressed, Is.False);
             Assert.That(diagnostic, Does.Contain("destroyed"));
         }
+
+        private PlayerGameplayInputBindingToken CreateGameplayInputBinding(
+            PlayerSlotId slot,
+            PlayerInput playerInput,
+            UnityPlayerInputGateAdapter adapter,
+            out PlayerGameplayInputBindingRuntimeContext context)
+        {
+            const string sessionId = "pause-repair-test-session";
+            RuntimeContentOwner owner = RuntimeContentOwner.Activity(
+                "pause-repair-test-activity",
+                "Pause repair test Activity",
+                RuntimeDefinitionToken.MintAnonymous());
+            RuntimeContentIdentity runtimeContent = RuntimeContentIdentity.From(
+                owner,
+                "pause-repair-test-content");
+            ActorProfileId profileId = ActorProfileId.From("pause-repair-test-profile");
+            ActorId actorId = ActorId.From("pause-repair-test-actor");
+            var preparation = new PlayerActorPreparationToken(
+                sessionId, slot, profileId, 1, actorId, runtimeContent, 1, 1);
+            var occupancy = new PlayerGameplayOccupancyToken(
+                sessionId, owner, slot, profileId, actorId, preparation, runtimeContent, 1, 1);
+            var hostIdentity = new PlayerHostBindingIdentity(sessionId, 1);
+            var assignment = new PlayerSlotAssignmentToken(sessionId, slot, 1, 1, hostIdentity);
+            var token = new PlayerGameplayInputBindingToken(
+                sessionId, owner, slot, assignment, hostIdentity, preparation, 1);
+            var summary = new PlayerGameplayInputBindingSummary(
+                sessionId,
+                slot,
+                PlayerGameplayInputBindingState.Bound,
+                PlayerGameplayInputAvailability.Allowed,
+                assignment,
+                hostIdentity,
+                profileId,
+                actorId,
+                owner,
+                runtimeContent,
+                preparation,
+                occupancy,
+                token,
+                "Player",
+                "Player",
+                "Global",
+                playerInput.name,
+                1,
+                1,
+                "test",
+                "pause-repair-test",
+                "Synthetic current input-binding evidence for the internal repair guard test.");
+            Assert.That(summary.IsValid, Is.True, summary.ToDiagnosticString());
+
+            Type contextType = typeof(PlayerGameplayInputBindingRuntimeContext);
+            context = (PlayerGameplayInputBindingRuntimeContext)Activator.CreateInstance(
+                contextType,
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                new object[] { sessionId, null, null, new[] { slot } },
+                null);
+            var slots = (IDictionary)contextType.GetField(
+                "_slots",
+                BindingFlags.Instance | BindingFlags.NonPublic).GetValue(context);
+            var records = (IDictionary)contextType.GetField(
+                "_records",
+                BindingFlags.Instance | BindingFlags.NonPublic).GetValue(context);
+            slots[slot] = summary;
+
+            Type recordType = contextType.GetNestedType("BindingRecord", BindingFlags.NonPublic);
+            object record = Activator.CreateInstance(recordType, nonPublic: true);
+            SetField(record, "playerInput", playerInput);
+            SetField(record, "gateAdapter", adapter);
+            records.Add(slot, record);
+            return token;
+        }
+
+        private static bool TryApplyGlobalOnly(UnityPlayerInputGateAdapter adapter) =>
+            adapter.TryApplyActionMapSet(
+                adapter.PlayerInput,
+                "Global",
+                new[] { "Global" },
+                "test",
+                "simulate-pause-action-map-posture",
+                out _,
+                out _);
 
         [Test]
         public void PlayerPauseInput_RetainsReleaseAuthorityUntilRetryRestoresOrTargetEnds()
