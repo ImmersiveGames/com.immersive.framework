@@ -149,9 +149,11 @@ tracker is the only mutable status surface.
   and mixed outcomes; prove retry authority for each path; verify repeated
   cleanup and root identity. Normal-context retry is not proof of post-
   `OnDestroy` retry.
-- **Disposition:** Decide controlled-shutdown behavior before implementation.
-  Prefer existing host ownership if evidence supports it; no registry absent a
-  demonstrated need.
+- **Disposition (proposed):** Use the existing Host as the controlled-stop
+  owner. Close new admission, retain the same Host and exact release owners on
+  recoverable rejection, and retry while that Host remains alive. Terminal Unity
+  teardown remains best-effort. No registry is proposed. Final ADR wording and
+  Gate A review remain pending.
 - **Exit:** Integrated test reaches full bootstrap and verifies exact
   Session/root release, participant order, source-scene result, rejected
   release state, retry while a valid owner survives, persistent rejection and
@@ -520,11 +522,11 @@ open; do not change QA-045's `6/7` result.
   inheriting public `TryGetAccess` to the whole Experimental
   [`IPlayerSessionScopedAccess`](../../../Runtime/PlayerParticipation/Contracts/IPlayerSessionScopedAccess.cs).
   [`Public-API`](../../API/Public-API.md) does not promote that interface, but
-  the callable inherited surface is visible from the Stable trigger. Treat
-  this as a concrete API boundary review item: decide whether inherited access
-  is intentionally unsupported/internal or whether the Stable authoring
-  component should avoid exposing it. Do not promote `IPlayerSessionScopedAccess`
-  by association.
+  the callable inherited surface is visible from the Stable trigger. Proposed
+  API Governance disposition: make the helper available only to derived
+  implementation (`protected` or equivalent), preserve the trigger's narrow
+  operations, and migrate QA callers. Do not promote
+  `IPlayerSessionScopedAccess` by association or amend IF-ADR-044.
 - **Known consumer evidence:** Framework package tests include
   `PlayerSessionJoinTriggerTests`, `PlayerSessionJoinBindingTests`,
   `LocalPlayerJoinOutcomeProjectionTests` and
@@ -553,22 +555,23 @@ open; do not change QA-045's `6/7` result.
   [`PlayerSessionJoinBindingTests`](../../../Tests/Editor/PlayerParticipation/PlayerSessionJoinBindingTests.cs),
   [`LocalPlayerJoinOutcomeProjectionTests`](../../../Tests/Editor/PlayerParticipation/LocalPlayerJoinOutcomeProjectionTests.cs)
   and [`LocalPlayerProvisioningBridgeRollbackTests`](../../../Tests/Editor/PlayerParticipation/LocalPlayerProvisioningBridgeRollbackTests.cs).
-- **Normative decision proposal:** no change to IF-ADR-046's outcome shape or
-  admitted scope is proposed. Amend IF-ADR-001 only for the host operational
-  gate that OP-P0 needs; amend IF-ADR-044 to define token/release behavior when
-  scope teardown or controlled shutdown cannot confirm physical projection.
-  IF-ADR-005 owns physical transaction/recovery guarantees and needs amendment
-  only if the chosen rule changes them. IF-ADR-020/019 remain authoritative
-  for exact Leave and Session physical lifetime; amend only if controlled host
-  stop is intended to terminate/recreate a Session Player occurrence.
+- **Normative disposition:** no change to IF-ADR-046 outcome shape or admitted
+  scope; no IF-ADR-044 amendment. Correct Availability release ordering,
+  token-owner retention and retry under the accepted token/result contract.
+  IF-ADR-001 owns the Host gate and controlled stop. IF-ADR-005 owns physical
+  transaction/recovery guarantees and needs amendment only if implementation
+  changes those promises. IF-ADR-020/019 remain authoritative for exact Leave
+  and Session physical lifetime; controlled shutdown coordinates existing
+  Leave and does not terminate/recreate a Player occurrence by hierarchy.
 - **Dependencies:** OP-P0 controlled stop/retained retry authority; OP-X-
   PROVISIONING's Manager readiness and physical ownership; OP-P1-LEAVE-ACTOR
   occurrence semantics; Camera membership release; Pause/Input physical gate
   transaction and IF-ADR-036's readiness/availability distinction; GameFlow's
   Route/Activity scopes and transition Gate. Do not add a parallel Join,
   availability, Session or input writer.
-- **Candidate implementation/certification sequence:** (1) obtain transverse
-  approval for IF-ADR-001/044 scope and the OP-P0 command-gate allowlist; (2)
+- **Candidate implementation/certification sequence:** (1) obtain final review
+  of IF-ADR-001 and approve the OP-P0 command-gate allowlist; IF-ADR-044 remains
+  unchanged; (2)
   test the exact availability release-failure path and choose a retained owner
   that survives scope teardown; (3) add deterministic tests for multi-token,
   foreign/stale token, last-token physical rejection, retry, Leave and cleanup;
@@ -658,18 +661,18 @@ Selection intent is Session-scoped. `PlayerActorPreparationRuntimeContext` consu
 | Classification | Finding | Consequence |
 |---|---|---|
 | **No pre-confirmation owner loss demonstrated in the reviewed normal Leave path** | The host orchestration record is inserted after Begin and before Activity release; lower ledgers capture exact token/receipts before their irreversible operations. Manager Host evidence is passed back into the host record before the bridge release result is evaluated. | A failed stage leaves retry authority while the host/modules remain alive. This is source evidence, not an executed fault-injection proof. |
-| **Structural shutdown risk** | All active Leave orchestration/retry owners and their dependencies are components/contexts under `FrameworkRuntimeHost`; a persistent rejection followed by host destruction ends their in-memory retry authority. Current `OnDestroy`/terminal teardown is not a controlled, retryable Leave protocol. | Jointly decide host stop semantics before implementation. Do not claim retry after host destruction or process exit. |
+| **Structural shutdown risk** | All active Leave orchestration/retry owners and their dependencies are components/contexts under `FrameworkRuntimeHost`; a persistent rejection followed by host destruction ends their in-memory retry authority. Current `OnDestroy`/terminal teardown is not a controlled, retryable Leave protocol. | Proposed disposition: controlled stop retains the Host and exact retry owners on rejection; terminal teardown remains best-effort. Final review of IF-ADR-001/Gate A remains pending. Do not claim retry after host destruction or process exit. |
 | **Structural receipt-retention risk** | Activity, Gameplay, terminal and bridge completion dictionaries are token-keyed and completed receipts are not removed in the inspected Leave methods. | Lifetime growth is possible across repeated Join/Leave in a long-lived Session. Bound cleanup only after proving no duplicate/retry observer needs the receipt; not a demonstrated correctness defect for 1.1.0 and likely a post-release improvement unless resource impact is shown. |
 | **Physical-settle limit** | Manager release reports success when the backend call returns without throwing; Unity destruction may settle later. The method does not observe eventual GameObject destruction. | Keep logical release result distinct from post-settle physical observation as IF-ADR-020 requires. A synchronous physical-destruction promise is not established here. |
 | **Evidence gap** | No current package test covers complete public command -> Activity -> Actor -> Host/Input -> terminal Slot across recoverable/persistent failures, nor the proposed stopping gate. | Add named package tests and integrated QA cases only after Gate A and separate implementation authorization. |
-| **Transversal authority question** | Leave releases consumer Gameplay Availability blocks for the exact occurrence before releasing Gameplay Input; those token owners may later observe their token as stale because the Player occurrence ended. | Decide and prove cleanup semantics jointly with IF-ADR-044. Do not let a host gate reject cleanup of the exact Leave/Availability/Input token while its host remains recoverable. This is not itself proof that IF-ADR-044 is violated. |
+| **Transversal disposition** | Leave releases consumer Gameplay Availability blocks for the exact occurrence before releasing Gameplay Input; token observations may become stale after that occurrence ends. | Preserve IF-ADR-044 without amendment. Repair release ordering/ownership under its existing exact-token contract. Host stopping allows this canonical Leave and exact token release/retry while the same Host remains recoverable. |
 
 #### Proposed architectural disposition for review
 
 - Preserve IF-ADR-020's staged exact-occurrence Leave semantics and existing Session/Activity/Provisioning authorities. Do not redefine Leave as Activity exit, Joining close, Actor deactivation, scene unload or Session termination.
-- A future host operational gate should reject new gameplay intent changes during stopping (Join/open Joining, Actor selection/replacement, Gameplay Availability acquire and GameFlow requests), while retaining an explicit cleanup allowlist. Exact-occurrence Leave is cleanup: permit a Leave of a still-current Joined occurrence and retries for its same active Leaving token while the host is alive and recoverable. Do not reject Leave merely because gameplay admission has closed. Whether shutdown automatically requests Leave for every Joined Player, or only permits explicit/host-issued Leave cleanup, remains a transversal policy decision.
+- The Host gate rejects new gameplay intent during stopping (Join/open Joining, Actor selection/replacement, Availability acquire and external GameFlow requests), while preserving the explicit cleanup allowlist. Controlled shutdown coordinates exactly one canonical Leave request for each still-Joined occurrence and retries its same active Leaving token while the Host is recoverable. This reuses IF-ADR-020 and does not redefine Leave.
 - Keep block release, Leave stage retries and physical binding teardown callable under the same stopping cleanup authority. Reject new Availability block acquisition after stopping begins. Maintain token ownership and occurrence validation; no broad bypass for stale or foreign tokens.
-- On controlled shutdown rejection, proposed behavior is to retain the same host and all exact owners/receipts, keep gameplay mutations closed, and permit same-token/occurrence cleanup retry. Terminal Unity/process exit remains best-effort and cannot promise post-destruction retry. Coordinate with OP-P0-PC / IF-ADR-001 and OP-P1-JOIN-AVAIL / OP-X-PROVISIONING before treating this as a route decision.
+- On any controlled shutdown rejection, retain the same Host and exact owners/receipts, keep new gameplay mutations closed, and permit same-token/occurrence cleanup retry. Terminal Unity/process exit remains best-effort and cannot promise post-destruction retry. The design direction is resolved; final text review of IF-ADR-001 remains pending.
 - Candidate Runtime changes, only if integrated fault injection confirms a gap: (a) host operational phase/operation allowlist enforced at scoped command ingress and internal cleanup paths; (b) an internal host-owned controlled-stop driver that reuses the canonical Leave coordinator and preserves the host on rejection; (c) receipt retirement at exact Session teardown after no retry/duplicate confirmation is possible. Do not add another Session/Actor authority, global retry registry, parallel Leave service, public Stop API or Stable API promotion.
 
 **Alternatives rejected for this proposal:** a single `stopping` boolean that blocks release and cleanup along with gameplay mutations; destroying the host after a recoverable Leave rejection; treating `OnDestroy` as a controlled retry protocol; reconstructing physical Actor/Host by hierarchy lookup after evidence loss; clearing Slot/selection before required release receipts; compensating a partial Leave by silently rejoining/recreating the Actor; global recovery registry; treating Actor selection as Actor materialization or Activity participation; and promoting Experimental Leave/selection based on passing tests.
@@ -1238,9 +1241,10 @@ cobrem o shutdown proposto. Nenhum teste/QA foi executado nesta análise.
    sucesso de transição. Repetição deve ser idempotente para owners já liberados.
 4. Pre-commit Activity failure conserva Activity anterior como autoridade e
    reporta toda compensação pendente. Pós-commit failure preserva destino como
-   autoridade e reporta readiness/finalização incompleta. Para Route, a revisão
-   deve decidir se garante rollback do estado antigo ou especifica resultado
-   parcial recuperável; não inferir atomicidade do resultado atual.
+   autoridade e reporta readiness/finalização incompleta. Route preserva o ponto
+   de commit atual e relata resultado parcial recuperável com os owners pendentes;
+   não promete atomicidade nem restaura scopes já liberados. Nenhuma emenda
+   Route/Activity é proposta sem prova de violação de contrato Stable.
 5. Transition Gate sempre alcança resultado terminal e diagnóstico no GameFlow;
    shutdown não pode depender só do `finally` do Gate para provar release de
    Activity, Player, Input/Camera, Scene ou Persistent Content. Preservar
@@ -1262,23 +1266,20 @@ mais guards em owners existentes expressa as fases sem duplicar autoridade.
 Não chamar um estado de `Started` com base apenas em `GameFlowStarted` se
 Provisioning obrigatório ainda não foi anexado.
 
-**Ordem de teardown proposta, sujeita à revisão transversal:** (a) fechar novas
-requests/acquires e impedir nova transição; (b) terminar ou registrar de forma
-consistente transição em voo e terminalizar efeitos/Gate; (c) liberar Activity
-e Route bindings/content, sem unload dos alvos que os receivers ainda usam;
-(d) para cada Player occurrence, liberar Camera membership/Assignment e
-`PlayerInput.camera` com ports vivos, restaurar Pause/Input físico e limpar
-Availability conforme owners; executar Leave da ocorrência e liberar Actor,
-Host/binding físico de acordo com IF-ADR-019/020 e OP-P1-LEAVE-ACTOR;
-(e) liberar bindings restantes de Pause/Input e participantes de Session
-enquanto Session/Camera/Input adapters ainda existem; (f) liberar Scene
-Lifecycle Session ledger e Persistent Content/roots através de
-`GlobalUiSceneRuntime`; (g) apenas após sucesso agregado, descartar runtimes,
-ports e Host. Dependências exatas entre Pause restore, Leave, Camera clear,
-Availability release, Activity exit, Scene participant e Persistent Content
-permanecem para decisão conjunta OP-P0-PC × Join/Availability × Provisioning ×
-Leave/Actor × Camera × Pause/Input. Quit/destroy real permanece best-effort,
-sem promessa de retry pós-processo.
+**Ordem de teardown proposta para revisão final:** (a) fechar novas admission
+e acquires; settle de GameFlow já em voo sem timeout arbitrário, mantendo Host
+e dependências vivos; (b) fechar Joining pela autoridade de Session; (c) para cada
+Player occurrence exata, limpar Camera Assignment/Output e `PlayerInput.camera` com
+ports vivos, liberar tokens exatos de Gameplay Availability e restaurar Pause/Input
+físico; (d) executar Leave canônico da ocorrência enquanto suas precondições de
+Activity permanecem válidas, permitindo que o próprio Leave libere participação
+de Activity, Actor, Host e binding físico segundo IF-ADR-019/020; (e) após todos os
+Players, liberar Activity/Route restantes e seus bindings/content; (f) liberar
+participantes de Session e depois Scene Lifecycle Session ledger e Persistent
+Content/roots via `GlobalUiSceneRuntime`; (g) descartar módulos, ports e Host somente
+após sucesso agregado. Cada falha mantém owner/receipt e interrompe releases
+dependentes; retry usa a mesma identidade. Quit/destroy real permanece best-effort,
+sem promessa pós-processo.
 
 **Alternativas rejeitadas nesta proposta:** (1) destruir Host imediatamente ao
 primeiro erro de bootstrap ou no início de stop — perde retry authority e pode
@@ -1306,7 +1307,7 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
 - **Lacunas de evidência:** não há fixture nomeada que percorra full Host
   bootstrap → comandos → transição → shutdown/retry; não está demonstrada
   matriz Route pre/post-commit, falhas durante cleanup, terminal Gate com
-  blockers, pending async/readiness cancellation, Session/Player/Camera/Input
+  blockers, pending async operation settlement without timeout, Session/Player/Camera/Input
   cleanup integrado ou schema round-trip no candidate SHA. Resultados QA-NEW-002,
   QA-IF-ADR-036 e contagens históricas não certificam este candidato.
 - **Limitações legítimas:** comportamentos Experimentais de readiness, visual
@@ -1351,9 +1352,9 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
 | Bootstrap positivo/negativo | Config válida; falha em validação, scene load, Global UI, Output, Session composition, ownership commit, cada attach posterior e GameFlow startup | Estado operacional só após composição obrigatória; erro aponta fase/owner; roots/Session scope e bindings correspondem ao commit; falha pós-composição chega ao stop. |
 | Admission | Route/Activity/Join/Availability/Camera/Pause antes de pronto, durante stopping e após stop falho | Novas mutações rejeitadas; limpeza/retry da ocorrência exata aceita; nenhum bypass via trigger/scoped access. |
 | Activity transação | Falha antes do commit em cada prepare/scene/binding; falha pós-commit em Exit, content participant, scene release, readiness; retry | Autoridade anterior preservada pre-commit; destino autoritativo pós-commit; resultado/snapshot truthful; receipts pendentes retidos e retry idempotente. |
-| Route transação | Falha em Activity clear, Route content release, scene unload/load, resettable, spatial entry e startup Activity antes/depois de commit; supersession/cancelamento | Revisão decide e testa o resultado de autoridade parcial/rollback; não há falsa indicação de Route/Activity ativa nem perda silenciosa de escopos. |
+| Route transação | Falha em Activity clear, Route content release, scene unload/load, resettable, spatial entry e startup Activity antes/depois de commit; supersession/cancelamento | A proposta preserva autoridade parcial honesta; testar commit exato, owners pendentes e retry, sem falsa indicação de Route/Activity ativa nem perda silenciosa de escopos. |
 | Gate/transição | falha/throw em fases Before/After, rejeição gate, Gate terminal em startup/Route/Activity e stopping durante request async | Gate não fica ativo em memória; effects/release failures visíveis separadamente; sem concorrência que descarte owner; regras IF-ADR-036 preservadas. |
-| Teardown integrado | Activity exit → Player Leave → Camera → Pause/Input → Availability → Scene participants → Persistent roots → Host; rejeição persistente e recuperação; cleanup repetido; quit/destroy terminal | Dependências vivas até seus releases confirmarem; identidade/occurrence/token/receipt exatos; falha deixa Host inerte e retryável durante execução; sucesso agregado libera tudo; quit terminal reporta best-effort sem declarar retry. |
+| Teardown integrado | Stop admission → settle GameFlow → close Joining → Camera clear → Availability exact release → Pause/Input restore → canonical Player Leave (inclui Activity participation release) → remaining Activity/Route → Session participants → Scene Lifecycle → Persistent roots → Host; rejeição persistente e recuperação; cleanup repetido; quit/destroy terminal | Dependências vivas até seus releases confirmarem; identidade/occurrence/token/receipt exatos; falha deixa Host inerte e retryável durante execução; sucesso agregado libera tudo; quit terminal reporta best-effort sem declarar retry. |
 | Schema/QA | round-trip de GameApplication/Route/Activity, enums/refs inválidos e defaults; composições QA declaradas | Nenhuma perda de intenção ou promoção experimental; evidência ligada ao SHA candidato; QA restaura baseline e limpa todos os objetos/scenes/bindings. |
 
 - **Dependências e critérios de aprovação do desenho:** revisar em conjunto
@@ -1460,15 +1461,13 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   member signature; test source-array isolation, getter mutation resistance,
   stable equality/hash and record/result round trip. This aligns with existing
   immutable contract text and does not require changing IF-GOV-001.
-- **Governance divergence:** IF-ADR-018 §6, `Public-API.md` and all 13 current
-  type attributes identify the core port/value set as Stable. IF-ADR-018 §11
-  still says “ProgressionSaveRuntime and contracts EXPERIMENTAL pending
-  stabilization”, an unqualified statement that contradicts the accepted
-  Stable subset; the adapter guide labels itself Experimental but explicitly
-  says the Stable core is certified. Propose a narrow future editorial
-  amendment to §11 clarifying that only runtime/request/composition and
-  concrete backend surfaces are Experimental and referring to §6 for the
-  Stable 13-type set. Do not change the Accepted ADR in this analysis.
+- **Governance divergence / proposed correction:** IF-ADR-018 §6,
+  `Public-API.md` and all 13 current type attributes identify the core
+  port/value set as Stable. §11 contains an unqualified Experimental statement
+  that contradicts that set. A narrow editorial correction is drafted in
+  IF-ADR-018 §11: it names only the 13-type backend-neutral set Stable and
+  leaves runtime, request, profile/provider, catalog and concrete backend API
+  maturity unchanged. No Save behavior or guarantee is added.
 - **Structural risks:** Store result structs validate shape but cannot prove
   backend truthfulness or durability. A custom adapter could return `Written`
   before durable commit, collapse `Corrupt` into `Missing`, or expose an
@@ -1485,17 +1484,17 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   historical. Neither is linked here to the current source SHA or a current
   candidate and neither certifies the present payload getter. No tests were
   executed for this assessment.
-- **Decisions proposed for transversal review:** (1) accept the payload
-  immutability correction as required Stable remediation; (2) retain the
-  Stable port synchronous and backend-neutral, without adding global atomicity,
-  retry or disposal claims; (3) state that `Written`/`Deleted` must mean the
-  adapter's claimed operation completed and `Failed` must not conceal known
-  partial state, while leaving commit ambiguity/recovery policy to each
-  backend unless a consumer requires a Stable protocol; (4) resolve Host
-  stopping behavior and custom-provider lifetime in OP-P0/Application; (5)
-  approve or reject the narrow IF-ADR-018 §11 emendation; (6) decide under
-  IF-GOV-001 whether missing current-SHA conformance evidence blocks 1.1.0
-  certification. Rejected alternatives: promote the whole Save feature because
+- **Resolved direction / remaining approval:** (1) payload immutability remains
+  required Stable remediation; (2) retain the Stable port synchronous and
+  backend-neutral, without global atomicity, retry or disposal claims; (3)
+  `Written`/`Deleted` report the backend's claimed completed operation and
+  `Failed` must not conceal known partial state, while commit ambiguity/recovery
+  remains backend-specific absent a Stable protocol; (4) providers that own
+  resources manage their lifetime in their Experimental integration; no
+  generic Stable disposal contract. The narrow §11 text is drafted but awaits
+  final ADR review. Candidate-SHA conformance evidence remains a certification
+  requirement, not an additional architecture decision. Rejected alternatives:
+  promote the whole Save feature because
   its port is Stable; add Session/Actor/GameFlow capture or autosave; require
   cloud/JSON implementation details of every adapter; claim B5 as current
   candidate certification; or broaden Stable with async/disposal/transaction
@@ -1504,10 +1503,9 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   a focused NUnit payload immutability/value suite and a backend-neutral
   `IProgressionSaveStore` contract suite. Retain separate JSON fault-injection
   tests for commit/recovery and fail-closed behavior; do not fold those into
-  Stable conformance. If Host disposal is required for an actual custom
-  provider, define its Experimental composition/provider lifetime and shutdown
-  owner in the Application workpackage before adding code. No other Runtime
-  change is justified by this static inspection.
+  Stable conformance. Resource-owning custom providers remain responsible for
+  their Experimental integration lifetime. No generic provider disposal
+  contract or other Runtime change is justified by this analysis.
 - **Test matrix for a future candidate:**
 
   | Class | Required proof |
@@ -1515,7 +1513,7 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   | Positive | `ReadSlot` Found round-trips exact slot/record IDs, format, media type, bytes and record metadata; Missing is distinct; `WriteSlot` Written returns same slot/record identity; `DeleteSlot` Deleted then Missing. |
   | Negative | Invalid ID/status/payload/ticks rejected at value boundary; wrong-slot record cannot be reported Found; each Rejected, Corrupt, BackendUnavailable and Failed path retains requested identity and does not become success/Missing. |
   | Rollback / retry | Inject failures before and after adapter commit; verify truthful result and observed persisted state; retry only according to adapter's declared policy. JSON candidate separately proves staging discard, committed intent replay, fail-closed corruption, no residue, and repeated recovery. Do not infer general idempotency from JSON replay. |
-  | Cleanup / lifecycle | Disabled Save composes no runtime; invalid selected provider aborts bootstrap without fallback; successful composition is application-scoped; stopping rejects new Host-scoped requests if approved; synchronous in-flight call reaches a terminal result before composition cleanup; resourceful provider release/retry only if its explicit Experimental lifetime contract requires it. |
+  | Cleanup / lifecycle | Disabled Save composes no runtime; invalid selected provider aborts bootstrap without fallback; successful composition is application-scoped; stopping rejects new Host-scoped requests; a synchronous in-flight call reaches a terminal result before composition cleanup; any resourceful provider follows its own Experimental integration lifetime. |
   | Value integrity | Constructor input mutation, `Bytes` exposure, `ToByteArray`, equality/hash, record/result copies, enum boundaries, identity domain/equality and text normalization. |
 
 - **Dependencies:** IF-ADR-018 and IF-GOV-001; IF-ADR-047/048 release gates;
@@ -1638,15 +1636,14 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
      normalize public representations speculatively; test and document that
      they are not interchangeable parse formats if the transversal review
      finds consumer ambiguity.
-  3. `RuntimeContentOwner.Session` is Experimental but
-     `FrameworkRuntimeHost` constructs it with `application.ApplicationName`
-     as both Session identity text and owner name. The Stable GameApplication
-     asset exposes no functional ApplicationId and names are mutable/non-unique.
-     This is a confirmed cross-layer use, not proof of a Stable identity
-     violation or current collision (the Host owns one application scope).
-     OP-P0/Application review must decide whether Session-scope owner identity
-     is merely application-lifetime-local or needs another existing exact
-     authority; do not add an ApplicationId in this workpackage.
+  3. `ApplicationName` is presentation/diagnostic data, not operational
+     identity. The exact existing Session owner is the `FrameworkRuntimeHost`
+     Unity object identity (`EntityId`) used by `SceneCompositionScope.ForSession`.
+     `RuntimeContentOwner.Session` currently derives its Experimental content
+     owner key from `ApplicationName`; the implementation plan will align that
+     internal owner key with the same exact Host identity using existing typed
+     identity semantics. Do not add a public `ApplicationId` or another
+     Session authority.
   4. Invalid defaults are consistently marked by `IsValid == false`, but
      string projection behavior is not uniform: RouteId/ActivityId guard
      `StableText` and return empty, while key-based wrappers can throw while
@@ -1672,26 +1669,28 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   and status inventory. Existing 107-type inventory evidence is recorded in
   IF-TRACK but is not a substitute for candidate-SHA test evidence. No tests
   were executed for this analysis.
-- **Decisions proposed:** Preserve the existing seven identity contracts and
+- **Transversal disposition:** Preserve the existing seven identity contracts and
   six maturity values without new abstractions or baseline-backcompat rails.
   Require `Domain + Value` for erased comparisons and preserve exact nominal
   wrappers at public feature boundaries. Treat two same-ID Route/Activity
   assets as different definitions; never use stable ID as lifecycle/token
-  authority. Decide whether invalid enum status should fail at attribute
-  construction or be rejected by the authoritative maturity inventory check;
-  choose one owner and avoid duplicated validation systems. Decide whether
-  StableText raw-vs-domain-qualified formatting and invalid-default behavior
-  are intentional API shape or need explicit documentation. Resolve the
-  ApplicationName → Session owner derivation with OP-P0/Application. Rejected:
+  authority. The authoritative maturity inventory remains the check for
+  undefined status values; no attribute-constructor Runtime hardening is
+  justified without an actual malformed declaration. Keep existing
+  StableText/raw-vs-domain-qualified behavior and require callers to validate
+  invalid defaults before formatting; do not normalize the API speculatively.
+  Treat `ApplicationName` only as presentation/diagnostic and reuse the existing
+  Host `EntityId` as exact Session owner; add no public identity. Rejected:
   introduce ApplicationId, per-type new identity domains, general parser,
   string compatibility aliases or migration for pre-baseline assets without
   concrete Stable breakage evidence.
-- **Candidate Runtime changes:** None is justified from the audited core
-  identity implementation alone. If the transversal review accepts fail-fast
-  metadata validation, a minimal `FrameworkApiStatusAttribute` argument check
-  may be proposed as a separate authorized cut. The already registered
-  ProgressionSave payload correction remains owned by OP-P2-SAVE. No changes
-  were made to Runtime, tests or QA.
+- **Candidate Runtime changes:** No change to Stable identity wrappers or API
+  metadata is currently justified. I-07 may align internal
+  `RuntimeContentOwner.Session` key construction with the existing Host
+  `EntityId`; the authoritative maturity inventory rejects undefined status
+  values, so no attribute-constructor hardening is planned. The ProgressionSave
+  payload correction remains solely in OP-P2-SAVE. No Runtime, tests or QA
+  changes were made during this analysis.
 - **Future NUnit matrix:**
 
   | Class | Required proof |
@@ -1700,13 +1699,13 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   | Domain/conversion | same text across Route/Activity/PlayerSlot yields distinct keys; each wrapper converts to exact `(fixed domain, original value)`; null/custom invalid `IFrameworkIdentity` rejection; unknown/Unspecified domain rejection; generic-key collisions are tested for nominal types intentionally sharing one domain and are not used as interchangeable keys. |
   | Serialization | persist/reload GameApplication object references, RouteId/ActivityId strings and PlayerSlotProfile identity; verify exact configured intent is retained, invalid IDs fail validation without silent regeneration, and two assets with a colliding stable ID remain different exact definitions/tokens. Include PlayerSlot round-trip through Camera Slot→Output mapping without converting to a string identity. |
   | Metadata | all six enum values and meanings; allowed attribute target/single-use/non-inherited behavior; every in-scope Stable type agrees across attribute, Public-API and owning ADR; malformed enum status is rejected by the selected governance owner; metadata does not change runtime authority. |
-  | Cross-layer | GameApplicationName remains presentation except for the existing Experimental Session owner path; if that path is revised in a future approved cut, prove separate application scopes do not collide and cleanup retains exact owner authority. |
+  | Cross-layer | `ApplicationName` changes do not change Session ownership; the existing Host `EntityId` identifies the exact Session owner and cleanup targets only that owner. |
 
 - **Dependencies:** IF-ADR-014 for authored definition/stable ID/occurrence
   separation; IF-GOV-001, IF-ADR-047/048 and Public-API for maturity and
   baseline compatibility; OP-P2-SAVE for same-domain nominal IDs and the
-  existing payload immutability finding; OP-P0 and OP-P2-APP for the
-  ApplicationName/Session owner relationship; Join/Availability and
+  existing payload immutability finding; OP-P0 and OP-P2-APP for the existing
+  Host `EntityId` Session owner; Join/Availability and
   Leave/Actor for PlayerSlot authority; Camera for typed Slot mapping and
   separate Camera identity maturity; Persistent Content for Session/Route/
   Activity owner identity and tokens. These dependencies do not reopen accepted
@@ -1718,17 +1717,16 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   PlayerSlot identity; duplicate authored Route/Activity IDs never merge exact
   definitions; status values and attributes reconcile with IF-GOV-001 and
   Public-API, including a decided malformed-status policy; callers do not
-  treat StableText as a parser or use invalid defaults as authority; resolve
-  ApplicationName-derived Session identity in cross-workpackage review; link
+  treat StableText as a parser or use invalid defaults as authority; prove
+  changing `ApplicationName` does not change Host-owned Session identity; link
   raw validation evidence to the candidate SHA. Until then this workpackage is
-  analyzed but remains open pending transversal review, the plan remains
-  Proposed, Fase 2 remains open and release remains NO-GO.
+  analyzed but remains open pending formal plan approval and candidate evidence;
+  the plan remains Proposed, Fase 2 remains open and release remains NO-GO.
 
 ### OP-X-OBSERVER-COMMAND — Observer projections and command boundaries
 
-- **Status:** Open — divergência de surface comprovada e impactos classificados;
-  decisão de API e revisão transversal pendentes. Sem implementação ou
-  certificação.
+- **Status:** Open — proposta de boundary e migração reconciliadas; revisão de
+  API Governance e Gate A pendentes. Sem implementação ou certificação.
 - **Maturidade/autoridade:** `PlayerSessionObserver`,
   `IPlayerSessionScopedAccess`, command triggers restantes e Provisioning são
   Experimentais conforme IF-GOV-001/Public-API. Observer é projection/read-only;
@@ -1837,17 +1835,15 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
   sem usar o token que o trigger mantém. É uma exposição C# demonstrável que
   diverge do inventário Stable, que delimita a trigger a um block owner-scoped;
   não é nova autoridade de Runtime nem defeito provado na implementação dos
-  tokens. Para preservar a closure Stable publicada na 1.1.0, a decisão
-  recomendada é retirar `TryGetAccess` da superfície pública efetiva antes da
-  certificação e manter o helper disponível somente aos componentes derivados
-  (ex. `protected`). Alternativa de manter acesso público exige governança
-  explícita que classifique a capability herdada e reveja a promessa “one
-  consumer-owned block”; não pode ser tratada como detalhe Internal sem
-  evidência de que consumidores não a podem chamar. Evidência direta de QA por
-  `IPlayerSessionScopedAccess` continuará validando a operação Runtime, não a
-  ownership boundary da trigger Stable. Não reabrir IF-ADR-044: qualquer ajuste
-  fica na acessibilidade da implementação/public API inventory se o ADR owner
-  confirmar que o contrato aceito não muda.
+  tokens. Para preservar a closure Stable publicada na 1.1.0, a proposta é
+  retirar `TryGetAccess` da superfície pública efetiva antes da certificação,
+  tornando o helper `protected` ou equivalente para componentes derivados. A
+  trigger Stable mantém somente seus comandos próprios e o mesmo owner/token;
+  a interface continua Experimental. API Governance revisa a superfície
+  herdada e o inventário Public-API. Não reabrir IF-ADR-044 nem exigir emenda
+  normativa: corrigir a implementação para refletir a closure aceita. Evidência
+  QA direta pela interface valida Runtime, não a ownership boundary da trigger
+  Stable.
 - **Future host gate:** se o gate for aplicado somente no código do trigger,
   qualquer consumer que reteve `IPlayerSessionScopedAccess` (ou chama os
   métodos de Provisioning) pode contorná-lo. A leitura/access snapshot não é
@@ -1861,21 +1857,26 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
 
 #### Decisões candidatas, alternativas e necessidade pré-1.1.0
 
-- **Correção de boundary candidata:** manter Observer genuinamente read-only e
-  fazer com que nenhum componente de comando/Observation (incluindo a trigger
-  Stable de Availability) exponha o `IPlayerSessionScopedAccess` broad por
-  herança. Menor corte candidato: tornar `TryGetAccess` `protected` ou usar seam
-  equivalente disponível somente à implementação derivada; as APIs específicas
-  do trigger continuam públicas e delegam aos mesmos owners. Isso não altera
-  autoridade, estado Session nem formato Stable. A mudança afeta consumers que
-  hoje chamam o método diretamente, portanto requer versão/callsite inventory e
-  migração coordenada, embora o base esteja marcado Internal.
-- **Migração dos consumers:** FirstGame já usa comandos estreitos para escrita
-  e pode permanecer apenas com `TryGetObservation`/`Changed`. QA deve substituir
-  escrita por triggers onde houver equivalente; operações sem trigger (ex. o
-  prepared Actor replacement citado) exigem seam de teste/decisão de produto
-  antes de ocultar o accessor. Não manter broad access no Observer só para
-  simplificar setup QA.
+- **Correção de boundary proposta à API Governance:** manter Observer
+  read-only e retirar `TryGetAccess` da superfície pública herdada de Observer,
+  command triggers e da trigger Stable de Availability, tornando o helper
+  `protected` ou equivalente para implementação derivada. Preservar as APIs
+  estreitas dos triggers e os mesmos owners/tokens; não promover
+  `IPlayerSessionScopedAccess`.
+- **Migração QA delimitada:** em `QaIfAdr042SharedGroupScenario`, substituir
+  `OpenJoining`, `RequestLeave` e `CloseJoining` pelos triggers existentes e
+  substituir leituras por `PlayerSessionObserver.TryGetObservation`.
+  `RequestReplacePreparedActor` não tem trigger equivalente: retirar esse caso
+  da prova pública Stable e, se necessário, cobri-lo em NUnit no owner de Actor
+  Preparation; não criar trigger novo. Em
+  `QaIfAdr043PhysicalParticipationScenario`, substituir os dois Leaves por
+  `PlayerSessionLeaveCommandTrigger`. Em
+  `QaIfAdr046ScopedBindingScenario` e `QaIfAdr046JoinScenario`, usar triggers
+  existentes para Open/Close/Leave e observação somente pelo Observer. Manter
+  o escopo de outros QA identificado no inventário: usar comandos estreitos
+  equivalentes, manter limpeza de tokens pelo owner de Availability e retirar
+  qualquer caso Experimental sem equivalente da prova pública Stable. Não
+  manter acesso broad apenas para simplificar QA.
 - **Entradas de Provisioning:** consolidar inventário de consumers e escolher
   uma rota canônica documentada por operação. Não remover Open/Close/Leave do
   componente apenas com base no scan limitado; se mantidos, devem delegar aos
@@ -1890,20 +1891,18 @@ Stable; (6) alterar intenção/schema dos Assets para resolver teardown.
 - **Necessidade para Stable 1.1.0:** manter toda a interface, Observer,
   Joining/Leave/Actor selection e Provisioning Experimentais continua correto.
   O leak efetivo pelo `PlayerGameplayAvailabilityBlockTrigger` é diferente de
-  redesenhar essas APIs: para sustentar a closure estreita de IF-ADR-044, deve
-  ser resolvido ou formalmente avaliado/aceito pela API Governance antes da
-  certificação 1.1.0. Recomendação técnica: helper não público, APIs específicas
-  preservadas e QA migrada; se governança aceitar a acessibilidade herdada
-  como fora do contrato, registrar a decisão e não contá-la como Stable surface.
+  redesenhar essas APIs: para sustentar a closure estreita de IF-ADR-044, a
+  exposição deve ser corrigida pela restrição de acessibilidade proposta e
+  revisada pela API Governance antes da certificação 1.1.0. Preservar APIs
+  específicas, migrar QA e não classificar a interface como Stable.
   Para Observer, a remoção do accessor é alinhamento Experimental desejável e
   pode seguir a mesma correção; FirstGame já usa leituras públicas do Observer.
   O gate operacional central e cleanup/retry continuam dependências separadas
   de shutdown de OP-P0, necessárias à futura certificação integrada.
-- **Normativa:** nenhuma emenda a IF-ADR-044/046 é proposta. O gate permanece
-  candidato à emenda IF-ADR-001 em OP-P0. Se governança determinar que a
-  read-only promise deve ser restrição normativa, registrar ajuste mínimo na
-  API inventory/ADR dono da superfície Experimental; não alterar ADR Accepted
-  nesta análise.
+- **Normativa:** nenhuma emenda a IF-ADR-044/046 é proposta. O shutdown está
+  proposto em IF-ADR-001. A restrição de `TryGetAccess` é uma correção de API
+  Governance/Public-API inventory e implementação, não uma promoção de API
+  nem nova promessa normativa.
 
 #### Cobertura futura e critérios de aprovação
 
@@ -2045,9 +2044,9 @@ associação de execução a um SHA imutável do candidato.
   projection, not all Unity physical release failures or failed-host cleanup.
 - **Normative owners proposed:** IF-ADR-003/016 remain owners for Session
   configuration, initial Joining intent and provisioning mode; IF-ADR-001 owns
-  host boot/operational/stopping gate (pending transversal review from OP-P0);
-  IF-ADR-019/020 own admitted Player lifetime and Leave; IF-ADR-046 owns only
-  the bounded Stable Join projection. Amend IF-ADR-016 only if initial logical
+  host boot/operational/stopping gate under the integrated proposal; final text
+  review and Gate A approval remain pending; IF-ADR-019/020 own admitted Player
+  lifetime and Leave; IF-ADR-046 owns only the bounded Stable Join projection.
   Joining versus Unity Manager enablement is decided to be one synchronized
   contract. Amend IF-ADR-019/020 only if controlled host stop changes Session
   termination/Player release semantics. IF-ADR-046 needs no shape or scope
@@ -2086,24 +2085,24 @@ associação de execução a um SHA imutável do candidato.
   recovery ownership. Package and consumer results are linked to an immutable
   candidate before Phase 2 closure.
 
-### Joint review required — Join/Availability × Provisioning × host shutdown
+### Joint disposition proposed — Join/Availability × Provisioning × host shutdown
 
-Keep the detailed dispositions above separate. Before implementation, transverse
-review must settle this shared contract matrix so a local workpackage does not
-invent another authority:
+The detailed diagnostics remain separate; the shared policy below is proposed
+for implementation and does not create another authority. Final ADR and plan
+approval remain pending:
 
-| Operation while host is starting/stopping/inert | Proposed disposition to review | Owner/dependency |
+| Operation while host is starting/stopping/inert | Proposed disposition | Owner/dependency |
 |---|---|---|
-| Stable Join / Experimental Open Joining | Reject new admission and logical open when host is not operational; Join uses existing `RejectedUnavailable`. Close Joining may be an allowed cleanup command or host-owned shutdown step; choose one canonical route. | IF-ADR-001 + IF-ADR-046; provisioning readiness from OP-X. |
+| Stable Join / Experimental Open Joining | Reject new admission and logical open outside Operational; Join uses existing `RejectedUnavailable`. During controlled stop the Host closes Joining once through the existing Session authority. | IF-ADR-001 proposal + IF-ADR-046; provisioning ingress must obey the same owner gate. |
 | Actor selection/replacement | Reject new intent changes while stopping; do not conflate with Session Join or Leave. | IF-ADR-001 + IF-ADR-021/Actor-selection owner + OP-P1-LEAVE-ACTOR. |
 | Availability acquire | Reject new blocks once stop begins. | IF-ADR-001 + IF-ADR-044. |
 | Availability release/Leave cleanup | Keep only the exact cleanup operation available while its authority is alive; do not close the command gate so early that Session-scope teardown cannot release owned tokens/physical gates. A failed physical release keeps the host/ledger recoverable during controlled operation. | IF-ADR-044 + IF-ADR-005 + OP-P0. |
 | Camera/Input/Audio teardown | Release dependent Session bindings before their ports/modules; use their existing feature owners and exact occurrence identity. No cross-module recovery registry. | OP-P0 + OP-P1-CAMERA + OP-P1-PAUSE-INPUT-GATES + Audio participant under IF-ADR-040. |
-| Session Player physical lifetime | Decide whether controlled host shutdown means explicit Leave of every joined occurrence or terminal Session termination; do not let GameObject hierarchy destruction silently substitute for IF-ADR-020. | IF-ADR-019/020 + OP-P0 + OP-X. |
+| Session Player physical lifetime | Controlled stop coordinates canonical Leave for each still-Joined occurrence, preserving each exact occurrence/token and current Activity preconditions. Physical hierarchy destruction never substitutes for IF-ADR-020. | IF-ADR-019/020 + OP-P0 + OP-X. |
 
 The proposed gate therefore needs an operation allowlist/phase contract, not a
 single boolean that blocks both new gameplay mutations and release callbacks.
-This is a review dependency, not an accepted design or implementation order.
+This policy remains proposed pending final ADR/plan approval and does not authorize implementation.
 
 ## Transversal review — integrated design and implementation route
 
@@ -2125,13 +2124,13 @@ this plan.
 | `FrameworkRuntimeHost.ReleasePersistentContentScope` logs rejection and returns `void`; `OnDestroy` continues disposing GameFlow, Camera, readiness and Pause resources, while `OnApplicationQuit` also tears down Camera after rejection. | Source-demonstrated best-effort terminal teardown; controlled-stop behavior is absent. `Runtime/ApplicationLifecycle/FrameworkRuntimeHost.cs`, `ReleasePersistentContentScope`, `OnDestroy`, `OnApplicationQuit`. | Required internal controlled-stop path before candidate certification. A rejected release keeps this same host inert and retryable with its roots and owners alive. Unity terminal callbacks stay best-effort and are not claimed as retryable. |
 | `ImmersiveFrameworkBootstrap.BootAfterSceneLoad` logs/returns on failed `StartAsync` and destroys the Host after provisioning attach failure; it does not use one controlled rollback path for already-composed scopes. | Source-demonstrated divergent failure disposition; no current reproduction. `Runtime/Bootstrap/ImmersiveFrameworkBootstrap.cs`. | Required fail-closed bootstrap handling for resources acquired by the attempt. Rollback uses only their existing owners and must finish before Host destruction; failed rollback retains an inert retryable Host where Unity lifetime permits. |
 | `ProgressionSavePayload.Bytes` returns the backing byte array typed as `IReadOnlyList<byte>`, allowing a cast and mutation after construction. | Source-demonstrated Stable value mutability. `Runtime/ProgressionSave/ProgressionSavePayload.cs`. | Required minimal immutability correction and regression test; preserve payload bytes, value equality, factories and all 13 Stable Save types. |
-| Stable `PlayerGameplayAvailabilityBlockTrigger` inherits public `TryGetAccess` from the Experimental scoped-access consumer base; the returned interface allows mutation. | Source-demonstrated Stable surface exposure, despite the base capability being Experimental. `Runtime/PlayerParticipation/Authoring/PlayerSessionScopedAccessConsumer.cs`, `PlayerGameplayAvailabilityBlockTrigger.cs`. | Gate A must choose the narrow public boundary: make access retrieval non-public to consumers and migrate any actual supported caller, or explicitly accept/document the inherited capability. No redesign of all Experimental Observer/Command contracts. |
+| Stable `PlayerGameplayAvailabilityBlockTrigger` inherits public `TryGetAccess` from the Experimental scoped-access consumer base; the returned interface allows mutation. | Source-demonstrated Stable surface exposure, despite the base capability being Experimental. `Runtime/PlayerParticipation/Authoring/PlayerSessionScopedAccessConsumer.cs`, `PlayerGameplayAvailabilityBlockTrigger.cs`. | Proposed API Governance disposition: restrict the helper to derived implementation (`protected` or equivalent), retain the trigger's narrow public operations, and migrate QA callers. Keep `IPlayerSessionScopedAccess` Experimental; do not redesign all Observer/Command surfaces. |
 | Host has no single admission phase guarding Route/Activity and Session mutation entry points. Startup and stopping windows are not uniformly closed by `FrameworkRuntimeHost`; no tests currently prove acceptance during those windows. | Structural risk/verification gap, not a reproduced Stable defect. `FrameworkRuntimeHost.StartAsync`, `RequestRouteAsync`, `RequestActivityAsync`, command triggers and bootstrap. | Adopt an internal, owner-local phase guard at canonical mutation ingress and test every supported entry point. Do not add a public Host state API or a second router. |
 | Route transitions may leave old Route/Activity resources released after a later target failure. No accepted Stable contract promises a fully atomic Route swap; current results are stateful and must remain truthful. | Contract limitation and recovery question, not a demonstrated defect. `GameFlowRuntime`, Route/Activity lifecycle owners. | Preserve explicit partial outcomes and retry/cleanup authority. Add Runtime recovery only if fault-injection proves a Stable guarantee is false; do not promise blanket Route rollback. |
 | Camera candidate validation/commit preserves prior logical Assignment on pre-commit rejection; output materialization can fail after commit. Stable Camera closure is bounded by IF-ADR-039/043; IF-ADR-038 topologies remain Experimental. | Current implementation behavior from the Camera analysis; shutdown ordering is not integrated-certified. | Preserve post-commit destination authority and its retry receipts. Keep Camera and PlayerInput owners alive through exact Player cleanup. Do not expand IF-ADR-038. |
 | Leave has occurrence-scoped stage receipts in its live owner; Actor Selection and Leave remain Experimental. Destruction of their host component removes in-memory retry. | Static lifecycle trace; no normal-path pre-confirmation loss demonstrated. | Reuse canonical Leave for shutdown cleanup without promoting the APIs. Keep occurrence, token and stage receipts through failed cleanup. |
-| Identity wrappers enforce domain-aware equality; no Stable wrapper defect was demonstrated. Status attributes agree with the current Stable inventory except for an unvalidated undefined enum value that has no current malformed use. | Source review; existing tests are indirect and not a candidate certification. | No new Stable abstraction. Add baseline conformance tests. Treat `ApplicationName` used in `RuntimeContentOwner.Session` as an internal, collision-prone session key risk to decide; do not turn display metadata into a new public identity without approval. |
-| Save provider creation is synchronous and has no Stable async/cancel/dispose protocol. No generic provider-resource disposal obligation was found in the Stable interface. | Contract boundary; resourceful providers are Experimental integrations. | Do not add Stable provider lifecycle or async guarantees. Certify the current in-memory/synchronous contract; accept resource-owning provider behavior as integration-owned unless a first-party Stable provider demonstrates a required disposal contract. |
+| Identity wrappers enforce domain-aware equality; no Stable wrapper defect was demonstrated. Status attributes agree with the current Stable inventory except for an unvalidated undefined enum value that has no current malformed use. | Source review; existing tests are indirect and not a candidate certification. | No new Stable abstraction. `ApplicationName` is presentation/diagnostic. The existing exact Session owner is the `FrameworkRuntimeHost` Unity object identity (`EntityId`) already used by `SceneCompositionScope.ForSession`; it is not a public ApplicationId. Align any internal Session content key to that exact owner using existing typed identity semantics. |
+| Save provider creation is synchronous and has no Stable async/cancel/dispose protocol. No generic provider-resource disposal obligation was found in the Stable interface. | Contract boundary; resourceful providers are Experimental integrations. | No generic Stable provider lifecycle. Resource-owning custom providers remain responsible for their Experimental integration lifetime; revisit only if a concrete first-party Stable provider demonstrates a necessary contract. |
 
 Historical reports (including B5, Join/Availability, Pause, Camera and GameFlow
 QA results) remain historical. They are not execution evidence for the candidate
@@ -2143,23 +2142,25 @@ revision. No failure listed above is described as reproduced.
 |---|---|---|
 | Give `FrameworkRuntimeHost` internal phases: composing/bootstrap, operational, stopping, inert/retryable, and released. Gate new mutations at their canonical owners. The phases are internal implementation state, not a new public API. | IF-ADR-001: propose a minimal normative amendment describing readiness admission, controlled stop, retained owner on rejected release, and the limit of terminal Unity callbacks. | Keep existing modules as authority. Reject a public lifecycle state machine, global registry, second command router, or one Boolean that blocks release along with new work. |
 | During bootstrap, admit only the bootstrap operation and rollback/release for resources it already acquired. During stopping, reject new product intent and allow only explicit host-owned transition/leave/release retries for exact live identities and receipts. | IF-ADR-001; IF-ADR-046 and IF-ADR-044 remain the constraints for Join and availability. No amendments proposed to 046/044. | Preserve IF-ADR-036: structural `GameplayReady` remains independent of Gate/Pause; `RuntimeGameplayAvailable` stays operational; Pause remains rejected during active Transition Gate. No GameplayAction blocker. |
-| Stop order: close admission; settle the in-flight GameFlow operation; close Joining; run canonical Leave once per still-joined Session occurrence while Camera, Pause/Input, Availability and PlayerInput owners remain alive; exit remaining Activity then Route through GameFlow; release Session Scene Lifecycle participants and retries; release Persistent Content roots last; dispose/destroy Host only after aggregate success. | IF-ADR-001 for orchestration boundary. IF-ADR-019/020 remain Leave/Session occurrence authorities. IF-ADR-040 owns participant release. Amend 019/020 only if review changes their existing semantics. | Do not implement a parallel Host-level Player teardown or manually duplicate Leave stages. Do not destroy Session/Player hierarchy as a substitute for Leave. Exact ordering inside canonical Leave is an integration-test decision: Camera clear before its subject/Output owner disappears; Pause/Input restoration while PlayerInput is live; exact Availability token release before scoped access is disposed. |
+| Dependency-driven controlled stop: atomically close new admission; settle any in-flight GameFlow operation without timeout; close Joining; coordinate exact-occurrence canonical Leave while its current Activity and physical prerequisites remain; then exit remaining Activity/Route via GameFlow in their valid order; release Session participants while Persistent Content roots remain; release Persistent Content last; destroy Host only after aggregate success. | IF-ADR-001 proposal for orchestration boundary. IF-ADR-019/020 remain Leave/Session occurrence authorities. IF-ADR-040 owns participant release. No amendments proposed to 019/020. | This is a dependency graph, not Host-level duplication of Leave or Activity logic. Leave's owner determines its internal stages; Camera/Subject/Outputs and Pause/Input/PlayerInput owners remain live until their exact receipts confirm release; Availability token release uses the existing scoped owner. A failed stage blocks dependent destruction but allows only independent cleanup that preserves retry authority. |
 | Any failed cleanup leaves the same Host inert, with dependencies, participants, occurrences, tokens and receipts needed for retry. Retry replays only idempotent releases or skips a stage only with its confirmed receipt. | IF-ADR-001 for host retry; IF-ADR-040 for participant-set/rollback ledger. Propose IF-ADR-040 amendment clarifying that partial Available participants are retained and included in rollback/release snapshots. | Reject discard-on-failure, “log and continue destroying,” or a new cross-module recovery ledger. A participant that succeeded release may receive a repeat during aggregate retry and must tolerate it under the existing lifecycle contract or report a confirmed receipt. |
 | Route/Activity failure results remain truthful around commit. Pre-commit failures compensate to prior authority where current contract allows; post-commit failure leaves destination authoritative and retryable. Route-level atomicity is not promised. | Existing Route/Activity owning ADRs; no amendment now. If tests show a violated Stable promise or review elects a new all-or-nothing guarantee, amend the specific Route/Activity ADR before implementation. | Reject blanket rollback that revives already-released old scopes or hides partial state. |
 | Camera pre-commit rejection preserves prior Assignment; post-commit output failure preserves destination Assignment plus output retry ownership. Shutdown releases Camera bindings before destroying PlayerInput/Actor subjects. | IF-ADR-039/043 Stable scope; no amendment proposed unless integrated evidence proves their text insufficient. IF-ADR-038 stays Experimental. | Reject undoing the logical commit after physical output failure or broadening experimental topology guarantees. |
-| Stable Availability keeps current token/results; cleanup release is permitted during stopping only for the exact token. Observer/Command remains Experimental except that inherited mutable access on a Stable trigger must be closed or explicitly accepted. Provisioning remains an Experimental ingress that must obey the same owner gate. | IF-ADR-044 unchanged. IF-GOV-001/Public-API boundary decision; no separate Observer ADR amendment proposed unless the review finds the declared status insufficient. | Reject promoting Observer, Provisioning, Leave or Actor Selection. Keep a single Session command owner; ingress aliases may not bypass its Host phase gate. |
+| Stable Availability keeps current token/results; cleanup release is permitted during stopping only for the exact token. Restrict inherited `TryGetAccess` to derived implementation; retain Observer/Command/Provisioning Experimental and migrate QA consumers. | IF-ADR-044 unchanged. API Governance and Public-API inventory review the accessibility correction; no Observer ADR amendment. | Reject promoting `IPlayerSessionScopedAccess`, Observer, Provisioning, Leave or Actor Selection. Keep one Session command owner; ingress aliases may not bypass its Host phase gate. |
 | `ProgressionSavePayload` is immutable to callers; no atomicity, idempotency, async completion or provider disposal is added absent current contract text. | IF-ADR-018: propose a narrow editorial amendment to §11 so it does not contradict the Stable core inventory in §6/Public-API. The payload repair itself needs no contract expansion. | Reject snapshot/autosave/world serialization/cloud/encryption and generic provider lifecycle additions from this baseline. |
-| Identity wrappers and serialized authoring identity remain as accepted. Decide whether internal Session ownership needs an opaque per-Host identity instead of `ApplicationName`; do not expose it as a new Stable type absent demonstrated need. | IF-ADR-001 for Session/Host lifetime; IF-ADR-018 only for Save application context if its editorial scope requires it; IF-GOV-001 for API maturity. No amendment to identity contracts proposed. | Reject converting presentation `ApplicationName` into a new public Session identity or adding pre-baseline compatibility rails. Preserve GameApplication/Route/Activity serialized schemas. |
+| Identity wrappers and serialized authoring identity remain as accepted. `ApplicationName` is presentation/diagnostic; the existing `FrameworkRuntimeHost` Unity object `EntityId`, already used by `SceneCompositionScope.ForSession`, is the exact Session owner. Align internal Session content scope ownership to it without a public `ApplicationId` or new authority. | IF-ADR-001 for Session/Host lifetime; IF-GOV-001 for maturity. No amendment to identity contracts. | Reject converting presentation `ApplicationName` into operational identity or adding a new Stable identity. Preserve GameApplication/Route/Activity serialized schemas. |
 
-Decisions that remain for the transverse reviewers: (a) accept the internal Host
-phase/admission and inert retry contract and approve the minimal IF-ADR-001
-amendment; (b) require exact Leave of each joined occurrence during controlled
-shutdown, as proposed; (c) approve the IF-ADR-040 ledger clarification; (d)
-resolve the inherited `TryGetAccess` exposure on the Stable Availability
-trigger; (e) choose whether Session owner identity may continue using
-`ApplicationName`; (f) approve the narrow IF-ADR-018 §11 correction; and (g)
-decide whether any first-party Save provider actually requires an owned disposal
-contract. The plan does not resolve these by implication.
+The project-approved architectural direction resolves the cross-workpackage
+choices above as the basis for these proposed text amendments. No further
+architecture choice is open on Availability, automatic canonical Leave during
+controlled shutdown, exact Host Session identity, provider disposal, or
+in-flight GameFlow timeout. The remaining Gate A blockers are final review of
+the exact proposed IF-ADR-001/040/018 wording without changing their statuses,
+API Governance review of the protected `TryGetAccess` boundary and QA migration,
+and explicit integrated-plan approval with named evidence and risk owners.
+IF-ADR-044 remains Accepted and unchanged; Save provider lifetime remains with
+resource-owning Experimental integrations, with no generic Stable disposal
+contract.
 
 The proposed admission table makes the cleanup boundary explicit:
 
@@ -2170,42 +2171,68 @@ The proposed admission table makes the cleanup boundary explicit:
 | Released | All operations. | None; callbacks are terminal/best-effort only. |
 
 The allowlist is implemented as call-site policy at the existing authority,
-not as a parallel command service. If an in-flight operation cannot reach a
-terminal result, the Host remains retained and does not proceed to destructive
-teardown; reviewers must approve the timeout/escalation policy before any
-implementation adds one.
+not as a parallel command service. An in-flight operation has no arbitrary
+timeout: while it remains pending, controlled shutdown remains pending and the
+Host and dependencies stay alive. Once terminal, shutdown reports its actual
+result and continues only when retained obligations are retryable.
 
 ### Executable implementation workpackages (proposed order)
 
 These packages are candidates for Gate A approval, not active work. Runtime
 changes are limited to the listed proven Stable failures or to the Host design
 accepted above. Any additional behavior change requires a reviewed plan update.
-Source-analysis mapping: I-01 covers OP-P0-PC; I-02 covers OP-P1-JOIN-AVAIL,
-OP-P1-PAUSE-INPUT-GATES and the Stable-facing boundary in OP-X-OBSERVER-COMMAND;
-I-03 covers OP-P0-PC, OP-P2-APP-ROUTE-ACTIVITY-GAMEFLOW and OP-X-PROVISIONING;
-I-04 covers OP-P1-LEAVE-ACTOR and OP-P1-CAMERA with I-02/I-03 dependencies;
-I-05 covers OP-P2-APP-ROUTE-ACTIVITY-GAMEFLOW; I-06 covers OP-P2-SAVE;
-I-07 covers OP-P2-IDENTITY-METADATA; I-08 covers OP-X-OBSERVER-COMMAND and
-OP-X-PROVISIONING. No Experimental-only finding is promoted by this mapping.
+Accountable owners are the existing authorities named per package: Framework
+Core/Scene Lifecycle, Player Participation and Pause/Input, FrameworkRuntimeHost,
+the feature-specific Camera/GameFlow/Save/Identity owners, API Governance, and
+QAFramework for integrated consumer evidence. No QA or consumer change is
+authorized before Gate A and separate implementation authorization.
+Owner mapping: I-01 `SceneLifecycleRuntime`; I-02 Player Availability and
+Pause/Input owners; I-03 `FrameworkRuntimeHost`/Bootstrap; I-04 canonical
+Leave, Camera and Activity/Route owners; I-05 GameFlow/Route/Activity owners;
+I-06 Progression Save contract owner; I-07 Framework Identity/API Governance;
+I-08 API Governance and QAFramework certification owner.
+Source-analysis mapping: I-01 covers OP-P0-PC; I-02 covers OP-P1-JOIN-AVAIL
+and OP-P1-PAUSE-INPUT-GATES; I-03 covers OP-P0-PC,
+OP-P2-APP-ROUTE-ACTIVITY-GAMEFLOW and OP-X-PROVISIONING; I-04 covers
+OP-P1-LEAVE-ACTOR and OP-P1-CAMERA; I-05 covers
+OP-P2-APP-ROUTE-ACTIVITY-GAMEFLOW; I-06 covers OP-P2-SAVE; I-07 covers
+OP-P2-IDENTITY-METADATA; I-08 covers OP-X-OBSERVER-COMMAND and QA consumer
+migration. No Experimental-only finding is promoted by this mapping.
+
+**Dependency order:** Wave 1 runs I-01, I-06 and I-07 independently after
+Gate A; Wave 2 applies I-02 then I-08's QA/API-boundary migration; Wave 3
+implements I-03 after I-01/I-02/I-08; Wave 4 integrates I-04 after I-02/I-03;
+Wave 5 runs I-05 fault-injection/certification after I-03/I-04 and changes
+Runtime only for a demonstrated Stable violation. Each wave freezes its
+contract and failure evidence before dependent work begins.
 
 | Order / package | Problem, outcome and likely files/subsystems | Contracts, consumers and tests | PASS / recovery / rollback / dependencies |
 |---|---|---|---|
 | **I-01 — Scene Lifecycle participant ledger** (P0) | Retain every participant that may have acquired Session resources even when a later `OnSceneAvailable` or rollback fails. Make compose failure and release retry use one exact owner/snapshot. Likely `Runtime/SceneLifecycle/SceneLifecycleRuntime.cs` and `Tests/Runtime/SceneLifecycle/*`. | Preserve `ISceneLifecycleParticipant`, scope identity and IF-ADR-040 semantics; no consumer API change. NUnit: failure at participant N after prior successes; rollback success/failure independently; release partial success then retry; duplicate release; exact Session owner mismatch; cleanup ordering. QA scenario: Session composition partially acquires participant state, then host releases and retries without orphaning any participant. | PASS only when no acquired participant is absent from the ledger and aggregate success is reported only after all required releases succeed. Failed rollback retains all receipts and permits retry. Revert this cut if it changes successful ordering or scope semantics beyond approved ADR text. Depends on IF-ADR-040 disposition; precedes Host stop. |
-| **I-02 — Stable scoped release and physical receipts** (P0) | Fix availability release-before-binding-dispose ordering and retain token/projection/Pause/Input restoration evidence after rejection. Close or explicitly disposition public inherited `TryGetAccess`. Likely `PlayerSessionScopedAccessRuntimeHostModule`, `PlayerGameplayAvailabilityBlockTrigger`, `PlayerGameplayRuntimeHostModule.ConsumerAvailability`, `PlayerGameplayInputBindingRuntimeContext`, `PauseSessionPlayerInputBindingRuntimeHostModule`, `PlayerPauseInput`, `UnityPlayerInputStateWriter`; associated NUnit and API/consumer references. | Preserve IF-ADR-005/036/044 outcomes and token identity; no GameplayAction blocker. Audit FirstGame, QAFramework and all package callsites before visibility changes. NUnit: exact release success/rejection/retry; stale/foreign token; recipient access live until callback; projection failure; Pause apply + rollback rejection; later restore retry; no false logical/physical success. QA scenarios: Availability token rejection/retry and Pause/Input physical baseline restoration after release failure. | PASS requires owner/receipt retained until confirmed restoration/release or exact terminal subject destruction, and no new Stable capability leak unless accepted. Roll back a visibility change if a supported in-scope consumer is unaccounted; no pre-1.1 compatibility obligation is inferred. Depends on transverse API decision; precedes integrated Leave/Host. |
+| **I-02 — Stable scoped release and physical receipts** (P0) | Fix availability release-before-binding-dispose ordering and retain token/projection/Pause/Input restoration evidence after rejection. Likely `PlayerSessionScopedAccessRuntimeHostModule`, `PlayerGameplayAvailabilityBlockTrigger`, `PlayerGameplayRuntimeHostModule.ConsumerAvailability`, `PlayerGameplayInputBindingRuntimeContext`, `PauseSessionPlayerInputBindingRuntimeHostModule`, `PlayerPauseInput`, `UnityPlayerInputStateWriter`; associated NUnit fixtures. | Preserve IF-ADR-005/036/044 outcomes and token identity; no GameplayAction blocker. NUnit: exact release success/rejection/retry; stale/foreign token; recipient access live until callback; projection failure; Pause apply + rollback rejection; later restore retry; no false logical/physical success. QA scenarios: trigger-owned Availability token rejection/retry and Pause/Input physical baseline restoration after release failure. | PASS requires owner/receipt retained until confirmed restoration/release or exact terminal subject destruction. No Stable result or logical projection may claim physical restoration without evidence. Depends on the accepted IF-ADR-044 contract; precedes I-08 and integrated Leave/Host. |
 | **I-03 — Host admission, bootstrap failure and controlled stop** (P0) | Add internal Host phase gates at canonical Route/Activity/Join/Selection/Availability/Camera/Pause/Provisioning mutation owners; fail closed before operational and while stopping; implement retained, retryable controlled stop and route bootstrap failures through rollback. Likely `FrameworkRuntimeHost.cs`, `ImmersiveFrameworkBootstrap.cs`, gate-bearing Runtime modules/triggers and Host tests. | Keep public APIs, serialized assets and result semantics; Join still uses accepted `RejectedUnavailable`; cleanup exact release commands remain callable. NUnit: each ingress before ready/stopping; bootstrap failures pre/post PC composition; provisioning attach failure; in-flight transition settlement; stop success; each release stage rejects then retry on same Host; terminal callbacks best-effort. QA scenario: host bootstrap/stop across the allowlist with injected failures and retry on the same live Host. | PASS only when no new operation mutates state outside Operational, cleanup allowlist remains usable, and failed controlled release leaves same Host/dependencies retryable. No destruction after failed controlled stop. Roll back if guards duplicate or bypass canonical owners. Depends on I-01/I-02 and IF-ADR-001 approval. |
-| **I-04 — Canonical player/camera/activity teardown integration** (P0) | Integrate controlled stop with existing per-occurrence Leave, Camera Assignment/Output, Pause/Input and Activity/Route owners; do not create Host-level parallel cleanup. Likely `SessionPlayerLeaveRuntimeHostModule`, Camera assignment/materialization/membership modules, Pause/Input binding modules, Activity/Route lifecycle, and integrated NUnit/QA fixtures. | Keep Leave/Actor Selection Experimental and Camera scope at IF-ADR-039/043; preserve Actor/Slot/Occurrence/token identity. NUnit: joined Player stop; each Leave stage rejection/retry; Camera clear/output failure pre/post commit; PlayerInput camera restoration; Pause restore; Availability release; multiple Players and duplicate Leave; Activity/Route exit after Players; no stale owners; Host remains retryable. QA scenario: two joined occurrences with Camera and Pause ownership, one failing cleanup stage, then retry and verify final baseline. | PASS requires Camera and physical Input cleanup while subjects are live, exact Leave completion before Host destruction, and no lost receipts after partial cleanup. Failed attempt leaves Host inert and retryable. Depends on I-02/I-03; ordering within existing Leave owner must be approved from tests, not duplicated. |
+| **I-04 — Canonical player/camera/activity teardown integration** (P0) | Integrate controlled stop with existing per-occurrence Leave, Camera Assignment/Output, Pause/Input and Activity/Route owners; do not create Host-level parallel cleanup. Likely `SessionPlayerLeaveRuntimeHostModule`, Camera assignment/materialization/membership/output modules, Pause/Input binding modules, Activity/Route lifecycle and integrated NUnit/QA fixtures. | Keep Leave/Actor Selection Experimental and Camera scope at IF-ADR-039/043; preserve Actor/Slot/Occurrence/Assignment/Output/token identity. NUnit: joined Player stop; each Leave stage rejection/retry; Camera Clear/Replace/Fallback/Output failures before and after commit; restore `PlayerInput.camera`; Pause restore; Availability release; multiple Players and duplicate Leave; Activity/Route exit after Players; no stale owners; Host remains retryable. QA: two joined occurrences with Camera and Pause ownership, injected cleanup rejection, then retry to baseline. | PASS requires every post-commit Camera operation to retain the committed Assignment plus exact cleanup receipts for Clear, Replace, Fallback and Output until confirmed release; result status must describe committed state and remaining cleanup faithfully. Camera Subject, Output, Pause/Input and PlayerInput owners remain alive while their receipts are actionable. Failure blocks dependent destruction and same-Host retry resumes without a second authority. Depends on I-02/I-03; no IF-ADR-039/043 expansion. |
 | **I-05 — GameFlow partial-failure truth and recovery** (P1; conditional Runtime) | Fault-inject Start/Route/Activity failures before and after commit; verify Gate, readiness, Route/Activity bindings, Scene Content and Host ownership stay truthful. Likely `GameFlowRuntime`, `RouteLifecycleRuntime`, `ActivityFlowRuntime`, `SceneLifecycleRuntime`, readiness binding and GameFlow NUnit/QA. Runtime change only for a reproduced Stable contract violation. | Preserve IF-ADR-036/047 and serialized `GameApplicationAsset`, `RouteAsset`, `ActivityAsset`; no all-or-nothing Route promise. NUnit: target composition fail, old scope release fail, post-commit readiness failure, Transition Gate terminality, cleanup retry and baseline restoration. QA scenario: route/activity pre-commit and post-commit failures with owner/result/baseline assertions. | PASS when every result identifies the committed authority and every residual owner has an available cleanup/retry path. If partial outcomes satisfy current contract, close with tests/evidence only. Runtime patch rollback if it changes commit point or revives released authority. Depends on I-03/I-04 and owning ADR review if promise expands. |
 | **I-06 — Progression Save payload integrity and conformance** (P0) | Prevent mutation through `Bytes` while preserving byte content/equality. Likely `Runtime/ProgressionSave/ProgressionSavePayload.cs` and Save NUnit fixture. | Preserve all 13 Stable contracts and `IProgressionSaveStore`; audit current consumers. NUnit: input-array copy, exposed-view mutation/cast attempt, equality/hash, Empty/Text/Binary round trips, result/code and payload preservation across read/write/delete, backend rejection/failure distinctions. QA scenario: current Stable Store contract smoke with exact package identity and successful/rejected operation outcomes. | PASS when caller mutation cannot alter a constructed payload or subsequent store result. No async/atomic/idempotency claims. Revert only the implementation mechanism if API/value semantics change. Independent after Gate A; may execute alongside I-01. |
-| **I-07 — Identity and metadata baseline conformance** (P1) | Add direct tests for domain/equality/hash/invalid/default/parse/conversion and Stable attribute declarations; investigate `ApplicationName` Session ownership and undefined `FrameworkApiStatus` values. Likely `Runtime/Identity/*`, `Runtime/ApiStatus/*`, identity tests and inventory scripts. Runtime change only for a demonstrated inconsistency or explicitly accepted identity decision. | Preserve current seven identity contracts, asset schemas and Stable inventory. NUnit: cross-domain collision rejection, same-domain value rules, serialized Application/Route/Activity references, statuses and metadata against Public-API/IF-GOV-001. QA scenario: package/consumer authoring references resolve without changing serialized schemas. | PASS when implementation, attributes and governance inventory agree and invalid values fail according to documented contract. Treat formatting differences as non-defects unless tests reveal semantic ambiguity. Roll back unapproved public identity changes. Depends on identity decision; no Stable API expansion. |
-| **I-08 — Observer/Provisioning ingress and closure audit** (P1; Experimental boundary) | Confirm every ingress reaches the same gated Session owner and scope read/write requirements. Migrate only consumers required by I-02/I-03; otherwise preserve Experimental surfaces. Likely Observer/Command/Provisioning authoring and runtime modules, Public-API inventory and QA consumers. | No Stable promotion and no new Session authority. NUnit: Observer read projection; mutation unavailable to read-only consumers; Provisioning direct/automatic ingress while Starting/Stopping; Join closure unchanged; scoped release remains allowed. QA scenario: all supported Stable and Experimental ingress paths obey the same Host gate without duplicate ownership. | PASS when no ingress bypasses the Host gate and no duplicated owner exists; Experimental-only behavior may be deferred when no Stable causal path exists. Roll back broad migrations not needed for a Stable contract. Depends on I-02/I-03. |
+| **I-07 — Identity and metadata baseline conformance** (P1) | Add direct tests for domain/equality/hash/invalid/default/parse/conversion and Stable attribute declarations; use the existing Host `EntityId` as exact Session owner and keep `ApplicationName` presentation-only. Likely internal `FrameworkRuntimeHost` Session content-owner construction, identity tests and inventory scripts. Runtime change only to stop using display metadata as an operational Session key; no new identity/API. | Preserve current seven identity contracts, asset schemas and Stable inventory. NUnit: cross-domain collision rejection, same-domain value rules, serialized Application/Route/Activity references, statuses and metadata against Public-API/IF-GOV-001. QA scenario: package/consumer authoring references resolve without changing serialized schemas. | PASS when implementation, attributes and governance inventory agree; the exact Host owner identity remains authoritative when `ApplicationName` changes; malformed status values are caught by the maturity inventory; no invalid default gains authority. No Stable API expansion. |
+| **I-08 — Observer/Command QA migration and Provisioning gate audit** (P1; API Governance) | Restrict inherited public `TryGetAccess` to derived implementation and migrate the inspected QA callsites. Audit Provisioning ingress only for bypasses of the Host owner gate; do not redesign Experimental APIs. Likely Framework `PlayerSessionScopedAccessConsumer`/Public-API inventory and QAFramework `QA-IF-ADR-036`, `042`, `043`, `044`, `046`, `PLAYER-SESSION` scenarios. | Keep Observer/read snapshots and `IPlayerSessionScopedAccess` Experimental; no trigger added for `RequestReplacePreparedActor` or low-level foreign/stale token probes. NUnit: helper inaccessible from external callers but usable by derived components; owner-specific tests cover full capability. QA: `QaIfAdr042SharedGroupScenario` migrates Open/Leave/Close to existing triggers and reads to Observer; `QaIfAdr043PhysicalParticipationScenario` migrates both Leaves; `QaIfAdr046ScopedBindingScenario`/`QaIfAdr046JoinScenario`, `QaIfAdr036GameplayReadinessTransitionScenario`, and `QaPlayerSession*Scenario` use existing Open/Close/Leave/Selection triggers and Observer for reads. `QaIfAdr044ConsumerGameplayAvailabilityScenario` uses two existing `PlayerGameplayAvailabilityBlockTrigger` instances to prove independent consumer-owned blocks, exact trigger-owned release, Leave while one block remains, and baseline restoration. The direct API matrix for foreign/stale tokens and multiple raw tokens moves to Availability owner NUnit because no trigger offers those operations. Move prepared-Actor replacement from QA-IF-ADR-042 to Actor Preparation owner NUnit if still needed; it has no public trigger equivalent and is not Stable consumer QA. | PASS when the Stable trigger exposes only its owner-scoped block, QA uses no inherited mutable accessor, all in-scope operations retain causal evidence, and no Experimental capability is promoted or shadowed by a new trigger. Verify fixture cleanup restores baseline. Depends on I-02 boundary approval; Provisioning paths feed I-03 guard tests. |
+
+For every package, **FAIL** means a required result/state is inaccurate, a
+previous committed authority is changed outside its contract, an owner/token/
+receipt is lost before release confirmation, a new mutation succeeds while
+admission is closed, or cleanup does not restore the declared baseline.
+**BLOCKED** means the scenario could not execute, its exact owner/evidence is
+missing, or an unresolved contract prevents interpretation; neither historical
+results nor a static trace can be recorded as PASS.
 
 ### Cross-package validation, certification and GO/NO-GO
 
-1. **Before implementation (Gate A):** approve this plan revision, the exact
-   package order, the IF-ADR-001/040/018 dispositions, Observer exposure,
-   shutdown Leave policy, Session identity decision and risk owners. Record
-   named test/QA cases and consumer callsite audit. This plan remains Proposed
-   until that record is explicit.
+1. **Before implementation (Gate A):** review the exact proposed IF-ADR-001,
+   IF-ADR-040 and IF-ADR-018 text; approve the `TryGetAccess` API Governance
+   boundary and QA migration; approve this plan revision, dependency order,
+   named NUnit/QA deliverables and residual-risk owners. The project-approved
+   direction is not formal Gate A. Record its explicit approval and the exact
+   baseline/revision; then obtain separate implementation authorization.
 2. **Per implementation package:** add deterministic NUnit fault injection
    first; implement only the approved owner-local change; run focused tests and
    package suite; inspect diff for public/API/schema/version/workflow scope;
@@ -2247,9 +2274,11 @@ candidate evidence, not historical test counts.
 Route transitions may have truthful partial outcomes; Experimental Provisioning,
 Observer, Actor Selection, Leave and IF-ADR-038 Camera topologies remain outside
 Stable promises except where they ingress into a Stable owner; Save has no
-atomicity/idempotency/async/provider-disposal promise; `ApplicationName` may
-collide if it remains an internal Session owner key. Each is either bounded by
-the accepted contract or explicitly assigned to an accepting authority.
+atomicity/idempotency/async/provider-disposal promise; the pending async GameFlow
+operation can keep controlled shutdown pending indefinitely because no timeout
+is promised. Resource-owning custom providers manage their Experimental
+integration lifetime. Each residual is either bounded by the accepted contract
+or explicitly assigned to an accepting authority.
 
 **Deferred beyond 1.1.0:** all-or-nothing Route replacement absent a Stable
 requirement; public Host lifecycle API; generic cleanup registry; automatic
@@ -2258,11 +2287,11 @@ provider lifecycle; new Session identity API; broad Observer/Provisioning
 redesign; promotion or certification of experimental Actor/Leave/Camera
 topologies; compatibility shims for pre-1.1 prototypes.
 
-**Planning GO/NO-GO:** this is a complete integrated proposal for review, not
-Gate A approval. Planning remains Proposed and implementation remains NO-GO
-until the pending decisions above are recorded and the integrated plan is
-explicitly approved. Fase 2 remains open; no workpackage is implemented or
-certified by this record.
+**Planning GO/NO-GO:** the integrated decisions and package route are drafted
+for review, but the project owner's directional approval is not Gate A. Planning
+remains Proposed and implementation remains NO-GO until ADR text/API Governance
+review and explicit integrated-plan approval are recorded. Fase 2 remains open;
+no workpackage is implemented or certified by this record.
 
 ## Standard workpackage record
 

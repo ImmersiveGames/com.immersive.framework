@@ -87,3 +87,34 @@ Route-scoped Activity transition observation added by IF-ADR-041 is also validat
 `SceneProvidedLocalPlayerAuthoring` remains intentionally outside this model for the admission/candidate-discovery reasons recorded above. This is a documented exception, not an unfinished migration item.
 
 The accepted scope of IF-ADR-040 is therefore implemented, integrated and validated. Future features may adopt this composition protocol when their ownership/lifetime matches it; this ADR does not require unrelated lifetime models to converge on Scene Composition.
+
+## Proposed normative amendment — Session participant ledger (pending final text review, 2026-10-13)
+
+This proposal does not change the Accepted status above or expand the participant
+API. It clarifies Session composition rollback and release when a participant
+fails after another participant may already have acquired resources.
+
+Before invoking `Available` for each discovered Session participant,
+`SceneLifecycleRuntime` records that participant, its position and the exact
+Session scope owner in the retained Session ledger. The record means
+"potentially activated" until the participant's outcome is known; it is not a
+claim that activation succeeded. If an `Available` call fails, rollback visits
+the complete set that may have been activated, including the failing
+participant, using each participant's existing idempotent release authority.
+
+The original composition failure remains the primary diagnostic. Rollback
+failures are retained as additional participant/scope diagnostics and do not
+replace or erase the original failure. The full potentially-activated set and
+its owner identity remain available for a later release/retry even if rollback
+is partial.
+
+Session release visits every participant in the retained set and aggregates
+results. A participant's confirmed successful release may be repeated during
+aggregate retry; feature binders must remain idempotent for the same scope and
+authority. The ledger is cleared only after aggregate release succeeds. A
+rejection preserves the exact owner, complete participant set and failure
+diagnostics needed for retry. Retry may safely revisit participants already
+released under the same idempotent scope/authority contract; no separate
+cross-feature progress registry is required. Session owner mismatch remains a
+rejection before mutation. This rule does not introduce a global recovery
+registry or make Scene Lifecycle the owner of feature state.

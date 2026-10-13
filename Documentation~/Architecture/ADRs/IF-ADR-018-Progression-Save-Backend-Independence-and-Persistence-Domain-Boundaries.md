@@ -385,7 +385,11 @@ backend identity
 Vendor-specific advanced capabilities may remain adapter-specific unless promoted by a
 future Framework capability contract.
 
-### 11. Current API maturity
+### 11. Current API maturity — proposed editorial correction pending final text review
+
+This correction does not change this ADR's Accepted status or promote any API.
+It reconciles this section with the Stable backend-neutral contract already
+listed in §6.
 
 Architecture:
 
@@ -394,14 +398,27 @@ Progression Save backend independence
   ACCEPTED
 ```
 
-Current code:
+Current code and contract maturity:
 
 ```text
-ProgressionSaveRuntime and contracts
-  EXPERIMENTAL pending stabilization
+IProgressionSaveStore and the twelve associated Stable types listed in §6
+  STABLE — backend-neutral persistence contract
+
+ProgressionSaveRuntime and request orchestration
+  EXPERIMENTAL
+
+Progression Save profile/provider and application composition APIs
+  EXPERIMENTAL
 
 JsonProgressionSaveStore
-  EXPERIMENTAL pending minimum-backend hardening/certification
+  implementation is the certified built-in minimum backend;
+  concrete API remains EXPERIMENTAL
+
+IProgressionSaveCatalog and manifest/catalog model
+  EXPERIMENTAL
+
+Custom providers and concrete third-party backend APIs
+  retain their own existing maturity and integration lifecycle
 
 Preferences
   preparatory Experimental implementation retired 2026-10-12; conceptual domain distinct from Snapshot and Progression Save
@@ -410,10 +427,13 @@ Snapshot
   preparatory Experimental implementation retired 2026-10-12; conceptual separate domain retained
 ```
 
-Do not mark the current API Stable merely because this ADR accepts the product
-direction.
-
-Stable promotion requires the conformance/stabilization gates defined below.
+The Stable classification applies only to the 13-type backend-neutral set in
+§6. It does not promote ProgressionSaveRuntime, request orchestration, profiles,
+providers, catalogs or concrete backend APIs. Maturity of each concrete surface
+continues to follow its existing attributes, Public-API entry and owning
+decision. No new Save behavior, provider disposal protocol or durability,
+atomicity, idempotency, asynchronous completion or shutdown guarantee is
+introduced by this editorial correction.
 
 ## Desired product model
 

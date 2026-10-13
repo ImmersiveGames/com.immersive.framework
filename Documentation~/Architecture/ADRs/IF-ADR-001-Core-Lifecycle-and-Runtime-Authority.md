@@ -282,3 +282,73 @@ metadata into lifecycle authority.
 - Activity representation authority is not physical Player lifetime authority.
 - Physical Player persistence is not implemented by arbitrary persistent GameObjects.
 - Session Player Leave remains the explicit individual terminal operation under IF-ADR-020.
+
+## Proposed normative amendment — pending final text review (2026-10-13)
+
+This proposal does not change the Accepted status above. It makes the internal
+Host admission and controlled shutdown contract explicit; it adds no public
+Host state or shutdown API.
+
+### Internal phases and admission
+
+`FrameworkRuntimeHost` tracks one internal lifecycle phase with values:
+composing, operational, stopping, inert/retryable, and released. These phases
+describe the existing composition root; they do not add another Session,
+GameFlow or Player authority.
+
+Before bootstrap reaches Operational, only the bootstrap sequence and cleanup
+of resources acquired by that sequence may mutate framework state. While
+Stopping or Inert/Retryable, new Route/Activity requests, Player admission,
+Joining open, Actor selection changes, Availability acquisition, Camera
+Assignment changes, user Pause/Resume, and Provisioning admission are rejected
+at their existing command owners. Exact cleanup operations may proceed only
+for the live identity, occurrence, token, binding or receipt that their owner
+holds. Stable Join retains its accepted `RejectedUnavailable` result.
+
+The stopping allowlist is: Host-owned close Joining; settlement of an already
+running GameFlow operation; canonical Leave/retry for an exact Joined
+occurrence; release of an exact Availability token; Camera Clear and exact
+Output/Subject teardown; Pause/Input physical restoration/release; shutdown-
+owned Activity/Route exit; and Scene Lifecycle/Persistent Content release for
+the same live Host and retained participant set. User Pause/Resume, new
+Availability acquisition, new Camera Assignment and Provisioning admission
+remain closed.
+
+### Controlled shutdown and asynchronous operations
+
+Controlled shutdown is an internal asynchronous operation with an explicit
+result. It first closes new-operation admission and settles any already-running
+GameFlow operation through that operation's existing authority. It does not
+cancel by destroying owners. If an operation remains pending, shutdown remains
+pending without an arbitrary timeout; the Host and dependencies remain alive.
+Once the operation reaches a terminal result, shutdown may continue if all
+recoverable obligations are represented by retained owners and receipts. A
+rejected release returns a failure and leaves the same Host Inert/Retryable;
+retry uses that Host and exact retained ownership.
+
+The Host closes Joining through the existing Session owner, then coordinates
+canonical Leave for each still-Joined occurrence using the existing
+IF-ADR-020 authority. It does not reproduce Leave stages or infer Leave from
+GameObject destruction. Leave retains its Activity participation and other
+preconditions until its owner completes the exact occurrence. The Host then
+uses existing GameFlow/Activity/Route authorities to exit remaining scopes in
+their valid order. Scene Lifecycle releases all retained Session participants
+while Persistent Content roots and feature owners remain alive; Persistent
+Content is released after those participant obligations. Host dependencies
+and the Host itself are disposed only after aggregate cleanup succeeds.
+
+This is a dependency order, not a replacement lifecycle algorithm. During
+canonical Leave, feature owners coordinate their own stage order. Camera
+Assignment/Clear/Replace/Fallback/Output receipts remain available until their
+exact cleanup is confirmed; Camera Subject and Output owners stay alive until
+then. Pause/Input restoration retains the exact physical receipt while
+`PlayerInput` is available. Availability releases retain the exact token and
+scoped access until confirmation. On any rejected stage, dependent destruction
+stops; unrelated cleanup may continue only when it cannot invalidate that
+stage's owner or retry path. Scene Lifecycle aggregates participant errors
+without discarding the participant ledger.
+
+`OnApplicationQuit` and `OnDestroy` remain terminal Unity callbacks and are
+best-effort. They do not promise retry after their owners are destroyed or
+after process exit. A controlled shutdown must finish or remain retained before
+terminal destruction is requested.
