@@ -2,7 +2,7 @@
 
 Status: **Active — 1.1.0 approved as first official Stable baseline / publication pending; preview 1.1.0-preview.8 remains latest published; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-10-12**
+Last updated: **2026-10-13**
 
 ## 1.1.0 first Stable release readiness
 
@@ -18,9 +18,11 @@ the current disposition remains NO-GO.
 
 The proposed integrated execution route is
 [IF-PLAN-ADR-048-STABLE-READINESS.v1](../Plans/IF-PLAN-ADR-048-STABLE-READINESS.v1.md).
-It organizes the Phase 2 operational cuts and later certification work; it is
-not approved for implementation. Complete relevant analyses and required ADR
-decisions, then obtain explicit integrated-plan approval before changing
+The versioned [Gate A integrated review record](../Plans/IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v1.md)
+captures the exact plan blob and pending authority decisions; it does not
+approve the route. The plan organizes the Phase 2 operational cuts and later
+certification work; it is not approved for implementation. Complete relevant
+analyses and required ADR decisions, then obtain explicit integrated-plan approval before changing
 Runtime, tests, QA assets, consumers, versions or release configuration. The
 plan closes no workpackage or phase; Phase 2 still requires executed
 source-revision evidence under IF-ADR-048.

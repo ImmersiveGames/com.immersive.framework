@@ -13,6 +13,7 @@ Proposed master stabilization route — analysis/review only; implementation is
 blocked until explicit integrated-plan approval:
 
 - [IF-ADR-048 — 1.1.0 Stable Readiness Master Plan v1](IF-PLAN-ADR-048-STABLE-READINESS.v1.md)
+- [IF-ADR-048 — Gate A integrated review record v1](IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v1.md) — formal approval pending; no implementation authority
 
 Accepted architecture implementation route (implementation pending):
 
