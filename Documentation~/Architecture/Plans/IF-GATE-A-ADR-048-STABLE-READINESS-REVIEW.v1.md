@@ -2,7 +2,8 @@
 
 **Status:** PREPARED FOR FORMAL REVIEW — GATE A APPROVAL PENDING  
 **Review date:** 2026-10-13  
-**Framework repository HEAD reviewed:** `5ebffb5333b6cabad2a7dc7cb674f59834caf9b0` (`master`)  
+**Normative-document review baseline:** `5ebffb5333b6cabad2a7dc7cb674f59834caf9b0` (`master`)
+**Current local HEAD for this correction:** `f2ef43037d8195a160cdb1ea46489eecedb91f2f` (`master`)
 **Plan identity:** [`IF-PLAN-ADR-048-STABLE-READINESS.v1.md`](IF-PLAN-ADR-048-STABLE-READINESS.v1.md), Git blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`  
 **Source revision described by the plan:** `617547a337e52022999c71c30f2e493a3dacbd26`; static analysis provenance only, not executed candidate evidence.  
 **Effect:** Documentary review and approval preparation only. This record is not Gate A approval, implementation authorization, certification or publication authorization.
@@ -19,10 +20,13 @@ The project owner has approved the integrated architectural direction as a
 basis for this review. The repository contains no formal per-authority
 approvals or risk acceptances for Gate A. No approver names or independent
 opinions are inferred. A read-only review of preliminary commit
-`cd395b8a6070674ff646bd3a8a6373a53e99d6c8` found it adds a draft Gate A record
-against the same plan and ADR blobs. This local record was checked against
-current `master`; the preliminary commit was not merged, cherry-picked,
-checked out or synchronized.
+`cd395b8a6070674ff646bd3a8a6373a53e99d6c8` found the original review draft.
+That work is now present in local `master` through merge commit `d1ce8737` and
+the current HEAD `f2ef43037d8195a160cdb1ea46489eecedb91f2f`. The present
+correction is made directly in this tracked local file; it does not create a
+branch or perform another merge/synchronization. The normative plan/ADR blobs
+remain the exact reviewed baseline above; the changes since it are limited to
+this review record and its Plans index/Tracker reference.
 
 ## Exact documentary baseline
 
