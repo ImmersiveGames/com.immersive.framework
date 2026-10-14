@@ -2,7 +2,11 @@
 
 All notable package changes are documented in this file.
 
-## Unreleased
+## [1.1.0-preview.9] - 2026-10-14 — candidate, not published
+
+This prerelease candidate contains the approved 1.1.0 stabilization work for
+Phase 4 exact-artifact certification. It is not published and does not replace
+the latest published preview, `1.1.0-preview.8`.
 
 - Product decision approved: `1.1.0` will be the first official Stable
   baseline, pending release-candidate gates and publication. Compatibility

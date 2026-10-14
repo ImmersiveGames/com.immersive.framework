@@ -5,8 +5,8 @@ Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
 **Official Stable baseline approved:** `1.1.0` (publication pending). The
-current source package metadata remains `1.1.0-preview.8`; the latest published
-preview is also `.8`. Versions before 1.1.0, including 1.0.2 and
+current source package metadata is `1.1.0-preview.9`; the latest published
+preview remains `1.1.0-preview.8`. Versions before 1.1.0, including 1.0.2 and
 `1.1.0-preview.*`, are retained as historical prototyping and validation
 records and carry no compatibility or generic migration obligation to the new
 baseline. From 1.1.0 forward, guarantees follow SemVer and the individual

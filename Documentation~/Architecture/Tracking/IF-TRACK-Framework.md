@@ -7,8 +7,9 @@ Last updated: **2026-10-14**
 ## 1.1.0 first Stable release readiness
 
 IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. The
-release is currently **NO-GO**: the source package metadata is still
-`1.1.0-preview.8`, and no 1.1.0 candidate has completed the gates below. The
+release is currently **NO-GO**: source metadata is now `1.1.0-preview.9`
+for Phase 4 candidate preparation; the latest published preview remains
+`1.1.0-preview.8`, and no stable 1.1.0 artifact has completed the gates below.
 published 1.0.2 and preview artifacts remain historical; a generic migration
 from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
 for an individual Stable contract or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
@@ -73,8 +74,8 @@ consumer installation actually establish.
 |---|---|---|
 | 1 — Architectural and contract closure | **Closed — documentary review approved 2026-10-12** | The 107-type Stable inventory is reconciled across `FrameworkApiStatusAttribute`, Public-API, IF-GOV-001 and owning ADRs. Static checks found all 107 symbols represented in Public-API, all relative Markdown targets in the reviewed documents present, and `git diff --check` clean. This approval covers contract scope and documentation only; it does not certify the Runtime, package import, candidate artifact or release. |
 | 2 — Operational integrity | **Closed — composite evidence accepted by the Project Owner, 2026-10-14** | The latest QAFramework Test Runner result is 365/365, with Persistent Content 28/28 and `FrameworkRuntimeHostControlledStopTests` 7/7. These integrated tests are accepted together with the component Editor suites and the previously reported QA scenario terminals; a separate bespoke test for behavior already covered across those proofs is not required. Bounded residuals and evidence scope are recorded in the latest Phase 2 entry. |
-| 3 — Transversal recertification | **In progress — entry preparation; candidate validation not started** | Phase 2 is closed. Review and freeze a clean source revision with a Git SHA, then complete the contract-to-test/consumer matrix for QAFramework, FirstGame and PEGA before claiming candidate validation. No exact-artifact installation/import/compile is claimed here. |
-| 4 — Immutable Release Candidate | Pending | Requires an immutable package artifact installed and identified in QAFramework, FirstGame and PEGA. |
+| 3 — Transversal recertification | **Closed — candidate source validated, 2026-10-14** | Frozen source `e98b530a961bd4d5c9795398a2ff42096a4ea95d`; the user supplied QAFramework EditMode 365/365 and candidate-local `file:` resolution evidence plus the listed QA terminals. The test screenshot/logs are user-reported and do not include raw XML or a runner fingerprint. The complete test/runtime source matches the reviewed candidate; no code was changed after the freeze. |
+| 4 — Immutable Release Candidate | **In progress — prepare signed prerelease artifact** | Package metadata is set to `1.1.0-preview.9`, the next unused prerelease after published `.8`. Build through the tag-triggered signed candidate job, install that exact artifact in QAFramework, FirstGame and PEGA, and record the artifact SHA and consumer validation. The prerelease workflow condition excludes its publication job. |
 | 5 — Explicit publication decision | Pending — release remains **NO-GO** | Requires an explicit GO for the exact package version, source SHA and artifact hash. |
 
 **Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification is authorized conditionally; publication remains unauthorized.
@@ -1642,37 +1643,53 @@ Phase 4 exact-artifact consumer validation and Phase 5 release GO remain
 pending; publication stays **NO-GO**. No Unity execution was performed in this
 documentation update.
 
-## Phase 3 — candidate certification matrix preparation — 2026-10-14
+## Phase 3 — candidate recertification — 2026-10-14
 
 The approved Stable inventory remains the 107 Runtime types reconciled in
-Phase 1. The following mapping accepts complementary proof for Phase 2 and
-defines what must be attached to the frozen candidate; it does not require
-duplicating a test when existing tests jointly prove the same owner, result
-and recovery boundary.
+Phase 1. The Project Owner supplied the QAFramework Test Runner result after
+the candidate SHA was provided. It shows **365/365 passed**, including
+Persistent Content 28/28, Host Admission 6/6, Host Controlled Stop 7/7,
+Player Participation 106/106, Progression Save 10/10 and Identity 19/19. The
+QAFramework manifest and lock resolve the Framework from the local package
+checkout. At intake, this checkout was clean at the frozen SHA above. The
+screenshot has no raw NUnit XML or embedded SHA; this is user-reported
+candidate evidence linked by the requested exact revision and local dependency.
 
-| Workpackage / guarantee group | Composed evidence accepted for Phase 2 | Evidence to bind to the frozen candidate |
+The supplied QA terminals report **PASS** and `BaselineRestored` for IF-ADR-042
+(6/6), IF-ADR-043 (7/7), IF-ADR-044 (8/8), IF-ADR-046 I4 Minimal (1/1), and
+IF-ADR-046 I4.2 Observable (8/8). Previously supplied Player Session Join and
+Leave/rejoin evidence is accepted compositionally with the Player Participation
+suite. The separate I4.2 LEASE result remains Experimental and BLOCKED; it is
+not included in the Stable claim.
+
+The matrix records the evidence and boundary without requiring a bespoke test
+where complementary package and scenario results establish the same guarantee.
+
+| Workpackage / guarantee group | Candidate evidence supplied | Phase 3 disposition |
 |---|---|---|
-| I-01 — Scene Lifecycle participant ledger / Persistent Content | `SessionCompositionReleaseTests` and Host startup/shutdown/retry tests in the 365/365 Editor run; the Host group is 7/7. | Framework Editor suite on the candidate; retain exact scope, participant receipts and retry assertions. QAFramework full Editor result and any named partial-composition scenario result against the same package SHA. |
-| I-02 — scoped release, Availability and physical receipts | Player Participation and Pause Editor assemblies are green in the 365/365 run; IF-ADR-044 QA 8/8 reports independent blocks and `BaselineRestored`. | Framework Editor suite plus IF-ADR-044 and applicable Join/Leave/physical-input scenarios using the candidate; record source/artifact identity and cleanup. |
-| I-03 — Host admission, bootstrap and controlled stop | Host Admission and `FrameworkRuntimeHostControlledStopTests` are green; the latter is 7/7, including startup, retained ownership, failure and same-Host retry. | Candidate Editor import/compile and full Editor suite; retain controlled-stop evidence on the candidate, including same-Host retry and terminal cleanup boundaries. |
-| I-04 — player, Camera, Activity and Route teardown | `ControlledStop_TwoJoinedPlayersCameraAndPause_RetriesSameHostToBaseline` passes within Host 7/7; Camera, Pause and Player Participation suites are included in 365/365; supplied IF-ADR-043 physical-participation evidence is 7/7. | Candidate Editor suite plus targeted two-Player Camera/Pause cleanup scenario; record exact per-occurrence Leave, receipt release, retry and baseline restoration. |
-| I-05 — GameFlow partial failure and recovery | The three Host integration cases for pre-commit Route failure, post-commit Route Startup Activity readiness failure, and direct Activity readiness failure are green within Host 7/7. The cases assert retained authority and recovery. | Candidate Editor suite and the same integrated cases; add targeted QA scenario evidence only where it exercises a distinct Stable boundary. Preserve legitimate partial Route outcomes. |
-| I-06 — Progression Save payload/store contract | Progression Save Editor suite 10/10 covers payload immutability, JSON `IProgressionSaveStore` read/write/delete outcomes and failure mapping. No active QAFramework Save consumer was found, so no synthetic consumer smoke is required. | Candidate Editor suite; consumer smoke is N/A while no active consumer exists. If a consumer is introduced before release, add it to the matrix and certify it against the exact artifact. |
-| I-07 — identity and maturity metadata | Identity Editor assembly is 19/19 in the 365/365 run; identity and API-status conformance are directly covered. | Candidate Editor suite and Static/API inventory check against Public-API and accepted ADRs. No serialized schema or Stable inventory drift. |
-| I-08 — Observer/Command migration and Provisioning gate audit | Supplied QA terminals include IF-ADR-042 SharedGroup 6/6, IF-ADR-043 7/7, IF-ADR-044 8/8, IF-ADR-046 I4.2 Observable 8/8, and Player Session Join/Leave proofs. The separate I4.2 LEASE result remains Experimental and BLOCKED 0/3. | Run the applicable migrated QAFramework scenarios against the exact candidate and record terminal PASS/cleanup; retain the LEASE exclusion and do not promote it into Stable coverage. |
+| I-01 — Scene Lifecycle participant ledger / Persistent Content | `SessionCompositionReleaseTests` and Host startup/shutdown/retry; Persistent Content 28/28 and Host group 7/7. | **PASS** — retained scope, receipts and retry asserted by candidate Editor run. |
+| I-02 — scoped release, Availability and physical receipts | Player Participation 106/106, Pause suite green, IF-ADR-044 8/8 and supplied Join/Leave composition. | **PASS** — scoped ownership, release and baseline evidence; artifact consumers remain Phase 4. |
+| I-03 — Host admission, bootstrap and controlled stop | Host Admission 6/6 and `FrameworkRuntimeHostControlledStopTests` 7/7. | **PASS** — startup, retained ownership, failure and same-Host retry. |
+| I-04 — player, Camera, Activity and Route teardown | Host two-Player/Camera/Pause cleanup test within 7/7; Camera, Pause and Player Participation suites; IF-ADR-043 7/7. | **PASS** — receipt release and baseline restoration covered compositionally. |
+| I-05 — GameFlow partial failure and recovery | Three Host integration cases within 7/7 cover pre-commit Route failure, post-commit readiness failure and direct Activity readiness failure. | **PASS** — committed authority retention and recovery; legitimate partial Route outcomes preserved. |
+| I-06 — Progression Save payload/store contract | Progression Save Editor 10/10; no active QAFramework Save consumer exists. | **PASS** — payload/store scope; consumer smoke is N/A. |
+| I-07 — identity and maturity metadata | Identity Editor 19/19; accepted Stable inventory and API status conformance checks from Phase 1. | **PASS** — no Experimental promotion or serialized schema drift claimed. |
+| I-08 — Observer/Command migration and Provisioning gate audit | IF-ADR-042 6/6, IF-ADR-043 7/7, IF-ADR-044 8/8, IF-ADR-046 I4 Minimal 1/1 and I4.2 Observable 8/8; supplied Player Session evidence. | **PASS within declared Stable scope** — I4.2 LEASE remains Experimental/BLOCKED and excluded. |
 
 ### Consumer resolution and Phase 4 evidence route
 
 | Consumer | Unity | Current Framework resolution | Candidate evidence required |
 |---|---|---|---|
-| QAFramework | `6000.5.0f1` | `manifest.json` and `packages-lock.json` resolve `com.immersive.framework` by local `file:` path to this checkout; its `package.json` is still `1.1.0-preview.8`. | Candidate exact-source import/compile, full Editor lane, and applicable QA scenario terminals. Record installed source/artifact hash. |
+| QAFramework | `6000.5.0f1` | Candidate tests resolved `com.immersive.framework` by local `file:` path; candidate package metadata is now `1.1.0-preview.9`. | Install the signed `.9` archive instead of the local path; import/compile and run targeted QA. Record artifact hash and resolved lock. |
 | FirstGame (`planet-devourer`) | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. | Install the exact immutable candidate artifact in Phase 4; import/compile and run the approved FirstGame targeted scenario(s), recording artifact hash and resolved lock. |
 | PEGA | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. Repository Git status is inaccessible to this task, but the project manifest and lock were readable. | Install the same exact artifact in Phase 4; import/compile and run the approved PEGA targeted scenario(s), recording artifact hash and resolved lock. |
 
-The package source remains version `1.1.0-preview.8`; the candidate is not a
-release artifact. Phase 3 candidate validation has not started: the source must
-first be reviewed and frozen at a Git SHA. Once frozen, the mandatory Unity
-Editor/QA lanes above must be run against that SHA; only then can Phase 3 exit.
-Phase 4 is a separate exact-artifact consumer validation, and Phase 5 still
-requires an explicit release GO for the exact version, source SHA and artifact
-hash. No publication is authorized by this matrix.
+The tested source revision is `e98b530a961bd4d5c9795398a2ff42096a4ea95d`.
+Package metadata now advances to the unused prerelease `1.1.0-preview.9` for
+Phase 4; the published preview remains `.8`. The signed prerelease workflow
+builds and uploads an immutable candidate artifact, but its `publish` job does
+not run for versions containing `-`. Phase 4 still requires that exact signed
+artifact installed/imported/compiled in QAFramework, FirstGame and PEGA, with
+targeted QA and matching SHA-256. Phase 5 still requires explicit release GO
+for the exact stable version, source SHA and artifact hash. Stable publication
+remains unauthorized.
