@@ -152,11 +152,14 @@ namespace Immersive.Framework.PlayerParticipation
                 Component component = stale[index];
                 if (_accesses.TryGetValue(component, out ActiveScopedBinding binding))
                 {
-                    binding.Dispose();
-                    binding.Recipient.Release(
+                    bool released = binding.TryRelease(
                         "Player Session scoped access was released because its Route, Activity or join capability changed.",
-                        true);
-                    _accesses.Remove(component);
+                        true,
+                        out _);
+                    if (released)
+                    {
+                        _accesses.Remove(component);
+                    }
                 }
             }
 
@@ -179,7 +182,8 @@ namespace Immersive.Framework.PlayerParticipation
                         string.IsNullOrWhiteSpace(issue)
                             ? "Player Session recipient could not create its scoped binding."
                             : issue,
-                        false);
+                        false,
+                        out _);
                     continue;
                 }
 
@@ -255,7 +259,7 @@ namespace Immersive.Framework.PlayerParticipation
 
                 if (!recipient.TryValidateScope(out string issue))
                 {
-                    recipient.Release(issue, false);
+                    recipient.Release(issue, false, out _);
                     continue;
                 }
 
@@ -279,7 +283,8 @@ namespace Immersive.Framework.PlayerParticipation
                         {
                             recipient.Release(
                                 "Player Session recipient scope or owner configuration is invalid.",
-                                false);
+                                false,
+                                out _);
                         }
 
                         continue;
@@ -313,10 +318,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             foreach (var pair in _accesses)
             {
-                pair.Value.Dispose();
-                pair.Value.Recipient.Release(
+                bool released = pair.Value.TryRelease(
                     "Player Session scoped access was released because the Framework runtime was disposed.",
-                    true);
+                    true,
+                    out string issue);
+                if (!released)
+                {
+                    Debug.LogWarning(
+                        $"Player Session scoped access cleanup remained pending at terminal Framework runtime disposal. {issue}",
+                        this);
+                    pair.Value.Dispose();
+                }
             }
 
             _accesses.Clear();
@@ -504,7 +516,7 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerSessionJoinBindingLease Lease { get; }
         }
 
-        private sealed class ActiveScopedBinding : IDisposable
+        internal sealed class ActiveScopedBinding : IDisposable
         {
             private bool _disposed;
 
@@ -524,6 +536,25 @@ namespace Immersive.Framework.PlayerParticipation
             internal PlayerSessionJoinBindingLease Lease { get; }
             internal IDisposable Binding { get; }
             internal bool ManagerJoinAvailable { get; }
+
+            internal bool TryRelease(
+                string reason,
+                bool isStale,
+                out string issue)
+            {
+                if (_disposed)
+                {
+                    issue = string.Empty;
+                    return true;
+                }
+
+                if (!Recipient.Release(reason, isStale, out issue))
+                    return false;
+
+                Dispose();
+                issue = string.Empty;
+                return true;
+            }
 
             public void Dispose()
             {
@@ -643,6 +674,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerParticipationOperationResult OpenJoining(string source, string reason)
         {
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "OpenJoining",
+                    source,
+                    reason,
+                    $"Player Session command rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryGetContext(out string issue))
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(
@@ -658,6 +701,18 @@ namespace Immersive.Framework.PlayerParticipation
 
         public PlayerParticipationOperationResult CloseJoining(string source, string reason)
         {
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: true,
+                    out IDisposable admission))
+            {
+                return PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "CloseJoining",
+                    source,
+                    reason,
+                    $"Player Session command rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryGetContext(out string issue))
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(
@@ -673,6 +728,16 @@ namespace Immersive.Framework.PlayerParticipation
 
         public SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request)
         {
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: true,
+                    out IDisposable admission))
+            {
+                return SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    $"Player Leave rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryGetContext(out string issue))
             {
                 return SessionPlayerLeaveResult.RuntimeUnavailable(request, issue);
@@ -687,6 +752,18 @@ namespace Immersive.Framework.PlayerParticipation
         public PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
             PlayerPreparedActorReplacementRequest request)
         {
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return new PlayerPreparedActorReplacementResult(
+                    PlayerPreparedActorReplacementStatus.RejectedRuntimeUnavailable,
+                    request.PlayerSlotId, default, default, default, default, 0,
+                    false, false, false,
+                    $"Prepared Actor replacement rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryGetContext(out string issue) ||
                 !_runtimeHost.TryGetPlayerActorPreparationRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparation))

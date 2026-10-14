@@ -70,6 +70,23 @@ namespace Immersive.Framework.PlayerParticipation
         internal string Diagnostic => _diagnostic;
         internal int RequestCount => _requestCount;
 
+        internal bool TryGetPendingRequest(
+            PlayerSlotId playerSlotId,
+            out SessionPlayerLeaveRequest request)
+        {
+            if (playerSlotId.IsValid &&
+                _latestBySlot.TryGetValue(playerSlotId, out ExecutionRecord record) &&
+                !record.Completed &&
+                record.Request.IsValid)
+            {
+                request = record.Request;
+                return true;
+            }
+
+            request = default;
+            return false;
+        }
+
         internal static bool TryAttach(
             FrameworkRuntimeHost runtimeHost,
             out SessionPlayerLeaveRuntimeHostModule module,

@@ -119,19 +119,38 @@ namespace Immersive.Framework.Camera
             }
         }
 
-        internal void RelinquishSubjectFallbackCoverageAfterReplacement()
+        internal bool TryRelinquishSubjectFallbackCoverageAfterReplacement(
+            out string issue)
         {
+            issue = string.Empty;
             if (!_ownsSubjectFallbackCoverage)
             {
-                return;
+                return true;
             }
 
-            if (Output?.Session?.ReleaseFallbackCoverageOwnershipWithoutRouting(
-                    _subjectCoverageOwnerId) == true)
+            CameraOutputSession outputSession = Output != null
+                ? Output.Session
+                : null;
+            if (outputSession == null)
             {
-                _ownsSubjectFallbackCoverage = false;
-                SetSubjectDiagnostic(string.Empty);
+                issue =
+                    $"Occurrence '{Identity}' still owns Subject Fallback coverage, but its exact Camera Output Session is unavailable.";
+                SetSubjectDiagnostic(issue);
+                return false;
             }
+
+            if (!outputSession.ReleaseFallbackCoverageOwnershipWithoutRouting(
+                    _subjectCoverageOwnerId))
+            {
+                issue =
+                    $"Occurrence '{Identity}' could not confirm release of its exact Subject Fallback coverage owner.";
+                SetSubjectDiagnostic(issue);
+                return false;
+            }
+
+            _ownsSubjectFallbackCoverage = false;
+            SetSubjectDiagnostic(string.Empty);
+            return true;
         }
 
         internal bool AdoptSubjectFallbackCoverageAfterReplacement()
@@ -411,6 +430,7 @@ namespace Immersive.Framework.Camera
         }
 
         private readonly List<SessionCameraOccurrence> _occurrences;
+        private readonly List<SessionCameraOccurrence> _pendingOccurrenceCleanup;
         private readonly List<CameraOutputAuthoring> _activeOutputs;
         private readonly List<IndividualAssignmentRuntime> _individualAssignments;
         private readonly CameraOutputSessionTopology _outputTopology;
@@ -427,6 +447,7 @@ namespace Immersive.Framework.Camera
             _occurrences = occurrences != null
                 ? new List<SessionCameraOccurrence>(occurrences)
                 : new List<SessionCameraOccurrence>();
+            _pendingOccurrenceCleanup = new List<SessionCameraOccurrence>();
             _activeOutputs = activeOutputs != null
                 ? new List<CameraOutputAuthoring>(activeOutputs)
                 : new List<CameraOutputAuthoring>();
@@ -622,6 +643,7 @@ namespace Immersive.Framework.Camera
             var snapshots = new Dictionary<CameraOutputId, CameraOutputSessionAssignmentSnapshot>();
             var outputIds = new List<CameraOutputId>();
             var attemptedOutputIds = new List<CameraOutputId>();
+            var releasedOccurrences = new List<SessionCameraOccurrence>();
             bool assignmentStateCommitted = false;
 
             for (int index = 0; index < assignment.Outputs.Count; index++)
@@ -655,6 +677,18 @@ namespace Immersive.Framework.Camera
                 snapshots.Add(outputId, snapshot);
                 outputIds.Add(outputId);
             }
+
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                SessionCameraOccurrence occurrence = _occurrences[index];
+                if (occurrence.Assignment.Id == assignmentId)
+                {
+                    releasedOccurrences.Add(occurrence);
+                }
+            }
+            _pendingOccurrenceCleanup.Capacity = Math.Max(
+                _pendingOccurrenceCleanup.Capacity,
+                _pendingOccurrenceCleanup.Count + releasedOccurrences.Count);
 
             try
             {
@@ -708,30 +742,19 @@ namespace Immersive.Framework.Camera
                 }
 
                 assignmentStateCommitted = true;
-
-                var released = new List<SessionCameraOccurrence>();
-                for (int index = _occurrences.Count - 1; index >= 0; index--)
-                {
-                    SessionCameraOccurrence occurrence = _occurrences[index];
-                    if (occurrence.Assignment.Id != assignmentId)
-                    {
-                        continue;
-                    }
-
-                    _occurrences.RemoveAt(index);
-                    released.Add(occurrence);
-                }
-
+                _occurrences.RemoveAll(
+                    occurrence => occurrence.Assignment.Id == assignmentId);
+                _pendingOccurrenceCleanup.AddRange(releasedOccurrences);
                 _individualAssignments.RemoveAll(
                     item => item.Assignment.Id == assignmentId);
                 _activeOutputs.RemoveAll(
                     output => output != null && outputs.ContainsKey(output.OutputId));
 
-                for (int index = 0; index < released.Count; index++)
+                if (!TryReleasePendingOccurrenceCleanup(out string cleanupIssue))
                 {
-                    SessionCameraOccurrence occurrence = released[index];
-                    occurrence.RelinquishSubjectFallbackCoverageAfterReplacement();
-                    DestroyObject(occurrence.Root);
+                    issue =
+                        $"Assignment '{assignmentId}' cleared and committed, but exact occurrence cleanup receipts remain actionable. {cleanupIssue}";
+                    return true;
                 }
 
                 issue = string.Empty;
@@ -758,6 +781,114 @@ namespace Immersive.Framework.Camera
                 }
                 return false;
             }
+        }
+
+        internal bool TryClearAllAssignments(out string issue)
+        {
+            issue = string.Empty;
+            if (_disposed)
+            {
+                issue =
+                    "A disposed Session Camera Assignment runtime cannot perform controlled cleanup.";
+                return false;
+            }
+
+            var diagnostics = new List<string>();
+            TryReleasePendingOccurrenceCleanup(out _);
+
+            var assignmentIds = new List<SessionCameraAssignmentId>();
+            var seenAssignmentIds = new HashSet<SessionCameraAssignmentId>();
+            for (int index = 0; index < _occurrences.Count; index++)
+            {
+                SessionCameraAssignmentId assignmentId =
+                    _occurrences[index].Assignment.Id;
+                if (seenAssignmentIds.Add(assignmentId))
+                {
+                    assignmentIds.Add(assignmentId);
+                }
+            }
+            for (int index = 0; index < _individualAssignments.Count; index++)
+            {
+                SessionCameraAssignmentId assignmentId =
+                    _individualAssignments[index].Assignment.Id;
+                if (seenAssignmentIds.Add(assignmentId))
+                {
+                    assignmentIds.Add(assignmentId);
+                }
+            }
+
+            for (int index = 0; index < assignmentIds.Count; index++)
+            {
+                SessionCameraAssignmentId assignmentId = assignmentIds[index];
+                if (!TryClearAssignment(assignmentId, out string clearIssue))
+                {
+                    diagnostics.Add(
+                        $"Assignment '{assignmentId}' could not be cleared: {clearIssue}");
+                }
+            }
+
+            if (!TryReleasePendingOccurrenceCleanup(out string finalCleanupIssue) &&
+                !string.IsNullOrEmpty(finalCleanupIssue))
+            {
+                diagnostics.Add(finalCleanupIssue);
+            }
+
+            if (_occurrences.Count > 0 ||
+                _individualAssignments.Count > 0 ||
+                _activeOutputs.Count > 0 ||
+                _pendingOccurrenceCleanup.Count > 0)
+            {
+                diagnostics.Add(
+                    $"Session Camera controlled cleanup retains occurrences='{_occurrences.Count}', individualAssignments='{_individualAssignments.Count}', activeOutputs='{_activeOutputs.Count}', pendingOccurrenceCleanup='{_pendingOccurrenceCleanup.Count}'.");
+            }
+
+            if (diagnostics.Count > 0)
+            {
+                issue = string.Join(" ", diagnostics);
+                return false;
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private bool TryReleasePendingOccurrenceCleanup(out string issue)
+        {
+            issue = string.Empty;
+            var diagnostics = new List<string>();
+            for (int index = _pendingOccurrenceCleanup.Count - 1;
+                 index >= 0;
+                 index--)
+            {
+                SessionCameraOccurrence occurrence =
+                    _pendingOccurrenceCleanup[index];
+                if (occurrence == null)
+                {
+                    _pendingOccurrenceCleanup.RemoveAt(index);
+                    continue;
+                }
+
+                try
+                {
+                    if (!occurrence.TryRelinquishSubjectFallbackCoverageAfterReplacement(
+                            out string coverageIssue))
+                    {
+                        diagnostics.Add(coverageIssue);
+                        continue;
+                    }
+
+                    DestroyObject(occurrence.Root);
+                    _pendingOccurrenceCleanup.RemoveAt(index);
+                }
+                catch (Exception exception)
+                {
+                    diagnostics.Add(
+                        $"Occurrence '{occurrence.Identity}' cleanup remains pending. {exception.GetType().Name}: {exception.Message}");
+                }
+            }
+
+            issue = string.Join(" ", diagnostics);
+            return diagnostics.Count == 0;
         }
 
         internal bool TryReplaceAssignment(
@@ -1098,6 +1229,9 @@ namespace Immersive.Framework.Camera
                 _individualAssignments.Capacity = Math.Max(
                     _individualAssignments.Capacity,
                     _individualAssignments.Count + 1);
+                _pendingOccurrenceCleanup.Capacity = Math.Max(
+                    _pendingOccurrenceCleanup.Capacity,
+                    _pendingOccurrenceCleanup.Count + previousOccurrencesByOutput.Count);
                 _activeOutputs.Capacity = Math.Max(
                     _activeOutputs.Capacity,
                     _activeOutputs.Count + candidateOutputs.Count);
@@ -1152,6 +1286,8 @@ namespace Immersive.Framework.Camera
                 }
 
                 assignmentStateCommitted = true;
+                _pendingOccurrenceCleanup.AddRange(
+                    previousOccurrencesByOutput.Values);
                 _occurrences.RemoveAll(occurrence => occurrence.Assignment.Id == previousAssignmentId);
                 _occurrences.AddRange(candidateOccurrences);
                 _individualAssignments.RemoveAll(item => item.Assignment.Id == previousAssignmentId);
@@ -1179,30 +1315,11 @@ namespace Immersive.Framework.Camera
                     }
                 }
 
-                string cleanupIssue = string.Empty;
-                foreach (SessionCameraOccurrence previousOccurrence in previousOccurrencesByOutput.Values)
-                {
-                    try
-                    {
-                        previousOccurrence.RelinquishSubjectFallbackCoverageAfterReplacement();
-                    }
-                    catch (Exception releaseException)
-                    {
-                        cleanupIssue += $" Previous occurrence '{previousOccurrence.Identity}' coverage cleanup failed. {releaseException.GetType().Name}: {releaseException.Message}";
-                    }
-                    try
-                    {
-                        DestroyObject(previousOccurrence.Root);
-                    }
-                    catch (Exception cleanupException)
-                    {
-                        cleanupIssue += $" Previous occurrence '{previousOccurrence.Identity}' destruction failed. {cleanupException.GetType().Name}: {cleanupException.Message}";
-                    }
-                }
-
-                issue = string.IsNullOrEmpty(cleanupIssue)
+                bool cleanupSucceeded =
+                    TryReleasePendingOccurrenceCleanup(out string cleanupIssue);
+                issue = cleanupSucceeded
                     ? string.Empty
-                    : "Assignment committed with previous-resource cleanup diagnostics." + cleanupIssue;
+                    : "Assignment committed with exact previous-occurrence cleanup receipts retained. " + cleanupIssue;
                 return true;
             }
             catch (Exception exception)

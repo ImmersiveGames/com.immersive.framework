@@ -71,6 +71,21 @@ namespace Immersive.Framework.GameFlow
             return _hasCurrentFlowContext;
         }
 
+        internal async Task<RouteExitResult> ExitRouteForControlledStopAsync(
+            string source,
+            string reason)
+        {
+            RouteExitResult result = await _routeLifecycleRuntime
+                .ExitCurrentRouteForControlledStopAsync(source, reason);
+            if (result.Completed || !result.HasRoute)
+            {
+                _currentRouteLifecycleResult = default;
+                _hasCurrentFlowContext = false;
+            }
+
+            return result;
+        }
+
         internal IEventBinding SubscribeActivityReadinessUpdates(Action<ActivityReadinessUpdate> handler)
         {
             return _activityReadinessUpdates.Subscribe(handler);
@@ -634,6 +649,7 @@ namespace Immersive.Framework.GameFlow
 
                 if (!routeLifecycleResult.Started)
                 {
+                    RefreshCurrentFlowContext();
                     if (afterRouteLifecycle != null)
                     {
                         await afterRouteLifecycle();

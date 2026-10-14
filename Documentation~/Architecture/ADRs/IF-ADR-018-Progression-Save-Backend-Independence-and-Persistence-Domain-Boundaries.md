@@ -385,11 +385,11 @@ backend identity
 Vendor-specific advanced capabilities may remain adapter-specific unless promoted by a
 future Framework capability contract.
 
-### 11. Current API maturity — proposed editorial correction pending final text review
+### 11. Current API maturity — editorial correction accepted 2026-10-13
 
-This correction does not change this ADR's Accepted status or promote any API.
-It reconciles this section with the Stable backend-neutral contract already
-listed in §6.
+Accepted under Gate A v2 as an editorial clarification. It preserves this ADR's
+Accepted status, reconciles §11 with the Stable backend-neutral contract already
+listed in §6, and does not promote any API.
 
 Architecture:
 

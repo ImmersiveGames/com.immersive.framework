@@ -269,14 +269,23 @@ namespace Immersive.Framework.Camera
 
         public void Dispose()
         {
+            TryDispose(out _);
+        }
+
+        internal bool TryDispose(out string diagnostic)
+        {
+            diagnostic = string.Empty;
             if (_disposed)
             {
-                return;
+                return true;
             }
 
-            _disposed = true;
-            Topology.Dispose();
+            if (!Topology.TryDispose(out diagnostic))
+            {
+                return false;
+            }
 
+            var diagnostics = new List<string>();
             for (int index = _instances.Length - 1;
                  index >= 0;
                  index--)
@@ -287,9 +296,27 @@ namespace Immersive.Framework.Camera
                     continue;
                 }
 
-                instance.SetActive(false);
-                DestroyObject(instance);
+                try
+                {
+                    instance.SetActive(false);
+                    DestroyObject(instance);
+                }
+                catch (Exception exception)
+                {
+                    diagnostics.Add(
+                        $"Camera Output instance '{instance.name}' destruction remains pending. {exception.GetType().Name}: {exception.Message}");
+                }
             }
+
+            if (diagnostics.Count > 0)
+            {
+                diagnostic = string.Join(" ", diagnostics);
+                return false;
+            }
+
+            _disposed = true;
+            diagnostic = string.Empty;
+            return true;
         }
 
         private static void DestroyInstances(

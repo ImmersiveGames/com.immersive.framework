@@ -234,6 +234,13 @@ namespace Immersive.Framework.UnityInput
             string reason,
             out string issue)
         {
+            if (!TryResolveGameplayActionMap(
+                    out _,
+                    out issue))
+            {
+                return false;
+            }
+
             bool previous = _isBlockedByConsumer;
             bool previousConsumerPostureOwnership =
                 _consumerBlockOwnsSuppressedPosture;
@@ -247,7 +254,11 @@ namespace Immersive.Framework.UnityInput
 
             bool expectedPhysicalBlock =
                 blocked || IsBlockedByCurrentRuntimeGate();
-            if (IsGameplayActionMapPhysicallyBlocked() == expectedPhysicalBlock)
+            bool resolvedAfterProjection = TryResolveGameplayActionMap(
+                out InputActionMap gameplayActionMap,
+                out string resolveIssue);
+            if (resolvedAfterProjection &&
+                !gameplayActionMap.enabled == expectedPhysicalBlock)
             {
                 issue = string.Empty;
                 return true;
@@ -257,9 +268,11 @@ namespace Immersive.Framework.UnityInput
             _consumerBlockOwnsSuppressedPosture =
                 previousConsumerPostureOwnership;
             ApplyFromCurrentRuntimeGate("consumer-gameplay-availability-rollback");
-            issue = blocked
-                ? "The canonical input writer could not apply the consumer gameplay-availability block."
-                : "The canonical input writer could not restore gameplay after releasing the consumer block.";
+            issue = !resolvedAfterProjection
+                ? $"The canonical input writer could not confirm the consumer gameplay-availability projection because the Gameplay Action Map is unavailable. {resolveIssue}"
+                : blocked
+                    ? "The canonical input writer could not apply the consumer gameplay-availability block."
+                    : "The canonical input writer could not restore gameplay after releasing the consumer block.";
             return false;
         }
 

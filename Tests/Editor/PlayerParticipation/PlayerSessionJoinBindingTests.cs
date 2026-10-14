@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.Identity;
+using Immersive.Framework.PlayerSlots;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
@@ -136,18 +138,100 @@ namespace Immersive.Framework.PlayerParticipation.Tests
                 (IDisposable binding,
                     LocalPlayerProvisioningConsumerScope scope,
                     out string issue) => { issue = string.Empty; return binding != null; },
-                (reason, stale) => releaseCalls++);
+                (string reason, bool stale, out string issue) =>
+                {
+                    releaseCalls++;
+                    issue = string.Empty;
+                    return true;
+                });
             var binding = new TestBinding();
 
             Assert.That(recipient.TryBind(
                 binding, LocalPlayerProvisioningConsumerScope.Activity, out _), Is.True);
-            recipient.Release("first release", false);
-            recipient.Release("duplicate release", false);
+            Assert.That(recipient.Release("first release", false, out string releaseIssue), Is.True, releaseIssue);
+            Assert.That(recipient.Release("duplicate release", false, out releaseIssue), Is.True, releaseIssue);
             Assert.That(releaseCalls, Is.EqualTo(1));
 
             Assert.That(recipient.TryBind(
                 binding, LocalPlayerProvisioningConsumerScope.Activity, out _), Is.True);
-            recipient.Release("release after rebind", true);
+            Assert.That(recipient.Release("release after rebind", true, out releaseIssue), Is.True, releaseIssue);
+            Assert.That(releaseCalls, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void AvailabilityRecipient_ReleaseProjectionFailureRetainsTokenAndRetries()
+        {
+            var gameObject = new GameObject("availability-release-retry");
+            _objects.Add(gameObject);
+            PlayerGameplayAvailabilityBlockTrigger consumer =
+                gameObject.AddComponent<PlayerGameplayAvailabilityBlockTrigger>();
+            var access = new RetryingAvailabilityAccess();
+            var recipient = PlayerSessionScopedBindingRecipient.ForLegacyConsumer(
+                consumer,
+                _ => access);
+
+            Assert.That(recipient.TryBind(
+                access,
+                LocalPlayerProvisioningConsumerScope.Activity,
+                out string bindIssue), Is.True, bindIssue);
+            SetField(consumer, "_ownedToken", access.BlockToken);
+
+            Assert.That(consumer.IsScopedAccessAvailable, Is.True, consumer.ScopedAccessDiagnostic);
+
+            Assert.That(recipient.Release("activity-scope-release", true, out string firstReleaseIssue), Is.False, firstReleaseIssue);
+
+            Assert.That(access.ReleaseAttempts, Is.EqualTo(1));
+            Assert.That(consumer.OwnsActiveBlock, Is.True);
+            Assert.That(consumer.IsScopedAccessAvailable, Is.False);
+            Assert.That(consumer.ScopedAccessDiagnostic, Does.Contain("injected projection failure"));
+
+            Assert.That(recipient.Release("activity-scope-release-retry", true, out string retryIssue), Is.True, retryIssue);
+
+            Assert.That(access.ReleaseAttempts, Is.EqualTo(2));
+            Assert.That(consumer.OwnsActiveBlock, Is.False);
+            Assert.That(consumer.ScopedAccessState, Is.EqualTo(PlayerSessionScopedAccessState.Released));
+        }
+
+        [Test]
+        public void ActiveScopedBinding_ReleasesRecipientBeforeDisposingBindingAndRetainsOnFailure()
+        {
+            var gameObject = new GameObject("scoped-binding-release-order");
+            _objects.Add(gameObject);
+            Component component = gameObject.AddComponent<PlayerGameplayAvailabilityBlockTrigger>();
+            var binding = new TestBinding();
+            var releaseCalls = 0;
+            var bindingWasDisposedDuringRelease = new List<bool>();
+            var recipient = new PlayerSessionScopedBindingRecipient(
+                component,
+                LocalPlayerProvisioningConsumerScope.Activity,
+                typeof(PlayerGameplayAvailabilityBlockTrigger),
+                (out string issue) => { issue = string.Empty; return true; },
+                _ => binding,
+                (IDisposable candidate,
+                    LocalPlayerProvisioningConsumerScope scope,
+                    out string issue) => { issue = string.Empty; return candidate != null; },
+                (string reason, bool stale, out string issue) =>
+                {
+                    releaseCalls++;
+                    bindingWasDisposedDuringRelease.Add(binding.IsDisposed);
+                    issue = releaseCalls == 1 ? "injected projection failure" : string.Empty;
+                    return releaseCalls > 1;
+                });
+            var active = new PlayerSessionScopedAccessRuntimeHostModule.ActiveScopedBinding(
+                recipient,
+                null,
+                binding,
+                false);
+
+            Assert.That(active.TryRelease("first-release", true, out string firstIssue), Is.False, firstIssue);
+            Assert.That(binding.IsDisposed, Is.False);
+            Assert.That(bindingWasDisposedDuringRelease, Is.EqualTo(new[] { false }));
+
+            Assert.That(active.TryRelease("retry-release", true, out string retryIssue), Is.True, retryIssue);
+            Assert.That(binding.IsDisposed, Is.True);
+            Assert.That(bindingWasDisposedDuringRelease, Is.EqualTo(new[] { false, false }));
+
+            Assert.That(active.TryRelease("duplicate-release", true, out string duplicateIssue), Is.True, duplicateIssue);
             Assert.That(releaseCalls, Is.EqualTo(2));
         }
 
@@ -418,9 +502,102 @@ namespace Immersive.Framework.PlayerParticipation.Tests
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        private static void SetField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, $"Field '{fieldName}' was not found.");
+            field.SetValue(target, value);
+        }
+
         private sealed class TestBinding : System.IDisposable
         {
-            public void Dispose() { }
+            internal bool IsDisposed { get; private set; }
+
+            public void Dispose() => IsDisposed = true;
+        }
+
+        private sealed class RetryingAvailabilityAccess : IPlayerSessionScopedAccess, IDisposable
+        {
+            internal PlayerGameplayAvailabilityBlockToken BlockToken { get; } =
+                new("availability-test-session", new PlayerOccurrenceId("availability-test-occurrence"), 1);
+
+            internal int ReleaseAttempts { get; private set; }
+
+            internal bool IsDisposed { get; private set; }
+
+            public void Dispose() => IsDisposed = true;
+
+            public PlayerSessionScopedAccessSnapshot Snapshot { get; } =
+                new(
+                    LocalPlayerProvisioningConsumerScope.Activity,
+                    default,
+                    true,
+                    false,
+                    false,
+                    "Injected scoped access is available.");
+
+            public event Action<PlayerSessionChange> Changed
+            {
+                add { }
+                remove { }
+            }
+
+            public bool TryGetObservation(out PlayerSessionScopedObservationSnapshot observation)
+            {
+                observation = null;
+                return false;
+            }
+
+            public PlayerGameplayAvailabilityBlockResult RequestBlockRuntimeGameplay(
+                PlayerSlotId playerSlotId,
+                string source,
+                string reason) =>
+                new(
+                    PlayerGameplayAvailabilityBlockStatus.SucceededBlocked,
+                    playerSlotId,
+                    BlockToken,
+                    "Injected block success.");
+
+            public PlayerGameplayAvailabilityBlockResult RequestReleaseRuntimeGameplay(
+                PlayerGameplayAvailabilityBlockToken blockToken,
+                string source,
+                string reason)
+            {
+                ReleaseAttempts++;
+                return ReleaseAttempts == 1
+                    ? PlayerGameplayAvailabilityBlockResult.Failure(
+                        PlayerGameplayAvailabilityBlockStatus.FailedInputProjection,
+                        default,
+                        "injected projection failure")
+                    : new PlayerGameplayAvailabilityBlockResult(
+                        PlayerGameplayAvailabilityBlockStatus.SucceededReleased,
+                        default,
+                        blockToken,
+                        "Injected release success.");
+            }
+
+            public PlayerParticipationOperationResult OpenJoining(string source, string reason) => null;
+
+            public PlayerParticipationOperationResult CloseJoining(string source, string reason) => null;
+
+            public SessionPlayerLeaveResult RequestLeave(SessionPlayerLeaveRequest request) => null;
+
+            public PlayerPreparedActorReplacementResult RequestReplacePreparedActor(
+                PlayerPreparedActorReplacementRequest request) => null;
+
+            public PlayerActorSelectionResult RequestSelectActorProfile(PlayerActorSelectionRequest request) => null;
+
+            public PlayerActorSelectionResult RequestSelectDefaultActor(
+                PlayerSlotId playerSlotId,
+                int expectedSelectionRevision,
+                string source,
+                string reason) => null;
+
+            public PlayerActorSelectionResult RequestReplaceActorSelection(PlayerActorSelectionRequest request) => null;
+
+            public PlayerActorSelectionResult RequestClearActorSelection(PlayerActorSelectionRequest request) => null;
         }
     }
 }

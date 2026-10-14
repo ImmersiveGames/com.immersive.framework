@@ -23,6 +23,8 @@ namespace Immersive.Framework.SceneLifecycle
         private readonly ISceneLifecycleParticipant[] _participants;
         private readonly List<ISceneLifecycleParticipant> _sessionParticipants = new();
         private readonly HashSet<SceneCompositionScope> _availableScopes = new();
+        private SceneCompositionScope _sessionScope;
+        private bool _hasSessionScope;
 
         internal SceneLifecycleRuntime(params ISceneLifecycleParticipant[] participants)
         {
@@ -276,6 +278,121 @@ namespace Immersive.Framework.SceneLifecycle
             scenePath = Normalize(scenePath);
             var loadedScene = FindLoadedScene(scenePath, sceneName);
             return loadedScene.IsValid() && loadedScene.isLoaded;
+        }
+
+        internal SceneCompositionResult ReleaseLoadedPrimarySceneScope(
+            string sceneName,
+            string scenePath,
+            string reason)
+        {
+            sceneName = Normalize(sceneName);
+            scenePath = Normalize(scenePath);
+            Scene scene = FindLoadedScene(scenePath, sceneName);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return SceneCompositionResult.Rejected(
+                    default,
+                    SceneCompositionOperation.Releasing,
+                    $"Controlled Route exit cannot preserve Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' because it is not loaded.");
+            }
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (!IsSceneMatch(activeScene, scenePath, sceneName) &&
+                !SceneManager.SetActiveScene(scene))
+            {
+                return SceneCompositionResult.Rejected(
+                    SceneCompositionScope.ForScene(scene),
+                    SceneCompositionOperation.Releasing,
+                    $"Controlled Route exit could not preserve Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' as the active Unity scene.");
+            }
+
+            activeScene = SceneManager.GetActiveScene();
+            if (!activeScene.IsValid() || !activeScene.isLoaded ||
+                !IsSceneMatch(activeScene, scenePath, sceneName))
+            {
+                return SceneCompositionResult.Rejected(
+                    SceneCompositionScope.ForScene(scene),
+                    SceneCompositionOperation.Releasing,
+                    $"Controlled Route exit could not confirm Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' remains active.");
+            }
+
+            SceneCompositionResult releaseResult =
+                ReleaseLoadedSceneScope(sceneName, scenePath, reason);
+            if (!releaseResult.Succeeded)
+            {
+                return releaseResult;
+            }
+
+            scene = FindLoadedScene(scenePath, sceneName);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return SceneCompositionResult.Rejected(
+                    releaseResult.Scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' was unloaded by a Scene Lifecycle release participant; controlled Route exit requires it to remain loaded.");
+            }
+
+            activeScene = SceneManager.GetActiveScene();
+            if ((!activeScene.IsValid() || !activeScene.isLoaded ||
+                 !IsSceneMatch(activeScene, scenePath, sceneName)) &&
+                !SceneManager.SetActiveScene(scene))
+            {
+                return SceneCompositionResult.Rejected(
+                    releaseResult.Scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' stopped being active during Scene Lifecycle release and could not be restored as active.");
+            }
+
+            activeScene = SceneManager.GetActiveScene();
+            if (!activeScene.IsValid() || !activeScene.isLoaded ||
+                !IsSceneMatch(activeScene, scenePath, sceneName))
+            {
+                return SceneCompositionResult.Rejected(
+                    releaseResult.Scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Controlled Route exit could not confirm Primary Scene '{ResolveSceneLabel(scenePath, sceneName)}' remained active after composition release.");
+            }
+
+            return releaseResult;
+        }
+
+        internal SceneCompositionResult ReleaseLoadedSceneScope(
+            string sceneName,
+            string scenePath,
+            string reason)
+        {
+            sceneName = Normalize(sceneName);
+            scenePath = Normalize(scenePath);
+            Scene scene = FindLoadedScene(scenePath, sceneName);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return SceneCompositionResult.Rejected(
+                    default,
+                    SceneCompositionOperation.Releasing,
+                    $"Scene Lifecycle cannot release composition for Scene '{ResolveSceneLabel(scenePath, sceneName)}' because it is not loaded.");
+            }
+
+            SceneCompositionScope scope = SceneCompositionScope.ForScene(scene);
+            if (!_availableScopes.Contains(scope))
+            {
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Scene Lifecycle composition for Scene '{ResolveSceneLabel(scenePath, sceneName)}' was already released or had no participants.");
+            }
+
+            if (!NotifySceneReleasing(scene, reason.NormalizeTextOrFallback("controlled-route-stop"), out string issue))
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    issue);
+            }
+
+            return SceneCompositionResult.Completed(
+                scope,
+                SceneCompositionOperation.Releasing,
+                $"Scene Lifecycle composition released for loaded Scene '{ResolveSceneLabel(scenePath, sceneName)}'; the Scene remains loaded.");
         }
 
 
@@ -612,20 +729,26 @@ namespace Immersive.Framework.SceneLifecycle
                     "Session composition requires an explicit live Session owner.");
             }
 
+            if (_hasSessionScope && !_sessionScope.Equals(scope))
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Available,
+                    "Session composition rejected a different owner while a participant ledger is retained.");
+            }
+
+            _sessionScope = scope;
+            _hasSessionScope = true;
+
             List<ISceneLifecycleParticipant> discoveredParticipants =
                 CollectCompositionParticipants(roots);
             ISceneLifecycleParticipant[] participants =
                 CreateParticipantSnapshot(discoveredParticipants);
-            SceneCompositionResult result = NotifyAvailable(scope, roots, participants);
-            if (result.Succeeded)
-            {
-                for (int index = 0; index < discoveredParticipants.Count; index++)
-                {
-                    _sessionParticipants.Add(discoveredParticipants[index]);
-                }
-            }
-
-            return result;
+            return NotifyAvailable(
+                scope,
+                roots,
+                participants,
+                participant => RetainSessionParticipant(scope, participant));
         }
 
         internal SceneCompositionResult ReleaseSessionScope(
@@ -642,14 +765,32 @@ namespace Immersive.Framework.SceneLifecycle
                     "Session composition release requires the exact live Session owner.");
             }
 
+            if (!_hasSessionScope)
+            {
+                return SceneCompositionResult.Completed(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    $"Scene Lifecycle release completed for scope '{scope.Label}' with no participants.");
+            }
+
+            if (!_sessionScope.Equals(scope))
+            {
+                return SceneCompositionResult.Rejected(
+                    scope,
+                    SceneCompositionOperation.Releasing,
+                    "Session composition release requires the exact live Session owner retained by the participant ledger.");
+            }
+
             SceneCompositionResult result = NotifyReleasing(
                 scope,
                 roots,
                 reason,
-                CreateParticipantSnapshot());
+                CreateSessionParticipantSnapshot());
             if (result.Succeeded)
             {
                 _sessionParticipants.Clear();
+                _sessionScope = default;
+                _hasSessionScope = false;
             }
 
             return result;
@@ -665,7 +806,8 @@ namespace Immersive.Framework.SceneLifecycle
         private SceneCompositionResult NotifyAvailable(
             SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots,
-            IReadOnlyList<ISceneLifecycleParticipant> participants)
+            IReadOnlyList<ISceneLifecycleParticipant> participants,
+            Action<ISceneLifecycleParticipant> beforeParticipantAvailable = null)
         {
             if (!scope.IsValid)
             {
@@ -685,6 +827,7 @@ namespace Immersive.Framework.SceneLifecycle
 
             bool wasAlreadyAvailable = _availableScopes.Contains(scope);
             var completedParticipants = new List<ISceneLifecycleParticipant>();
+            var attemptedParticipants = new List<ISceneLifecycleParticipant>();
             for (int i = 0; i < participants.Count; i++)
             {
                 ISceneLifecycleParticipant participant = participants[i];
@@ -693,6 +836,8 @@ namespace Immersive.Framework.SceneLifecycle
                     continue;
                 }
 
+                beforeParticipantAvailable?.Invoke(participant);
+                attemptedParticipants.Add(participant);
                 SceneCompositionResult participantResult =
                     participant.OnSceneAvailable(scope, roots);
                 if (!participantResult.Succeeded ||
@@ -702,15 +847,29 @@ namespace Immersive.Framework.SceneLifecycle
                     string issue = participantResult.Diagnostic.NormalizeTextOrFallback(
                         "Participant rejected scene composition.");
                     var rollbackIssues = new List<string>();
-                    for (int rollbackIndex = wasAlreadyAvailable ? -1 : completedParticipants.Count - 1;
+                    IReadOnlyList<ISceneLifecycleParticipant> rollbackParticipants =
+                        beforeParticipantAvailable != null
+                            ? attemptedParticipants
+                            : completedParticipants;
+                    for (int rollbackIndex =
+                             beforeParticipantAvailable != null || !wasAlreadyAvailable
+                                 ? rollbackParticipants.Count - 1
+                                 : -1;
                          rollbackIndex >= 0;
                          rollbackIndex--)
                     {
-                        ISceneLifecycleParticipant completed = completedParticipants[rollbackIndex];
+                        ISceneLifecycleParticipant completed = rollbackParticipants[rollbackIndex];
                         SceneCompositionResult rollback = completed.OnSceneReleasing(
                             scope, roots, "composition-bind-rollback");
-                        if (!rollback.Succeeded)
-                            rollbackIssues.Add($"participant='{completed.GetType().Name}' {rollback.Diagnostic}");
+                        if (!rollback.Succeeded ||
+                            !rollback.Scope.Equals(scope) ||
+                            rollback.Operation != SceneCompositionOperation.Releasing)
+                        {
+                            string rollbackIssue = rollback.Diagnostic.NormalizeTextOrFallback(
+                                "Participant rejected composition rollback.");
+                            rollbackIssues.Add(
+                                $"scope='{scope.Label}' participant='{completed.GetType().Name}' {rollbackIssue}");
+                        }
                     }
                     return SceneCompositionResult.Rejected(
                         scope,
@@ -732,6 +891,22 @@ namespace Immersive.Framework.SceneLifecycle
                 scope,
                 SceneCompositionOperation.Available,
                 $"Scene Lifecycle composition completed for scope '{scope.Label}'.");
+        }
+
+        private void RetainSessionParticipant(
+            SceneCompositionScope scope,
+            ISceneLifecycleParticipant participant)
+        {
+            if (!_hasSessionScope || !_sessionScope.Equals(scope))
+            {
+                throw new InvalidOperationException(
+                    "Session participant ledger does not own the composition scope.");
+            }
+
+            if (!_sessionParticipants.Contains(participant))
+            {
+                _sessionParticipants.Add(participant);
+            }
         }
 
         private SceneCompositionResult NotifyReleasing(
@@ -862,6 +1037,16 @@ namespace Immersive.Framework.SceneLifecycle
             AddParticipants(_participants, result, seen);
             AddParticipants(_sessionParticipants, result, seen);
             AddParticipants(additional, result, seen);
+            return result.ToArray();
+        }
+
+        private ISceneLifecycleParticipant[] CreateSessionParticipantSnapshot()
+        {
+            var result = new List<ISceneLifecycleParticipant>();
+            AddParticipants(
+                _sessionParticipants,
+                result,
+                new HashSet<ISceneLifecycleParticipant>());
             return result.ToArray();
         }
 

@@ -153,13 +153,38 @@ namespace Immersive.Framework.Camera
 
         public void Dispose()
         {
-            if (_disposed) return;
+            TryDispose(out _);
+        }
+
+        internal bool TryDispose(out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (_disposed) return true;
+
+            var diagnostics = new List<string>();
             for (int index = _outputs.Length - 1; index >= 0; index--)
             {
-                _outputs[index].TeardownSession("SessionTopologyTeardown");
+                CameraOutputAuthoring output = _outputs[index];
+                if (output == null || output.TryTeardownSession(
+                        "SessionTopologyTeardown",
+                        out string issue))
+                {
+                    continue;
+                }
+
+                diagnostics.Add(
+                    $"Output '{output.OutputIdText}' teardown remains pending. {issue}");
             }
+
+            if (diagnostics.Count > 0)
+            {
+                diagnostic = string.Join(" ", diagnostics);
+                return false;
+            }
+
             _disposed = true;
             _outputsById.Clear();
+            return true;
         }
 
         private static int CompareOutputs(CameraOutputAuthoring left, CameraOutputAuthoring right) =>

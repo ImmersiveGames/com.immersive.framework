@@ -64,6 +64,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (!runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                issue =
+                    $"Local Player provisioning attachment rejected while Host phase is '{runtimeHost.LifecyclePhase}'.";
+                authoring.ReportRuntimeInitializationFailure(issue);
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
+
             module = runtimeHost.GetComponent<LocalPlayerProvisioningRuntimeHostModule>();
             if (module == null)
             {
@@ -279,6 +291,17 @@ namespace Immersive.Framework.PlayerParticipation
                 return LocalPlayerJoinResult.RuntimeUnavailable(request, _diagnostic);
             }
 
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return LocalPlayerJoinResult.RuntimeUnavailable(
+                    request,
+                    $"Local Player Join rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
+
             _requestCount++;
             LocalPlayerJoinResult result = _bridge.TryJoin(request);
             _diagnostic = result != null
@@ -298,6 +321,17 @@ namespace Immersive.Framework.PlayerParticipation
                     request,
                     _diagnostic);
             }
+
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: true,
+                    out IDisposable admission))
+            {
+                return SessionPlayerLeaveResult.RuntimeUnavailable(
+                    request,
+                    $"Session Player Leave rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
 
             if (!SessionPlayerLeaveRuntimeHostModule.TryAttach(
                     _runtimeHost,
@@ -582,6 +616,19 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            if (_runtimeHost == null ||
+                !_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "OpenJoining",
+                    source,
+                    reason,
+                    $"Player Session command is unavailable while Host phase is '{_runtimeHost?.LifecyclePhase.ToString() ?? "uninitialized"}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (_participationContext == null)
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(
@@ -652,6 +699,19 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            if (_runtimeHost == null ||
+                !_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: true,
+                    out IDisposable admission))
+            {
+                return PlayerParticipationOperationResult.RuntimeUnavailable(
+                    "CloseJoining",
+                    source,
+                    reason,
+                    $"Player Session command is unavailable while Host phase is '{_runtimeHost?.LifecyclePhase.ToString() ?? "uninitialized"}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (_participationContext == null)
             {
                 return PlayerParticipationOperationResult.RuntimeUnavailable(

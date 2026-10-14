@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
@@ -17,7 +18,7 @@ namespace Immersive.Framework.ProgressionSave
     public readonly struct ProgressionSavePayload :
         IEquatable<ProgressionSavePayload>
     {
-        private readonly byte[] _bytes;
+        private readonly ReadOnlyCollection<byte> _bytes;
 
         public ProgressionSavePayload(
             ProgressionSavePayloadFormat format,
@@ -46,7 +47,7 @@ namespace Immersive.Framework.ProgressionSave
             }
 
             Format = format;
-            _bytes = copiedBytes;
+            _bytes = Array.AsReadOnly(copiedBytes);
             MediaType = Normalize(mediaType);
         }
 
@@ -54,8 +55,18 @@ namespace Immersive.Framework.ProgressionSave
 
         public string MediaType { get; }
 
-        public IReadOnlyList<byte> Bytes =>
-            _bytes ?? Array.Empty<byte>();
+        public IReadOnlyList<byte> Bytes
+        {
+            get
+            {
+                if (_bytes != null)
+                {
+                    return _bytes;
+                }
+
+                return Array.Empty<byte>();
+            }
+        }
 
         public int ByteCount => Bytes.Count;
 

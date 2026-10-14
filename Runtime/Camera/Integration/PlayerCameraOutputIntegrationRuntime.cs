@@ -130,42 +130,82 @@ namespace Immersive.Framework.Camera
 
         public void Dispose()
         {
+            TryDispose(out string issue);
+            if (!string.IsNullOrEmpty(issue))
+            {
+                LastReconciliationSucceeded = false;
+                Diagnostic = issue;
+            }
+        }
+
+        internal bool TryDispose(out string diagnostic)
+        {
+            diagnostic = string.Empty;
             if (_disposed)
             {
-                return;
+                return true;
             }
 
-            _disposed = true;
-            _splitScreenJoinTransactionActive = false;
-            _splitScreenJoinSlot = default;
-            _playerSession.Changed -= OnPlayerSessionChanged;
-            _physicalPlayers.SessionPhysicalHostChanged -=
-                OnSessionPhysicalHostChanged;
-
+            var diagnostics = new List<string>();
             var slots = new List<PlayerSlotId>(_applied.Keys);
             for (int index = 0; index < slots.Count; index++)
             {
-                ReleaseApplied(slots[index]);
+                if (!ReleaseApplied(slots[index], out string releaseIssue))
+                {
+                    diagnostics.Add(releaseIssue);
+                }
             }
 
             for (int index = 0;
                  index < _bindings.Bindings.Count;
                  index++)
             {
-                SetOutputPhysicalParticipation(
-                    _bindings.Bindings[index],
-                    false);
+                PlayerCameraOutputBinding binding = _bindings.Bindings[index];
+                if (!TrySetOutputPhysicalParticipation(
+                        binding,
+                        false,
+                        out string participationIssue))
+                {
+                    diagnostics.Add(participationIssue);
+                }
             }
 
-            if (_automaticSplitScreenConfigured &&
-                _splitScreenManager != null &&
-                _splitScreenManager.splitScreen)
+            if (_automaticSplitScreenConfigured && _splitScreenManager != null)
             {
-                _splitScreenManager.splitScreen = false;
+                try
+                {
+                    _splitScreenManager.splitScreen = false;
+                    if (_splitScreenManager.splitScreen)
+                    {
+                        diagnostics.Add(
+                            "Player Camera Output cleanup could not confirm split-screen restoration.");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    diagnostics.Add(
+                        $"Player Camera Output split-screen restoration remains pending. {exception.GetType().Name}: {exception.Message}");
+                }
             }
 
+            if (diagnostics.Count > 0)
+            {
+                diagnostic = string.Join(" ", diagnostics);
+                LastReconciliationSucceeded = false;
+                Diagnostic = diagnostic;
+                return false;
+            }
+
+            _splitScreenJoinTransactionActive = false;
+            _splitScreenJoinSlot = default;
+            _playerSession.Changed -= OnPlayerSessionChanged;
+            _physicalPlayers.SessionPhysicalHostChanged -=
+                OnSessionPhysicalHostChanged;
+            _disposed = true;
             LastReconciliationSucceeded = true;
             Diagnostic = "Player Camera Output integration was released.";
+            diagnostic = string.Empty;
+            return true;
         }
 
         private void OnPlayerSessionChanged(PlayerSessionChange change)
@@ -317,8 +357,7 @@ namespace Immersive.Framework.Camera
 
             if (!_bindings.TryGetBinding(playerSlotId, out PlayerCameraOutputBinding binding))
             {
-                ReleaseApplied(playerSlotId);
-                return true;
+                return ReleaseApplied(playerSlotId, out issue);
             }
 
             if (!_playerSession.TryGetSlotSnapshot(
@@ -326,8 +365,7 @@ namespace Immersive.Framework.Camera
                     out PlayerSlotRuntimeSnapshot slot) ||
                 !slot.IsJoined)
             {
-                ReleaseApplied(playerSlotId);
-                return true;
+                return ReleaseApplied(playerSlotId, out issue);
             }
 
             if (!_physicalPlayers.TryGetCurrentSessionPhysicalHost(
@@ -338,8 +376,7 @@ namespace Immersive.Framework.Camera
                 // Slot allocation commits before physical Host evidence registration.
                 // The dedicated evidence event reconciles the same Slot immediately
                 // after registration; no index/order/hierarchy fallback is allowed.
-                ReleaseApplied(playerSlotId);
-                return true;
+                return ReleaseApplied(playerSlotId, out issue);
             }
 
             PlayerInput playerInput = host.PlayerInput;
@@ -348,7 +385,11 @@ namespace Immersive.Framework.Camera
                 !host.HasJoinedSlot ||
                 host.JoinedPlayerSlotId != playerSlotId)
             {
-                ReleaseApplied(playerSlotId);
+                if (!ReleaseApplied(playerSlotId, out string releaseIssue))
+                {
+                    issue = releaseIssue;
+                    return false;
+                }
                 issue =
                     $"Current Session physical Host for Slot '{playerSlotId.StableText}' has no exact valid PlayerInput evidence.";
                 return false;
@@ -359,7 +400,11 @@ namespace Immersive.Framework.Camera
                     out CameraOutputAuthoring output,
                     out string outputIssue))
             {
-                ReleaseApplied(playerSlotId);
+                if (!ReleaseApplied(playerSlotId, out string releaseIssue))
+                {
+                    issue = releaseIssue;
+                    return false;
+                }
                 issue = outputIssue;
                 return false;
             }
@@ -367,7 +412,11 @@ namespace Immersive.Framework.Camera
             UnityEngine.Camera resolvedCamera = output.UnityCamera;
             if (resolvedCamera == null)
             {
-                ReleaseApplied(playerSlotId);
+                if (!ReleaseApplied(playerSlotId, out string releaseIssue))
+                {
+                    issue = releaseIssue;
+                    return false;
+                }
                 issue =
                     $"Camera Output '{binding.OutputId}' has no explicit Unity Camera.";
                 return false;
@@ -377,7 +426,10 @@ namespace Immersive.Framework.Camera
                 (!ReferenceEquals(previous.PlayerInput, playerInput) ||
                  !ReferenceEquals(previous.Camera, resolvedCamera)))
             {
-                ReleaseApplied(playerSlotId);
+                if (!ReleaseApplied(playerSlotId, out issue))
+                {
+                    return false;
+                }
             }
 
             SetCamera(playerInput, resolvedCamera);
@@ -476,16 +528,83 @@ namespace Immersive.Framework.Camera
             output.SetPlayerPhysicalParticipation(participating);
         }
 
-        private void ReleaseApplied(PlayerSlotId playerSlotId)
+        private bool TrySetOutputPhysicalParticipation(
+            PlayerCameraOutputBinding binding,
+            bool participating,
+            out string issue)
         {
-            if (!_applied.TryGetValue(playerSlotId, out AppliedBinding applied))
+            issue = string.Empty;
+            if (!_outputs.TryGetOutput(
+                    binding.OutputId,
+                    out CameraOutputAuthoring output,
+                    out issue))
             {
-                return;
+                return false;
             }
 
-            ClearCamera(applied.PlayerInput, applied.Camera);
+            UnityEngine.Camera camera = output.UnityCamera;
+            if (camera == null)
+            {
+                issue =
+                    $"Camera Output '{binding.OutputId}' lost its exact Unity Camera while physical participation cleanup was pending.";
+                return false;
+            }
+
+            try
+            {
+                output.SetPlayerPhysicalParticipation(participating);
+                if (camera.enabled != participating)
+                {
+                    issue =
+                        $"Camera Output '{binding.OutputId}' did not confirm physical participation='{participating}'.";
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Camera Output '{binding.OutputId}' physical participation cleanup failed. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
+        private bool ReleaseApplied(
+            PlayerSlotId playerSlotId,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (!_applied.TryGetValue(playerSlotId, out AppliedBinding applied))
+            {
+                return true;
+            }
+
+            try
+            {
+                if (applied.PlayerInput != null &&
+                    ReferenceEquals(applied.PlayerInput.camera, applied.Camera))
+                {
+                    applied.PlayerInput.camera = null;
+                }
+
+                if (applied.PlayerInput != null &&
+                    ReferenceEquals(applied.PlayerInput.camera, applied.Camera))
+                {
+                    issue =
+                        $"Player Camera Output cleanup still owns the exact Camera assignment for Slot '{playerSlotId.StableText}'.";
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                issue =
+                    $"Player Camera Output cleanup for Slot '{playerSlotId.StableText}' remains pending. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
 
             _applied.Remove(playerSlotId);
+            return true;
         }
 
         internal static void SetCamera(

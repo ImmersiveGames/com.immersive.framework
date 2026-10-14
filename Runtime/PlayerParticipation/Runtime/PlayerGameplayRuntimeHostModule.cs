@@ -687,7 +687,13 @@ namespace Immersive.Framework.PlayerParticipation
                 }
             }
 
-            ReleaseAllConsumerGameplayBlocksForShutdown();
+            if (!TryReleaseAllConsumerGameplayBlocksForShutdown(
+                    out string consumerReleaseIssue))
+            {
+                Debug.LogWarning(
+                    $"Player gameplay runtime shutdown could not confirm consumer availability restoration: {consumerReleaseIssue}",
+                    this);
+            }
 
             _currentGameplayContext = null;
             if (_runtimeHost != null)

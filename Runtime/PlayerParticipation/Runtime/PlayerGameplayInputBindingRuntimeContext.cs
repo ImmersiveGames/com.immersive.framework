@@ -1304,10 +1304,13 @@ namespace Immersive.Framework.PlayerParticipation
             _gateAdaptersBySlot.Remove(playerSlotId);
         }
 
-        internal void ClearConsumerAvailabilityProjections(
+        internal bool ClearConsumerAvailabilityProjections(
             string source,
-            string reason)
+            string reason,
+            out string issue)
         {
+            issue = string.Empty;
+            var failures = new List<string>();
             var playerSlots = new HashSet<PlayerSlotId>(_consumerBlockedSlots);
             foreach (PlayerSlotId playerSlotId in _gateAdaptersBySlot.Keys)
             {
@@ -1316,16 +1319,25 @@ namespace Immersive.Framework.PlayerParticipation
 
             foreach (PlayerSlotId playerSlotId in playerSlots)
             {
-                TrySetConsumerAvailabilityBlocked(
+                if (TrySetConsumerAvailabilityBlocked(
                     playerSlotId,
                     false,
                     source,
                     reason,
-                    out _);
+                    out string projectionIssue))
+                {
+                    _consumerBlockedSlots.Remove(playerSlotId);
+                    _gateAdaptersBySlot.Remove(playerSlotId);
+                }
+                else
+                {
+                    failures.Add(
+                        $"Player Slot '{playerSlotId.StableText}' restoration failed: {projectionIssue}");
+                }
             }
 
-            _consumerBlockedSlots.Clear();
-            _gateAdaptersBySlot.Clear();
+            issue = string.Join(" ", failures);
+            return failures.Count == 0;
         }
 
         private void RestoreConsumerBlockProjection(

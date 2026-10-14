@@ -283,11 +283,11 @@ metadata into lifecycle authority.
 - Physical Player persistence is not implemented by arbitrary persistent GameObjects.
 - Session Player Leave remains the explicit individual terminal operation under IF-ADR-020.
 
-## Proposed normative amendment — pending final text review (2026-10-13)
+## Amendment 001 — Host phases, admission and controlled shutdown (accepted 2026-10-13)
 
-This proposal does not change the Accepted status above. It makes the internal
-Host admission and controlled shutdown contract explicit; it adds no public
-Host state or shutdown API.
+Accepted under Gate A v2 for the 1.1.0 Stable-readiness route. The amendment
+preserves the accepted Core lifecycle authority and adds no public Host state
+or shutdown API. The text below is the adopted normative clarification.
 
 ### Internal phases and admission
 
@@ -352,3 +352,26 @@ without discarding the participant ledger.
 best-effort. They do not promise retry after their owners are destroyed or
 after process exit. A controlled shutdown must finish or remain retained before
 terminal destruction is requested.
+
+### Amendment 001-A — controlled Route exit preserves the Primary Scene (accepted 2026-10-13)
+
+The Project Owner explicitly selected preservation of the active Primary Scene
+for controlled Host shutdown. This resolves the Route-exit scene disposition
+without changing the approved workpackage plan or introducing a fallback scene.
+
+After canonical Player Leave, Activity exit and Camera cleanup, the live Route
+owner exits Route Content and Player spatial participation, releases the exact
+Route resettable and stable-object bindings, and releases owned additive Route
+scenes. Scene Lifecycle then releases its composition scope for any still-loaded
+Route scenes, including the Primary Scene and registered additive scenes whose
+ownership does not authorize unloading. The Primary Scene must remain loaded and
+active in Unity; its GameObjects remain in that scene. No owner unloads the
+Primary Scene during controlled Host shutdown.
+
+Route authority is cleared and `RouteExitedEvent` is published only after all
+blocking Route cleanup stages complete. Each successful stage retains its
+receipt in the Route owner. A rejected or throwing stage keeps the same Route
+state and Host available for exact-owner retry and prevents later Persistent
+Content release. Route Content receiver failures retain the existing
+best-effort partial-dispatch behavior and are diagnosed; this does not convert
+terminal Unity callbacks into retryable operations.

@@ -26,6 +26,7 @@ namespace Immersive.Framework.Bootstrap
         private static async void BootAfterSceneLoad()
         {
             var logger = FrameworkLogger.Create(typeof(ImmersiveFrameworkBootstrap));
+            FrameworkRuntimeHost runtimeHost = null;
 
             try
             {
@@ -51,7 +52,7 @@ namespace Immersive.Framework.Bootstrap
                         result.GameApplication,
                         settings.FrameRatePolicy,
                         explicitPlayerSessionProfile: null,
-                        out FrameworkRuntimeHost runtimeHost,
+                        out runtimeHost,
                         out PlayerSessionInitializationResult playerSessionResolution,
                         out PlayerParticipationOperationResult playerParticipationInitialization))
                 {
@@ -70,6 +71,22 @@ namespace Immersive.Framework.Bootstrap
                         logger.Error(
                             "Player participation Session runtime initialization failed.",
                             BuildPlayerParticipationRuntimeFields(playerParticipationInitialization));
+                    }
+
+                    if (runtimeHost != null)
+                    {
+                        FrameworkRuntimeHostStopResult stop =
+                            await runtimeHost.StopAsync("bootstrap-host-creation-failed");
+                        if (stop.Succeeded)
+                        {
+                            UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                        }
+                        else
+                        {
+                            logger.Error(
+                                "Bootstrap failure cleanup was retained for retry on the live Host.",
+                                LogFields.Field("diagnostic", stop.Diagnostic));
+                        }
                     }
 
                     return;
@@ -105,13 +122,38 @@ namespace Immersive.Framework.Bootstrap
                 if (!gameFlowResult.Started)
                 {
                     logger.Error("Game Flow failed.", LogFields.Field("reason", gameFlowResult.Message));
+                    FrameworkRuntimeHostStopResult stop =
+                        await runtimeHost.StopAsync("bootstrap-game-flow-start-failed");
+                    if (stop.Succeeded)
+                    {
+                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    }
+                    else
+                    {
+                        logger.Error(
+                            "Bootstrap failure cleanup was retained for retry on the live Host.",
+                            LogFields.Field("diagnostic", stop.Diagnostic));
+                    }
+
                     return;
                 }
 
                 if (ShouldComposePlayerParticipationRuntime(result.GameApplication) &&
                     !TryInitializeLocalPlayerProvisioning(runtimeHost, logger))
                 {
-                    UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    FrameworkRuntimeHostStopResult stop =
+                        await runtimeHost.StopAsync("bootstrap-provisioning-attach-failed");
+                    if (stop.Succeeded)
+                    {
+                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    }
+                    else
+                    {
+                        logger.Error(
+                            "Provisioning attachment cleanup was retained for retry on the live Host.",
+                            LogFields.Field("diagnostic", stop.Diagnostic));
+                    }
+
                     return;
                 }
 
@@ -124,6 +166,21 @@ namespace Immersive.Framework.Bootstrap
             catch (Exception exception)
             {
                 logger.Error("Boot failed.", exception);
+                if (runtimeHost != null)
+                {
+                    FrameworkRuntimeHostStopResult stop =
+                        await runtimeHost.StopAsync("bootstrap-exception");
+                    if (stop.Succeeded)
+                    {
+                        UnityEngine.Object.Destroy(runtimeHost.gameObject);
+                    }
+                    else
+                    {
+                        logger.Error(
+                            "Exception cleanup was retained for retry on the live Host.",
+                            LogFields.Field("diagnostic", stop.Diagnostic));
+                    }
+                }
             }
         }
 

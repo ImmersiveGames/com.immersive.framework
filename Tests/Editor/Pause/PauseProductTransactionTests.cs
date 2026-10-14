@@ -569,6 +569,76 @@ namespace Immersive.Framework.Pause.Tests
             }
         }
 
+        [Test]
+        public void ClearConsumerAvailabilityProjections_RetainsFailedSlotForRetry()
+        {
+            CreateBoundContext(new FakeApplication(RunningSnapshot()));
+            UnityPlayerInputGateAdapter adapter = _host.GetComponent<UnityPlayerInputGateAdapter>();
+            PlayerSlotId slot = PlayerSlotId.Player1;
+            CreateGameplayInputBinding(
+                slot,
+                _playerInput,
+                adapter,
+                out PlayerGameplayInputBindingRuntimeContext inputContext);
+            GetField<IDictionary>(inputContext, "_gateAdaptersBySlot")[slot] = adapter;
+
+            var moduleObject = new GameObject("consumer-availability-release-host");
+            moduleObject.SetActive(false);
+            PlayerGameplayRuntimeHostModule module =
+                moduleObject.AddComponent<PlayerGameplayRuntimeHostModule>();
+            SetField(module, "_inputContext", inputContext);
+            var occurrence = new PlayerOccurrenceId("i02-projection-retry");
+            var blockToken = new PlayerGameplayAvailabilityBlockToken(
+                "i02-test-session",
+                occurrence,
+                1);
+            IDictionary blockLedger = GetField<IDictionary>(
+                module,
+                "_consumerAvailabilityBlocks");
+            blockLedger.Add(
+                occurrence,
+                new HashSet<PlayerGameplayAvailabilityBlockToken> { blockToken });
+
+            Assert.That(inputContext.TrySetConsumerAvailabilityBlocked(
+                slot,
+                true,
+                "test",
+                "consumer-block",
+                out string blockIssue), Is.True, blockIssue);
+
+            try
+            {
+                SetField(adapter, "gameplayActionMap", default(PlayerInputActionMapReference));
+                Assert.That(module.TryReleaseAllConsumerGameplayBlocksForShutdown(
+                    out string firstIssue), Is.False);
+                Assert.That(firstIssue, Does.Contain("restoration failed"));
+                Assert.That(blockLedger.Count, Is.EqualTo(1),
+                    "The host must retain its owned tokens until every physical projection is restored.");
+
+                HashSet<PlayerSlotId> retainedSlots = GetField<HashSet<PlayerSlotId>>(
+                    inputContext,
+                    "_consumerBlockedSlots");
+                Assert.That(retainedSlots.Contains(slot), Is.True,
+                    "A failed physical restoration must retain its projection receipt for retry.");
+
+                SetField(adapter, "gameplayActionMap", PlayerInputActionMapReference.From(_gameplayMap));
+                Assert.That(module.TryReleaseAllConsumerGameplayBlocksForShutdown(
+                    out string retryIssue), Is.True, retryIssue);
+                Assert.That(blockLedger.Count, Is.Zero);
+                Assert.That(retainedSlots, Is.Empty);
+                Assert.That(_gameplayMap.enabled, Is.True);
+            }
+            finally
+            {
+                SetField(adapter, "gameplayActionMap", PlayerInputActionMapReference.From(_gameplayMap));
+                adapter.TrySetConsumerGameplayAvailabilityBlocked(
+                    false,
+                    "test-cleanup",
+                    out _);
+                UnityEngine.Object.DestroyImmediate(moduleObject);
+            }
+        }
+
         private GameObject _host;
         private PlayerInput _playerInput;
         private InputActionAsset _actions;

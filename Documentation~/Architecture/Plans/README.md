@@ -13,7 +13,8 @@ Proposed master stabilization route — analysis/review only; implementation is
 blocked until explicit integrated-plan approval:
 
 - [IF-ADR-048 — 1.1.0 Stable Readiness Master Plan v1](IF-PLAN-ADR-048-STABLE-READINESS.v1.md)
-- [IF-ADR-048 — Gate A integrated review record v1](IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v1.md) — formal approval pending; no implementation authority
+- [IF-ADR-048 — Gate A integrated review record v1](IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v1.md) — historical preparation record; superseded by approved v2
+- [IF-ADR-048 — Gate A integrated plan approval v2](IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v2.md) — GO for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; Phase 2 remains open
 
 Accepted architecture implementation route (implementation pending):
 

@@ -31,9 +31,23 @@ using UnityEngine.InputSystem;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common.LifecycleOperations;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
+    internal readonly struct FrameworkRuntimeHostStopResult
+    {
+        internal FrameworkRuntimeHostStopResult(bool succeeded, string diagnostic)
+        {
+            Succeeded = succeeded;
+            Diagnostic = diagnostic ?? string.Empty;
+        }
+
+        internal bool Succeeded { get; }
+
+        internal string Diagnostic { get; }
+    }
+
     /// <summary>
     /// Minimal persistent application-scope runtime owner for the framework.
     /// It owns the Game Flow instance for this boot, but does not expose a global service locator.
@@ -48,6 +62,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
 
         private GameApplicationAsset _gameApplication;
+        private readonly FrameworkRuntimeHostAdmission _admission = new();
         private GameFlowRuntime _gameFlowRuntime;
         private readonly ActivityParticipantSourceBindings
             _activityParticipantSourceBindings =
@@ -88,11 +103,28 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         public FrameworkRuntimeState State => _state;
 
+        internal FrameworkRuntimeHostPhase LifecyclePhase => _admission.Phase;
+
+        internal bool TryBeginStartup() => _admission.TryBeginStart();
+
+        internal void CompleteStartup(bool succeeded) =>
+            _admission.CompleteStart(succeeded);
+
+        internal bool TryEnterRuntimeOperation(bool cleanup, out IDisposable lease) =>
+            _admission.TryEnterOperation(cleanup, out lease);
+
         internal bool TryActivateSessionCameraAssignment(
             SessionCameraAssignmentAsset candidate,
             out string issue)
         {
             issue = string.Empty;
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable admission))
+            {
+                issue = $"Session Camera Assignment activation rejected while Host phase is '{LifecyclePhase}'.";
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
             if (_sessionCameraAssignmentRuntime == null || candidate == null)
             {
                 issue = "Session Camera Assignment activation requires a running Session runtime and explicit candidate.";
@@ -153,6 +185,13 @@ namespace Immersive.Framework.ApplicationLifecycle
             out string issue)
         {
             issue = string.Empty;
+            if (!_admission.TryEnterOperation(cleanup: true, out IDisposable admission))
+            {
+                issue = $"Session Camera Assignment clear rejected while Host phase is '{LifecyclePhase}'.";
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
             if (_sessionCameraAssignmentRuntime == null || assignment == null)
             {
                 issue = "Session Camera Assignment clear requires a running Session runtime and an explicit Assignment asset.";
@@ -203,6 +242,13 @@ namespace Immersive.Framework.ApplicationLifecycle
             out string issue)
         {
             issue = string.Empty;
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable admission))
+            {
+                issue = $"Session Camera Assignment replacement rejected while Host phase is '{LifecyclePhase}'.";
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
             if (_sessionCameraAssignmentRuntime == null || candidate == null)
             {
                 issue = "Session Camera Assignment replacement requires a running Session runtime and explicit candidate.";
@@ -597,7 +643,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 out playerParticipationInitialization);
             if (!playerParticipationInitialization.Succeeded)
             {
-                UnityEngine.Object.Destroy(runtimeObject);
+                runtimeHost = host;
                 return false;
             }
 
@@ -607,6 +653,29 @@ namespace Immersive.Framework.ApplicationLifecycle
 
 
         internal async Task<FrameworkGameFlowStartResult> StartAsync()
+        {
+            if (!TryBeginStartup())
+            {
+                return FrameworkGameFlowStartResult.Failed(
+                    $"FrameworkRuntimeHost cannot start from phase '{_admission.Phase}'.");
+            }
+
+            FrameworkGameFlowStartResult result;
+            try
+            {
+                result = await StartCoreAsync();
+            }
+            catch
+            {
+                CompleteStartup(succeeded: false);
+                throw;
+            }
+
+            CompleteStartup(result.Started);
+            return result;
+        }
+
+        private async Task<FrameworkGameFlowStartResult> StartCoreAsync()
         {
             if (!TryApplyApplicationFrameRatePolicy(
                     out string frameRateFailureMessage))
@@ -989,6 +1058,330 @@ namespace Immersive.Framework.ApplicationLifecycle
             return result;
         }
 
+        internal async Task<FrameworkRuntimeHostStopResult> StopAsync(string reason)
+        {
+            string resolvedReason = reason.NormalizeTextOrFallback("controlled-stop");
+            while (true)
+            {
+                await _admission.BeginStopAndWaitForOperationsAsync();
+                if (LifecyclePhase == FrameworkRuntimeHostPhase.Stopped)
+                {
+                    return new FrameworkRuntimeHostStopResult(true, string.Empty);
+                }
+
+                if (!TryReleaseSessionPlayersForControlledStop(
+                        resolvedReason,
+                        out string playerReleaseDiagnostic))
+                {
+                    _logger?.Error(
+                        "FrameworkRuntimeHost controlled stop retained the live Host because canonical Session Player Leave did not reach its terminal state.",
+                        LogFields.Of(
+                            LogFields.Field("phase", LifecyclePhase),
+                            LogFields.Field("reason", resolvedReason),
+                            LogFields.Field("diagnostic", playerReleaseDiagnostic),
+                            LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                    return new FrameworkRuntimeHostStopResult(false, playerReleaseDiagnostic);
+                }
+
+                string activityReleaseDiagnostic =
+                    await TryClearActivityForControlledStopAsync(resolvedReason);
+                if (!string.IsNullOrEmpty(activityReleaseDiagnostic))
+                {
+                    _logger?.Error(
+                        "FrameworkRuntimeHost controlled stop retained the live Host because canonical Activity clear did not reach an authoritative terminal state.",
+                        LogFields.Of(
+                            LogFields.Field("phase", LifecyclePhase),
+                            LogFields.Field("reason", resolvedReason),
+                            LogFields.Field("diagnostic", activityReleaseDiagnostic),
+                            LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                    return new FrameworkRuntimeHostStopResult(false, activityReleaseDiagnostic);
+                }
+
+                if (!TryReleaseCameraSessionForControlledStop(
+                        out string cameraReleaseDiagnostic))
+                {
+                    _logger?.Error(
+                        "FrameworkRuntimeHost controlled stop retained the live Host because canonical Camera cleanup retained actionable receipts.",
+                        LogFields.Of(
+                            LogFields.Field("phase", LifecyclePhase),
+                            LogFields.Field("reason", resolvedReason),
+                            LogFields.Field("diagnostic", cameraReleaseDiagnostic),
+                            LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                    return new FrameworkRuntimeHostStopResult(false, cameraReleaseDiagnostic);
+                }
+
+                string routeReleaseDiagnostic =
+                    await TryExitRouteForControlledStopAsync(resolvedReason);
+                if (!string.IsNullOrEmpty(routeReleaseDiagnostic))
+                {
+                    _logger?.Error(
+                        "FrameworkRuntimeHost controlled stop retained the live Host because canonical Route exit did not release every retained obligation.",
+                        LogFields.Of(
+                            LogFields.Field("phase", LifecyclePhase),
+                            LogFields.Field("reason", resolvedReason),
+                            LogFields.Field("diagnostic", routeReleaseDiagnostic),
+                            LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                    return new FrameworkRuntimeHostStopResult(false, routeReleaseDiagnostic);
+                }
+
+                if (_admission.TryBeginStopFinalization())
+                {
+                    break;
+                }
+            }
+
+            if (!TryReleasePersistentContentScope(
+                    resolvedReason,
+                    out string releaseDiagnostic))
+            {
+                _admission.CompleteStop(succeeded: false);
+                _logger?.Error(
+                    "FrameworkRuntimeHost controlled stop retained the live Host for retry.",
+                    LogFields.Of(
+                        LogFields.Field("phase", LifecyclePhase),
+                        LogFields.Field("reason", resolvedReason),
+                        LogFields.Field("diagnostic", releaseDiagnostic),
+                        LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                return new FrameworkRuntimeHostStopResult(false, releaseDiagnostic);
+            }
+
+            _admission.CompleteStop(succeeded: true);
+            _logger?.Info(
+                "FrameworkRuntimeHost controlled stop completed.",
+                LogFields.Of(
+                    LogFields.Field("phase", LifecyclePhase),
+                    LogFields.Field("reason", resolvedReason),
+                    LogFields.Field("retryAuthority", "none")));
+            return new FrameworkRuntimeHostStopResult(true, string.Empty);
+        }
+
+        private bool TryReleaseSessionPlayersForControlledStop(
+            string reason,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (!this.TryGetPlayerParticipationSnapshot(
+                    out PlayerParticipationSnapshot snapshot))
+            {
+                return true;
+            }
+
+            if (snapshot.ReservedCount > 0)
+            {
+                diagnostic =
+                    $"Controlled stop is waiting for {snapshot.ReservedCount} in-flight Session Player reservation(s) to settle; no reserved Slot can be released through canonical Leave.";
+                return false;
+            }
+
+            if (snapshot.JoinedCount == 0 && snapshot.LeavingCount == 0)
+            {
+                return true;
+            }
+
+            if (!SessionPlayerLeaveRuntimeHostModule.TryAttach(
+                    this,
+                    out SessionPlayerLeaveRuntimeHostModule leaveRuntime,
+                    out string attachIssue))
+            {
+                diagnostic =
+                    "Controlled stop cannot release Session Players because the canonical Leave owner is unavailable. " +
+                    attachIssue;
+                return false;
+            }
+
+            for (int index = 0; index < snapshot.Slots.Count; index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = snapshot.Slots[index];
+                if (slot.AllocationState != PlayerSlotAllocationState.Joined &&
+                    slot.AllocationState != PlayerSlotAllocationState.Leaving)
+                {
+                    continue;
+                }
+
+                SessionPlayerLeaveRequest request;
+                if (slot.AllocationState == PlayerSlotAllocationState.Joined)
+                {
+                    request = new SessionPlayerLeaveRequest(
+                        slot.PlayerSlotId,
+                        slot.Revision,
+                        "FrameworkRuntimeHost",
+                        reason + "; controlled-stop-canonical-leave");
+                }
+                else if (!leaveRuntime.TryGetPendingRequest(
+                             slot.PlayerSlotId,
+                             out request))
+                {
+                    diagnostic =
+                        $"Controlled stop found Slot '{slot.PlayerSlotId.StableText}' already Leaving without a retained canonical Leave request. It will keep the Host and Session roots alive.";
+                    return false;
+                }
+
+                if (!TryEnterRuntimeOperation(cleanup: true, out IDisposable admission))
+                {
+                    diagnostic =
+                        $"Controlled stop could not enter the canonical Leave cleanup allowlist while Host phase is '{LifecyclePhase}'.";
+                    return false;
+                }
+
+                SessionPlayerLeaveResult leaveResult;
+                using (admission)
+                {
+                    leaveResult = leaveRuntime.TryLeave(request);
+                }
+
+                if (leaveResult == null || !leaveResult.Succeeded)
+                {
+                    diagnostic = leaveResult != null
+                        ? leaveResult.ToDiagnosticString()
+                        : "Canonical Session Player Leave returned no result.";
+                    return false;
+                }
+            }
+
+            if (!this.TryGetPlayerParticipationSnapshot(
+                    out PlayerParticipationSnapshot afterRelease))
+            {
+                diagnostic =
+                    "Controlled stop cannot verify Session Player Leave because the participation snapshot became unavailable.";
+                return false;
+            }
+
+            if (afterRelease.JoinedCount > 0 ||
+                afterRelease.ReservedCount > 0 ||
+                afterRelease.LeavingCount > 0)
+            {
+                diagnostic =
+                    $"Canonical Session Player Leave left an unresolved Session snapshot: joined={afterRelease.JoinedCount}, reserved={afterRelease.ReservedCount}, leaving={afterRelease.LeavingCount}.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<string> TryClearActivityForControlledStopAsync(
+            string reason)
+        {
+            if (_gameFlowRuntime == null ||
+                _gameFlowRuntime.CurrentRoute == null ||
+                _gameFlowRuntime.CurrentActivity == null)
+            {
+                return string.Empty;
+            }
+
+            FrameworkActivityRequestResult result = await ClearActivityAsync(
+                "FrameworkRuntimeHost",
+                reason + "; controlled-stop-canonical-activity-clear");
+            if (result.Succeeded || result.DestinationAuthoritative ||
+                result.Kind == FrameworkActivityRequestKind.IgnoredNoActiveActivity)
+            {
+                if (!result.Succeeded && result.DestinationAuthoritative)
+                {
+                    _logger?.Warning(
+                        $"FrameworkRuntimeHost controlled stop observed a committed Activity clear with a post-commit transition failure. kind='{result.Kind}'. {result.Message}");
+                }
+                return string.Empty;
+            }
+
+            return
+                $"Canonical Activity clear failed before its destination became authoritative. kind='{result.Kind}'. {result.Message}";
+        }
+
+        private async Task<string> TryExitRouteForControlledStopAsync(
+            string reason)
+        {
+            if (_gameFlowRuntime == null)
+            {
+                return string.Empty;
+            }
+
+            if (!TryEnterRuntimeOperation(cleanup: true, out IDisposable admission))
+            {
+                return $"Controlled stop could not enter Route cleanup while Host phase is '{LifecyclePhase}'.";
+            }
+
+            RouteExitResult result;
+            using (admission)
+            {
+                result = await _gameFlowRuntime.ExitRouteForControlledStopAsync(
+                    "FrameworkRuntimeHost",
+                    reason + "; controlled-stop-canonical-route-exit");
+            }
+
+            if (!result.Completed && result.HasRoute)
+            {
+                return result.Message;
+            }
+
+            if (result.Completed)
+            {
+                _state = _state.WithoutRoutePreservingPrimaryScene();
+                InvalidateObjectEntryRuntimeContextSnapshot(
+                    "controlled-stop-route-exit");
+            }
+
+            return string.Empty;
+        }
+
+        private bool TryReleaseCameraSessionForControlledStop(
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (!TryEnterRuntimeOperation(cleanup: true, out IDisposable admission))
+            {
+                diagnostic =
+                    $"Controlled stop could not enter Camera cleanup while Host phase is '{LifecyclePhase}'.";
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
+            try
+            {
+                if (_sessionCameraAssignmentRuntime != null &&
+                    !_sessionCameraAssignmentRuntime.TryClearAllAssignments(
+                        out diagnostic))
+                {
+                    diagnostic =
+                        "Session Camera Assignment clear retained exact cleanup receipts. " + diagnostic;
+                    return false;
+                }
+
+                _sessionCameraMembershipRuntime?.Dispose();
+                _sessionCameraMembershipRuntime = null;
+
+                if (_playerCameraOutputIntegrationRuntime != null &&
+                    !_playerCameraOutputIntegrationRuntime.TryDispose(
+                        out diagnostic))
+                {
+                    diagnostic =
+                        "Player Camera Output integration retained exact PlayerInput/Output cleanup receipts. " + diagnostic;
+                    return false;
+                }
+                _playerCameraOutputIntegrationRuntime = null;
+
+                _sessionCameraAssignmentRuntime?.Dispose();
+                _sessionCameraAssignmentRuntime = null;
+
+                if (_cameraSessionOutputMaterializationRuntime != null &&
+                    !_cameraSessionOutputMaterializationRuntime.TryDispose(
+                        out diagnostic))
+                {
+                    diagnostic =
+                        "Camera Output topology/materialization teardown retained exact Output owners. " + diagnostic;
+                    return false;
+                }
+                _cameraSessionOutputMaterializationRuntime = null;
+                _cameraOutputTopology = null;
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                diagnostic =
+                    $"Controlled Camera cleanup failed and the Host retained its remaining owners. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
+
         private async Task<SceneLifecycleLoadResult> PrepareStartupPrimarySceneBeforeGlobalUiAsync()
         {
             var result = await _sceneLifecycleRuntime.LoadPrimarySceneAsync(_gameApplication.StartupRoute);
@@ -1048,6 +1441,21 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogRouteRequestRuntimeNotReady(result);
                 return result;
             }
+
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable routeAdmission))
+            {
+                var result = FrameworkRouteRequestResult.RejectedRuntimeNotReady(
+                    $"Route request rejected while FrameworkRuntimeHost phase is '{LifecyclePhase}'.",
+                    targetRoute,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                _lastRouteActivityEntryLoadingDiagnostics =
+                    FrameworkLoadingDiagnostics.NotExecutedRequestRejected();
+                LogRouteRequestRuntimeNotReady(result);
+                return result;
+            }
+
+            using IDisposable routeAdmissionLease = routeAdmission;
 
             InvalidateObjectEntryRuntimeContextSnapshot($"route-request:{NormalizeLifecycleSource(source)}");
             if (targetRoute != null && _state.CurrentRoute != null && ReferenceEquals(_state.CurrentRoute, targetRoute))
@@ -1130,6 +1538,18 @@ namespace Immersive.Framework.ApplicationLifecycle
                 PublishCurrentActivityReadinessPresentation();
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request:{NormalizeLifecycleSource(source)}");
             }
+            else if (_gameFlowRuntime.CurrentRouteLifecycleRuntime is RouteLifecycleRuntime currentRouteRuntime &&
+                     currentRouteRuntime.TryGetCurrentRouteResult(out RouteLifecycleStartResult currentRouteResult) &&
+                     currentRouteResult.Started &&
+                     ReferenceEquals(currentRouteResult.Route, _state.CurrentRoute))
+            {
+                // A Route preparation can release the previous Activity before the target
+                // Route reaches its commit point. Project the still-authoritative Route's
+                // actual Activity result instead of retaining a stale pre-request snapshot.
+                _state = _state.WithCurrentRouteLifecycleResult(currentRouteResult);
+                PublishCurrentActivityReadinessPresentation();
+                RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request-partial:{NormalizeLifecycleSource(source)}");
+            }
             else if (routeResult.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive)
             {
                 RefreshObjectEntryRuntimeContextSnapshot($"FrameworkRuntimeHost:route-request-kept:{NormalizeLifecycleSource(source)}");
@@ -1194,6 +1614,23 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _lastActivityEntryLoadingDiagnostics);
                 return runtimeUnavailableResult;
             }
+
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable activityAdmission))
+            {
+                var rejected = FrameworkActivityRequestResult.FailedRuntimeUnavailable(
+                    $"Activity request rejected while FrameworkRuntimeHost phase is '{LifecyclePhase}'.",
+                    targetActivity,
+                    NormalizeLifecycleSource(source),
+                    reason.NormalizeTextOrFallback("None"));
+                _lastActivityEntryLoadingDiagnostics =
+                    FrameworkLoadingDiagnostics.NotExecutedRequestRejected();
+                LogActivityRequestResult(
+                    rejected,
+                    _lastActivityEntryLoadingDiagnostics);
+                return rejected;
+            }
+
+            using IDisposable activityAdmissionLease = activityAdmission;
 
             InvalidateObjectEntryRuntimeContextSnapshot($"activity-request:{NormalizeLifecycleSource(source)}");
             _lastActivityEntryLoadingDiagnostics = default;
@@ -1295,6 +1732,27 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal async Task<FrameworkActivityRequestResult> ClearActivityAsync(string source, string reason)
         {
+            string resolvedSource = NormalizeLifecycleSource(source);
+            string resolvedReason = reason.NormalizeTextOrFallback("None");
+            if (_gameFlowRuntime == null)
+            {
+                return FrameworkActivityRequestResult.FailedRuntimeUnavailable(
+                    "Activity clear rejected because Game Flow runtime is not initialized.",
+                    null,
+                    resolvedSource,
+                    resolvedReason);
+            }
+
+            if (!_admission.TryEnterOperation(cleanup: true, out IDisposable activityClearAdmission))
+            {
+                return FrameworkActivityRequestResult.FailedRuntimeUnavailable(
+                    $"Activity clear rejected while FrameworkRuntimeHost phase is '{LifecyclePhase}'.",
+                    _state.CurrentActivity,
+                    resolvedSource,
+                    resolvedReason);
+            }
+
+            using IDisposable activityClearAdmissionLease = activityClearAdmission;
             InvalidateObjectEntryRuntimeContextSnapshot($"activity-clear:{NormalizeLifecycleSource(source)}");
             var previousActivity = _state.CurrentActivity;
             bool showLoadingSurface = ShouldShowActivityClearLoadingSurface(previousActivity, source, reason);
@@ -1343,7 +1801,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 ShowLoadingAfterTransitionGate,
                 HideLoadingBeforeTransitionRelease,
                 loadingProgressReporter);
-            if (result.Succeeded)
+            if (result.Succeeded || result.DestinationAuthoritative)
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result);
                 PublishCurrentActivityReadinessPresentation();
@@ -1426,9 +1884,67 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal async Task<CycleResetResult> RequestRouteCycleResetAsync(string source, string reason)
         {
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable admission))
+            {
+                return CreateHostUnavailableCycleResetResult(
+                    CycleResetScope.Route,
+                    source,
+                    reason);
+            }
+
+            using IDisposable admissionLease = admission;
             var result = await _gameFlowRuntime.RequestRouteCycleResetAsync(source, reason);
             LogCycleResetResult(result);
             return result;
+        }
+
+        private CycleResetResult CreateHostUnavailableCycleResetResult(
+            CycleResetScope scope,
+            string source,
+            string reason)
+        {
+            string diagnostic =
+                $"Cycle Reset rejected while FrameworkRuntimeHost phase is '{LifecyclePhase}'.";
+            RouteAsset route = _state.CurrentRoute;
+            ActivityAsset activity = _state.CurrentActivity;
+            if (route == null ||
+                scope == CycleResetScope.Activity && activity == null)
+            {
+                CycleResetIssue invalidIssue = CycleResetIssue.BlockingIssue(
+                    CycleResetIssueKind.InvalidRequest,
+                    default,
+                    scope,
+                    diagnostic + " No current Route/Activity request authority is available.");
+                return CycleResetResult.RejectedInvalidRequest(
+                    default,
+                    new[] { invalidIssue },
+                    source,
+                    reason,
+                    invalidIssue.Message);
+            }
+
+            CycleResetPolicy policy = scope == CycleResetScope.Route
+                ? CycleResetPolicy.RouteDefault()
+                : CycleResetPolicy.ActivityDefault();
+            var request = new CycleResetRequest(
+                scope,
+                route,
+                scope == CycleResetScope.Activity ? activity : null,
+                policy,
+                source,
+                reason);
+            CycleResetIssue issue = CycleResetIssue.BlockingIssue(
+                CycleResetIssueKind.RequestAlreadyInFlight,
+                default,
+                scope,
+                diagnostic);
+            return CycleResetResult.FromResults(
+                request,
+                Array.Empty<CycleResetParticipantResult>(),
+                new[] { issue },
+                source,
+                reason,
+                diagnostic);
         }
 
         async Task<ActivityRestartRuntimeResult> IActivityRestartRuntimePort.RequestActivityRestartAsync(
@@ -1441,6 +1957,18 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             string resolvedSource = source.NormalizeTextOrFallback(nameof(ActivityRestartTrigger));
             string resolvedReason = reason.NormalizeTextOrFallback("Activity Restart");
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable restartAdmission))
+            {
+                return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
+                    ActivityRestartResultStatus.RejectedRuntimeUnavailable,
+                    targetActivity,
+                    ResolveActivityRestartName(targetActivity),
+                    resolvedSource,
+                    resolvedReason,
+                    $"Activity Restart rejected while FrameworkRuntimeHost phase is '{LifecyclePhase}'."));
+            }
+
+            using IDisposable restartAdmissionLease = restartAdmission;
             if (_gameFlowRuntime == null)
             {
                 return ActivityRestartRuntimeResult.From(ActivityRestartResult.Rejected(
@@ -1623,6 +2151,15 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal async Task<CycleResetResult> RequestActivityCycleResetAsync(string source, string reason)
         {
+            if (!_admission.TryEnterOperation(cleanup: false, out IDisposable admission))
+            {
+                return CreateHostUnavailableCycleResetResult(
+                    CycleResetScope.Activity,
+                    source,
+                    reason);
+            }
+
+            using IDisposable admissionLease = admission;
             var result = await _gameFlowRuntime.RequestActivityCycleResetAsync(source, reason);
             LogCycleResetResult(result);
             return result;
@@ -1643,6 +2180,22 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 throw new InvalidOperationException("Pause runtime is not initialized.");
             }
+
+            if (!_admission.TryEnterOperation(
+                    cleanup: request.RequestsResume,
+                    out IDisposable admission))
+            {
+                string phase = LifecyclePhase.ToString();
+                var rejected = PauseResult.RejectedResult(
+                    request,
+                    _pauseRuntime.State,
+                    $"Pause request rejected while FrameworkRuntimeHost phase is '{phase}'.",
+                    Array.Empty<PauseIssue>());
+                LogPauseRequestResult(rejected, default, default);
+                return rejected;
+            }
+
+            using IDisposable admissionLease = admission;
 
             PauseResult result;
             if (TryCreateTransitionBlockedPauseResult(request, out var transitionBlockedResult))
@@ -2150,7 +2703,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             string source,
             string reason)
         {
-            var owner = RuntimeContentOwner.Session(application.ApplicationName, application.ApplicationName);
+            var owner = RuntimeContentOwner.Session(GetEntityId().ToString(), application.ApplicationName);
             var enterResult = _runtimeContentRuntime.CreateScopeRoot(owner, source, reason);
             _runtimeContentRuntime.TryCreateScopeContext(owner, source, reason, out var context);
 
@@ -2404,27 +2957,19 @@ namespace Immersive.Framework.ApplicationLifecycle
             FrameworkLoadingDiagnostics loadingDiagnostics)
         {
             RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
-            ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
-            bool alreadyActive =
-                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
-            RouteAsset currentRoute = alreadyActive
-                ? _state.CurrentRoute
-                : result.TargetRoute;
-            ActivityAsset currentActivity = alreadyActive
-                ? _state.CurrentActivity
-                : activityFlow.ActivityState.Activity;
-            string currentActivityState = alreadyActive
-                ? _state.ActivityState.DiagnosticStatus
-                : activityFlow.ActivityState.DiagnosticStatus;
-            string currentActivityReadiness = alreadyActive
-                ? _state.ActivityReadinessState.DiagnosticStatus
-                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            RouteAsset previousRoute = result.DestinationAuthoritative
+                ? routeLifecycle.PreviousRoute
+                : _state.CurrentRoute;
+            RouteAsset currentRoute = _state.CurrentRoute;
+            ActivityAsset currentActivity = _state.CurrentActivity;
+            string currentActivityState = _state.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = _state.ActivityReadinessState.DiagnosticStatus;
             return LogFields.Of(
                 LogFields.Field("kind", result.Kind),
                 LogFields.Field("source", result.Source),
                 LogFields.Field("reason", result.Reason),
-                LogFields.Field("previousRouteId", GetRouteId(routeLifecycle.PreviousRoute)),
-                LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("previousRouteId", GetRouteId(previousRoute)),
+                LogFields.Field("previousRoute", GetRouteName(previousRoute)),
                 LogFields.Field("targetRouteId", GetRouteId(result.TargetRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
                 LogFields.Field("currentRouteId", GetRouteId(currentRoute)),
@@ -2436,7 +2981,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("currentActivity", FormatDiagnosticValue(currentActivity != null ? currentActivity.ActivityName : string.Empty)),
                 LogFields.Field("activityState", currentActivityState),
                 LogFields.Field("activityReadiness", currentActivityReadiness),
-                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + (alreadyActive ? _state.ActivityReadinessState.BlockingIssueCount : activityFlow.ActivityReadinessState.BlockingIssueCount)));
+                LogFields.Field("blockingIssues", result.TransitionDiagnostics.BlockingIssueCount + loadingDiagnostics.BlockingIssueCount + routeLifecycle.RouteSceneCompositionResult.BlockingIssueCount + _state.ActivityReadinessState.BlockingIssueCount));
         }
 
         private LogField[] BuildRouteRequestDiagnosticFields(
@@ -2445,27 +2990,20 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             RouteLifecycleStartResult routeLifecycle = result.RouteLifecycleResult;
             ActivityFlowStartResult activityFlow = routeLifecycle.ActivityFlowResult;
-            bool alreadyActive =
-                result.Kind == FrameworkRouteRequestKind.IgnoredAlreadyActive;
-            RouteAsset currentRoute = alreadyActive
-                ? _state.CurrentRoute
-                : result.TargetRoute;
-            ActivityAsset currentActivity = alreadyActive
-                ? _state.CurrentActivity
-                : activityFlow.ActivityState.Activity;
-            string currentActivityState = alreadyActive
-                ? _state.ActivityState.DiagnosticStatus
-                : activityFlow.ActivityState.DiagnosticStatus;
-            string currentActivityReadiness = alreadyActive
-                ? _state.ActivityReadinessState.DiagnosticStatus
-                : activityFlow.ActivityReadinessState.DiagnosticStatus;
+            RouteAsset previousRoute = result.DestinationAuthoritative
+                ? routeLifecycle.PreviousRoute
+                : _state.CurrentRoute;
+            RouteAsset currentRoute = _state.CurrentRoute;
+            ActivityAsset currentActivity = _state.CurrentActivity;
+            string currentActivityState = _state.ActivityState.DiagnosticStatus;
+            string currentActivityReadiness = _state.ActivityReadinessState.DiagnosticStatus;
             ActivityContentApplyResult activityContent = activityFlow.ActivityContentResult;
             FrameworkLifecycleOperationEvidence lifecycleOperation = BuildRouteLifecycleOperationEvidence(result, loadingDiagnostics);
             FrameworkLifecycleContentEvidence lifecycleContent = BuildRouteLifecycleContentEvidence(routeLifecycle, result.Source, result.Reason);
             FrameworkLifecycleReadinessEvidence lifecycleReadiness = BuildActivityLifecycleReadinessEvidence(activityFlow, result.Source, result.Reason);
             GameFlowRequestEnvelope envelope = GameFlowRequestEnvelopeBuilder.BuildRoute(
                 result,
-                GetRouteName(routeLifecycle.PreviousRoute),
+                GetRouteName(previousRoute),
                 GetRouteName(result.TargetRoute),
                 result.TransitionDiagnostics.TransitionText,
                 loadingDiagnostics.LoadingText,
@@ -2563,7 +3101,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 LogFields.Field("blocksInteractionAcceptance", result.TransitionGateDiagnostics.BlocksInteractionAcceptance),
                 LogFields.Field("blocksGameplayAction", result.TransitionGateDiagnostics.BlocksGameplayAction),
                 LogFields.Field("transitionGateBlockingIssues", result.TransitionGateDiagnostics.BlockingIssuesText),
-                LogFields.Field("previousRoute", GetRouteName(routeLifecycle.PreviousRoute)),
+                LogFields.Field("previousRoute", GetRouteName(previousRoute)),
                 LogFields.Field("targetRoute", GetRouteName(result.TargetRoute)),
                 LogFields.Field("currentRoute", GetRouteName(currentRoute)),
                 LogFields.Field("scene", routeLifecycle.SceneLifecycleResult.SceneName),
@@ -3372,6 +3910,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnApplicationQuit()
         {
+            _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("application-quit");
             _sessionCameraMembershipRuntime?.Dispose();
             _sessionCameraMembershipRuntime = null;
@@ -3381,6 +3920,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void OnDestroy()
         {
+            _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("framework-runtime-host-destroy");
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
             _gameFlowRuntime = null;
@@ -3402,11 +3942,26 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private void ReleasePersistentContentScope(string reason)
         {
-            if (!_persistentContentScopeComposed ||
-                _sceneLifecycleRuntime == null ||
-                _globalUiSceneRuntime == null)
+            if (!TryReleasePersistentContentScope(reason, out string diagnostic))
             {
-                return;
+                _logger?.Error(
+                    "Persistent Content composition release failed.",
+                    LogFields.Field("diagnostic", diagnostic));
+            }
+        }
+
+        private bool TryReleasePersistentContentScope(string reason, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (!_persistentContentScopeComposed)
+            {
+                return true;
+            }
+
+            if (_sceneLifecycleRuntime == null || _globalUiSceneRuntime == null)
+            {
+                diagnostic = "Persistent Content release lost its Scene Lifecycle owner or exact root set.";
+                return false;
             }
 
             SceneCompositionResult result = _sceneLifecycleRuntime.ReleaseSessionScope(
@@ -3415,13 +3970,12 @@ namespace Immersive.Framework.ApplicationLifecycle
                 reason);
             if (!result.Succeeded)
             {
-                _logger?.Error(
-                    "Persistent Content composition release failed.",
-                    LogFields.Field("diagnostic", result.Diagnostic));
-                return;
+                diagnostic = result.Diagnostic;
+                return false;
             }
 
             _persistentContentScopeComposed = false;
+            return true;
         }
 
         private void HandleActivityReadinessUpdate(ActivityReadinessUpdate update)

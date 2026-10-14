@@ -55,7 +55,7 @@ namespace Immersive.Framework.RouteLifecycle
 
         public string RouteIdentity => RouteState.DiagnosticIdentity;
 
-        public string DiagnosticStatus => Completed ? "Exited" : "None";
+        public string DiagnosticStatus => Completed ? "Exited" : HasRoute ? "Failed" : "None";
 
         public static RouteExitResult None(RouteAsset nextRoute, string source, string reason)
         {
@@ -94,6 +94,28 @@ namespace Immersive.Framework.RouteLifecycle
                 NormalizeSource(source),
                 NormalizeReason(reason),
                 $"Route Exit completed. exitedRoute='{previousRouteState.RouteName}' nextRoute='{nextRouteName}'.{identityMessage}");
+        }
+
+        public static RouteExitResult Failed(
+            RouteRuntimeState retainedRouteState,
+            RouteAsset nextRoute,
+            string source,
+            string reason,
+            string diagnostic)
+        {
+            if (!retainedRouteState.HasRoute)
+            {
+                return None(nextRoute, source, reason);
+            }
+
+            return new RouteExitResult(
+                false,
+                retainedRouteState.Route,
+                retainedRouteState,
+                nextRoute,
+                NormalizeSource(source),
+                NormalizeReason(reason),
+                $"Route Exit failed and retained its exact live owner for retry. route='{retainedRouteState.RouteName}'. {diagnostic.NormalizeTextOrFallback("No diagnostic was provided.")}");
         }
 
         private static string NormalizeSource(string source)

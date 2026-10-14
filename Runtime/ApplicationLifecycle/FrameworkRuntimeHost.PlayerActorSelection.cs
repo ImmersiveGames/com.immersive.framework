@@ -1,3 +1,4 @@
+using System;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
 
@@ -14,6 +15,15 @@ namespace Immersive.Framework.ApplicationLifecycle
         PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TrySelectActorProfile(
             PlayerActorSelectionRequest request)
         {
+            if (!TryEnterRuntimeOperation(cleanup: false, out IDisposable admission))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectActorProfile",
+                    request,
+                    $"Actor selection rejected while Host phase is '{LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryResolvePlayerActorSelectionRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparationRuntime,
                     out string issue))
@@ -33,16 +43,25 @@ namespace Immersive.Framework.ApplicationLifecycle
             string source,
             string reason)
         {
+            var request = new PlayerActorSelectionRequest(
+                playerSlotId,
+                null,
+                source,
+                reason,
+                expectedSelectionRevision);
+            if (!TryEnterRuntimeOperation(cleanup: false, out IDisposable admission))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "SelectDefaultActor",
+                    request,
+                    $"Actor selection rejected while Host phase is '{LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryResolvePlayerActorSelectionRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparationRuntime,
                     out string issue))
             {
-                var request = new PlayerActorSelectionRequest(
-                    playerSlotId,
-                    null,
-                    source,
-                    reason,
-                    expectedSelectionRevision);
                 return PlayerActorSelectionResult.RuntimeUnavailable(
                     "SelectDefaultActor",
                     request,
@@ -59,6 +78,15 @@ namespace Immersive.Framework.ApplicationLifecycle
         PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TryReplaceActorSelection(
             PlayerActorSelectionRequest request)
         {
+            if (!TryEnterRuntimeOperation(cleanup: false, out IDisposable admission))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ReplaceActorSelection",
+                    request,
+                    $"Actor selection rejected while Host phase is '{LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryResolvePlayerActorSelectionRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparationRuntime,
                     out string issue))
@@ -75,6 +103,15 @@ namespace Immersive.Framework.ApplicationLifecycle
         PlayerActorSelectionResult IPlayerActorSelectionRuntimePort.TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
+            if (!TryEnterRuntimeOperation(cleanup: false, out IDisposable admission))
+            {
+                return PlayerActorSelectionResult.RuntimeUnavailable(
+                    "ClearActorSelection",
+                    request,
+                    $"Actor selection rejected while Host phase is '{LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
             if (!TryResolvePlayerActorSelectionRuntime(
                     out PlayerActorPreparationRuntimeHostModule preparationRuntime,
                     out string issue))

@@ -2,7 +2,7 @@
 
 Status: **Active — 1.1.0 approved as first official Stable baseline / publication pending; preview 1.1.0-preview.8 remains latest published; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-10-13**
+Last updated: **2026-10-14**
 
 ## 1.1.0 first Stable release readiness
 
@@ -13,25 +13,27 @@ published 1.0.2 and preview artifacts remain historical; a generic migration
 from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
 for an individual Stable contract or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
 is Accepted as the readiness roadmap. Approval of the roadmap does not mark
-any phase complete, replace the evidence gates below, or authorize a release;
-the current disposition remains NO-GO.
+any phase complete or authorize a release. Phase 2 was subsequently closed by
+the Project Owner's acceptance of the composed evidence recorded below; Phase
+3 source freeze and recertification, Phase 4 artifact validation, and Phase 5
+release approval remain outstanding. The current release disposition remains
+NO-GO.
 
-The proposed integrated execution route is
+The integrated execution route is
 [IF-PLAN-ADR-048-STABLE-READINESS.v1](../Plans/IF-PLAN-ADR-048-STABLE-READINESS.v1.md).
-The versioned [Gate A integrated review record](../Plans/IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v1.md)
-captures the exact plan blob and pending authority decisions; it does not
-approve the route. The plan organizes the Phase 2 operational cuts and later
-certification work; it is not approved for implementation. Complete relevant
-analyses and required ADR decisions, then obtain explicit integrated-plan approval before changing
-Runtime, tests, QA assets, consumers, versions or release configuration. The
-plan closes no workpackage or phase; Phase 2 still requires executed
-source-revision evidence under IF-ADR-048.
+The [Gate A v2 approval record](../Plans/IF-GATE-A-ADR-048-STABLE-READINESS-REVIEW.v2.md)
+records GO for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`
+and the functional decisions, risk acceptances and evidence route. The
+preparation record v1 is preserved as historical review. The mission's
+conditional implementation authorization is now effective. Gate A closes no
+workpackage or readiness phase. Phase 2 has since closed on composed
+operational evidence; the exact candidate and artifact gates remain open.
 
 | Gate | GO criteria | Current evidence / disposition |
 |---|---|---|
-| Runtime integrity | Candidate imports and compiles in the supported Unity `6000.5` line; all release-blocking defects in Stable behavior are resolved; lifecycle rollback/retry/cleanup paths covered at their contract scope. | User-reported source-cut EditMode: 310/310 overall, Pause 18/18, Player Participation 101/101; QA-IF-ADR-036 Play Mode 8/8 with request accepted/completed, `BaselineRestored`, no divergences. These counts lack raw logs and immutable candidate identity and do not replace candidate import/compile. |
+| Runtime integrity | Candidate imports and compiles in the supported Unity `6000.5` line; all release-blocking defects in Stable behavior are resolved; lifecycle rollback/retry/cleanup paths covered at their contract scope. | The latest user-reported QAFramework EditMode run is 365/365, including the controlled-stop integration suite at 7/7; complementary QA scenario results are recorded below. This closes Phase 2 operational integrity by composed evidence, but does not replace exact-candidate import/compile in Phases 3–4. |
 | Contracts and architecture | `FrameworkApiStatusAttribute`, Public-API, accepted ADRs and observed implementation agree for every Stable contract included in 1.1.0; no Experimental/Internal promotion inferred from package version; breaking changes have explicit accepted decisions and consumer disposition. | **Phase 1 closed by explicit architectural review (2026-10-12):** approved inventory of 107 Stable Runtime types reconciled with Public-API and owning ADRs. Evidence is documentary/static only: symbol/status inventory, exact Public-API symbol coverage, relative-link checks and `git diff --check`. It does not certify Runtime behavior, a candidate package or publication. |
-| QA coverage | Focused automated and integrated evidence covers each release Stable guarantee and its material failure/cleanup paths; evidence names exact candidate/package resolution where the claim depends on it. All failures are resolved or explicitly accepted by the responsible authority under the owning ADR. | The user-reported results above are useful scoped evidence, but no exact release candidate SHA, package resolution record or raw execution output is attached. Broader/Experimental-only coverage is not required unless it affects a Stable guarantee or an explicit gate. |
+| QA coverage | Focused automated and integrated evidence covers each release Stable guarantee and its material failure/cleanup paths; evidence names exact candidate/package resolution where the claim depends on it. All failures are resolved or explicitly accepted by the responsible authority under the owning ADR. | **Phase 2 operational evidence accepted compositionally (2026-10-14):** QAFramework EditMode 365/365, including Framework Host controlled-stop 7/7 and the package assemblies shown in the Test Runner, combined with the named QA scenario results below. This is user-reported working-source evidence, not immutable RC certification. |
 | Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; published GitHub/OpenUPM artifact identity is recorded and an installed consumer resolves/imports/compiles the exact artifact. | Not run: version metadata and tag remain unchanged; no 1.1.0 candidate archive or registry publication exists. Candidate build/promotion controls are prepared in the working workflow but have not been certified by a real run. |
 
 **GO only when all four gates pass** and no unresolved Stable-contract, package
@@ -70,10 +72,527 @@ consumer installation actually establish.
 | Phase | Status | Evidence / boundary |
 |---|---|---|
 | 1 — Architectural and contract closure | **Closed — documentary review approved 2026-10-12** | The 107-type Stable inventory is reconciled across `FrameworkApiStatusAttribute`, Public-API, IF-GOV-001 and owning ADRs. Static checks found all 107 symbols represented in Public-API, all relative Markdown targets in the reviewed documents present, and `git diff --check` clean. This approval covers contract scope and documentation only; it does not certify the Runtime, package import, candidate artifact or release. |
-| 2 — Operational integrity | **In progress — initial assessment below; no group closed by this entry** | The matrix scopes failure, compensation, retry, release and cleanup evidence for every Stable contract group. Known test sources and historical/user-reported QA are recorded as evidence at their stated scope, not as current-candidate execution. |
-| 3 — Transversal recertification | Pending | Requires a reviewed candidate source SHA and a completed contract-to-test/consumer matrix after Phase 2 exits. |
+| 2 — Operational integrity | **Closed — composite evidence accepted by the Project Owner, 2026-10-14** | The latest QAFramework Test Runner result is 365/365, with Persistent Content 28/28 and `FrameworkRuntimeHostControlledStopTests` 7/7. These integrated tests are accepted together with the component Editor suites and the previously reported QA scenario terminals; a separate bespoke test for behavior already covered across those proofs is not required. Bounded residuals and evidence scope are recorded in the latest Phase 2 entry. |
+| 3 — Transversal recertification | **In progress — entry preparation; candidate validation not started** | Phase 2 is closed. Review and freeze a clean source revision with a Git SHA, then complete the contract-to-test/consumer matrix for QAFramework, FirstGame and PEGA before claiming candidate validation. No exact-artifact installation/import/compile is claimed here. |
 | 4 — Immutable Release Candidate | Pending | Requires an immutable package artifact installed and identified in QAFramework, FirstGame and PEGA. |
 | 5 — Explicit publication decision | Pending — release remains **NO-GO** | Requires an explicit GO for the exact package version, source SHA and artifact hash. |
+
+**Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification is authorized conditionally; publication remains unauthorized.
+
+### Implementation-only continuation — I-08 Activity Observer ownership (2026-10-14)
+
+The Project Owner supplied a later IF-ADR-042 terminal reporting **BLOCKED
+0/6** before the first checkpoint. Its diagnostics showed an available Route
+Player Session observation, one registered Output, one occurrence, and an
+available Activity Observer, but did not expose the specific startup-readiness
+predicate that remained false. This is a blocked scenario result, not a Shared
+Group contract failure or a PASS.
+
+The QAFramework scenario now resolves its Activity Observer only by enumerating
+the loaded scenes explicitly declared by the startup Activity content profile;
+it no longer searches every loaded Unity object. Observer cardinality, scope,
+enabled state and declared-scene load state are included in the causal
+diagnostic. The IF-ADR-042 README now matches the six implemented checkpoints
+and no longer claims that this consumer scenario performs prepared-Actor
+replacement, which I-08 excludes from public consumer QA. Package-level
+Actor-preparation coverage remains pending.
+
+No Unity import, Test Runner or Play Mode execution was performed for this
+implementation-only continuation, at the Project Owner's direction to defer
+tests. The source/doc changes alone did not close I-08 or any Phase 2 group;
+the subsequently supplied PASS 6/6 terminal is recorded in the direct Play
+Mode follow-up below. Phases 3–5 remain pending and publication remains
+**NO-GO**.
+
+### Wave 1 — implementation and package EditMode evidence (2026-10-13)
+
+I-01, I-06 and I-07 implementation changes are present in this working source
+cut. QAFramework `main` at `669b0e93ef63eadb6babd4a76498364f3319ef44`
+resolved `com.immersive.framework` from the local `file:` package at
+`1.1.0-preview.8`; Unity Editor was `6000.5.0f1`. The complete QAFramework
+EditMode run passed **339/339** (0 failed, 0 skipped; 19.2355078 seconds):
+`SessionCompositionReleaseTests` 3/3, `ProgressionSavePayloadTests` 8/8,
+`FrameworkIdentityConformanceTests` 14/14 and
+`FrameworkApiStatusMetadataTests` 5/5. The focused I-01 ledger test passed
+1/1. Raw results: `QAFramework/Temp/IF-ADR-048-I01-contract.xml` and
+`QAFramework/Temp/IF-ADR-048-wave1-final.xml`; runner logs use matching `.log`
+names.
+
+The I-01 test expectation was aligned with the approved contract after a
+focused run showed that it incorrectly expected successful local rollback to
+clear the Session ledger. The exact approved plan and IF-ADR-040 Amendment 001
+retain every attempted participant until a successful aggregate Session
+release; that release may revisit participants already released by rollback.
+The Runtime was not changed for this expectation correction. The aggregate
+release test now proves this retention and that a duplicate successful
+release is idempotent.
+
+Working source snapshot SHA-256 (sorted, non-ignored `Runtime/`, `Tests/` and
+`package.json` file manifest):
+`176de626ced99bfed0c0fc44c7bd428bac0d84885581fc56e6b84c1482a46b7a`.
+This identifies the package source/test snapshot, not a commit or immutable
+release candidate. Wave 1 package EditMode evidence passes; the full Host
+controlled-stop/retry integration remains pending I-03. QAFramework was not
+modified by this run, and no Phase 2 group is closed by this checkpoint.
+
+### Wave 2 — I-02 Stable scoped release and physical receipts (2026-10-13)
+
+I-02 package changes preserve scoped ownership until release callbacks and
+physical Input projections are confirmed. `PlayerSessionScopedBindingRecipient`
+remains retryable after a rejected release; `ActiveScopedBinding` now releases
+the recipient before disposing its binding and lease, retaining both on
+failure. Availability consumers retain their block token and report access as
+unavailable while cleanup is pending. The runtime host retains its occurrence
+token ledger and the Input context retains failed slot/adapter projection
+receipts until physical restoration succeeds. The Input Gate adapter now
+rejects an unavailable Gameplay Action Map instead of inferring successful
+restoration from the inability to inspect that map. Pause/Input release
+continues to retain its existing restoration receipt for retry.
+
+QAFramework `main` at `669b0e93ef63eadb6babd4a76498364f3319ef44` resolved the
+working package at `1.1.0-preview.8` with Unity Editor `6000.5.0f1`. Focused
+EditMode evidence: `PauseProductTransactionTests` 19/19 and
+`PlayerSessionJoinBindingTests` 11/11. The complete EditMode suite passed
+**342/342** (0 failed, 0 skipped; 26.0337426 seconds). Raw results and runner
+logs: `QAFramework/Temp/IF-ADR-048-I02-pause-green.xml` and `.log`,
+`QAFramework/Temp/IF-ADR-048-I02-player-participation.xml` and `.log`, and
+`QAFramework/Temp/IF-ADR-048-wave2-I02-final.xml` and `.log`. The targeted
+physical restoration failure test proves the host retains both the occurrence
+token ledger and projection receipt on failure, then clears them only after a
+successful retry. QAFramework's Unity-mutated Standalone define was restored;
+its worktree is clean. No QAFramework consumer migration is included in I-02.
+
+Working source snapshot SHA-256 (sorted, non-ignored `Runtime/`, `Tests/` and
+`package.json` per-file SHA-256/path manifest; 2,028 files):
+`fc918370f608e6f14eae165911043eb19862c677958566e7b9d8f3967d8b42af`.
+This identifies the working package source/test snapshot at the I-02 checkpoint,
+not a commit or immutable release candidate. I-02 package EditMode evidence
+passes; the I-08 migration and its current execution evidence are recorded
+below. No Phase 2 group is closed by this checkpoint.
+
+### Wave 2 — I-08 Observer/Command QA migration (2026-10-13)
+
+The inherited `PlayerSessionScopedAccessConsumer.TryGetAccess` helper is now
+protected, and the inspected QA consumers use the existing Join/Open/Close/
+Leave/Availability triggers plus Observer reads. Raw stale/foreign/multiple
+token probes remain with the Availability owner NUnit tests; no new trigger was
+added for low-level token operations or prepared-Actor replacement. The QA
+fixtures were regenerated successfully by the existing setup methods, including
+the two independent IF-ADR-044 availability triggers. Temporary setup runner
+files were removed after generation.
+
+The complete QAFramework EditMode suite passed **345/345** (0 failed, 0
+skipped; Unity Editor `6000.5.0f1`). New `PlayerSessionAccessGovernanceTests`
+cover derived-only helper access, stale Leave revision rejection after same-slot
+rejoin, and foreign/stale/multiple Availability token ownership and release.
+Raw result and runner log: `QAFramework/Temp/Immersive-Framework-I08-EditMode-final.xml`
+and `.log`. Setup runner output is
+`QAFramework/Temp/Immersive-Framework-I08-QA-Setup-staging.log`; all nine
+fixture setup markers reported `complete=true`.
+
+At the 2026-10-13 checkpoint, I-08 runtime QA remained BLOCKED because its
+migrated Play Mode scenarios had not been executed. The QAFramework project has
+no automated Play Mode test lane for these scenario MonoBehaviours; fixture
+setup and EditMode tests do not substitute for their runtime terminals.
+
+#### I-08 direct Play Mode follow-up — 2026-10-14
+
+Unity `6000.5.0f1` was started directly from the installed Editor against
+QAFramework, using fresh Play Mode sessions and the exact scenario scenes. The
+Framework source was resolved from the local package at HEAD
+`861620ca00b662a31d3542ff79b5c1f632d843ee` with a dirty working tree; QAFramework
+was at HEAD `669b0e93ef63eadb6babd4a76498364f3319ef44`, also dirty. These runs
+are not immutable-candidate evidence.
+
+- IF-ADR-036 completed **PASS 8/8**, with `cleanup='BaselineRestored'`:
+
+  ```text
+  [IF-ADR-036] status='Passed' verdict='PASS' cases='8/8' requestBAccepted='True' requestBCompleted='True' bOccurrence='2' cleanup='BaselineRestored' firstDivergence='' cleanupIssue=''.
+  ```
+
+- IF-ADR-042 completed **PASS 6/6** with `BaselineRestored` in a direct Play
+  Mode run after the earlier user-supplied `Blocked 0/6` result. The terminal
+  line was observed in this task. The Project Owner has now supplied its full
+  terminal output in the conversation; it reports `targetMembers='0'`, blank
+  `execution` and `cleanupIssue`, plus the assignment/output/occurrence
+  identifiers shown below. The supplied line supplements the session-level
+  evidence; no raw Editor log/XML, execution timestamp, or immutable package
+  identity accompanied it, so it does not establish candidate certification.
+
+  ```text
+  [IF-ADR-042-SHARED-GROUP] status='Passed' verdict='PASS' cases='6/6' next='' completed='6' missing='' assignment='c1de6b74d45a4b04bff462646fbbb5c3' output='04200000000000000000000000000001' occurrence='c1de6b74d45a4b04bff462646fbbb5c3/04200000000000000000000000000001' targetMembers='0' cleanup='BaselineRestored' execution='' cleanupIssue=''.
+  ```
+
+  A fresh repeat on 2026-10-14 did not enter Play Mode:
+  the directly launched Editor could not connect to `LicenseClient-renat`,
+  asserted during licensing/WMI initialization, and exited before either the
+  temporary runner or scenario emitted a marker. After the Project Owner said
+  the Hub was activated, a second attempt with explicit `-hubIPC
+  -licensingIpc LicenseClient-renat` arguments produced the same refusal and
+  exited before a scenario marker. These are environment blocks, not scenario
+  results. The settings asset remained byte-for-byte at its pre-run SHA-256
+  `80263DC37583C0D0039308106EC1A824C64D8428A4BCDDD03006EF1CC8DBAF76`.
+- IF-ADR-043 initially booted but emitted **BLOCKED 0/7** because the two
+  Route Leave triggers had no serialized Player Slot references. The setup had
+  loaded P1/P2 wrappers before creating Persistent Content with
+  `NewScene(Single)` and then reused those invalidated wrappers. Reacquiring the
+  profiles after that scene transition fixed serialization; setup validation now
+  requires exactly two enabled Route Leave triggers bound to the exact Slots.
+  The corrected fresh Play Mode run completed **PASS 7/7** with
+  `BaselineRestored` and no frame without a participating camera:
+
+  ```text
+  [IF-ADR-043] status='Passed' verdict='PASS' cases='7/7' next='<none>' completed='7' missing='<none>' assignment='0303ca8e5a7b44758de8f7632f8f051b' framesObserved='10' framesWithoutCamera='0' firstFrameWithoutCamera='-1' execution='' unwind='public-leave-requests' cleanup='BaselineRestored' cleanupIssue=''.
+  ```
+
+- IF-ADR-044 initially exposed stale P1/P2 asset wrappers after setup changed
+  scenes. Reacquiring both Profiles after each `NewScene(Single)` fixed the
+  serialized Route Leave Slot references. The scenario also now authors two
+  distinct Activity Availability Block triggers for P1, matching the plan's
+  independent-consumer case. The corrected setup and fresh runtime completed
+  **PASS 8/8**, `cleanup='BaselineRestored'`.
+- IF-ADR-046 I4 minimal completed **PASS 1/1**,
+  `cleanup='BaselineRestored'`. I4.2 OBSERVABLE reported **PASS 8/8**,
+  `cleanup='BaselineRestored'`, for its eight named lifecycle/current-binding
+  cases. Its supplementary `stalePublicCalls='3/3'` is the same three calls
+  reported by the separate I4.2 LEASE lane, not independent lease evidence.
+  Those calls returned `RejectedUnavailable` with no observed effects because
+  Unity's destroyed-object guard ran before lease validation. The Lease lane
+  remains **BLOCKED 0/3**, as already documented in the I4.2 specification and
+  Player Join certification README. The current QAFramework source correction
+  removes the three retired-trigger probes from the integrated occurrence
+  fixture and stops emitting the duplicate Play Mode LEASE terminal. Its eight
+  Observable cases now cover current Join/Leave and lifecycle/reentry assertions.
+  The separate Framework EditMode `PlayerSessionJoinBindingTests` result (11/11
+  in the Wave 2 record) is unchanged. Preserve the old I4.2 LEASE `BLOCKED 0/3`
+  result as historical; this correction does not relabel it PASS. The Project
+  Owner supplied a fresh terminal from the revised fixture, reporting PASS 8/8
+  and `BaselineRestored`. This user-reported run has no attached Unity version,
+  raw log or source SHA, so it validates the reported scenario behavior but is
+  not candidate-specific evidence:
+
+  ```text
+  [QA-IF-ADR-046-I4.2-OBSERVABLE] scenario='IF-ADR-046-I4.2-SCOPED-BINDING-OBSERVABLE' status='Passed' verdict='PASS' cases='8/8' caseResults='activity-a1-current=PASS | route-a1-current=PASS | activity-a-reentry-new-occurrence=PASS | activity-a2-current=PASS | route-a-reentry-new-occurrence=PASS | route-a2-current=PASS | owner-route-change-recreates-activity-occurrence=PASS | activity-a-after-owner-route-change-current=PASS' activityOccurrences='activity-a1-to-a2=1->3 sceneHandle=568105589213751250->568105589213751200 | owner-route-activity-a3-to-a4=7->11' routeEntry='routeAssetSame='True' sceneHandle='568105589213751328->568105589213751174' unloadObserved='True' unloadedHandle='568105589213751328' reloadObserved='True' reloadedHandle='568105589213751174' routeSceneReloaded='True' initialLifecycleEntered='True' currentLifecycleActive='True' currentLifecycleContextAvailable='True' currentLifecycleEntered='True' currentLifecycleAssetSame='True' currentLifecycleContributionSame='True' lifecycleInstanceChanged='True' routeJoinInstanceChanged='True' activityObserverChanged='True' activityOccurrence='3->7' activityOccurrenceAdvanced='True' routeOccurrenceOrdinal='not-exposed-by-public-contract'' currentJoin='activity-a1-current:Joined/Admitted | route-a1-current:Joined/Admitted | activity-a2-current:Joined/Admitted | route-a2-current:Joined/Admitted | activity-a-after-owner-route-change-current:Joined/Admitted' cleanup='BaselineRestored' cleanupIssue='' firstCause=''
+  ```
+- Player Session Join completed **PASS 8/8** with
+  `cleanup='BaselineRestored'`; invalid Join preserved revision, valid Join
+  selected/prepared/materialized its Actor without admitting gameplay, and
+  Leave released provisioning and committed the terminal result.
+- Player Leave/Rejoin completed **PASS** with two distinct occurrences for the
+  same Slot; both Join and Leave cycles succeeded and cleanup was
+  `BaselineRestored`. Player Multiplayer Ownership completed **PASS**: P1/P2
+  joined independently, P2 survived P1 Leave and rejoin, both final Leaves
+  succeeded, and cleanup was `BaselineRestored`.
+- These successful runs were observed in this task, but raw Editor logs/XML and
+  immutable source identities were not retained. The user separately supplied
+  the QAFramework EditMode Test Runner result **357/357 passed, 0 failed**; its
+  assembly list includes Framework EditMode tests. That screenshot has no raw
+  XML/package source hash and does not replace the scenario Play Mode terminals
+  or immutable-candidate provenance.
+
+#### Project Owner supplied terminal batch — 2026-10-14
+
+The Project Owner subsequently supplied complete terminal lines for IF-ADR-036,
+IF-ADR-043, IF-ADR-044, IF-ADR-046 I4 minimal, and the Player Session Join,
+Leave/Rejoin, and Multiplayer Ownership scenarios. All report PASS and
+`BaselineRestored`; IF-ADR-043 reports `framesWithoutCamera='0'`. The two
+identical Leave/Rejoin lines in the message are one terminal result, not two
+independent runs. IF-ADR-042's separately supplied PASS 6/6 remains recorded
+above. These are user-supplied terminal records; the batch did not include the
+Unity version, resolved Framework source identity, raw Editor log/XML, or
+preceding causal diagnostics.
+
+The newly supplied terminal details not already reproduced above are:
+
+```text
+[IF-ADR-044] status='Passed' verdict='PASS' cases='8/8' next='none' completed='8' missing='none' execution='' unwind='public-leave-requests' cleanup='BaselineRestored' cleanupIssue=''.
+[QA-IF-ADR-046-I4] scenario='IF-ADR-046-I4-MINIMAL' scope='Activity' owner='QA IF-ADR-046 Activity A' cases='1/1' verdict='PASS' firstCause='' outcome='Joined' actorPrepared='False' gameplayAdmitted='False' sessionFinal='revision:7,available:1,reserved:0,joined:0,leaving:0,joiningOpen:False' sessionRestored='True' playerInputBaseline='0' playerInputFinal='0' keyboardRemoved='True' cleanup='BaselineRestored' cleanupIssue=''
+[QA-PLAYER-LEAVE-REJOIN-OCCURRENCE][terminal] verdict='PASS' slot='PlayerSlot:player.1' actorA='Session:Session:568105589213753644:player-actor-content:3b9d3d2de5be429a8fa7250841ab7550:Session:568105589213753644:player.1:1' actorB='Session:Session:568105589213753644:player-actor-content:3b9d3d2de5be429a8fa7250841ab7550:Session:568105589213753644:player.1:2' joinA='Joined' leaveA='SucceededLeft' joinB='Joined' leaveB='SucceededLeft' cleanup='BaselineRestored' firstCause='' cleanupIssue=''
+[QA-PLAYER-MULTIPLAYER-OWNERSHIP][terminal] verdict='PASS' stage='cleanup-leave' joinA='Joined' joinB='Joined' leaveA='SucceededLeft' rejoinA='Joined' leaveFinal='not-run,SucceededLeft,SucceededLeft' simultaneousIsolation='True' p2AfterLeave='True' p2AfterRejoin='True' cleanup='BaselineRestored' firstCause='' cleanupIssue=''
+[QA-PLAYER-SESSION-JOIN] status='Passed' verdict='PASS' cases='8/8' next='' completed='8' missing='' invalidJoinStatus='RejectedInvalidRequest' invalidRevisionPreserved='True' joinStatus='Joined' joinSlotMatched='True' actorSelected='True' actorPrepared='True' actorMaterialized='True' gameplayAdmitted='False' leaveStatus='SucceededLeft' leaveProvisioningReleased='True' leaveTerminalCommitted='True' finalSession='initialized:True,joined:0,available:1,reserved:0,leaving:0,joiningOpen:False' cleanup='BaselineRestored' execution='' cleanupIssue=''.
+```
+
+The Project Owner next supplied the IF-ADR-046 Occurrence Binding log. Its boot
+diagnostic identifies `QA IF-ADR-046 I4 Occurrence Binding`, startup Route
+`I4_Binding_Route_A`, and Activity `QA IF-ADR-046 I4 Binding Activity A`,
+confirming that the correct `GameApplication_I4_ScopedBinding` fixture ran.
+The OBSERVABLE lane passed 8/8 and restored baseline. The separate LEASE lane
+was `BLOCKED 0/3` because destroyed-Unity-object guards returned
+`RejectedUnavailable` before lease validation; cleanup was also
+`BaselineRestored`. The `stalePublicCalls='3/3'` telemetry printed on the
+OBSERVABLE terminal refers to those same three calls; it confirms no observed
+side effects, but does not independently prove stale-lease rejection. The
+attachment contains the full log; its terminal lines are preserved as the
+historical output from before the reporting correction:
+
+```text
+[QA-IF-ADR-046-I4.2-OBSERVABLE] scenario='IF-ADR-046-I4.2-SCOPED-BINDING-OBSERVABLE' status='Passed' verdict='PASS' cases='8/8' caseResults='activity-a1-current=PASS | route-a1-current=PASS | activity-a1-b-a2=PASS | activity-a2-current=PASS | route-a1-b-a2=PASS | route-a2-current=PASS | owner-route-change-invalidates-old-activity=PASS | activity-a-after-owner-route-change-current=PASS' activityOccurrences='activity-a1-to-a2=1->3 sceneHandle=568105589213752216->568105589213752166 | owner-route-activity-a3-to-a4=7->11' routeEntry='routeAssetSame='True' sceneHandle='568105589213752294->568105589213752140' unloadObserved='True' unloadedHandle='568105589213752294' reloadObserved='True' reloadedHandle='568105589213752140' routeSceneReloaded='True' initialLifecycleEntered='True' currentLifecycleActive='True' currentLifecycleContextAvailable='True' currentLifecycleEntered='True' currentLifecycleAssetSame='True' currentLifecycleContributionSame='True' lifecycleInstanceChanged='True' routeJoinInstanceChanged='True' activityObserverChanged='True' activityOccurrence='3->7' activityOccurrenceAdvanced='True' routeOccurrenceOrdinal='not-exposed-by-public-contract'' currentJoin='activity-a1-current:Joined/Admitted | route-a1-current:Joined/Admitted | activity-a2-current:Joined/Admitted | route-a2-current:Joined/Admitted | activity-a-after-owner-route-change-current:Joined/Admitted' stalePublicCalls='3/3' staleNoEffects='observed' staleEvidence='activity-a1-after-a-b-a:RejectedUnavailable,revision=13->13,destroyedUnityObject=True | route-a1-after-a-b-a:RejectedUnavailable,revision=19->19,destroyedUnityObject=True | activity-a-after-owner-route-change:RejectedUnavailable,revision=25->25,destroyedUnityObject=True' leaseValidation='separate-blocked-result' cleanup='BaselineRestored' cleanupIssue='' firstCause=''
+[QA-IF-ADR-046-I4.2-LEASE] scenario='IF-ADR-046-I4.2-SCOPED-BINDING-LEASE' status='Blocked' verdict='BLOCKED' cases='0/3' blockedChecks='3/3' details='activity-a1-after-a-b-a: destroyed-object guard returned RejectedUnavailable before lease validation | route-a1-after-a-b-a: destroyed-object guard returned RejectedUnavailable before lease validation | activity-a-after-owner-route-change: destroyed-object guard returned RejectedUnavailable before lease validation' cleanup='BaselineRestored'
+```
+
+The required I-08 consumer scenario terminal set is now present in the
+Project Owner's supplied results. The eight named I4.2 OBSERVABLE cases remain
+reported PASS; the three repeated stale calls are not an independent pass and
+do not establish lease validation. The I4.2 LEASE lane remains BLOCKED 0/3.
+I-08 still requires the execution source identity to be tied to these
+user-supplied logs.
+
+The earlier agent-launched Unity attempt ended before Play Mode because of
+Licensing Client IPC; this is an environment block, not an IF-ADR-042 failure.
+The settings asset was unchanged during that earlier attempt. A prior full
+worktree `git diff --check` reported whitespace in Unity `.meta`/scene YAML and
+generated `obj` metadata; the tracker-only check passes. I-08 migration and
+API Governance EditMode evidence are present (including the user-reported
+357/357 QAFramework suite). The Project Owner supplied terminal lines are now
+retained above, including I4.2 OBSERVABLE PASS 8/8. Raw Editor logs/XML, the
+Unity version and exact executed Framework source identity are still missing.
+I-08, dependent workpackage certification and Phase 2 remain open. Release
+remains **NO-GO**.
+
+### Wave 3/4 — I-03/I-04 implementation checkpoint (2026-10-13)
+
+The controlled Host stop now routes joined/leaving Slots through canonical
+Session Player Leave, clears an active Activity through GameFlow after Player
+release, clears Session Camera Assignments, restores PlayerInput camera and
+Output participation, and tears down the Output topology before releasing
+Persistent Content. A pre-commit rejection keeps the same Host and owners
+available for retry. Activity projection now follows `DestinationAuthoritative`
+after committed clear failures, matching Route and Activity request projection.
+
+Camera Assignment Clear/Replace now transfers committed Occurrences into an
+exact pending-cleanup ledger before releasing Subject fallback ownership or
+destroying roots. Controlled Host stop waits for that ledger to drain. Output
+Session, topology and materialization teardown now return failures and retain
+their live owners for retry; Player Camera integration retains exact
+PlayerInput/Output receipts until physical cleanup is confirmed. The Editor
+regression `ControlledStopClear_ReleasesEveryActiveAssignmentBeforeOwnerDisposal`
+was added, but has not executed on this source cut.
+
+I-04 now has a canonical shutdown-owned Route exit on the existing Route
+Lifecycle owner. The Project Owner's 2026-10-13 ruling preserves the Primary
+Scene loaded and active, releases Framework composition scopes, and unloads
+only owned additive Route scenes; the decision is recorded in IF-ADR-001
+Amendment 001-A and the Gate A v2 record. Route content callbacks, spatial
+entry, Resettable/Stable Object Binding owners, additive release, scene-scope
+release and Route root removal retain stage receipts for retry. Route authority
+and `RouteExitedEvent` clear only after blocking stages complete. The Host
+regression now asserts that a later Persistent Content rejection retains no
+Route authority and preserves the exact active Primary Scene. Unity execution
+remains pending.
+
+The current Route-exit source cut statically compiled all 920 core Runtime C#
+sources against 305 existing references with exit 0; `Runtime/Audio` was
+excluded per its separate asmdef. The `PersistentContent.TestComponents` probe
+and `FrameworkRuntimeHostControlledStopTests` Editor fixture also statically
+compiled with their declared assembly identities. This is compiler evidence
+only: NUnit, Unity Editor/Play Mode and QA scenarios were not executed, so no
+runtime PASS is claimed.
+
+Pause cleanup is already integrated into canonical Activity exit. The controlled
+stop Editor regression now pauses at a non-default `Time.timeScale`, forces a
+later Persistent Content release rejection, and asserts that Pause is Running
+and the captured scale is restored before the same-Host retry. This regression
+has not executed because Unity Licensing IPC is unavailable.
+I-05's Activity-clear projection correction is implemented from the explicit
+post-commit result path, but its integrated fault-injection regression remains
+unexecuted; I-05 is not closed.
+
+Static C# compilation of the current core Runtime sources passed using the
+available MSBuild compiler and Unity `6000.5.0f1` reference assemblies; the
+separate `Runtime/Audio` assembly was excluded according to its asmdef boundary.
+`git diff --check` returned exit 0 in Framework and QAFramework. The existing
+generated Rider `.csproj` was stale (229 of 1,065 source paths were absent), so
+it is not a valid project-level result; the temporary static project filtered
+those paths and compiled the current Runtime inventory instead. Unity Editor,
+EditMode, Play Mode and QA scenarios were not executed for this checkpoint.
+The latest Unity batch attempt is BLOCKED by Licensing Client IPC refusal; do
+not count earlier 351/351 Editor results as validation of these later changes.
+
+I-03/I-04/I-05 remain open and no Phase 2 group is closed. I-04 still needs
+Unity execution of its Route-exit and retry regression; integrated retry
+fixtures, fresh package NUnit execution and QA/consumer evidence remain
+outstanding. Release stays **NO-GO**.
+
+### Follow-up status and provenance check (2026-10-13)
+
+The previously referenced Wave 1/Wave 2/I-08 NUnit XML and runner-log files are
+not present at their recorded `QAFramework/Temp/` paths in the current
+workspace. The counts above remain historical execution records from that
+checkpoint; this check did not reproduce them, and they are not candidate-
+specific evidence. Recover the originals or rerun the required lanes in an
+authorized Unity session before using them to close a current gate.
+
+Current consumer resolution is not an immutable-candidate certification:
+QAFramework resolves the local Framework checkout (`file:`) whose package
+metadata is still `1.1.0-preview.8`; FirstGame resolves OpenUPM
+`1.1.0-preview.8`. PEGA exists at the mission path, but this session cannot
+read its Git state or package resolution because access is denied. No consumer
+has been shown to import the same immutable 1.1.0 candidate bytes. Phase 4
+therefore remains pending.
+
+This follow-up is status/provenance only. It does not change the approved plan,
+reclassify historical counts, close I-01 through I-08, close Phase 2, or alter
+the release disposition. No Unity execution was attempted in this verification:
+the workspace `AGENTS.md` prohibits Unity build, tests, Play Mode, smoke and
+batchmode. Runtime evidence therefore remains BLOCKED here.
+
+### Execution follow-up — test fixture corrections and environment block (2026-10-13)
+
+The focused Unity GUI result at
+`QAFramework/Temp/IF-ADR-048-I03-fullstartup-gui.xml` and `.log` is **0/1**:
+`FullStartupAndControlledStop_RetainExactRootsAndSameHostForReleaseRetry`
+reached `FrameworkRuntimeHost.TryCreate` outside Play Mode, where Unity rejected
+`DontDestroyOnLoad`. The fixture had enabled `DisableDomainReload` and
+`DisableSceneReload` while yielding the default `EnterPlayMode` instruction
+(`expectDomainReload: true`). The controlled-stop fixture now sets
+`expectDomainReload: false` and asserts Play Mode before creating the Host. Its
+scene builder also moves each participant root into the exact scene it saves;
+the previous source did not explicitly do so. These are fixture corrections,
+not verified Runtime fixes. The route-scene release rejection reported by the
+preceding full-suite run is not reproducible from retained XML in this
+workspace.
+
+A later full QAFramework EditMode attempt against Unity `6000.5.0f1` terminated
+before a test result was produced: Unity logged Licensing IPC refusal,
+`Licensing initialization failed after 115.39s`, WMI assertions and a native
+crash. Process exit was `-536870911`; the requested
+`QAFramework/Temp/IF-ADR-048-final-editmode.xml` was not created. It is not a
+PASS or a test failure. The earlier 353/355 count exists only in the prior
+session transcript; its raw XML/log is absent from `QAFramework/Temp/` and it
+cannot close a current gate.
+
+I-05's post-commit Activity-clear result already carries destination authority
+in the current source. Two focused NUnit cases were added under
+`Tests/Editor/RouteLifecycle/ActivityCommitAuthorityProjectionTests.cs` for
+post-commit no-Activity projection with Route/Session preservation and for
+pre-commit non-authority. They have not compiled or executed in Unity here;
+the broader I-05 GameFlow fault-injection/QA path remains unproven. The Host
+fixture corrections and I-05 tests are therefore pending Unity validation.
+
+No I-01–I-08 workpackage or Phase 2 group is closed by this update. Wave 1 and
+I-02 implementations remain associated only with the historical counts above;
+their raw results are still unavailable. I-08 QA migration is present, but its
+required runtime scenarios remain BLOCKED. I-03/I-04 controlled shutdown and
+integrated teardown remain BLOCKED on Unity/NUnit/QA evidence; I-05 remains
+open pending fault-injection evidence. Phases 3–5 and publication remain
+pending/NO-GO; no immutable candidate or same-artifact consumer certification
+exists.
+
+### User-run focused Unity follow-up — controlled stop and I-05 fixtures (2026-10-13)
+
+The Project Owner supplied focused Test Runner output. The I-05 post-commit
+projection test stopped in fixture construction because its in-memory
+`ActivityAsset` had no valid `ActivityId`; the assertion did not reach state
+projection. The Host controlled-stop output also showed that the Route-release
+rejection probe was authored in the Route scene, while IF-ADR-040 discovers
+dynamic participants from Persistent Content roots and retains them for managed
+Scene scopes. The injected rejection therefore did not run. Its teardown then
+called `StopAsync` again after the Host had already reached `Stopped`, and the
+runtime retried cleanup against a terminal admission phase.
+
+The test fixture now assigns valid Route/Activity IDs, puts the Route-release
+probe under Persistent Content, asserts that the generated Game Application
+retains a resolvable Startup Route/Primary Scene, and expects the intentional
+controlled-stop rejection log. `FrameworkRuntimeHost.StopAsync` now returns
+success for an already stopped Host, preserving repeated-stop idempotence. These
+changes have not been rerun in Unity. The separately supplied
+`FullStartupAndControlledStop...` output reported a Startup Primary Scene
+preparation error with an empty scene label; the new asset assertions should
+localize whether that is fixture resolution or runtime behavior on rerun.
+
+`git diff --check` returned exit 0 after these edits. No Unity compilation,
+NUnit rerun, Play Mode scenario, or QA evidence is claimed. I-03/I-04/I-05
+remain open and the release remains NO-GO until the focused tests and required
+runtime evidence pass on this source cut.
+
+### User-run focused rerun — participant callback counts and Route fixture (2026-10-13)
+
+The Project Owner supplied Unity Test Runner output for **354/357 passed**.
+Both `ActivityCommitAuthorityProjectionTests` passed. The controlled Route
+release test now reached its injected rejection and retry; its remaining failure
+was the assertion expecting one callback although all three Persistent Content
+participants correctly received the managed Scene release. The startup-failure
+test likewise expected two participant callbacks after the fixture added the
+third Persistent Content participant. Assertions now count the complete
+three-participant callback set and separately verify the `route-scene` probe's
+own first-attempt/retry calls.
+
+`FullStartupAndControlledStop...` failed during `SetUp` because the generated
+Route asset did not retain its Primary Scene path. The fixture now explicitly
+marks SerializedObject edits dirty, checks the path immediately after authoring,
+and verifies the reloaded Route asset after save/import. These changes are
+unverified. The screenshot also showed **354 passed, 3 failed** overall; no
+aggregate PASS is claimed. I-03/I-04/I-05 and Phase 2 remain open; release stays
+NO-GO pending another focused Unity run and the required integrated scenarios.
+
+### User-run follow-up — Route serialization and release-scope fixture (2026-10-13)
+
+The Project Owner's next Unity run confirmed that `RouteAsset.PrimaryScenePath`
+was correct immediately after authoring but empty after the fixture's broad
+`SaveAssets`/`Refresh` cycle. The attached `FullStartup...` log also showed the
+`second` probe rejecting the managed Scene release before the test reached its
+intended Persistent Content Session-release failure. These are fixture/setup
+issues; no Runtime behavior change is indicated by this output.
+
+The Host fixture now serializes the Route fields together, saves the Activity,
+Route and Game Application assets individually, imports the Route and
+Application explicitly, and checks the serialized Route file before import as
+well as the path and Activity reference after import. The scene save result is
+asserted. Release rejection is now scoped: `second` rejects Session release,
+while `route-scene` rejects managed Scene release. The existing `LogAssert`
+expectations therefore exercise their intended shutdown stage.
+
+`git diff --check` returned exit 0; it reported only existing LF-to-CRLF
+conversion warnings. Unity compilation and NUnit rerun remain pending, so these
+fixture corrections are unverified. I-03/I-04/I-05 and Phase 2 remain open;
+release remains NO-GO.
+
+### User-run confirmation — QAFramework EditMode suite (2026-10-13)
+
+The Project Owner supplied a Unity Test Runner screenshot showing the full
+QAFramework EditMode suite at **357/357 passed, 0 failed**. The
+`Immersive.Framework.PersistentContent.Editor.Tests.dll` (24 tests) and
+`Immersive.Framework.RouteLifecycle.Editor.Tests.dll` (8 tests) groups are
+green in the screenshot, including the previously failing controlled Route
+release/retry and startup/shutdown fixture groups. The expanded
+`ActivityCommitAuthorityProjectionTests` node also shows both cases green.
+This supersedes the prior 354/357 report for these test groups and confirms
+their EditMode rerun passed; it does not close the corresponding workpackages.
+
+This is user-reported execution evidence from the screenshot only: no raw XML,
+runner log, exact package source hash, or candidate identity is attached. It
+confirms this EditMode run and does not certify Play Mode scenarios, immutable
+candidate provenance, consumer validation, or Phase 2 exit. I-03/I-04/I-05
+remain open pending their remaining integrated evidence; release remains
+NO-GO. The next execution dependency is Wave 2 I-08 runtime QA: run the
+migrated IF-ADR-036, IF-ADR-042, IF-ADR-043, IF-ADR-044, both IF-ADR-046
+scenarios, and the Player Session Join, Leave-Rejoin, and Multiplayer
+Ownership scenarios in fresh Play Mode sessions; retain each complete terminal
+line and preceding causal diagnostics. I-08 remains BLOCKED until these
+user-run terminals are reviewed.
+
+### Batchmode Play Mode attempt — environment BLOCKED (2026-10-13)
+
+At the Project Owner's request, Unity `6000.5.0f1` was invoked against
+QAFramework with `-batchmode -runTests -testPlatform playmode`. The first
+attempt was rejected because the project was open in another Unity instance.
+After the Project Owner closed that instance, the retry entered Unity startup
+but did not reach test execution: the Licensing Client IPC channel was refused,
+initialization timed out after 60 seconds, WMI assertions followed, and the
+Editor crashed with exit code `-536870911`. The runner log is
+`QAFramework/Temp/IF-ADR-048-playmode-batch-retry.log`; no result XML was
+created. This is **BLOCKED environment**, not a fixture FAIL or PASS.
+
+The resolved Framework test assembly definitions are under `Tests/Editor`
+with `includePlatforms: Editor`; QAFramework has no separate Play Mode NUnit
+assembly for the certifications listed above. Those certifications are
+scene-driven QA components, not scenarios invoked by the standard
+`-runTests -testPlatform playmode` lane. No such scenario was exercised by
+this attempt. After the attempt, the
+working tree showed `ImmersiveFrameworkSettings.asset` selecting
+`GameApplication_QaIfAdr042` instead of the `QaIfAdr036` value present in the
+pre-attempt status snapshot. This user/project setting was left untouched; its
+change is not attributed to a test result.
 
 ## Phase 2 — Operational Integrity: initial assessment
 
@@ -662,3 +1181,498 @@ Still Experimental: IPlayerSessionScopedAccess as a whole, Manager-Provisioned/S
 Evidence boundary: IF-ADR-044 QA 8/8 (BaselineRestored) plus FirstGame manual P1/P2 ownership, teardown and Pause composition; IF-ADR-039 Framework Editor/GameFlow evidence for Activate/Replace/Clear, including invalid-candidate state preservation in Editor tests. These results cover recorded scenarios, not Transition composition for Availability or every Unity Assignment failure topology. SharedGroup IF-ADR-042 QA 7/7 is closed; broader IF-ADR-038 recertification remains open.
 
 Historical QA/consumer runs in QAFramework and FirstGame resolved Framework through a local file: dependency and did not record an immutable Framework SHA. This does not invalidate results for tested behavior. Under IF-GOV-001 §8, routine future records capture the scenario/result, known Unity/package source and version, cleanup, and revision when available. Exact execution identity and additional artifacts are required only by an applicable gate or a candidate-specific claim that depends on them.
+
+## IF-ADR-048 Phase 2 closeout review — 2026-10-14
+
+**Disposition: Phase 2 remains open; do not advance to Phase 3.** The project
+workspace rules prohibit this executor from running Unity, NUnit, Play Mode,
+smokes or batchmode. This review used the Project Owner's supplied Test Runner
+screenshot and terminal lines, static source inspection, package-resolution
+inspection and `git diff --check`; no execution result was produced by this
+review.
+
+The Project Owner supplied the QAFramework EditMode screenshot showing
+**357/357 passed, 0 failed**. It includes the Framework Persistent Content
+(24 tests), Route Lifecycle (8), and Progression Save (8) assemblies. The same
+reported suite includes both `ActivityCommitAuthorityProjectionTests` and the
+three `FrameworkRuntimeHostControlledStopTests` UnityTest cases. This is valid
+user-reported evidence for that run, but its screenshot has no raw XML/runner
+log, Unity version or source manifest. The later I4.2 OBSERVABLE terminal is
+recorded above as user-reported **PASS 8/8**, `cleanup='BaselineRestored'`; it
+also lacks Unity version and Framework source identity. No historical LEASE
+BLOCKED result is reclassified.
+
+Current working-source identifiers, calculated for a reproducible next run:
+
+- Framework `HEAD`: `861620ca00b662a31d3542ff79b5c1f632d843ee` (dirty working tree).
+- Framework manifest SHA-256: `418396ffa4374dd1dd295ca21fd200a1218e43fa05d0207e8373760856516564`
+  over 2,049 files under `Runtime/`, `Tests/` and `package.json`; each file is
+  SHA-256 hashed, normalized relative paths use `/`, records are sorted by
+  ordinal path and hashed as UTF-8/LF `digest  path` lines. This identifies the
+  current working snapshot only; it does not retroactively bind the screenshot
+  or prior terminals to that snapshot.
+- QAFramework `HEAD`: `669b0e93ef63eadb6babd4a76498364f3319ef44` (dirty working
+  tree). The seven in-scope QA asset trees have manifest SHA-256
+  `80e9bf026f3277bcc6c91fbbfc05edb92e2bc7fda56dd7f2ba36255cf93487fd`
+  (383 files, same manifest algorithm). `Packages/manifest.json` SHA-256 is
+  `320431e00f9a3d04706b79c5c981b6f4b846d45bb6d937db2fd3af1108690cd8` and
+  `Packages/packages-lock.json` SHA-256 is
+  `4af5e8592ef6e1cff2e72bde24b65263b4cb5a42ad21ec708663dfec1e08ebe8`;
+  Framework resolves through `file:C:/Projetos/ImmersivePackages/com.immersive.framework`.
+
+Static inspection also found these named Phase 2 gaps:
+
+1. The Host shutdown fixtures prove startup, Pause restoration, Route release
+   rejection/retry, Persistent Content Session release rejection/retry and
+   same-Host ownership. They do not exercise I-04's required single integrated
+   shutdown with two joined Session occurrences, Camera Assignment/Output and
+   Pause/Input receipts, injected cleanup rejection and retry to baseline.
+2. I-05 has two reported-green Activity authority projection NUnit cases, but
+   no current-source integrated QA terminal was supplied for the planned
+   pre-commit and post-commit Route/Activity failure matrix with owner, result
+   and restored-baseline assertions.
+3. I-06's Progression Save NUnit suite is present in the screenshot, while the
+   Phase 2 matrix still has no QAFramework Stable Store scenario. Static source
+   review found no active Save consumer in QAFramework; a fabricated backend
+   smoke would not establish behavior of a real consumer implementation.
+4. The 357/357 report and supplied QA terminals have not been tied to the
+   current Framework/QA manifests above. Candidate-specific execution identity
+   remains unproven, and the full working-tree `git diff --check` currently
+   reports trailing whitespace in Unity-serialized empty fields and generated
+   `.meta` files.
+
+The 357/357 screenshot and supplied scenario terminals are preserved as
+user-reported evidence; they are not discarded or promoted beyond their
+recorded scope. The current code changes remain implemented, but these gaps
+prevent the required reviewed, source-identified Phase 2 exit. Publication
+remains **NO-GO**.
+
+## IF-ADR-048 Phase 2 test-gap follow-up — 2026-10-14
+
+**Disposition: Phase 2 remains open / NO-GO.** The Project Owner authorized
+creating missing tests and attempting their Unity execution in this session.
+No test result is claimed from the attempts below.
+
+Added current-source NUnit coverage:
+
+- I-05: `RouteCommitAuthorityProjectionTests` checks that a pre-commit Route
+  failure does not claim destination authority and that a post-commit reveal
+  failure projects the committed Route and Activity. These are result/state
+  projection tests, not injected lifecycle failures or integrated QA evidence.
+- I-04: `ControlledStop_TwoJoinedPlayersCameraAndPause_RetriesSameHostToBaseline`
+  joins two QAFramework Session Players, waits for their exact individual
+  Camera Assignment/Output and `PlayerInput.camera` bindings, verifies the
+  supported Pause/Input binding and pause restoration, injects one Session
+  participant release rejection, and checks canonical Leave, cleared physical
+  owners, exact Host/root retention and same-Host retry. This covers the
+  integrated two-Player shutdown slice; it does not replace the remaining
+  per-stage Camera fault matrix or every Activity/Route teardown injection.
+- I-06: `JsonStore_ImplementsStableReadWriteDeleteContractWithExactPayload`
+  exercises the real JSON implementation through `IProgressionSaveStore` for
+  Missing -> Written -> Found -> Deleted -> Missing and exact Binary payload
+  preservation. `JsonStore_WriteFailureDoesNotClaimTheSlotWasWritten` checks
+  that a real backend write failure is not reported as success. Existing
+  payload immutability, value equality, formats and result-code cases remain.
+  The concrete JSON adapter is Experimental; these tests do not promote its
+  construction API or establish a QA consumer smoke.
+
+Unity execution status: **BLOCKED before compilation/Test Runner**. Both the
+batch invocation and the GUI Editor attempt stopped when the Unity Licensing
+Client IPC channel `LicenseClient-renat` refused the connection; no focused
+test XML/result file was produced. No Unity window was available to control.
+The available `dotnet` command has no installed SDK, so it could not provide a
+separate C# build result. These are environment blocks, not test failures.
+Scoped `git diff --check` completed without whitespace errors and the changed
+test asmdef parses as JSON.
+
+Current working-source identity for a subsequent run:
+
+- Framework HEAD `861620ca00b662a31d3542ff79b5c1f632d843ee` (dirty working tree).
+- Framework manifest SHA-256 `983fbd4b2b041d29f244e5b0ed22f036b544569eabbef104bb8a26a2c46697ac`
+  over 2,051 files under `Runtime/`, `Tests/` and `package.json`, using the
+  manifest algorithm recorded in the closeout above.
+- QAFramework remains at HEAD `669b0e93ef63eadb6babd4a76498364f3319ef44`
+  (dirty working tree); no QAFramework asset or scenario changed in this
+  follow-up.
+
+Remaining Phase 2 evidence gaps include I-05's current-source integrated
+Route/Activity pre-commit and post-commit failure terminal with owner, result
+and restored-baseline assertions; I-06's exact-candidate QA terminal; and
+candidate-specific execution provenance. The new I-04 and I-06 tests must run
+in Unity before they can be recorded as PASS. Keep Phase 2 and publication
+**NO-GO** until those evidence requirements are reviewed; this follow-up does
+not close a workpackage or phase.
+
+## IF-ADR-048 Phase 2 user-run validation follow-up — 2026-10-14
+
+The Project Owner supplied a Unity Test Runner screenshot showing **362 passed,
+0 failed** in QAFramework EditMode. `FrameworkRuntimeHostControlledStopTests`
+shows 4/4 green, including
+`ControlledStop_TwoJoinedPlayersCameraAndPause_RetriesSameHostToBaseline`;
+the Progression Save assembly also shows 10/10 green. This supersedes the
+execution-status statements above that those newly added I-04/I-06 NUnit tests
+were still awaiting a Unity run. The integrated I-04 two-Player Camera/Pause
+controlled-stop slice is now user-reported **PASS**; its other per-stage
+Camera/Leave/Activity/Route failure injections remain outside this test.
+
+The Project Owner also supplied terminal results:
+
+- `QA-NEW-002`: **PASS**, submitted/completed Activity readiness requests,
+  pending state proved, release issued, baseline restored, empty
+  `firstDivergence` and `cleanupIssue`.
+- `QA-NEW-003`: **PASS**, Route A → B → restored A, exact owner survived,
+  baseline restored, empty `firstDivergence` and `cleanupIssue`.
+
+These close only the reported Activity-readiness and successful Route
+replacement executions. They do not establish the planned integrated
+pre-commit and post-commit Route/Activity failure matrix; in particular,
+`RouteCommitAuthorityProjectionTests` remains projection coverage rather than
+an injected lifecycle-failure terminal. The Progression Save NUnit PASS also
+does not substitute for the planned QAFramework Stable Store terminal.
+
+Evidence is user-reported. The screenshot has no raw XML, Unity version or
+runner-generated candidate manifest. The QAFramework lock resolves
+`com.immersive.framework` through
+`file:C:/Projetos/ImmersivePackages/com.immersive.framework`, but the supplied
+run itself does not print source identity. No Runtime, Tests, package, QA
+asset, Packages or ProjectSettings files were changed after the supplied
+results; only this tracker was updated. On that shared-workspace basis, the
+run is associated with these current working-byte manifests:
+
+- Framework HEAD `861620ca00b662a31d3542ff79b5c1f632d843ee` (dirty); SHA-256
+  `bf507bd7c3c43e4087309694e41d774c95f71b9bb7244eca0d183c18f9946e6d`
+  over 2,051 files in `Runtime/`, `Tests/` and `package.json`.
+- QAFramework HEAD `669b0e93ef63eadb6babd4a76498364f3319ef44` (dirty); SHA-256
+  `6dadfec4fb62edd82fa3bb246b693629a55c104cc19b09f9cf9cebc5fada3060`
+  over 711 files in `Assets/`, `Packages/` and `ProjectSettings/`.
+
+The Unity version and raw XML remain unavailable, so these are user-reported
+results associated with exact shared-workspace source bytes, not independently
+reproduced publication certification. Phase 2 remains **in progress / NO-GO**;
+publication remains **NO-GO**.
+
+## IF-ADR-048 Phase 2 post-commit failure regression — 2026-10-14
+
+The Project Owner's previously supplied **362/362 EditMode** screenshot and
+`QA-NEW-002` / `QA-NEW-003` terminals remain valid at the source identity
+recorded in the preceding section. After those runs, one additional I-05
+integration test was authored in
+`Tests/Editor/PersistentContent/FrameworkRuntimeHostControlledStopTests.cs`:
+
+- `PostCommitReadinessFailure_RouteStartupActivityRetainsCommittedRouteAndRestoresBaseline`
+  starts the real Framework Host on its authored Route/Activity, requests a
+  second persisted Route whose Startup Activity materializes a persisted
+  Activity-owned content scene with one Required readiness participant, and
+  fails that participant only after its occurrence reaches `Preparing`. It
+  asserts `FailedCommittedTargetNotReady` with
+  `DestinationAuthoritative=true` while the exact target Route and its Startup
+  Activity remain current. It then requests the original Route and asserts the
+  original Route/Activity, restored active scene, one readiness release
+  callback, and unloaded failed Route and Activity content.
+- The test changes no Runtime implementation, public API, serialized product
+  asset or Stable contract. Its QA-only readiness participant remains
+  Experimental; the test does not promote that surface.
+- This new test has **not** been compiled or executed in Unity. The earlier
+  362-test screenshot does not cover it. The current Framework working source
+  is HEAD `861620ca00b662a31d3542ff79b5c1f632d843ee` (dirty), with manifest
+  SHA-256 `a8b5ef0a5d622bac672b3352685fa2a82944471d1008eede51747821875d567d`
+  over 2,051 files in `Runtime/`, `Tests/` and `package.json`, using the
+  manifest procedure recorded above. This is the candidate identity for the
+  next run, not an execution identity.
+
+The latest user-reported Save assembly result remains **10/10** and covers the
+current NUnit payload/store contract suite, including payload immutability,
+real JSON read/write/delete through `IProgressionSaveStore`, backend write
+failure and distinct result-code preservation. QAFramework has no active
+Progression Save consumer; no fake QA consumer or duplicate runtime smoke was
+added. That consumer-level evidence remains absent and must stay distinct from
+the package-contract PASS.
+
+`git diff --check -- Tests/Editor/PersistentContent/FrameworkRuntimeHostControlledStopTests.cs`
+completed without whitespace errors. No Unity compile/test was run in this
+follow-up. I-05 remains open pending this new integration test's Unity result.
+The current integrated evidence still does not cover Route pre-commit failure
+or a direct Activity-request post-commit failure; the new test covers a Route
+request whose Startup Activity fails readiness after Route commit. Phase 2 and
+publication remain **in progress / NO-GO**.
+
+## IF-ADR-048 Phase 2 user-run 363-test result and I-05 extension — 2026-10-14
+
+The Project Owner supplied a Unity Test Runner screenshot showing
+**QAFramework 363/363 passed, 0 failed**. The screenshot shows
+`FrameworkRuntimeHostControlledStopTests` at **5/5 green**, including the
+Route Startup Activity post-commit readiness regression described above. This
+supersedes the previous statement that the Route integration test had not been
+run. The result is user-reported: the screenshot does not include Unity
+version, raw runner XML or an execution-generated source manifest, so it is
+not candidate-specific release certification.
+
+After that screenshot, the I-05 test was extended and renamed to
+`PostCommitReadinessFailure_RouteAndDirectActivityRetainCommittedOwnersAndRestoreBaseline`.
+It retains the already-reported Route case and adds a direct Activity request
+whose required readiness participant fails after commit, then checks retained
+Route/Activity authority and recovery to the exact baseline Activity. The
+extension has not yet been compiled or run in Unity; the screenshot does not
+cover these new assertions. It changes no Runtime implementation, public API,
+serialized product asset or Stable contract.
+
+I-05 remains open pending Unity validation of the extended test and integrated
+pre-commit failure evidence. Candidate-specific Phase 2 evidence and the
+remaining approved evidence matrix are also outstanding. Phase 2 and
+publication remain **in progress / NO-GO**.
+
+## IF-ADR-048 Phase 2 readiness regression diagnosis — 2026-10-14
+
+The Project Owner ran the combined Route + direct Activity version and
+reported a failure after 7.220 seconds: the expected Route committed-readiness
+error did not appear. The supplied log excerpt contains Host startup and
+controlled-stop cleanup only; it does not establish whether the test ever
+captured the target readiness participant or issued `FailPreparation`.
+
+The regression was split to preserve the previously reported-green Route test
+under its original name and isolate direct Activity failure in a separate
+UnityTest. Both cases now enqueue the expected error only immediately before
+the corresponding `FailPreparation` call. If the readiness phase is not
+reached, the failure assertion reports the loaded scene, participant state
+and request task status instead of being masked by an unconsumed expected-log
+entry. This is a test-diagnostic correction; it does not change Runtime or
+claim that the missing log was caused by a Runtime defect.
+
+These latest test-source changes have only passed scoped static whitespace
+validation; they have not been compiled or run in Unity. I-05 remains open,
+and Phase 2/publication remain **in progress / NO-GO**.
+
+## IF-ADR-048 Phase 2 follow-up: Activity fixture identity lost on import — 2026-10-14
+
+The Project Owner reran the separated Route Startup Activity integration and
+reported that the request faulted before the persisted Activity content scene
+loaded (`Scene valid=False`, no readiness participant, `requestStatus=Faulted`).
+The supplied direct-Activity log identifies the same fixture failure more
+precisely: `RequestActivityAsync` rejected the target because its Activity ID
+was missing, and the diagnostic showed the default Activity display name. The
+readiness failure was therefore never injected; this output does not show a
+Runtime post-commit readiness regression.
+
+The fixture now saves/imports the Activity identity and display name before
+assigning the Activity Content Profile, then checks those serialized values
+again after profile assignment and a second import. It also verifies the exact
+reloaded profile reference and rechecks identity after entering Play Mode,
+immediately before each request. These assertions localize any repeated asset
+round-trip loss to fixture preparation instead of letting a later request
+fault obscure it. No Runtime, public API or Stable contract changed.
+
+This correction has only received static source/diff inspection; Unity compile,
+EditMode and PlayMode execution remain pending. Rerun both
+`PostCommitReadinessFailure_RouteStartupActivityRetainsCommittedRouteAndRestoresBaseline`
+and `PostCommitReadinessFailure_DirectActivityRetainsCommittedOwnerAndRestoresBaseline`.
+I-05 remains open; Phase 2 and publication remain **in progress / NO-GO**.
+
+## IF-ADR-048 Phase 2 follow-up: direct Activity recovery release count — 2026-10-14
+
+The Project Owner reran the two post-commit readiness tests and reported one
+remaining failure: the direct Activity test expected two readiness release
+callbacks but observed one. Its trace confirms the intended behavior: the
+failed target Activity was occurrence 2, the recovery request restored the
+baseline Activity, and that operation released one Activity-owned scene. This
+test has one failed committed Activity occurrence; the Route variant is a
+separate test and its callback counter is not shared.
+
+The stale direct-test assertion was corrected from two callbacks to one and
+its diagnostic now refers to the single occurrence. The Project Owner then
+supplied a Unity Test Runner screenshot showing **QAFramework 364/364 passed,
+0 failed**, with `FrameworkRuntimeHostControlledStopTests` at **6/6 green**;
+both the direct Activity and Route Startup Activity post-commit tests appear
+green. This supersedes the pending-rerun status above. The result is
+user-reported evidence; the screenshot does not include Unity version, raw
+runner XML or a source manifest/hash for the execution.
+
+No Runtime or Stable contract changed in the assertion correction. The two
+post-commit regressions are now user-validated, but I-05 remains open for its
+other recorded integration evidence. Phase 2 and publication remain **in
+progress / NO-GO**.
+
+## IF-ADR-048 I-05 Route pre-commit projection follow-up — 2026-10-14
+
+The preceding 364/364 screenshot remains user-reported evidence for the source
+that existed before this follow-up. It does not cover the changes below.
+
+Static tracing of `RouteLifecycleRuntime.StartRouteAsync` found a pre-commit
+partial outcome: the current Activity can be cleared before Scene Lifecycle
+rejects an unavailable target Primary Scene. The canonical Route remains the
+previous Route, but the Host previously kept its pre-request Activity snapshot
+because it projected Route results only on success or when the destination
+Route was authoritative. This left Host state stale relative to the live
+GameFlow authority.
+
+The Host now projects the current `RouteLifecycleStartResult` after a
+non-authoritative Route result when the exact previous Route remains live. The
+new integration regression,
+`RoutePrimarySceneUnavailableBeforeCommit_ProjectsRetainedRouteAndCanRestoreActivity`,
+uses a valid Route identity with an unavailable Primary Scene, asserts the
+failed destination is not authoritative, checks that Host state matches the
+retained Route and cleared Activity, verifies the primary scene and Transition
+Gate, then restores the baseline Activity through the same Host.
+
+This is a scoped Runtime state-projection correction and integrated test for
+the observed partial Route outcome; it does not add blanket rollback or alter
+Stable API. The test and correction have not been compiled or run in Unity.
+`git diff --check` passed for the changed Runtime and test files. Current
+Framework working-source manifest SHA-256 at that checkpoint was
+`7b340c1753191fde554e56e088eb2e7fcea9ee20d253cc3a58e734df1275b092` over
+2,051 files under `Runtime/`, `Tests/` and `package.json`; it identifies the
+source before the subsequently reported Unity run and follow-up below, not an
+execution identity.
+
+I-05 remains open pending Unity validation of this pre-commit regression and
+review of the remaining applicable failure paths. Phase 2 and publication
+remain **in progress / NO-GO**.
+
+### User-run follow-up — unavailable Route diagnostic log — 2026-10-14
+
+The Project Owner ran
+`RoutePrimarySceneUnavailableBeforeCommit_ProjectsRetainedRouteAndCanRestoreActivity`.
+The failure was an unconsumed Unity `Error` log emitted for the deliberately
+unavailable target Primary Scene, rather than a reported assertion about Route
+or Activity ownership. The same log exposed a diagnostics defect: for a
+non-authoritative `FailedInvalidConfig` result, the Host labeled the rejected
+target Route as `currentRoute`, even though the previous Route remained the
+live authority.
+
+The regression now expects the specific Scene Composition error and also
+requires its structured fields to identify the retained `host-stop.route` as
+current. Route request summary and diagnostic fields now project current Route,
+Activity and readiness from the Host's canonical state. For non-authoritative
+outcomes, `previousRoute` is taken from that retained state; authoritative
+results continue to report the previous Route carried by their lifecycle
+result. No lifecycle policy or public API changed.
+
+Static `git diff --check HEAD` passed for the changed Runtime, state and test
+files. The 2,051-file Runtime/Tests/package manifest for this updated source is
+`be660ae6cbfd643f4b39b52e8cde6ed9d427f100744bef779ec182639dd02ce9`.
+Unity compilation and rerun remain pending; no PASS is claimed. I-05, Phase 2
+and release remain **in progress / NO-GO**.
+
+### User-run follow-up — retained Activity projection remained stale — 2026-10-14
+
+The Project Owner reran the unavailable-Route regression. The expected error
+log was consumed and correctly reported `host-stop.route` as current, but the
+test then found `Host.State.CurrentActivity` still pointing to `Host Stop
+Activity` after the runtime had cleared it. The trace shows the clear/release
+completed before the target Primary Scene composition failed.
+
+`RouteLifecycleRuntime.StartRouteAsync` now updates its retained Route result
+immediately after the previous Activity clear completes. When Game Flow sees
+that the target Route did not start, it refreshes its flow-context projection
+from the Route Lifecycle owner. The regression also checks that the retained
+Route result and Host state both expose the baseline Route with no current
+Activity, then verifies recovery to the baseline Activity.
+
+`git diff --check HEAD` passed for the changed Runtime and test files. The
+2,051-file Runtime/Tests/package manifest for this source is
+`1aeb4fef20539a4cb163f2f606787481e4efceaf68c8926ab1ad13725ec1d178`.
+Unity compilation and rerun remain pending; I-05, Phase 2 and release remain
+**in progress / NO-GO**.
+
+### User-run validation — Route pre-commit projection — 2026-10-14
+
+The Project Owner supplied a Unity Test Runner screenshot showing **QAFramework
+365/365 passed, 0 failed**. It shows `Immersive.Framework.PersistentContent.Editor.Tests.dll`
+at 28/28 and `FrameworkRuntimeHostControlledStopTests` at **7/7**, including
+the unavailable-Route pre-commit regression and the two post-commit readiness
+recovery cases. This resolves the reported assertion failure for that run and
+supersedes the prior pending-rerun status for these integrated regressions.
+
+The result is user-reported from the screenshot. It does not include Unity
+version, raw NUnit XML or a runner-generated source fingerprint. The Framework
+working-source manifest remains
+`1aeb4fef20539a4cb163f2f606787481e4efceaf68c8926ab1ad13725ec1d178` over 2,051
+Runtime/Tests/package files; the screenshot itself does not bind the run to
+that fingerprint. Record the three I-05 integration cases as user-reported
+PASS, but keep I-05/Phase 2 open for source-identified certification and the
+remaining readiness evidence review. Release remains **NO-GO**.
+
+## IF-ADR-048 Phase 2 closure — composed evidence accepted — 2026-10-14
+
+**Disposition: Phase 2 CLOSED; proceed to Phase 3 entry preparation.** The
+Project Owner directed that behavior already exercised by complementary
+component, integration and QA scenario proofs be accepted compositionally;
+one bespoke test is not required when the combined evidence covers the same
+contract boundary and recovery outcome. This disposition supersedes earlier
+tracker notes that kept Phase 2 open solely for a separately named test or
+because evidence was split across focused suites.
+
+The Project Owner supplied the Unity Test Runner screenshot showing
+**QAFramework 365/365 passed, 0 failed**. It includes all displayed Editor
+assemblies, including Persistent Content **28/28** and
+`FrameworkRuntimeHostControlledStopTests` **7/7**. The latter covers startup
+and controlled stop, retained roots, same-Host release retry, two joined
+players with Camera/Pause cleanup, post-commit direct Activity and Route
+readiness failures, and pre-commit unavailable Route recovery. These results
+compose with the previously supplied component suite and QA scenario evidence
+recorded in this tracker for Player/Session, Pause/Input, Camera, Route and
+Activity behavior. The Progression Save suite is **10/10** for its Stable
+`IProgressionSaveStore` payload/result contract. QAFramework has no active
+Progression Save consumer, so a fabricated consumer smoke is not required.
+
+The composite evidence is accepted at its reported scope; no additional
+Phase 2-specific test remains to be requested. The historical IF-ADR-046 I4.2
+LEASE result remains **BLOCKED 0/3** and is not relabeled PASS: it is outside
+the accepted Stable Join claim and does not block this phase. Accepted bounded
+residuals remain: terminal Unity callbacks are best-effort; asynchronous
+GameFlow has no arbitrary timeout; partial Route outcomes can be legitimate;
+Progression Save guarantees remain within the Stable store/payload boundary;
+Experimental APIs and evidence do not promote or enlarge Stable contracts.
+
+The 365/365 result is user-reported against QAFramework's local `file:` package
+resolution. The Framework source manifest associated with the run in the
+preceding checkpoint is
+`1aeb4fef20539a4cb163f2f606787481e4efceaf68c8926ab1ad13725ec1d178` over 2,051
+Runtime/Tests/package files. Subsequent local cleanup changed only whitespace
+in Unity `.meta` files; it did not change Runtime or test source. This closes
+operational integrity but does **not** certify an immutable release candidate
+or exact distributed artifact.
+
+Phase 3 is the next gate. Its entry action is to review and freeze the current
+mission source as a clean Git revision, then complete the Stable contract to
+test/consumer matrix for QAFramework, FirstGame and PEGA. The current package
+tree is still dirty, so no candidate SHA is claimed and no candidate-specific
+recertification has begun. The generated `obj/Debug` outputs discovered during
+preparation have been removed from the candidate index and workspace.
+Phase 4 exact-artifact consumer validation and Phase 5 release GO remain
+pending; publication stays **NO-GO**. No Unity execution was performed in this
+documentation update.
+
+## Phase 3 — candidate certification matrix preparation — 2026-10-14
+
+The approved Stable inventory remains the 107 Runtime types reconciled in
+Phase 1. The following mapping accepts complementary proof for Phase 2 and
+defines what must be attached to the frozen candidate; it does not require
+duplicating a test when existing tests jointly prove the same owner, result
+and recovery boundary.
+
+| Workpackage / guarantee group | Composed evidence accepted for Phase 2 | Evidence to bind to the frozen candidate |
+|---|---|---|
+| I-01 — Scene Lifecycle participant ledger / Persistent Content | `SessionCompositionReleaseTests` and Host startup/shutdown/retry tests in the 365/365 Editor run; the Host group is 7/7. | Framework Editor suite on the candidate; retain exact scope, participant receipts and retry assertions. QAFramework full Editor result and any named partial-composition scenario result against the same package SHA. |
+| I-02 — scoped release, Availability and physical receipts | Player Participation and Pause Editor assemblies are green in the 365/365 run; IF-ADR-044 QA 8/8 reports independent blocks and `BaselineRestored`. | Framework Editor suite plus IF-ADR-044 and applicable Join/Leave/physical-input scenarios using the candidate; record source/artifact identity and cleanup. |
+| I-03 — Host admission, bootstrap and controlled stop | Host Admission and `FrameworkRuntimeHostControlledStopTests` are green; the latter is 7/7, including startup, retained ownership, failure and same-Host retry. | Candidate Editor import/compile and full Editor suite; retain controlled-stop evidence on the candidate, including same-Host retry and terminal cleanup boundaries. |
+| I-04 — player, Camera, Activity and Route teardown | `ControlledStop_TwoJoinedPlayersCameraAndPause_RetriesSameHostToBaseline` passes within Host 7/7; Camera, Pause and Player Participation suites are included in 365/365; supplied IF-ADR-043 physical-participation evidence is 7/7. | Candidate Editor suite plus targeted two-Player Camera/Pause cleanup scenario; record exact per-occurrence Leave, receipt release, retry and baseline restoration. |
+| I-05 — GameFlow partial failure and recovery | The three Host integration cases for pre-commit Route failure, post-commit Route Startup Activity readiness failure, and direct Activity readiness failure are green within Host 7/7. The cases assert retained authority and recovery. | Candidate Editor suite and the same integrated cases; add targeted QA scenario evidence only where it exercises a distinct Stable boundary. Preserve legitimate partial Route outcomes. |
+| I-06 — Progression Save payload/store contract | Progression Save Editor suite 10/10 covers payload immutability, JSON `IProgressionSaveStore` read/write/delete outcomes and failure mapping. No active QAFramework Save consumer was found, so no synthetic consumer smoke is required. | Candidate Editor suite; consumer smoke is N/A while no active consumer exists. If a consumer is introduced before release, add it to the matrix and certify it against the exact artifact. |
+| I-07 — identity and maturity metadata | Identity Editor assembly is 19/19 in the 365/365 run; identity and API-status conformance are directly covered. | Candidate Editor suite and Static/API inventory check against Public-API and accepted ADRs. No serialized schema or Stable inventory drift. |
+| I-08 — Observer/Command migration and Provisioning gate audit | Supplied QA terminals include IF-ADR-042 SharedGroup 6/6, IF-ADR-043 7/7, IF-ADR-044 8/8, IF-ADR-046 I4.2 Observable 8/8, and Player Session Join/Leave proofs. The separate I4.2 LEASE result remains Experimental and BLOCKED 0/3. | Run the applicable migrated QAFramework scenarios against the exact candidate and record terminal PASS/cleanup; retain the LEASE exclusion and do not promote it into Stable coverage. |
+
+### Consumer resolution and Phase 4 evidence route
+
+| Consumer | Unity | Current Framework resolution | Candidate evidence required |
+|---|---|---|---|
+| QAFramework | `6000.5.0f1` | `manifest.json` and `packages-lock.json` resolve `com.immersive.framework` by local `file:` path to this checkout; its `package.json` is still `1.1.0-preview.8`. | Candidate exact-source import/compile, full Editor lane, and applicable QA scenario terminals. Record installed source/artifact hash. |
+| FirstGame (`planet-devourer`) | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. | Install the exact immutable candidate artifact in Phase 4; import/compile and run the approved FirstGame targeted scenario(s), recording artifact hash and resolved lock. |
+| PEGA | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. Repository Git status is inaccessible to this task, but the project manifest and lock were readable. | Install the same exact artifact in Phase 4; import/compile and run the approved PEGA targeted scenario(s), recording artifact hash and resolved lock. |
+
+The package source remains version `1.1.0-preview.8`; the candidate is not a
+release artifact. Phase 3 candidate validation has not started: the source must
+first be reviewed and frozen at a Git SHA. Once frozen, the mandatory Unity
+Editor/QA lanes above must be run against that SHA; only then can Phase 3 exit.
+Phase 4 is a separate exact-artifact consumer validation, and Phase 5 still
+requires an explicit release GO for the exact version, source SHA and artifact
+hash. No publication is authorized by this matrix.

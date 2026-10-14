@@ -74,11 +74,6 @@ namespace Immersive.Framework.ApplicationLifecycle
                 string issue =
                     progressionSaveComposition.Message;
 
-                UnityEngine.Object.Destroy(
-                    runtimeHost.gameObject);
-
-                runtimeHost = null;
-
                 throw new InvalidOperationException(
                     $"Progression Save application composition failed. {issue}");
             }

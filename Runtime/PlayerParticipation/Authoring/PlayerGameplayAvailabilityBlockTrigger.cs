@@ -114,17 +114,32 @@ namespace Immersive.Framework.PlayerParticipation
             return TryResolvePlayerSlot(out _, out issue);
         }
 
-        protected override void OnScopedAccessReleasing(IPlayerSessionScopedAccess scopedAccess)
+        protected override bool OnScopedAccessReleasing(
+            IPlayerSessionScopedAccess scopedAccess,
+            out string issue)
         {
-            if (_ownedToken.IsValid)
+            if (!_ownedToken.IsValid)
             {
-                LastResult = scopedAccess.RequestReleaseRuntimeGameplay(
-                    _ownedToken,
-                    Source,
-                    "consumer-scope-released");
-                LastDiagnostic = LastResult.Message;
-                _ownedToken = default;
+                issue = string.Empty;
+                return true;
             }
+
+            LastResult = scopedAccess.RequestReleaseRuntimeGameplay(
+                _ownedToken,
+                Source,
+                "consumer-scope-released");
+            LastDiagnostic = LastResult.Message;
+            bool released = LastResult.Status == PlayerGameplayAvailabilityBlockStatus.SucceededReleased ||
+                LastResult.Status == PlayerGameplayAvailabilityBlockStatus.RejectedForeignOrStaleToken;
+            if (released)
+            {
+                _ownedToken = default;
+                issue = string.Empty;
+                return true;
+            }
+
+            issue = LastDiagnostic;
+            return false;
         }
 
         private bool TryResolvePlayerSlot(out PlayerSlotId playerSlotId, out string issue)

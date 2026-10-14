@@ -128,5 +128,30 @@ namespace Immersive.Framework.ApplicationLifecycle
             return new FrameworkRuntimeState(SessionState.WithActivityReadiness(
                 routeLifecycleResult, activityReadinessState));
         }
+
+        internal FrameworkRuntimeState WithCurrentRouteLifecycleResult(
+            RouteLifecycleStartResult routeLifecycleResult)
+        {
+            return new FrameworkRuntimeState(new SessionRuntimeState(
+                GameApplication,
+                routeLifecycleResult.Route,
+                routeLifecycleResult,
+                routeLifecycleResult.RouteContentSet,
+                routeLifecycleResult.SceneLifecycleResult,
+                routeLifecycleResult.ActivityFlowResult,
+                GameFlowStarted));
+        }
+
+        internal FrameworkRuntimeState WithoutRoutePreservingPrimaryScene()
+        {
+            return new FrameworkRuntimeState(new SessionRuntimeState(
+                GameApplication,
+                null,
+                default,
+                default,
+                PrimarySceneResult,
+                default,
+                false));
+        }
     }
 }

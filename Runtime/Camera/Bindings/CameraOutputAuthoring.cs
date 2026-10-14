@@ -208,10 +208,24 @@ namespace Immersive.Framework.Camera
 
         internal void TeardownSession(string reason)
         {
+            TryTeardownSession(reason, out _);
+        }
+
+        internal bool TryTeardownSession(
+            string reason,
+            out string diagnostic)
+        {
             if (_session != null)
             {
-                _session.Teardown();
+                CameraOutputApplyResult result = _session.Teardown();
+                if (!result.Succeeded)
+                {
+                    diagnostic = result.DiagnosticSummary;
+                    SetDiagnostic("TeardownPending", diagnostic, true);
+                    return false;
+                }
             }
+
             _session = null;
             _initializedDefinition = null;
             _applicator = null;
@@ -219,6 +233,8 @@ namespace Immersive.Framework.Camera
                 "TornDown",
                 $"Camera output session torn down. output='{OutputIdText}' reason='{reason.NormalizeTextOrFallback("Unspecified")}'.",
                 false);
+            diagnostic = string.Empty;
+            return true;
         }
 
         private void SetDiagnostic(

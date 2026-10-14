@@ -421,8 +421,13 @@ namespace Immersive.Framework.Camera
 
         internal CameraOutputApplyResult Teardown()
         {
-            _fallbackCoverageOwners.Clear();
-            return _applicator.Clear();
+            CameraOutputApplyResult result = _applicator.Clear();
+            if (result.Succeeded)
+            {
+                _fallbackCoverageOwners.Clear();
+            }
+
+            return result;
         }
 
         private CameraOutputApplyResult ApplyEffectivePresentation()

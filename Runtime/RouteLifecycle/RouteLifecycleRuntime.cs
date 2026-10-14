@@ -308,6 +308,7 @@ namespace Immersive.Framework.RouteLifecycle
                     return RouteLifecycleStartResult.Failed(activityRouteExitResult.Message);
                 }
 
+                UpdateCurrentActivityProjection(activityRouteExitResult);
                 activitySceneRouteReleaseResult = activityRouteExitResult.ActivitySceneReleaseResult;
             }
             else

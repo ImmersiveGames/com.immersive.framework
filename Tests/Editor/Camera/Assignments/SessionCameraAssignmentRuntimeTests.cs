@@ -780,6 +780,32 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void ControlledStopClear_ReleasesEveryActiveAssignmentBeforeOwnerDisposal()
+        {
+            Fixture fixture = CreateFixture(
+                2,
+                CameraTargetPolicy.NoSubject,
+                twoAssignments: true);
+            SessionCameraAssignmentRuntime runtime = CreateSharedRuntime(fixture);
+
+            Assert.That(runtime.Occurrences, Has.Count.EqualTo(2));
+            Assert.That(fixture.Outputs[0].Session.OutputState.HasActiveAssignment, Is.True);
+            Assert.That(fixture.Outputs[1].Session.OutputState.HasActiveAssignment, Is.True);
+
+            Assert.That(runtime.TryClearAllAssignments(out string issue), Is.True, issue);
+
+            Assert.That(runtime.Occurrences, Is.Empty);
+            foreach (CameraOutputAuthoring output in fixture.Outputs)
+            {
+                Assert.That(output.Session.OutputState.HasActiveAssignment, Is.False);
+                Assert.That(output.Session.OutputState.IsFallbackCovering, Is.True);
+            }
+
+            Assert.That(runtime.TryClearAllAssignments(out issue), Is.True, issue);
+            Assert.That(runtime.Occurrences, Is.Empty);
+        }
+
+        [Test]
         public void ActivateDuringTemporaryFallbackCoverageCommitsAssignmentAndPresentsAfterRelease()
         {
             Fixture fixture = CreateFixture(1, CameraTargetPolicy.NoSubject);

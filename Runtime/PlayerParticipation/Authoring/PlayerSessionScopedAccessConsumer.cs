@@ -13,9 +13,10 @@ namespace Immersive.Framework.PlayerParticipation
         IDisposable binding,
         LocalPlayerProvisioningConsumerScope actualScope,
         out string issue);
-    internal delegate void ReleasePlayerSessionRecipientBinding(
+    internal delegate bool ReleasePlayerSessionRecipientBinding(
         string reason,
-        bool isStale);
+        bool isStale,
+        out string issue);
 
     /// <summary>
     /// Internal adapter between composition discovery and one binding destination.
@@ -131,7 +132,12 @@ namespace Immersive.Framework.PlayerParticipation
 
                     return trigger.TryBindJoinPort(joinPort, actualScope, out issue);
                 },
-                trigger.ReleaseJoinPort);
+                (string reason, bool isStale, out string issue) =>
+                {
+                    trigger.ReleaseJoinPort(reason, isStale);
+                    issue = string.Empty;
+                    return true;
+                });
         }
 
         internal bool TryValidateScope(out string issue)
@@ -192,14 +198,27 @@ namespace Immersive.Framework.PlayerParticipation
             return bound;
         }
 
-        internal void Release(string reason, bool isStale)
+        internal bool Release(string reason, bool isStale, out string issue)
         {
             if (_released)
-                return;
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            if (_component == null || _release == null)
+            {
+                _released = true;
+                issue = string.Empty;
+                return true;
+            }
+
+            if (!_release(reason, isStale, out issue))
+                return false;
 
             _released = true;
-            if (_component != null)
-                _release?.Invoke(reason, isStale);
+            issue = string.Empty;
+            return true;
         }
 
         internal bool HasSameDestination(PlayerSessionScopedBindingRecipient other)
@@ -255,6 +274,9 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerSessionScopedAccessState _bindingState =
             PlayerSessionScopedAccessState.Unbound;
 
+        [NonSerialized]
+        private bool _releasePending;
+
         public LocalPlayerProvisioningConsumerScope Scope => scope;
 
         public bool IsScopedAccessAvailable => _bindingState ==
@@ -266,28 +288,30 @@ namespace Immersive.Framework.PlayerParticipation
                 ? PlayerSessionScopedAccessState.Released
                 : _bindingState;
 
-        public string ScopedAccessDiagnostic => _access != null
+        public string ScopedAccessDiagnostic => IsScopedAccessAvailable
             ? _access.Snapshot.Diagnostic
             : GetUnboundDiagnostic();
 
         public PlayerSessionScopedAccessSnapshot ScopedAccessSnapshot =>
-            _access != null
+            IsScopedAccessAvailable
                 ? _access.Snapshot
                 : PlayerSessionScopedAccessSnapshot.Unavailable(
                     scope,
-                    default,
+                    _access != null ? _access.Snapshot.Owner : default,
                     GetUnboundDiagnostic());
 
         /// <summary>
         /// Advanced typed access for consumers already holding this concrete
         /// Player Session component. It does not resolve a global authority.
         /// </summary>
-        public bool TryGetAccess(
+        protected bool TryGetAccess(
             out IPlayerSessionScopedAccess resolvedAccess,
             out string issue)
         {
             resolvedAccess = _access;
-            if (resolvedAccess == null || !resolvedAccess.Snapshot.IsAvailable)
+            if (_bindingState != PlayerSessionScopedAccessState.Bound ||
+                resolvedAccess == null ||
+                !resolvedAccess.Snapshot.IsAvailable)
             {
                 issue = ScopedAccessDiagnostic;
                 if (resolvedAccess != null && resolvedAccess.Snapshot.IsDisposed)
@@ -308,6 +332,12 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerProvisioningConsumerScope actualScope,
             out string issue)
         {
+            if (_releasePending)
+            {
+                issue = _diagnostic;
+                return false;
+            }
+
             if (!scope.IsDefinedScope())
             {
                 issue = "Player Session component requires an explicit Route or Activity scope.";
@@ -359,14 +389,18 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        internal void ReleaseScopedAccess(string reason, bool isStale = false)
+        internal bool ReleaseScopedAccess(
+            string reason,
+            bool isStale,
+            out string issue)
         {
             // A scene consumer may be destroyed before the persistent Runtime Host.
             // OnDestroy already releases the bound access on the consumer side, so a
             // later owner-side release must treat a Unity-destroyed wrapper as done.
             if (this == null)
             {
-                return;
+                issue = string.Empty;
+                return true;
             }
 
             string resolvedReason = string.IsNullOrWhiteSpace(reason)
@@ -375,16 +409,37 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerSessionScopedAccessState nextState = isStale
                 ? PlayerSessionScopedAccessState.Released
                 : PlayerSessionScopedAccessState.Unavailable;
+            bool wasPending = _releasePending;
             bool changed = _access != null || _bindingState != nextState ||
                 !string.Equals(_diagnostic, resolvedReason, StringComparison.Ordinal);
 
-            ReleaseBoundScopedAccess();
+            if (!ReleaseBoundScopedAccess(out string releaseIssue))
+            {
+                _diagnostic =
+                    $"{resolvedReason} Scoped access release remains pending. {(string.IsNullOrWhiteSpace(releaseIssue) ? "No release diagnostic was supplied." : releaseIssue.Trim())}";
+                _bindingState = PlayerSessionScopedAccessState.Released;
+                issue = _diagnostic;
+                if (!wasPending)
+                {
+                    LogWarning(
+                        "Player Session scoped access release remains pending.",
+                        "ReleasePending",
+                        scope,
+                        _diagnostic);
+                }
+
+                return false;
+            }
+
             _diagnostic = resolvedReason;
             _bindingState = nextState;
-            if (changed)
+            issue = string.Empty;
+            if (changed || wasPending)
             {
                 LogDebug("Player Session scoped access released.", isStale ? "StaleReleased" : "Released", scope, resolvedReason);
             }
+
+            return true;
         }
 
         internal bool TryValidateScope(out string issue)
@@ -410,7 +465,17 @@ namespace Immersive.Framework.PlayerParticipation
         {
             bool hadLiveBinding = _access != null ||
                 _bindingState == PlayerSessionScopedAccessState.Bound;
-            ReleaseBoundScopedAccess();
+            if (!ReleaseBoundScopedAccess(out string releaseIssue))
+            {
+                _diagnostic =
+                    $"Player Session consumer was destroyed while scoped access release remained pending. {(string.IsNullOrWhiteSpace(releaseIssue) ? "No release diagnostic was supplied." : releaseIssue.Trim())}";
+                LogWarning(
+                    "Player Session scoped access release was best-effort during consumer destruction.",
+                    "DestroyedReleasePending",
+                    scope,
+                    _diagnostic);
+            }
+
             _diagnostic = "Player Session component was destroyed; any previous scoped access is invalid.";
             _bindingState = PlayerSessionScopedAccessState.Released;
             if (hadLiveBinding)
@@ -438,18 +503,33 @@ namespace Immersive.Framework.PlayerParticipation
         {
         }
 
-        protected virtual void OnScopedAccessReleasing(
-            IPlayerSessionScopedAccess scopedAccess)
+        protected virtual bool OnScopedAccessReleasing(
+            IPlayerSessionScopedAccess scopedAccess,
+            out string issue)
         {
+            issue = string.Empty;
+            return true;
         }
 
-        private void ReleaseBoundScopedAccess()
+        private bool ReleaseBoundScopedAccess(out string issue)
         {
-            if (_access != null)
+            issue = string.Empty;
+            if (_access == null)
             {
-                OnScopedAccessReleasing(_access);
-                _access = null;
+                _releasePending = false;
+                return true;
             }
+
+            if (!OnScopedAccessReleasing(_access, out issue))
+            {
+                _releasePending = true;
+                return false;
+            }
+
+            _access = null;
+            _releasePending = false;
+            issue = string.Empty;
+            return true;
         }
 
         private void LogTrace(string message, string status, LocalPlayerProvisioningConsumerScope runtimeScope, string reason)

@@ -88,11 +88,13 @@ Route-scoped Activity transition observation added by IF-ADR-041 is also validat
 
 The accepted scope of IF-ADR-040 is therefore implemented, integrated and validated. Future features may adopt this composition protocol when their ownership/lifetime matches it; this ADR does not require unrelated lifetime models to converge on Scene Composition.
 
-## Proposed normative amendment — Session participant ledger (pending final text review, 2026-10-13)
+## Amendment 001 — Session participant ledger (accepted 2026-10-13)
 
-This proposal does not change the Accepted status above or expand the participant
-API. It clarifies Session composition rollback and release when a participant
-fails after another participant may already have acquired resources.
+Accepted under Gate A v2 for the 1.1.0 Stable-readiness route. The amendment
+preserves the accepted composition authority and does not expand the participant
+API. The text below is the adopted normative clarification for Session
+composition rollback and release when a participant fails after another
+participant may already have acquired resources.
 
 Before invoking `Available` for each discovered Session participant,
 `SceneLifecycleRuntime` records that participant, its position and the exact

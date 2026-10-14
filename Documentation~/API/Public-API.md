@@ -49,11 +49,13 @@ Guide: [Getting Started](../Guides/Getting-Started.md), [Persistent Content Scen
 
 ## Boundary identities
 
-`IFrameworkIdentity`, `FrameworkIdentityDomain`, `FrameworkIdentityKey` and
-`FrameworkIdentityValue` provide typed identity boundaries. `RouteId`,
-`ActivityId` and `PlayerSlotId` are domain-specific identities; they are not
-interchangeable across domains. Authored identity and stable addressing rules
-are owned by [IF-ADR-014](../Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `IFrameworkIdentity`, `FrameworkIdentityDomain`, `FrameworkIdentityKey`, `FrameworkIdentityValue`, `RouteId`, `ActivityId`, `PlayerSlotId` | Boundary identity primitives · Stable | Preserve typed identity domains and value validation; erased comparisons use domain plus value. The identity contracts do not replace exact authored asset references or lifecycle/occurrence authority. See [IF-ADR-014](../Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md). |
+
+`RouteId`, `ActivityId` and `PlayerSlotId` are domain-specific identities;
+they are not interchangeable across domains. Authored identity and stable
+addressing rules are owned by [IF-ADR-014](../Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
 and the feature ADRs that consume them.
 
 ## Application Frame Rate
@@ -109,7 +111,7 @@ Guide: [Game Flow](../Guides/Game-Flow.md), [Activity Readiness](../Guides/Activ
 | `PlayerSessionProfile`, `PlayerHostProvisioningMode` | Session profile/configuration · Experimental | Configure supported Slots, initial Session intent and Scene-Provided or Manager-Provisioned Host mode. |
 | `LocalPlayerProvisioningAuthoring` | Authoring · Experimental | Configures explicit runtime Manager-Provisioned Player creation. |
 | `PlayerSessionJoinTrigger`, `LocalPlayerProvisioningConsumerScope`, `LocalPlayerJoinRequest`, `LocalPlayerJoinOutcome`, `LocalPlayerJoinOutcomeCode`, `LocalPlayerJoinAdmissionState` | Manager-Provisioned Join boundary · Stable | The single public Join request boundary under IF-ADR-046. The trigger delegates through the active Route/Activity occurrence; the bounded outcome does not expose Session/Slot, Host or Actor evidence. `InputDevice` is part of the request contract. |
-| `PlayerSessionObserver` and remaining Player Session command triggers | Observation/request components · Experimental | Explicit Session observation and Leave/Actor-selection/Joining commands. They do not replace physical Actor materialization and do not provide a second Join request path. |
+| `PlayerSessionObserver` and remaining Player Session command triggers | Observation/request components · Experimental | Explicit Session observation and Leave/Actor-selection/Joining commands. They do not replace physical Actor materialization and do not provide a second Join request path. The inherited `PlayerSessionScopedAccessConsumer.TryGetAccess` helper is protected for derived implementations; external consumers use Observer reads and authored command triggers. |
 | `IPlayerSessionScopedAccess` | Scoped Player access contract · Experimental | Exposes independent Session observation, Leave, Joining, Slot/Actor operations and Gameplay Availability block/release. It is not a Join request entry point. Its broader Session contract remains Experimental. |
 | `LocalPlayerJoinStatus` | Runtime diagnostic value · Experimental | Used by `PlayerActorPreparationRuntimeHostSnapshot.LastJoinStatus`; it is separate from the bounded `LocalPlayerJoinOutcome` returned by the Join boundary. |
 | `PlayerGameplayAvailabilityBlockToken`, `PlayerGameplayAvailabilityBlockResult`, `PlayerGameplayAvailabilityBlockStatus` | Gameplay Availability values · Stable | Stable contract for independent occurrence-scoped block ownership and operation outcome. Result Message is diagnostic text, not a control value or localization contract. These blocks affect Runtime Gameplay Availability, not structural `GameplayReady`; they do not promote `IPlayerSessionScopedAccess`. |

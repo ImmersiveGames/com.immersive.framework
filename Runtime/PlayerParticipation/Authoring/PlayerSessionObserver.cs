@@ -215,14 +215,18 @@ namespace Immersive.Framework.PlayerParticipation
             _observedAccess.Changed += ForwardChange;
         }
 
-        protected override void OnScopedAccessReleasing(
-            IPlayerSessionScopedAccess scopedAccess)
+        protected override bool OnScopedAccessReleasing(
+            IPlayerSessionScopedAccess scopedAccess,
+            out string issue)
         {
             if (_observedAccess != null)
             {
                 _observedAccess.Changed -= ForwardChange;
                 _observedAccess = null;
             }
+
+            issue = string.Empty;
+            return true;
         }
 
         private void ForwardChange(PlayerSessionChange change)

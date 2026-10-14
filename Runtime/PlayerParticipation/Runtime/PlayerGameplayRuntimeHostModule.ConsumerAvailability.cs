@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Immersive.Framework.PlayerSlots;
 
@@ -22,6 +23,18 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     _diagnostic);
             }
+
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    playerSlotId,
+                    $"Gameplay Availability block rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
 
             if (!playerSlotId.IsValid)
             {
@@ -92,6 +105,18 @@ namespace Immersive.Framework.PlayerParticipation
                     playerSlotId,
                     _diagnostic);
             }
+
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: true,
+                    out IDisposable admission))
+            {
+                return PlayerGameplayAvailabilityBlockResult.Failure(
+                    PlayerGameplayAvailabilityBlockStatus.RejectedRuntimeUnavailable,
+                    playerSlotId,
+                    $"Gameplay Availability release rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.");
+            }
+
+            using IDisposable admissionLease = admission;
 
             if (!blockToken.IsValid ||
                 blockToken.SessionContextId != _participationContext.CreateSnapshot().ContextId ||
@@ -174,18 +199,32 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        private void ReleaseAllConsumerGameplayBlocksForShutdown()
+        internal bool TryReleaseAllConsumerGameplayBlocksForShutdown(
+            out string issue)
         {
+            issue = string.Empty;
             if (_inputContext == null)
             {
-                _consumerAvailabilityBlocks.Clear();
-                return;
+                if (_consumerAvailabilityBlocks.Count == 0)
+                {
+                    return true;
+                }
+
+                issue =
+                    "Player gameplay input context is unavailable while consumer gameplay block tokens remain owned.";
+                return false;
             }
 
-            _inputContext.ClearConsumerAvailabilityProjections(
+            if (!_inputContext.ClearConsumerAvailabilityProjections(
                 nameof(PlayerGameplayRuntimeHostModule),
-                "runtime-host-shutdown");
+                "runtime-host-shutdown",
+                out issue))
+            {
+                return false;
+            }
+
             _consumerAvailabilityBlocks.Clear();
+            return true;
         }
 
         private bool TryGetPlayerOccurrence(
