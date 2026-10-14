@@ -1,27 +1,32 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — Project Owner authorized Stable 1.1.0 publication on 2026-10-14; release workflow pending; IF-ADR-046 Player Join closure APPROVED Stable**
+Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
 Last updated: **2026-10-14**
 
 ## 1.1.0 first Stable release readiness
 
 IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. Phases
-1–4 are closed. The Project Owner gave explicit Phase 5 GO on 2026-10-14 for
-Stable `v1.1.0`, derived from the Preview 11 candidate; release metadata is
-being prepared and the tag-triggered workflow has not yet completed. The
-stable artifact and publication are therefore not yet verified. Immutable
-prereleases `.9` and `.10` both failed before producing an artifact or Release;
-the latest published package remains preview `1.1.0-preview.8` until Stable
-publication is verified.
-Previously published 1.0.2 and preview artifacts remain historical; a generic
-migration from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
-for an individual Stable contract or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
-is Accepted as the readiness roadmap. Approval of the roadmap did not itself
-authorize publication. Phases 2–4 were subsequently closed by the Project
-Owner's acceptance of the composed evidence recorded below. Phase 5 now has
-explicit Project Owner GO; release disposition remains in progress until the
-tagged workflow and publication checks are verified.
+1–5 are closed. The Project Owner gave explicit Phase 5 GO on 2026-10-14 for
+Stable `v1.1.0`, derived from the Preview 11 candidate. The tagged workflow
+run [#20, attempt 2](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38625559085)
+completed successfully, including candidate build and publication. The stable
+GitHub Release [v1.1.0](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0)
+is non-prerelease and contains `com.immersive.framework-1.1.0.tgz` with
+SHA-256 `ce86cff5eb8e4da3964ef8eab124042794cba9ecebc44c464881d4967013dd2e`.
+The workflow published `com.immersive.framework@1.1.0` to OpenUPM, which
+reported it as signed; its registry tarball byte-for-byte matched the GitHub
+Release asset. The stable tag points to `c96227afccdb510b9d6bf5603d58f2ea8d126292`;
+`Runtime/` and `Tests/` are unchanged from the tested Preview 11 tag.
+Immutable prereleases `.9` and `.10` remain historical failed attempts; `.11`
+was the successful Release Candidate. Previously published 1.0.2 and preview
+artifacts remain historical; migration from 1.0.2 is not a blocker. This
+disposition does not waive an explicit gate for an individual Stable contract
+or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
+is the accepted readiness roadmap; its approval did not itself authorize
+publication. The Project Owner's composed evidence acceptance closed Phases
+2–4, and the later explicit Phase 5 GO plus successful publication closes the
+release mission.
 
 The integrated execution route is
 [IF-PLAN-ADR-048-STABLE-READINESS.v1](../Plans/IF-PLAN-ADR-048-STABLE-READINESS.v1.md).
@@ -29,17 +34,17 @@ The [Gate A v2 approval record](../Plans/IF-GATE-A-ADR-048-STABLE-READINESS-REVI
 records GO for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`
 and the functional decisions, risk acceptances and evidence route. The
 preparation record v1 is preserved as historical review. The mission's
-conditional implementation authorization is now effective. Gate A closes no
-workpackage or readiness phase. Phases 2–4 have since closed on composed
-operational and candidate evidence. Phase 5 has explicit Project Owner GO;
-the release execution and distribution checks remain in progress.
+conditional implementation authorization became effective after Gate A. Gate A
+closed no workpackage or readiness phase. Phases 2–4 closed on composed
+operational and candidate evidence; Phase 5 publication is now closed with the
+execution evidence recorded below.
 
 | Gate | GO criteria | Current evidence / disposition |
 |---|---|---|
 | Runtime integrity | Candidate imports and compiles in the supported Unity `6000.5` line; all release-blocking defects in Stable behavior are resolved; lifecycle rollback/retry/cleanup paths covered at their contract scope. | The latest user-reported QAFramework EditMode run is 365/365, including the controlled-stop integration suite at 7/7; complementary QA scenario results are recorded below. This closes Phase 2 operational integrity by composed evidence, but does not replace exact-candidate import/compile in Phases 3–4. |
 | Contracts and architecture | `FrameworkApiStatusAttribute`, Public-API, accepted ADRs and observed implementation agree for every Stable contract included in 1.1.0; no Experimental/Internal promotion inferred from package version; breaking changes have explicit accepted decisions and consumer disposition. | **Phase 1 closed by explicit architectural review (2026-10-12):** approved inventory of 107 Stable Runtime types reconciled with Public-API and owning ADRs. Evidence is documentary/static only: symbol/status inventory, exact Public-API symbol coverage, relative-link checks and `git diff --check`. It does not certify Runtime behavior, a candidate package or publication. |
 | QA coverage | Focused automated and integrated evidence covers each release Stable guarantee and its material failure/cleanup paths; evidence names exact candidate/package resolution where the claim depends on it. All failures are resolved or explicitly accepted by the responsible authority under the owning ADR. | **Phase 2 operational evidence accepted compositionally (2026-10-14):** QAFramework EditMode 365/365, including Framework Host controlled-stop 7/7 and the package assemblies shown in the Test Runner, combined with the named QA scenario results below. This is user-reported working-source evidence, not immutable RC certification. |
-| Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; artifact identity and consumer import/compile are recorded. | Preview 11 candidate build and composed consumer import/compile evidence closed Phase 4 (details in Phase 4 row). The Project Owner authorized Stable `v1.1.0` publication on 2026-10-14. Stable tag, archive, workflow and registry evidence are pending this release execution; the stable package has not yet been published or verified. |
+| Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; artifact identity and consumer import/compile are recorded. | **Closed:** Preview 11 candidate build and composed consumer import/compile evidence closed Phase 4. Stable tag `v1.1.0` resolves to `c96227afccdb510b9d6bf5603d58f2ea8d126292`; run #20 attempt 2 built and published successfully. Stable GitHub Release includes the `.tgz` with SHA-256 `ce86cff5eb8e4da3964ef8eab124042794cba9ecebc44c464881d4967013dd2e`; OpenUPM verified the same tarball bytes. `Runtime/` and `Tests/` match Preview 11. |
 
 **GO only when all four gates pass** and no unresolved Stable-contract, package
 resolution, import/compile or artifact-identity blocker remains. **NO-GO** for
@@ -80,9 +85,30 @@ consumer installation actually establish.
 | 2 — Operational integrity | **Closed — composite evidence accepted by the Project Owner, 2026-10-14** | The latest QAFramework Test Runner result is 365/365, with Persistent Content 28/28 and `FrameworkRuntimeHostControlledStopTests` 7/7. These integrated tests are accepted together with the component Editor suites and the previously reported QA scenario terminals; a separate bespoke test for behavior already covered across those proofs is not required. Bounded residuals and evidence scope are recorded in the latest Phase 2 entry. |
 | 3 — Transversal recertification | **Closed — candidate source validated, 2026-10-14** | Frozen source `e98b530a961bd4d5c9795398a2ff42096a4ea95d`; the user supplied QAFramework EditMode 365/365 and candidate-local `file:` resolution evidence plus the listed QA terminals. The test screenshot/logs are user-reported and do not include raw XML or a runner fingerprint. The complete test/runtime source matches the reviewed candidate; no code was changed after the freeze. |
 | 4 — Immutable Release Candidate | **Closed — candidate built and consumer import/compile accepted compositionally, 2026-10-14** | Immutable tag `v1.1.0-preview.11` resolves to `a0d4f809fea5c0d7781e2161024eb3c0bcc532fd`. Signed candidate workflow run [#19](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38617237048) completed successfully; pack/sign, candidate and provenance verification, and upload passed. Uploaded artifact `signed-upm-candidate-v1.1.0-preview.11-38617237048-attempt-1` has GitHub artifact SHA-256 `1f6833f1f95a39de3721fb7fef86e9f0f3d007b60532bb13db1edc81f345cff7`; the package `.tgz` SHA-256 recorded by its provenance is `ab9785e97c3076afa1e2c8565df5b172b5e4c3e55ffe862e9462e6722e0d42e5`. The Project Owner reports that both Git-based consumers temporarily installed this Preview 11 tarball and imported/compiled without errors; after validation both were restored to their normal Git package references. QAFramework's 365/365 Editor result covers the same candidate source commit; `Runtime/` and `Tests/` match the immutable candidate. No Unity run was performed by this session. The consumer import result is owner-reported, not independently captured from the transient package locks. Promotion was skipped as required for a prerelease. The workflow's candidate/provenance check is run evidence, not independent cryptographic signature verification. |
-| 5 — Explicit publication decision | **GO authorized — 2026-10-14; release in progress** | Project Owner explicitly authorized Stable `v1.1.0`, derived from the Preview 11 candidate. Exact stable commit/tag, archive hash, workflow result, GitHub Release and OpenUPM version still require verification before Phase 5 can close. |
+| 5 — Explicit publication decision | **Closed — Stable `v1.1.0` published and verified, 2026-10-14** | Project Owner authorized Stable `v1.1.0`. Run [#20, attempt 2](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38625559085) succeeded: candidate build, Release asset identity/hash checks, GitHub Release creation, OpenUPM publication and same-tarball-byte verification. Tag commit `c96227afccdb510b9d6bf5603d58f2ea8d126292`; asset SHA-256 `ce86cff5eb8e4da3964ef8eab124042794cba9ecebc44c464881d4967013dd2e`. |
 
-**Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification was authorized conditionally. **Phase 5 Stable publication GO:** the Project Owner explicitly approved `v1.1.0` in this session on 2026-10-14, derived from Preview 11. This authorizes the tag-triggered Stable release workflow; it does not establish a successful build or publication before those are verified.
+**Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification was authorized conditionally. **Phase 5 Stable publication GO:** the Project Owner explicitly approved `v1.1.0` on 2026-10-14, derived from Preview 11. That decision authorized the tag-triggered Stable release workflow; the subsequent build and publication were verified as recorded below.
+
+### Phase 5 execution — Stable publication completed (2026-10-14)
+
+The stable tag `v1.1.0` resolves to reviewed source commit
+`c96227afccdb510b9d6bf5603d58f2ea8d126292`. GitHub Actions run #20 attempt 2
+completed with `success`; both `Build immutable signed candidate` and
+`Approve and promote the certified artifact` succeeded. The promoted GitHub
+Release is non-prerelease and contains `com.immersive.framework-1.1.0.tgz`
+(1,832,824 bytes; SHA-256
+`ce86cff5eb8e4da3964ef8eab124042794cba9ecebc44c464881d4967013dd2e`).
+OpenUPM reported `com.immersive.framework@1.1.0` as published and signed; the
+workflow's follow-up registry fetch confirmed it served the same tarball bytes.
+The stable tag has no `Runtime/` or
+`Tests/` changes relative to Preview 11, whose consumer import/compile and
+composed QA evidence are recorded in Phase 4. No new Unity run was needed for
+the metadata-only stable release. The workflow's pack/sign and provenance
+steps are recorded as pipeline evidence; independent cryptographic signature
+verification is not claimed.
+
+Phase 5 is **Closed**. All five IF-ADR-048 phases are closed and the Stable
+1.1.0 release mission is **Complete**.
 
 ### Implementation-only continuation — I-08 Activity Observer ownership (2026-10-14)
 
