@@ -2,19 +2,27 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.10] - 2026-10-14 — candidate, not published
+## [1.1.0-preview.11] - 2026-10-14 — candidate, not published
 
-This candidate preserves the approved 1.1.0 stabilization source from
-`1.1.0-preview.9` and corrects the signed-release workflow so the immutable
-candidate can be built for Phase 4 certification.
+This candidate preserves the approved 1.1.0 stabilization source and corrects
+the signed-release workflow after two immutable prerelease tags failed before
+producing an artifact.
 
-- The prior `v1.1.0-preview.9` tag is immutable. GitHub rejected its workflow
-  before starting any job because `runner.temp` was referenced from a
-  job-level `env`; no package artifact or Release was created. The workflow
-  now reads `runner.temp` only in step-level contexts.
-- No Runtime, public API or serialized authoring behavior changes are intended
-  relative to the `.9` source. This `.10` candidate remains unpublished until
-  its signed artifact is built and consumer certification is complete.
+- The workflow now scopes `runner.temp` to supported step-level contexts and
+  compares the installed UPM CLI's exact semantic version while accepting its
+  platform suffix, such as `(x64)`. No Runtime, public API or serialized
+  authoring behavior changes are intended relative to the `.9` source.
+- `v1.1.0-preview.9` was rejected during workflow validation, and
+  `v1.1.0-preview.10` stopped at the UPM CLI version check before packing.
+  Neither tag produced a package artifact or Release. This `.11` candidate
+  remains unpublished until its signed artifact is built and consumer
+  certification is complete.
+
+## [1.1.0-preview.10] - 2026-10-14 — failed workflow, not published
+
+Run 18 installed Unity UPM CLI `v9.34.0`, while `upm --version` reported
+`v9.34.0(x64)`. The strict comparison failed before package packing or signing;
+no artifact or Release was created. The `.10` tag remains immutable.
 
 ## [1.1.0-preview.9] - 2026-10-14 — failed workflow, not published
 

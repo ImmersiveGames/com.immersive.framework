@@ -90,9 +90,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          installed_version="$(upm --version | tr -d '[:space:]')"
-          if [[ "$installed_version" != v* ]]; then
-            installed_version="v$installed_version"
+          installed_version_output="$(upm --version | tr -d '[:space:]')"
+          if [[ "$installed_version_output" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)(\([[:alnum:]_-]+\))?$ ]]; then
+            installed_version="${BASH_REMATCH[1]}"
+          else
+            printf 'Unity UPM CLI returned an invalid installed version: %s\n' "$installed_version_output" >&2
+            exit 1
           fi
           if [ "$installed_version" != "$UPM_CLI_VERSION" ]; then
             printf 'Installed UPM CLI %s does not match resolved version %s\n' "$installed_version" "$UPM_CLI_VERSION" >&2

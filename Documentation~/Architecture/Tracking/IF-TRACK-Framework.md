@@ -7,11 +7,11 @@ Last updated: **2026-10-14**
 ## 1.1.0 first Stable release readiness
 
 IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. The
-release is currently **NO-GO**: source metadata is now `1.1.0-preview.10`
-for Phase 4 candidate preparation. The prior immutable `.9` tag was rejected
-by GitHub Actions before any job started, so it produced no package artifact or
-Release. The latest published preview remains `1.1.0-preview.8`, and no stable
-1.1.0 artifact has completed the gates below.
+release is currently **NO-GO**: source metadata is now `1.1.0-preview.11`
+for Phase 4 candidate preparation. Immutable prereleases `.9` and `.10` both
+failed before producing a package artifact or Release. The latest published
+preview remains `1.1.0-preview.8`, and no stable 1.1.0 artifact has completed
+the gates below.
 published 1.0.2 and preview artifacts remain historical; a generic migration
 from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
 for an individual Stable contract or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
@@ -77,7 +77,7 @@ consumer installation actually establish.
 | 1 — Architectural and contract closure | **Closed — documentary review approved 2026-10-12** | The 107-type Stable inventory is reconciled across `FrameworkApiStatusAttribute`, Public-API, IF-GOV-001 and owning ADRs. Static checks found all 107 symbols represented in Public-API, all relative Markdown targets in the reviewed documents present, and `git diff --check` clean. This approval covers contract scope and documentation only; it does not certify the Runtime, package import, candidate artifact or release. |
 | 2 — Operational integrity | **Closed — composite evidence accepted by the Project Owner, 2026-10-14** | The latest QAFramework Test Runner result is 365/365, with Persistent Content 28/28 and `FrameworkRuntimeHostControlledStopTests` 7/7. These integrated tests are accepted together with the component Editor suites and the previously reported QA scenario terminals; a separate bespoke test for behavior already covered across those proofs is not required. Bounded residuals and evidence scope are recorded in the latest Phase 2 entry. |
 | 3 — Transversal recertification | **Closed — candidate source validated, 2026-10-14** | Frozen source `e98b530a961bd4d5c9795398a2ff42096a4ea95d`; the user supplied QAFramework EditMode 365/365 and candidate-local `file:` resolution evidence plus the listed QA terminals. The test screenshot/logs are user-reported and do not include raw XML or a runner fingerprint. The complete test/runtime source matches the reviewed candidate; no code was changed after the freeze. |
-| 4 — Immutable Release Candidate | **In progress — prepare signed prerelease artifact** | Package metadata is set to `1.1.0-preview.10`, the next unused prerelease after the failed `.9` candidate and published `.8`. The workflow now uses `runner.temp` only in step-level contexts. Build through the tag-triggered signed candidate job, install that exact artifact in QAFramework, FirstGame and PEGA, and record the artifact SHA and consumer validation. The prerelease workflow condition excludes its publication job. |
+| 4 — Immutable Release Candidate | **In progress — prepare signed prerelease artifact** | Package metadata is set to `1.1.0-preview.11`, the next unused prerelease after failed `.9`/`.10` candidates and published `.8`. The workflow scopes `runner.temp` to step-level contexts and verifies the installed CLI's semantic version while accepting its platform suffix. Build through the tag-triggered signed candidate job, install that exact artifact in QAFramework, FirstGame and PEGA, and record the artifact SHA and consumer validation. The prerelease workflow condition excludes its publication job. |
 | 5 — Explicit publication decision | Pending — release remains **NO-GO** | Requires an explicit GO for the exact package version, source SHA and artifact hash. |
 
 **Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification is authorized conditionally; publication remains unauthorized.
@@ -1682,21 +1682,22 @@ where complementary package and scenario results establish the same guarantee.
 
 | Consumer | Unity | Current Framework resolution | Candidate evidence required |
 |---|---|---|---|
-| QAFramework | `6000.5.0f1` | Candidate tests resolved `com.immersive.framework` by local `file:` path; candidate package metadata is now `1.1.0-preview.10`. | Install the signed `.10` archive instead of the local path; import/compile and run targeted QA. Record artifact hash and resolved lock. |
+| QAFramework | `6000.5.0f1` | Candidate tests resolved `com.immersive.framework` by local `file:` path; candidate package metadata is now `1.1.0-preview.11`. | Install the signed `.11` archive instead of the local path; import/compile and run targeted QA. Record artifact hash and resolved lock. |
 | FirstGame (`planet-devourer`) | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. | Install the exact immutable candidate artifact in Phase 4; import/compile and run the approved FirstGame targeted scenario(s), recording artifact hash and resolved lock. |
 | PEGA | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. Repository Git status is inaccessible to this task, but the project manifest and lock were readable. | Install the same exact artifact in Phase 4; import/compile and run the approved PEGA targeted scenario(s), recording artifact hash and resolved lock. |
 
 The tested source revision is `e98b530a961bd4d5c9795398a2ff42096a4ea95d`.
-Package metadata now advances to the unused prerelease `1.1.0-preview.10` for
-Phase 4; the published preview remains `.8`. GitHub run 17 for the immutable
-`v1.1.0-preview.9` tag failed workflow validation at
-`.github/workflows/signed-release.yml` line 25: the `runner` context is not
-available in job-level `env`. The run had zero jobs and zero artifacts, and no
-GitHub Release exists for `.9`. Both temporary-directory expressions were
-moved into valid step-level contexts without changing Runtime behavior. The
-signed prerelease workflow builds and uploads an immutable candidate artifact,
-but its `publish` job does not run for versions containing `-`. Phase 4 still
-requires that exact signed artifact installed/imported/compiled in QAFramework,
-FirstGame and PEGA, with targeted QA and matching SHA-256. Phase 5 still
-requires explicit release GO for the exact stable version, source SHA and
-artifact hash. Stable publication remains unauthorized.
+Package metadata now advances to the unused prerelease `1.1.0-preview.11` for
+Phase 4; the published preview remains `.8`. GitHub run 17 rejected immutable
+tag `.9` before starting any job because `runner.temp` appeared in job-level
+`env`. Run 18 for immutable tag `.10` resolved and installed Unity UPM CLI
+`v9.34.0`, but its version command returned `v9.34.0(x64)` and the workflow's
+strict string comparison stopped before packing/signing. Neither run produced
+an artifact or GitHub Release. The workflow now scopes temporary paths to
+step-level contexts and validates the exact semantic version with an optional
+architecture suffix. The prerelease workflow's `publish` job remains excluded
+for versions containing `-`. Phase 4 still requires the exact signed artifact
+installed/imported/compiled in QAFramework, FirstGame and PEGA, with targeted
+QA and matching SHA-256. Phase 5 still requires explicit release GO for the
+exact stable version, source SHA and artifact hash. Stable publication remains
+unauthorized.
