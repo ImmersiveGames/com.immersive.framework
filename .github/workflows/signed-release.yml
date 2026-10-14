@@ -22,7 +22,6 @@ jobs:
       UPM_SERVICE_ACCOUNT_KEY_ID: ${{ secrets.UPM_SERVICE_ACCOUNT_KEY_ID }}
       UPM_SERVICE_ACCOUNT_KEY_SECRET: ${{ secrets.UPM_SERVICE_ACCOUNT_KEY_SECRET }}
       UPM_ORG_ID: ${{ secrets.UPM_ORG_ID }}
-      DIST_DIR: ${{ runner.temp }}/signed-upm-dist
 
     outputs:
       package-name: ${{ steps.package.outputs.name }}
@@ -102,6 +101,8 @@ jobs:
 
       - name: Pack and sign candidate
         shell: bash
+        env:
+          DIST_DIR: ${{ runner.temp }}/signed-upm-dist
         run: |
           set -euo pipefail
           mkdir -p "$DIST_DIR"
@@ -110,6 +111,8 @@ jobs:
       - name: Verify candidate and record provenance
         id: provenance
         shell: bash
+        env:
+          DIST_DIR: ${{ runner.temp }}/signed-upm-dist
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -203,7 +206,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.provenance.outputs.artifact-name }}
-          path: ${{ env.DIST_DIR }}/candidate/
+          path: ${{ runner.temp }}/signed-upm-dist/candidate/
           if-no-files-found: error
           retention-days: 90
 
@@ -220,7 +223,6 @@ jobs:
       id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
-      DIST_DIR: ${{ runner.temp }}/signed-upm-candidate
 
     steps:
       - name: Check out the exact tagged source
@@ -233,11 +235,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build-candidate.outputs.artifact-name }}
-          path: ${{ env.DIST_DIR }}
+          path: ${{ runner.temp }}/signed-upm-candidate
 
       - name: Verify approved candidate, tag and artifact identity
         id: candidate
         shell: bash
+        env:
+          DIST_DIR: ${{ runner.temp }}/signed-upm-candidate
         run: |
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"

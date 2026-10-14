@@ -2,7 +2,21 @@
 
 All notable package changes are documented in this file.
 
-## [1.1.0-preview.9] - 2026-10-14 — candidate, not published
+## [1.1.0-preview.10] - 2026-10-14 — candidate, not published
+
+This candidate preserves the approved 1.1.0 stabilization source from
+`1.1.0-preview.9` and corrects the signed-release workflow so the immutable
+candidate can be built for Phase 4 certification.
+
+- The prior `v1.1.0-preview.9` tag is immutable. GitHub rejected its workflow
+  before starting any job because `runner.temp` was referenced from a
+  job-level `env`; no package artifact or Release was created. The workflow
+  now reads `runner.temp` only in step-level contexts.
+- No Runtime, public API or serialized authoring behavior changes are intended
+  relative to the `.9` source. This `.10` candidate remains unpublished until
+  its signed artifact is built and consumer certification is complete.
+
+## [1.1.0-preview.9] - 2026-10-14 — failed workflow, not published
 
 This prerelease candidate contains the approved 1.1.0 stabilization work for
 Phase 4 exact-artifact certification. It is not published and does not replace
