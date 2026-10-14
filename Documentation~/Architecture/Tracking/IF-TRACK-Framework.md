@@ -1,26 +1,27 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Active — 1.1.0 approved as first official Stable baseline / publication pending; preview 1.1.0-preview.8 remains latest published; IF-ADR-046 Player Join closure APPROVED Stable**
+Status: **Active — Project Owner authorized Stable 1.1.0 publication on 2026-10-14; release workflow pending; IF-ADR-046 Player Join closure APPROVED Stable**
 
 Last updated: **2026-10-14**
 
 ## 1.1.0 first Stable release readiness
 
-IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. The
-release is currently **NO-GO**: source metadata is now `1.1.0-preview.11`
-for Phase 4 candidate preparation. Immutable prereleases `.9` and `.10` both
-failed before producing a package artifact or Release. The latest published
-preview remains `1.1.0-preview.8`, and no stable 1.1.0 artifact has completed
-the gates below.
-published 1.0.2 and preview artifacts remain historical; a generic migration
-from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
+IF-ADR-047 establishes `1.1.0` as the first official Stable baseline. Phases
+1–4 are closed. The Project Owner gave explicit Phase 5 GO on 2026-10-14 for
+Stable `v1.1.0`, derived from the Preview 11 candidate; release metadata is
+being prepared and the tag-triggered workflow has not yet completed. The
+stable artifact and publication are therefore not yet verified. Immutable
+prereleases `.9` and `.10` both failed before producing an artifact or Release;
+the latest published package remains preview `1.1.0-preview.8` until Stable
+publication is verified.
+Previously published 1.0.2 and preview artifacts remain historical; a generic
+migration from 1.0.2 is not a blocker. This disposition does not waive an explicit gate
 for an individual Stable contract or serialized-data guarantee. [IF-ADR-048](../ADRs/IF-ADR-048-Framework-1.1.0-Stable-Readiness-Roadmap.md)
-is Accepted as the readiness roadmap. Approval of the roadmap does not mark
-any phase complete or authorize a release. Phase 2 was subsequently closed by
-the Project Owner's acceptance of the composed evidence recorded below; Phase
-3 source freeze and recertification, Phase 4 artifact validation, and Phase 5
-release approval remain outstanding. The current release disposition remains
-NO-GO.
+is Accepted as the readiness roadmap. Approval of the roadmap did not itself
+authorize publication. Phases 2–4 were subsequently closed by the Project
+Owner's acceptance of the composed evidence recorded below. Phase 5 now has
+explicit Project Owner GO; release disposition remains in progress until the
+tagged workflow and publication checks are verified.
 
 The integrated execution route is
 [IF-PLAN-ADR-048-STABLE-READINESS.v1](../Plans/IF-PLAN-ADR-048-STABLE-READINESS.v1.md).
@@ -29,15 +30,16 @@ records GO for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`
 and the functional decisions, risk acceptances and evidence route. The
 preparation record v1 is preserved as historical review. The mission's
 conditional implementation authorization is now effective. Gate A closes no
-workpackage or readiness phase. Phase 2 has since closed on composed
-operational evidence; the exact candidate and artifact gates remain open.
+workpackage or readiness phase. Phases 2–4 have since closed on composed
+operational and candidate evidence. Phase 5 has explicit Project Owner GO;
+the release execution and distribution checks remain in progress.
 
 | Gate | GO criteria | Current evidence / disposition |
 |---|---|---|
 | Runtime integrity | Candidate imports and compiles in the supported Unity `6000.5` line; all release-blocking defects in Stable behavior are resolved; lifecycle rollback/retry/cleanup paths covered at their contract scope. | The latest user-reported QAFramework EditMode run is 365/365, including the controlled-stop integration suite at 7/7; complementary QA scenario results are recorded below. This closes Phase 2 operational integrity by composed evidence, but does not replace exact-candidate import/compile in Phases 3–4. |
 | Contracts and architecture | `FrameworkApiStatusAttribute`, Public-API, accepted ADRs and observed implementation agree for every Stable contract included in 1.1.0; no Experimental/Internal promotion inferred from package version; breaking changes have explicit accepted decisions and consumer disposition. | **Phase 1 closed by explicit architectural review (2026-10-12):** approved inventory of 107 Stable Runtime types reconciled with Public-API and owning ADRs. Evidence is documentary/static only: symbol/status inventory, exact Public-API symbol coverage, relative-link checks and `git diff --check`. It does not certify Runtime behavior, a candidate package or publication. |
 | QA coverage | Focused automated and integrated evidence covers each release Stable guarantee and its material failure/cleanup paths; evidence names exact candidate/package resolution where the claim depends on it. All failures are resolved or explicitly accepted by the responsible authority under the owning ADR. | **Phase 2 operational evidence accepted compositionally (2026-10-14):** QAFramework EditMode 365/365, including Framework Host controlled-stop 7/7 and the package assemblies shown in the Test Runner, combined with the named QA scenario results below. This is user-reported working-source evidence, not immutable RC certification. |
-| Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; published GitHub/OpenUPM artifact identity is recorded and an installed consumer resolves/imports/compiles the exact artifact. | Not run: version metadata and tag remain unchanged; no 1.1.0 candidate archive or registry publication exists. Candidate build/promotion controls are prepared in the working workflow but have not been certified by a real run. |
+| Reproducible distribution | Immutable `v1.1.0` tag resolves to the reviewed source commit; tag, `package.json`, dependency graph and release archive identify the same candidate; signed-release workflow completes archive checks and publication; artifact identity and consumer import/compile are recorded. | Preview 11 candidate build and composed consumer import/compile evidence closed Phase 4 (details in Phase 4 row). The Project Owner authorized Stable `v1.1.0` publication on 2026-10-14. Stable tag, archive, workflow and registry evidence are pending this release execution; the stable package has not yet been published or verified. |
 
 **GO only when all four gates pass** and no unresolved Stable-contract, package
 resolution, import/compile or artifact-identity blocker remains. **NO-GO** for
@@ -77,10 +79,10 @@ consumer installation actually establish.
 | 1 — Architectural and contract closure | **Closed — documentary review approved 2026-10-12** | The 107-type Stable inventory is reconciled across `FrameworkApiStatusAttribute`, Public-API, IF-GOV-001 and owning ADRs. Static checks found all 107 symbols represented in Public-API, all relative Markdown targets in the reviewed documents present, and `git diff --check` clean. This approval covers contract scope and documentation only; it does not certify the Runtime, package import, candidate artifact or release. |
 | 2 — Operational integrity | **Closed — composite evidence accepted by the Project Owner, 2026-10-14** | The latest QAFramework Test Runner result is 365/365, with Persistent Content 28/28 and `FrameworkRuntimeHostControlledStopTests` 7/7. These integrated tests are accepted together with the component Editor suites and the previously reported QA scenario terminals; a separate bespoke test for behavior already covered across those proofs is not required. Bounded residuals and evidence scope are recorded in the latest Phase 2 entry. |
 | 3 — Transversal recertification | **Closed — candidate source validated, 2026-10-14** | Frozen source `e98b530a961bd4d5c9795398a2ff42096a4ea95d`; the user supplied QAFramework EditMode 365/365 and candidate-local `file:` resolution evidence plus the listed QA terminals. The test screenshot/logs are user-reported and do not include raw XML or a runner fingerprint. The complete test/runtime source matches the reviewed candidate; no code was changed after the freeze. |
-| 4 — Immutable Release Candidate | **In progress — prepare signed prerelease artifact** | Package metadata is set to `1.1.0-preview.11`, the next unused prerelease after failed `.9`/`.10` candidates and published `.8`. The workflow scopes `runner.temp` to step-level contexts and verifies the installed CLI's semantic version while accepting its platform suffix. Build through the tag-triggered signed candidate job, install that exact artifact in QAFramework, FirstGame and PEGA, and record the artifact SHA and consumer validation. The prerelease workflow condition excludes its publication job. |
-| 5 — Explicit publication decision | Pending — release remains **NO-GO** | Requires an explicit GO for the exact package version, source SHA and artifact hash. |
+| 4 — Immutable Release Candidate | **Closed — candidate built and consumer import/compile accepted compositionally, 2026-10-14** | Immutable tag `v1.1.0-preview.11` resolves to `a0d4f809fea5c0d7781e2161024eb3c0bcc532fd`. Signed candidate workflow run [#19](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38617237048) completed successfully; pack/sign, candidate and provenance verification, and upload passed. Uploaded artifact `signed-upm-candidate-v1.1.0-preview.11-38617237048-attempt-1` has GitHub artifact SHA-256 `1f6833f1f95a39de3721fb7fef86e9f0f3d007b60532bb13db1edc81f345cff7`; the package `.tgz` SHA-256 recorded by its provenance is `ab9785e97c3076afa1e2c8565df5b172b5e4c3e55ffe862e9462e6722e0d42e5`. The Project Owner reports that both Git-based consumers temporarily installed this Preview 11 tarball and imported/compiled without errors; after validation both were restored to their normal Git package references. QAFramework's 365/365 Editor result covers the same candidate source commit; `Runtime/` and `Tests/` match the immutable candidate. No Unity run was performed by this session. The consumer import result is owner-reported, not independently captured from the transient package locks. Promotion was skipped as required for a prerelease. The workflow's candidate/provenance check is run evidence, not independent cryptographic signature verification. |
+| 5 — Explicit publication decision | **GO authorized — 2026-10-14; release in progress** | Project Owner explicitly authorized Stable `v1.1.0`, derived from the Preview 11 candidate. Exact stable commit/tag, archive hash, workflow result, GitHub Release and OpenUPM version still require verification before Phase 5 can close. |
 
-**Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification is authorized conditionally; publication remains unauthorized.
+**Gate A — integrated plan approval:** **GO — 2026-10-13**, for exact plan blob `628f64b2878cdad9fbf8d89392e8e39725b6fe3a`; see the versioned approval record. Implementation/certification was authorized conditionally. **Phase 5 Stable publication GO:** the Project Owner explicitly approved `v1.1.0` in this session on 2026-10-14, derived from Preview 11. This authorizes the tag-triggered Stable release workflow; it does not establish a successful build or publication before those are verified.
 
 ### Implementation-only continuation — I-08 Activity Observer ownership (2026-10-14)
 
@@ -1682,9 +1684,9 @@ where complementary package and scenario results establish the same guarantee.
 
 | Consumer | Unity | Current Framework resolution | Candidate evidence required |
 |---|---|---|---|
-| QAFramework | `6000.5.0f1` | Candidate tests resolved `com.immersive.framework` by local `file:` path; candidate package metadata is now `1.1.0-preview.11`. | Install the signed `.11` archive instead of the local path; import/compile and run targeted QA. Record artifact hash and resolved lock. |
-| FirstGame (`planet-devourer`) | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. | Install the exact immutable candidate artifact in Phase 4; import/compile and run the approved FirstGame targeted scenario(s), recording artifact hash and resolved lock. |
-| PEGA | `6000.5.0f1` | Registry `1.1.0-preview.8`; lock source is `registry`. Repository Git status is inaccessible to this task, but the project manifest and lock were readable. | Install the same exact artifact in Phase 4; import/compile and run the approved PEGA targeted scenario(s), recording artifact hash and resolved lock. |
+| QAFramework | `6000.5.0f1` | Persisted manifest/lock use the local Framework checkout, whose `HEAD` is candidate commit `a0d4f809fea5c0d7781e2161024eb3c0bcc532fd`; `Runtime/` and `Tests/` match that commit. | 365/365 Editor tests were user-reported against this source. This supplies candidate-source QA evidence; exact tarball was not retained in QAFramework. |
+| FirstGame (`planet-devourer`) | `6000.5.0f1` | After the temporary validation, the persisted workspace manifest/lock have been restored to their prior package resolution. | Project Owner reports temporary Preview 11 tarball installation/import/compile with no errors, followed by restoration of the normal Git package reference. The transient lock was not retained. |
+| PEGA | `6000.5.0f1` | Saved package files are inaccessible to this task; Project Owner reports restoration of its normal Git package reference. | Project Owner reports temporary installation/import/compile of the same Preview 11 tarball with no errors. The transient lock was not retained. |
 
 The tested source revision is `e98b530a961bd4d5c9795398a2ff42096a4ea95d`.
 Package metadata now advances to the unused prerelease `1.1.0-preview.11` for
@@ -1698,6 +1700,68 @@ step-level contexts and validates the exact semantic version with an optional
 architecture suffix. The prerelease workflow's `publish` job remains excluded
 for versions containing `-`. Phase 4 still requires the exact signed artifact
 installed/imported/compiled in QAFramework, FirstGame and PEGA, with targeted
-QA and matching SHA-256. Phase 5 still requires explicit release GO for the
-exact stable version, source SHA and artifact hash. Stable publication remains
-unauthorized.
+QA and matching SHA-256. Phase 5 still required explicit release GO for the
+exact stable version, source SHA and artifact hash at this checkpoint. The
+Project Owner subsequently approved Stable `v1.1.0` on 2026-10-14; the current
+release execution is tracked in the current-status section above.
+
+### Phase 4 candidate build — 2026-10-14
+
+The Project Owner authorized pushing the exact immutable tag
+`v1.1.0-preview.11`. It points to source commit
+`a0d4f809fea5c0d7781e2161024eb3c0bcc532fd`. GitHub Actions run [#19](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38617237048)
+completed with conclusion `success`: package metadata and installed UPM CLI
+were verified, pack/sign completed, candidate and provenance verification
+passed, and the candidate was uploaded. Uploaded artifact
+`signed-upm-candidate-v1.1.0-preview.11-38617237048-attempt-1` has GitHub
+artifact digest `sha256:1f6833f1f95a39de3721fb7fef86e9f0f3d007b60532bb13db1edc81f345cff7`.
+The promotion job was skipped. This establishes a reproducible candidate
+artifact, not consumer certification or stable publication; independent
+cryptographic signature verification is not inferred from the workflow step.
+
+At this candidate-build checkpoint, the exact-artifact consumer import was
+still outstanding, so Phase 4 remained **in progress / NO-GO**. The subsequent
+consumer-validation closeout below supersedes that intermediate disposition.
+
+### Consumer resolution reconciliation — 2026-10-14
+
+The Project Owner clarified that QAFramework uses the local `.11` source
+checkout, while FirstGame and PEGA remain on published `.8` because `.11` has
+not been published. The Project Owner also directed that already-passing
+gameplay smokes not be repeated because the candidate changes do not alter
+Runtime, test or consumer-script behavior. The source diff confirms there are
+no changes under `Runtime/` or `Tests/` between the Phase 3 frozen SHA and
+candidate commit; existing composed evidence is retained.
+
+Read-only inspection confirms QAFramework's manifest/lock still select the
+local Framework checkout (metadata `.11`) and FirstGame's manifest/lock select
+published registry `.8`. PEGA's saved package files are inaccessible to this
+task; its `.8` resolution is Project Owner-reported. These expected version
+states are not yet proof that all three consumers resolved the exact `.11`
+Actions artifact. No consumer projects were modified and no Unity tests or
+smokes were run. To close Phase 4 without redundant gameplay execution, record
+the candidate `.tgz` provenance/hash and its exact resolution/import in each
+consumer, reusing the existing composed QA evidence. Phase 4 remains **in
+progress** until that artifact identity is established for the required
+projects.
+
+### Phase 4 consumer validation closeout — 2026-10-14
+
+The Project Owner reports that the same Preview 11 candidate tarball was
+temporarily installed in both Git-based consumer projects and Unity imported
+and compiled them without errors. After that validation, the tarball changes
+were discarded and both projects were returned to their normal Git package
+references. The current manifests therefore represent the restored state,
+not the transient candidate validation state. The transient Unity locks and
+raw import logs were not retained; this consumer evidence is explicitly
+owner-reported.
+
+The evidence is accepted compositionally: candidate workflow run #19 binds
+the signed archive to commit `a0d4f809fea5c0d7781e2161024eb3c0bcc532fd`;
+QAFramework's 365/365 Editor result was run against that same source, and the
+candidate `Runtime/` and `Tests/` are unchanged; both Git-based consumers
+reported clean import/compile of the Preview 11 tarball. No gameplay smoke or
+Editor test was repeated. On that evidence, Phase 4 is **closed**. Phase 5
+was **pending / NO-GO** at this checkpoint. The Project Owner subsequently
+approved Stable `v1.1.0` on 2026-10-14; the current release execution is
+tracked in the current-status section above.

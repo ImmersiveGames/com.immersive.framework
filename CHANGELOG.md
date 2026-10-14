@@ -2,6 +2,31 @@
 
 All notable package changes are documented in this file.
 
+## [1.1.0] - 2026-10-14 — first official Stable baseline
+
+This release establishes the compatibility baseline defined by IF-ADR-047.
+SemVer guarantees apply to APIs and contracts classified Stable; Experimental
+and Internal surfaces keep their existing maturity and guarantees. Earlier
+versions remain historical and do not create a generic migration obligation
+to 1.1.0.
+
+- Stable API scope is the reviewed per-contract inventory in
+  `Documentation~/API/Public-API.md` and the owning ADRs. The package version
+  does not promote every public or implemented feature.
+- The bounded `PlayerSessionJoinTrigger` Join request closure is Stable under
+  IF-ADR-046; Manager-Provisioned setup and adjacent Player APIs keep their
+  existing classifications.
+- Breaking removals from the preview line include `UnityResetSubjectAdapter`
+  and the public `InputMode` subsystem. Consumers migrating from those preview
+  surfaces should follow the migration notes in [Reset Usage](Documentation~/Guides/Reset-Usage.md)
+  and [Pause Usage](Documentation~/Guides/Pause-Usage.md). No compatibility
+  shim is included.
+- Package dependencies remain Foundation `0.2.2`, Logging `0.2.3`, Cinemachine
+  `3.1.7` and Input System `1.19.0`.
+
+See IF-ADR-047, IF-GOV-001 and the framework tracker for the baseline decision,
+validation scope and exact release evidence.
+
 ## [1.1.0-preview.11] - 2026-10-14 — candidate, not published
 
 This candidate preserves the approved 1.1.0 stabilization source and corrects

@@ -4,15 +4,14 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-**Official Stable baseline approved:** `1.1.0` (publication pending). The
-current source package metadata is `1.1.0-preview.11`; the latest published
-preview remains `1.1.0-preview.8`. Versions before 1.1.0, including 1.0.2 and
-`1.1.0-preview.*`, are retained as historical prototyping and validation
-records and carry no compatibility or generic migration obligation to the new
-baseline. From 1.1.0 forward, guarantees follow SemVer and the individual
-Stable/Experimental/Internal classification; see [IF-ADR-047](Documentation~/Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md)
+`1.1.0` is the first official Stable baseline. Compatibility follows SemVer
+for contracts explicitly classified Stable; a Stable package version does
+not promote Experimental or Internal surfaces. Versions before 1.1.0,
+including 1.0.2 and `1.1.0-preview.*`, are historical records and carry no
+generic migration obligation to this baseline. See
+[IF-ADR-047](Documentation~/Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md)
 and [IF-GOV-001](Documentation~/Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md).
-Release readiness and remaining gates are recorded in the
+Release evidence and any remaining gates are recorded in the
 [framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md).
 
 The package provides runtime authorities, designer-facing authoring surfaces,
@@ -32,9 +31,8 @@ There is no support or validation matrix for earlier Unity versions.
 
 ## Installation
 
-After the 1.1.0 release is published, configure OpenUPM once in
-`Packages/manifest.json`, using the `com.immersive` scope, then declare the
-Framework package:
+Configure OpenUPM once in `Packages/manifest.json`, using the `com.immersive`
+scope, then declare the Framework package:
 
 ```json
 {
@@ -51,18 +49,12 @@ Framework package:
 }
 ```
 
-The current preview source declares Foundation `0.2.2`, Logging `0.2.3`,
-Cinemachine `3.1.7` and Input System `1.19.0`; confirm the dependency graph
-against the immutable 1.1.0 candidate before release. Do not install 1.1.0
-until its publication and exact package contents have been verified. Git
-consumers must declare custom Git dependencies themselves because Unity cannot
-resolve their semantic versions from Git alone. Earlier package releases
-remain in the [changelog](CHANGELOG.md) as history; they are not migration
-baselines for 1.1.0.
-
-The currently published preview is `1.1.0-preview.8`. Its API and serialized
-authoring are not Stable compatibility commitments. See the [preview release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.1.0-preview.8)
-for historical installation details.
+Version `1.1.0` declares Foundation `0.2.2`, Logging `0.2.3`, Cinemachine
+`3.1.7` and Input System `1.19.0`. Git consumers must declare custom Git
+dependencies themselves because Unity cannot resolve their semantic versions
+from Git alone. Earlier package releases remain in the
+[changelog](CHANGELOG.md) as history; they are not migration baselines for
+1.1.0.
 
 ## Getting started
 
