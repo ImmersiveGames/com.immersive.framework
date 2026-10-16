@@ -1,5 +1,8 @@
+using System;
 using Immersive.Framework.Camera;
 using Immersive.Framework.ApiStatus;
+using Unity.Cinemachine;
+using Unity.Cinemachine.TargetTracking;
 using UnityEngine;
 
 namespace Immersive.Framework.CameraAuthoring
@@ -18,6 +21,12 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField] private Vector2 fovRange = new Vector2(1f, 100f);
         [SerializeField] private Vector2 dollyRange = new Vector2(-100f, 100f);
         [SerializeField] private Vector2 orthoSizeRange = new Vector2(1f, 1000f);
+        [SerializeField] private CinemachineGroupFraming.FramingModes framingMode = CinemachineGroupFraming.FramingModes.HorizontalAndVertical;
+        [SerializeField] private Vector2 centerOffset;
+        [SerializeField] private CinemachineGroupFraming.SizeAdjustmentModes sizeAdjustment = CinemachineGroupFraming.SizeAdjustmentModes.DollyThenZoom;
+        [SerializeField] private CinemachineGroupFraming.LateralAdjustmentModes lateralAdjustment = CinemachineGroupFraming.LateralAdjustmentModes.ChangePosition;
+        [SerializeField, HideInInspector] private bool hasCapturedTrackerSettings;
+        [SerializeField, HideInInspector] private TrackerSettings capturedTrackerSettings = TrackerSettings.Default;
 
         public override CameraRigPresentationIntent PresentationIntent => CameraRigPresentationIntent.Group;
         public override CameraTargetRequirement FollowRequirement => followRequirement;
@@ -30,6 +39,12 @@ namespace Immersive.Framework.CameraAuthoring
         public Vector2 FovRange => fovRange;
         public Vector2 DollyRange => dollyRange;
         public Vector2 OrthoSizeRange => orthoSizeRange;
+        public CinemachineGroupFraming.FramingModes FramingMode => framingMode;
+        public Vector2 CenterOffset => centerOffset;
+        public CinemachineGroupFraming.SizeAdjustmentModes SizeAdjustment => sizeAdjustment;
+        public CinemachineGroupFraming.LateralAdjustmentModes LateralAdjustment => lateralAdjustment;
+        public bool HasCapturedTrackerSettings => hasCapturedTrackerSettings;
+        public TrackerSettings CapturedTrackerSettings => capturedTrackerSettings;
 
         public override bool TryValidate(out string issue)
         {
@@ -53,9 +68,55 @@ namespace Immersive.Framework.CameraAuthoring
                 return Invalid(nameof(dollyRange), dollyRange, "an ordered finite range", out issue);
             if (!IsOrderedRange(orthoSizeRange, 0.01f, float.MaxValue))
                 return Invalid(nameof(orthoSizeRange), orthoSizeRange, "an ordered finite range starting at 0.01 or greater", out issue);
+            if (!IsFinite(centerOffset))
+                return Invalid(nameof(centerOffset), centerOffset, "a finite Vector2", out issue);
+            if (!Enum.IsDefined(typeof(CinemachineGroupFraming.FramingModes), framingMode) ||
+                !Enum.IsDefined(typeof(CinemachineGroupFraming.SizeAdjustmentModes), sizeAdjustment) ||
+                !Enum.IsDefined(typeof(CinemachineGroupFraming.LateralAdjustmentModes), lateralAdjustment))
+                return Invalid("framingMode/sizeAdjustment/lateralAdjustment", $"{framingMode}/{sizeAdjustment}/{lateralAdjustment}", "supported Cinemachine Group Framing modes", out issue);
+            if (hasCapturedTrackerSettings &&
+                (!Enum.IsDefined(typeof(BindingMode), capturedTrackerSettings.BindingMode) ||
+                 !Enum.IsDefined(typeof(AngularDampingMode), capturedTrackerSettings.AngularDampingMode) ||
+                 !IsFiniteNonNegative(capturedTrackerSettings.PositionDamping) ||
+                 !IsFiniteNonNegative(capturedTrackerSettings.RotationDamping) ||
+                 !IsFiniteNonNegative(capturedTrackerSettings.QuaternionDamping)))
+                return Invalid(nameof(capturedTrackerSettings), capturedTrackerSettings.BindingMode, "valid Cinemachine tracker values", out issue);
 
             issue = string.Empty;
             return true;
         }
+
+#if UNITY_EDITOR
+        public void EditorCaptureSettings(
+            Vector3 capturedFollowOffset,
+            float capturedMemberWeight,
+            float capturedMemberRadius,
+            float capturedFramingSize,
+            float capturedDamping,
+            Vector2 capturedFovRange,
+            Vector2 capturedDollyRange,
+            Vector2 capturedOrthoSizeRange,
+            CinemachineGroupFraming.FramingModes capturedFramingMode,
+            Vector2 capturedCenterOffset,
+            CinemachineGroupFraming.SizeAdjustmentModes capturedSizeAdjustment,
+            CinemachineGroupFraming.LateralAdjustmentModes capturedLateralAdjustment,
+            TrackerSettings capturedTrackerSettings)
+        {
+            followOffset = capturedFollowOffset;
+            memberWeight = capturedMemberWeight;
+            memberRadius = capturedMemberRadius;
+            framingSize = capturedFramingSize;
+            damping = capturedDamping;
+            fovRange = capturedFovRange;
+            dollyRange = capturedDollyRange;
+            orthoSizeRange = capturedOrthoSizeRange;
+            framingMode = capturedFramingMode;
+            centerOffset = capturedCenterOffset;
+            sizeAdjustment = capturedSizeAdjustment;
+            lateralAdjustment = capturedLateralAdjustment;
+            this.capturedTrackerSettings = capturedTrackerSettings;
+            hasCapturedTrackerSettings = true;
+        }
+#endif
     }
 }

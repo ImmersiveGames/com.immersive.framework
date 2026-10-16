@@ -1,6 +1,8 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
+using Unity.Cinemachine.TargetTracking;
 using UnityEditor;
 using UnityEngine;
 
@@ -18,7 +20,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             None = 0,
             Follow = 10,
             HardLockToTarget = 20,
-            ThirdPersonFollow = 30
+            ThirdPersonFollow = 30,
+            ScreenComposer = 40
         }
 
         private enum RotationControlKind
@@ -135,6 +138,17 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     "cinemachine-follow:create-disabled");
             }
 
+            if (desiredPosition == PositionControlKind.ScreenComposer &&
+                !request.CreateCinemachinePositionComposerIfMissing &&
+                positionPreflight.ExternalCompatible == null &&
+                !IsDesiredPositionControl(
+                    positionPreflight.FrameworkOwned,
+                    desiredPosition))
+            {
+                positionPreflight.Blocked = true;
+                report.MarkBlocked("cinemachine-position-composer:create-disabled");
+            }
+
             if (positionPreflight.Blocked ||
                 rotationPreflight.Blocked ||
                 report.BlockedCount > 0)
@@ -171,13 +185,14 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 rotationControl,
                 request,
                 report);
-
+            ConfigureCapturedCameraSettings(cinemachineCamera, request, report);
 
             MarkDirty(unityCamera);
             MarkDirty(brain);
             MarkDirty(positionControl);
             MarkDirty(rotationControl);
             MarkDirty(cinemachineCamera);
+            MarkDirty(cinemachineCamera.transform);
             EditorUtility.SetDirty(request.RigRoot.gameObject);
 
             report.Evidence.UnityCamera = unityCamera;
@@ -197,10 +212,125 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     request.FrameworkOwnedRotationControl);
             report.Evidence.CinemachineFollow =
                 positionControl as CinemachineFollow;
+            report.Evidence.CinemachinePositionComposer =
+                positionControl as CinemachinePositionComposer;
             report.Evidence.MaterializationRevision =
                 NextRevision(request.PreviousMaterializationRevision);
 
             return report;
+        }
+
+        public static CinemachineRigMaterializationReport ValidateExistingComposition(
+            CinemachineRigMaterializationRequest request,
+            bool requireMaterializedControls)
+        {
+            var report = new CinemachineRigMaterializationReport();
+            if (request == null)
+            {
+                report.MarkBlocked("request:null");
+                return report;
+            }
+
+            report.Evidence.PresentationIntent = request.PresentationIntent;
+            ValidateRequest(request, report);
+            if (request.MaterializeUnityOutput)
+                report.MarkBlocked("preview-preflight:unity-output-not-supported");
+            if (report.BlockedCount > 0)
+                return report;
+
+            report.MarkSkipped("unity-output:not-requested");
+            report.MarkSkipped("cinemachine-brain:not-requested");
+            CinemachineCamera camera = ResolveCinemachineCamera(request, report);
+            if (camera == null)
+                report.MarkBlocked("cinemachine-camera:missing");
+            if (report.BlockedCount > 0)
+                return report;
+
+            ResolveDesiredPipeline(
+                request,
+                out PositionControlKind desiredPosition,
+                out RotationControlKind desiredRotation);
+
+            StagePreflight positionPreflight = PreflightStage(
+                camera,
+                CinemachineCore.Stage.Body,
+                request.FrameworkOwnedPositionControl,
+                component => IsDesiredPositionControl(component, desiredPosition),
+                "position",
+                desiredPosition.ToString(),
+                report);
+            StagePreflight rotationPreflight = PreflightStage(
+                camera,
+                CinemachineCore.Stage.Aim,
+                request.FrameworkOwnedRotationControl,
+                component => IsDesiredRotationControl(component, desiredRotation),
+                "rotation",
+                desiredRotation.ToString(),
+                report);
+
+            ValidateExistingStage(
+                positionPreflight,
+                component => IsDesiredPositionControl(component, desiredPosition),
+                requireMaterializedControls && desiredPosition != PositionControlKind.None,
+                "position",
+                desiredPosition.ToString(),
+                report);
+            ValidateExistingStage(
+                rotationPreflight,
+                component => IsDesiredRotationControl(component, desiredRotation),
+                requireMaterializedControls && desiredRotation != RotationControlKind.None,
+                "rotation",
+                desiredRotation.ToString(),
+                report);
+
+            if (positionPreflight.Blocked || rotationPreflight.Blocked || report.BlockedCount > 0)
+                CaptureBlockedStageEvidence(positionPreflight, rotationPreflight, request, report);
+            else
+            {
+                report.Evidence.PositionControl =
+                    positionPreflight.ExternalCompatible ?? positionPreflight.FrameworkOwned;
+                report.Evidence.PositionControlOwnership = ClassifyOwnership(
+                    report.Evidence.PositionControl,
+                    request.FrameworkOwnedPositionControl);
+                report.Evidence.RotationControl =
+                    rotationPreflight.ExternalCompatible ?? rotationPreflight.FrameworkOwned;
+                report.Evidence.RotationControlOwnership = ClassifyOwnership(
+                    report.Evidence.RotationControl,
+                    request.FrameworkOwnedRotationControl);
+                report.MarkAlreadyValid($"cinemachine-position-control:{desiredPosition}");
+                report.MarkAlreadyValid($"cinemachine-rotation-control:{desiredRotation}");
+            }
+
+            report.Evidence.CinemachineCamera = camera;
+            report.Evidence.MaterializationRevision = request.PreviousMaterializationRevision;
+            return report;
+        }
+
+        private static void ValidateExistingStage(
+            StagePreflight preflight,
+            System.Func<CinemachineComponentBase, bool> isDesired,
+            bool required,
+            string stageLabel,
+            string desiredLabel,
+            CinemachineRigMaterializationReport report)
+        {
+            CinemachineComponentBase component = preflight.ExternalCompatible ?? preflight.FrameworkOwned;
+            if (preflight.Blocked)
+                return;
+
+            if (component == null && required)
+            {
+                preflight.Blocked = true;
+                report.MarkBlocked($"cinemachine-{stageLabel}-control:missing:desired={desiredLabel}");
+                return;
+            }
+
+            if (component != null && !isDesired(component))
+            {
+                preflight.Blocked = true;
+                report.MarkBlocked(
+                    $"cinemachine-{stageLabel}-control:rebuild-required:{TypeName(component)}:desired={desiredLabel}");
+            }
         }
 
         private static void ValidateRequest(
@@ -218,19 +348,61 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                 request.LookAtRequirement != CameraTargetRequirement.Required)
                 report.MarkBlocked("look-at-policy:invalid");
 
+            if (request.PresentationIntent == CameraRigPresentationIntent.Follow &&
+                request.FollowMode != FollowCameraRigMode.FixedOffset &&
+                request.FollowMode != FollowCameraRigMode.ScreenComposer)
+                report.MarkBlocked("presentation:Follow:mode-invalid");
+
+            if (request.ApplyCapturedFollowTrackerSettings &&
+                (!System.Enum.IsDefined(typeof(BindingMode), request.CapturedFollowTrackerSettings.BindingMode) ||
+                 !System.Enum.IsDefined(typeof(AngularDampingMode), request.CapturedFollowTrackerSettings.AngularDampingMode) ||
+                 !IsFiniteNonNegative(request.CapturedFollowTrackerSettings.PositionDamping) ||
+                 !IsFiniteNonNegative(request.CapturedFollowTrackerSettings.RotationDamping) ||
+                 !IsFiniteNonNegative(request.CapturedFollowTrackerSettings.QuaternionDamping)))
+                report.MarkBlocked("presentation:Follow:tracker-settings-invalid");
+
+            if ((request.ApplyCapturedCameraPosition && !IsFinite(request.CapturedCameraLocalPosition)) ||
+                (request.ApplyCapturedCameraRotation && !IsFinite(request.CapturedCameraLocalEulerAngles)) ||
+                (request.ApplyCapturedCameraLens &&
+                 (!IsFinite(request.CapturedFieldOfView) || request.CapturedFieldOfView < 1f || request.CapturedFieldOfView > 179f ||
+                  !IsFinite(request.CapturedOrthographicSize) || request.CapturedOrthographicSize <= 0f ||
+                  !IsFinite(request.CapturedNearClipPlane) || request.CapturedNearClipPlane <= 0f ||
+                  !IsFinite(request.CapturedFarClipPlane) || request.CapturedFarClipPlane <= request.CapturedNearClipPlane ||
+                  !IsFinite(request.CapturedDutch) ||
+                  (request.CapturedLensMode != LensSettings.OverrideModes.None &&
+                   request.CapturedLensMode != LensSettings.OverrideModes.Perspective &&
+                   request.CapturedLensMode != LensSettings.OverrideModes.Orthographic))))
+                report.MarkBlocked("camera:capture-settings-invalid");
+
             switch (request.PresentationIntent)
             {
                 case CameraRigPresentationIntent.Fixed:
                     break;
 
                 case CameraRigPresentationIntent.Follow:
-                case CameraRigPresentationIntent.Group:
-
-                    if (!IsFinite(request.FollowOffset))
+                    if (request.FollowMode == FollowCameraRigMode.FixedOffset &&
+                        !IsFinite(request.FollowOffset))
                     {
                         report.MarkBlocked(
                             "presentation:Follow:follow-offset-invalid");
                     }
+                    else if (request.FollowMode == FollowCameraRigMode.ScreenComposer &&
+                             !FollowCameraRigBehaviorDefinition.TryValidateScreenComposerSettings(
+                                 request.ScreenComposerCameraDistance,
+                                 request.ScreenComposerDeadZoneDepth,
+                                 request.ScreenComposerComposition,
+                                 request.ScreenComposerTargetOffset,
+                                 request.ScreenComposerDamping,
+                                 request.ScreenComposerLookahead,
+                                 out _))
+                    {
+                        report.MarkBlocked("presentation:Follow:screen-composer-settings-invalid");
+                    }
+                    break;
+
+                case CameraRigPresentationIntent.Group:
+                    if (!IsFinite(request.FollowOffset))
+                        report.MarkBlocked("presentation:Group:follow-offset-invalid");
                     break;
 
                 case CameraRigPresentationIntent.Mounted:
@@ -289,6 +461,20 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     return;
 
                 case CameraRigPresentationIntent.Follow:
+                    position = PositionControlKind.Follow;
+                    if (request.FollowMode == FollowCameraRigMode.ScreenComposer)
+                    {
+                        position = PositionControlKind.ScreenComposer;
+                        rotation = RotationControlKind.None;
+                    }
+                    else
+                    {
+                        rotation = request.LookAtRequirement != CameraTargetRequirement.NotUsed
+                            ? RotationControlKind.HardLookAt
+                            : RotationControlKind.None;
+                    }
+                    return;
+
                 case CameraRigPresentationIntent.Group:
                     position = PositionControlKind.Follow;
                     rotation = request.LookAtRequirement != CameraTargetRequirement.NotUsed
@@ -410,6 +596,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     request.FrameworkOwnedRotationControl);
             report.Evidence.CinemachineFollow =
                 positionEvidence as CinemachineFollow;
+            report.Evidence.CinemachinePositionComposer =
+                positionEvidence as CinemachinePositionComposer;
         }
 
         private static CinemachineComponentBase ReconcilePositionControl(
@@ -589,6 +777,14 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                         "cinemachine-position-control:CinemachineThirdPersonFollow");
                     return thirdPerson;
 
+                case PositionControlKind.ScreenComposer:
+                    CinemachinePositionComposer screenComposer =
+                        AddComponent<CinemachinePositionComposer>(
+                            cinemachineCamera.gameObject,
+                            request.UseUndo);
+                    report.MarkCreated("cinemachine-position-control:CinemachinePositionComposer");
+                    return screenComposer;
+
                 case PositionControlKind.None:
                 default:
                     return null;
@@ -635,8 +831,12 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             switch (request.PresentationIntent)
             {
                 case CameraRigPresentationIntent.Follow:
-                case CameraRigPresentationIntent.Group:
-                    if (control is CinemachineFollow follow)
+                    if (request.FollowMode == FollowCameraRigMode.ScreenComposer &&
+                        control is CinemachinePositionComposer screenComposer)
+                    {
+                        ConfigureScreenComposer(screenComposer, request, report);
+                    }
+                    else if (control is CinemachineFollow follow)
                     {
                         SetVector3(
                             follow.FollowOffset,
@@ -644,6 +844,42 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                             value => follow.FollowOffset = value,
                             "cinemachine-follow:follow-offset",
                             report);
+                        if (request.ApplyCapturedFollowTrackerSettings)
+                        {
+                            if (!TrackerSettingsEqual(follow.TrackerSettings, request.CapturedFollowTrackerSettings))
+                            {
+                                follow.TrackerSettings = request.CapturedFollowTrackerSettings;
+                                report.MarkRepaired("cinemachine-follow:tracker-settings");
+                            }
+                            else
+                            {
+                                report.MarkAlreadyValid("cinemachine-follow:tracker-settings");
+                            }
+                        }
+                    }
+                    break;
+
+                case CameraRigPresentationIntent.Group:
+                    if (control is CinemachineFollow groupFollow)
+                    {
+                        SetVector3(
+                            groupFollow.FollowOffset,
+                            request.FollowOffset,
+                            value => groupFollow.FollowOffset = value,
+                            "cinemachine-follow:follow-offset",
+                            report);
+                        if (request.ApplyCapturedFollowTrackerSettings)
+                        {
+                            if (!TrackerSettingsEqual(groupFollow.TrackerSettings, request.CapturedFollowTrackerSettings))
+                            {
+                                groupFollow.TrackerSettings = request.CapturedFollowTrackerSettings;
+                                report.MarkRepaired("cinemachine-follow:tracker-settings");
+                            }
+                            else
+                            {
+                                report.MarkAlreadyValid("cinemachine-follow:tracker-settings");
+                            }
+                        }
                     }
                     break;
 
@@ -715,6 +951,147 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
             }
         }
 
+        private static void ConfigureCapturedCameraSettings(
+            CinemachineCamera camera,
+            CinemachineRigMaterializationRequest request,
+            CinemachineRigMaterializationReport report)
+        {
+            if (request.ApplyCapturedCameraPosition)
+            {
+                Vector3 worldPosition = request.RigRoot.TransformPoint(request.CapturedCameraLocalPosition);
+                Vector3 localPosition = camera.transform.parent != null
+                    ? camera.transform.parent.InverseTransformPoint(worldPosition)
+                    : worldPosition;
+                if (camera.transform.localPosition != localPosition)
+                {
+                    if (request.UseUndo)
+                        Undo.RecordObject(camera.transform, "Apply Captured Camera Position");
+                    camera.transform.localPosition = localPosition;
+                    report.MarkRepaired("camera:captured-rig-local-position");
+                }
+                else
+                {
+                    report.MarkAlreadyValid("camera:captured-rig-local-position");
+                }
+            }
+
+            if (request.ApplyCapturedCameraRotation)
+            {
+                Quaternion worldRotation = request.RigRoot.rotation *
+                                           Quaternion.Euler(request.CapturedCameraLocalEulerAngles);
+                Quaternion localRotation = camera.transform.parent != null
+                    ? Quaternion.Inverse(camera.transform.parent.rotation) * worldRotation
+                    : worldRotation;
+                Vector3 localEulerAngles = localRotation.eulerAngles;
+                if (camera.transform.localEulerAngles != localEulerAngles)
+                {
+                    if (request.UseUndo)
+                        Undo.RecordObject(camera.transform, "Apply Captured Camera Rotation");
+                    camera.transform.localEulerAngles = localEulerAngles;
+                    report.MarkRepaired("camera:captured-rig-local-rotation");
+                }
+                else
+                {
+                    report.MarkAlreadyValid("camera:captured-rig-local-rotation");
+                }
+            }
+
+            if (!request.ApplyCapturedCameraLens)
+                return;
+
+            LensSettings lens = camera.Lens;
+            bool changed = lens.ModeOverride != request.CapturedLensMode ||
+                           !Mathf.Approximately(lens.FieldOfView, request.CapturedFieldOfView) ||
+                           !Mathf.Approximately(lens.OrthographicSize, request.CapturedOrthographicSize) ||
+                           !Mathf.Approximately(lens.NearClipPlane, request.CapturedNearClipPlane) ||
+                           !Mathf.Approximately(lens.FarClipPlane, request.CapturedFarClipPlane) ||
+                           !Mathf.Approximately(lens.Dutch, request.CapturedDutch);
+            if (!changed)
+            {
+                report.MarkAlreadyValid("camera:captured-lens");
+                return;
+            }
+
+            if (request.UseUndo)
+                Undo.RecordObject(camera, "Apply Captured Camera Lens");
+            lens.ModeOverride = request.CapturedLensMode;
+            lens.FieldOfView = request.CapturedFieldOfView;
+            lens.OrthographicSize = request.CapturedOrthographicSize;
+            lens.NearClipPlane = request.CapturedNearClipPlane;
+            lens.FarClipPlane = request.CapturedFarClipPlane;
+            lens.Dutch = request.CapturedDutch;
+            camera.Lens = lens;
+            report.MarkRepaired("camera:captured-lens");
+        }
+
+        private static bool TrackerSettingsEqual(TrackerSettings left, TrackerSettings right) =>
+            left.BindingMode == right.BindingMode &&
+            left.PositionDamping == right.PositionDamping &&
+            left.AngularDampingMode == right.AngularDampingMode &&
+            left.RotationDamping == right.RotationDamping &&
+            Mathf.Approximately(left.QuaternionDamping, right.QuaternionDamping);
+
+        private static void ConfigureScreenComposer(
+            CinemachinePositionComposer control,
+            CinemachineRigMaterializationRequest request,
+            CinemachineRigMaterializationReport report)
+        {
+            SetFloat(control.CameraDistance, request.ScreenComposerCameraDistance,
+                value => control.CameraDistance = value,
+                "cinemachine-position-composer:camera-distance", report);
+            SetFloat(control.DeadZoneDepth, request.ScreenComposerDeadZoneDepth,
+                value => control.DeadZoneDepth = value,
+                "cinemachine-position-composer:dead-zone-depth", report);
+            SetVector3(control.TargetOffset, request.ScreenComposerTargetOffset,
+                value => control.TargetOffset = value,
+                "cinemachine-position-composer:target-offset", report);
+            SetVector3(control.Damping, request.ScreenComposerDamping,
+                value => control.Damping = value,
+                "cinemachine-position-composer:damping", report);
+
+            ScreenComposerSettings desiredComposition = request.ScreenComposerComposition;
+            ScreenComposerSettings currentComposition = control.Composition;
+            if (currentComposition.ScreenPosition != desiredComposition.ScreenPosition ||
+                currentComposition.DeadZone.Enabled != desiredComposition.DeadZone.Enabled ||
+                currentComposition.DeadZone.Size != desiredComposition.DeadZone.Size ||
+                currentComposition.HardLimits.Enabled != desiredComposition.HardLimits.Enabled ||
+                currentComposition.HardLimits.Size != desiredComposition.HardLimits.Size ||
+                currentComposition.HardLimits.Offset != desiredComposition.HardLimits.Offset)
+            {
+                control.Composition = desiredComposition;
+                report.MarkRepaired("cinemachine-position-composer:composition");
+            }
+            else
+            {
+                report.MarkAlreadyValid("cinemachine-position-composer:composition");
+            }
+
+            if (control.CenterOnActivate != request.ScreenComposerCenterOnActivate)
+            {
+                control.CenterOnActivate = request.ScreenComposerCenterOnActivate;
+                report.MarkRepaired("cinemachine-position-composer:center-on-activate");
+            }
+            else
+            {
+                report.MarkAlreadyValid("cinemachine-position-composer:center-on-activate");
+            }
+
+            LookaheadSettings desiredLookahead = request.ScreenComposerLookahead;
+            LookaheadSettings currentLookahead = control.Lookahead;
+            if (currentLookahead.Enabled != desiredLookahead.Enabled ||
+                !Mathf.Approximately(currentLookahead.Time, desiredLookahead.Time) ||
+                !Mathf.Approximately(currentLookahead.Smoothing, desiredLookahead.Smoothing) ||
+                currentLookahead.IgnoreY != desiredLookahead.IgnoreY)
+            {
+                control.Lookahead = desiredLookahead;
+                report.MarkRepaired("cinemachine-position-composer:lookahead");
+            }
+            else
+            {
+                report.MarkAlreadyValid("cinemachine-position-composer:lookahead");
+            }
+        }
+
         private static bool IsDesiredPositionControl(
             CinemachineComponentBase component,
             PositionControlKind desired)
@@ -727,6 +1104,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
                     return component is CinemachineHardLockToTarget;
                 case PositionControlKind.ThirdPersonFollow:
                     return component is CinemachineThirdPersonFollow;
+                case PositionControlKind.ScreenComposer:
+                    return component is CinemachinePositionComposer;
                 case PositionControlKind.None:
                 default:
                     return false;

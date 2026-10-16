@@ -27,5 +27,13 @@ namespace Immersive.Framework.CameraAuthoring
             issue = string.Empty;
             return true;
         }
+
+#if UNITY_EDITOR
+        public void EditorCaptureDamping(float capturedPositionDamping, float capturedRotationDamping)
+        {
+            positionDamping = capturedPositionDamping;
+            rotationDamping = capturedRotationDamping;
+        }
+#endif
     }
 }

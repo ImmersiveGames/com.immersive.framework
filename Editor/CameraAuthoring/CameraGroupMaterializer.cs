@@ -42,6 +42,15 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             framing.FovRange = composer.GroupFovRange;
             framing.DollyRange = composer.GroupDollyRange;
             framing.OrthoSizeRange = composer.GroupOrthoSizeRange;
+            GroupCameraRigBehaviorDefinition behavior =
+                composer.BehaviorDefinition as GroupCameraRigBehaviorDefinition;
+            if (behavior != null)
+            {
+                framing.FramingMode = behavior.FramingMode;
+                framing.CenterOffset = behavior.CenterOffset;
+                framing.SizeAdjustment = behavior.SizeAdjustment;
+                framing.LateralAdjustment = behavior.LateralAdjustment;
+            }
 
             composer.EditorSetGroupMaterialization(group, framing);
             EditorUtility.SetDirty(framing);

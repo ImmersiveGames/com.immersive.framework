@@ -39,5 +39,21 @@ namespace Immersive.Framework.CameraAuthoring
             issue = string.Empty;
             return true;
         }
+
+#if UNITY_EDITOR
+        public void EditorCaptureSettings(
+            Vector3 capturedShoulderOffset,
+            float capturedVerticalArmLength,
+            float capturedCameraSide,
+            float capturedCameraDistance,
+            Vector3 capturedDamping)
+        {
+            shoulderOffset = capturedShoulderOffset;
+            verticalArmLength = capturedVerticalArmLength;
+            cameraSide = capturedCameraSide;
+            cameraDistance = capturedCameraDistance;
+            damping = capturedDamping;
+        }
+#endif
     }
 }

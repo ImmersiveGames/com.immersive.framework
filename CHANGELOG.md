@@ -2,6 +2,12 @@
 
 All notable package changes are documented in this file.
 
+## [1.2.0-preview.1] - 2026-10-16 — experimental evolution candidate, Unity certification pending
+
+- Evolution candidate: added Experimental Screen Composer Follow through Cinemachine Position Composer while keeping Fixed Offset as the default. No Stable contract promotion is included.
+- Refactored Camera Rig Preview to use the original materialized CinemachineCamera with only a temporary Unity Camera and CinemachineBrain output. Enable/Disable restores target and channel state; uncaptured edits revert to the latest captured state, and Apply / Rebuild retains captured values.
+- Added read-only materialization preflight, focused Editor tests, and Camera Usage/Public API guidance for original-camera identity, FixedOffset/ScreenComposer ownership, external OrbitalFollow conflicts, Save Configuration, Prefab Stage, shared Behavior Definitions and Play Mode limits. Unity import, Editor tests and consumer validation remain pending; this candidate is not certified for Stable publication.
+
 ## [1.1.0] - 2026-10-14 — first official Stable baseline
 
 This release establishes the compatibility baseline defined by IF-ADR-047.

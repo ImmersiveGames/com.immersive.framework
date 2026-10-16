@@ -47,6 +47,8 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
 
         public CinemachineFollow CinemachineFollow { get; internal set; }
 
+        public CinemachinePositionComposer CinemachinePositionComposer { get; internal set; }
+
 
 
         public CinemachineCamera FrameworkOwnedCinemachineCamera =>

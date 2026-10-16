@@ -4,6 +4,7 @@ using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Editor.Common;
 using Unity.Cinemachine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.CameraAuthoring
@@ -34,9 +35,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
         private bool _showAdvancedDebug;
         private bool _localCinemachineCameraResolved;
         private CinemachineCamera _localCinemachineCamera;
+        private string _previewIssue;
+        private Transform _pendingPreviewTarget;
 
         private void OnEnable()
         {
+            EditorApplication.update -= RepaintWhilePreviewIsActive;
+            EditorApplication.update += RepaintWhilePreviewIsActive;
+
             UnityEngine.Object inspectedTarget = target;
             if (!TryGetValidSerializedObject(inspectedTarget, out SerializedObject current))
                 return;
@@ -69,6 +75,18 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 current.FindProperty("lastMaterializationSummary");
         }
 
+        private void OnDisable()
+        {
+            EditorApplication.update -= RepaintWhilePreviewIsActive;
+        }
+
+        private void RepaintWhilePreviewIsActive()
+        {
+            if (target is CameraRigComposer composer &&
+                CameraRigPreviewController.IsPreviewActive(composer))
+                Repaint();
+        }
+
         public override void OnInspectorGUI()
         {
             UnityEngine.Object inspectedTarget = target;
@@ -88,11 +106,6 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (!IsCurrentTargetValid(inspectedTarget, current))
                 return;
 
-            CameraRigPresentationIntent presentation =
-                ResolvePresentationIntent();
-
-            EditorGUILayout.HelpBox("Targets are supplied by Camera Composition at runtime. Apply / Rebuild creates the rig structure without Subjects.", MessageType.Info);
-
             bool authoringChanged =
                 EditorGUI.EndChangeCheck();
 
@@ -105,13 +118,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 MarkAuthoringChanged();
             }
 
-            presentation = ResolvePresentationIntent();
-
-            DrawMaterialization(presentation);
-            if (!IsCurrentTargetValid(inspectedTarget, current))
-                return;
-
-            DrawValidation();
+            DrawPreviewComposition((CameraRigComposer)inspectedTarget);
             if (!IsCurrentTargetValid(inspectedTarget, current))
                 return;
 
@@ -137,6 +144,76 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 new GUIContent(
                     "Definition",
                     "Reusable typed presentation intent. The asset owns model tuning; this Composer owns the concrete local rig and its materialization."));
+
+            if (_behaviorDefinition.objectReferenceValue is FollowCameraRigBehaviorDefinition follow)
+            {
+                DrawFollowModeSelector((CameraRigComposer)target, follow);
+            }
+        }
+
+        private void DrawFollowModeSelector(
+            CameraRigComposer composer,
+            FollowCameraRigBehaviorDefinition definition)
+        {
+            bool previewActive = CameraRigPreviewController.IsPreviewActive(composer);
+            FollowCameraRigMode requestedMode = definition.FollowMode;
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUI.DisabledScope(previewActive))
+            {
+                requestedMode = (FollowCameraRigMode)EditorGUILayout.EnumPopup(
+                    new GUIContent(
+                        "Follow Mode",
+                        "Select FixedOffset or ScreenComposer. A mode change affects the referenced Behavior Definition and requires Apply / Rebuild before Preview."),
+                    requestedMode);
+            }
+
+            if (!EditorGUI.EndChangeCheck() || requestedMode == definition.FollowMode)
+                return;
+
+            if (EditorUtility.IsPersistent(definition) &&
+                !EditorUtility.DisplayDialog(
+                    "Change Shared Follow Behavior",
+                    $"'{definition.name}' is a project asset and may be shared. Changing its mode affects every rig that references it. Continue?",
+                    "Change Mode",
+                    "Cancel"))
+                return;
+
+            int undoGroup;
+            Undo.IncrementCurrentGroup();
+            undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Change Camera Follow Mode");
+            Undo.RecordObject(definition, "Change Camera Follow Mode");
+
+            var behaviorObject = new SerializedObject(definition);
+            SerializedProperty followMode = behaviorObject.FindProperty("followMode");
+            if (followMode == null)
+            {
+                Undo.RevertAllDownToGroup(undoGroup);
+                _previewIssue = "Follow Behavior Definition does not expose its mode to the Composer Inspector.";
+                return;
+            }
+
+            followMode.enumValueIndex = (int)requestedMode;
+            behaviorObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(definition);
+            if (EditorUtility.IsPersistent(definition))
+            {
+                AssetDatabase.SaveAssetIfDirty(definition);
+                if (EditorUtility.IsDirty(definition))
+                {
+                    Undo.RevertAllDownToGroup(undoGroup);
+                    _previewIssue = $"Unity did not confirm saving Follow Behavior Definition '{definition.name}'.";
+                    return;
+                }
+            }
+            else if (composer.gameObject.scene.IsValid())
+            {
+                EditorSceneManager.MarkSceneDirty(composer.gameObject.scene);
+            }
+
+            Undo.CollapseUndoOperations(undoGroup);
+            MarkAuthoringChanged();
+            _previewIssue = "Follow Mode changed. Apply / Rebuild in Advanced / Debug before enabling Preview.";
         }
 
 
@@ -173,6 +250,7 @@ namespace Immersive.Framework.Editor.CameraAuthoring
 
             using (new EditorGUI.DisabledScope(
                        Application.isPlaying ||
+                       CameraRigPreviewController.IsPreviewActive((CameraRigComposer)target) ||
                        presentation ==
                            CameraRigPresentationIntent.Undefined))
             {
@@ -190,6 +268,201 @@ namespace Immersive.Framework.Editor.CameraAuthoring
                 EditorGUILayout.LabelField(
                     "Authoring actions are unavailable in Play Mode.",
                     EditorStyles.miniLabel);
+            }
+        }
+
+        private void DrawPreviewComposition(CameraRigComposer composer)
+        {
+            FrameworkAuthoringInspectorGui.Section("Preview");
+            bool active = CameraRigPreviewController.IsPreviewActive(composer);
+            if (!active && _pendingPreviewTarget == null &&
+                composer.BehaviorDefinition is FollowCameraRigBehaviorDefinition &&
+                composer.CinemachineCamera != null)
+                _pendingPreviewTarget = composer.CinemachineCamera.Follow;
+            EditorGUILayout.LabelField("State", CameraRigPreviewController.GetPreviewState(composer));
+            string compositionStatus = ResolveMaterializationStatus(
+                ResolvePresentationIntent(),
+                ResolveMaterializedPresentationIntent(),
+                ResolveLocalCinemachineCamera());
+            EditorGUILayout.LabelField("Composition", compositionStatus);
+            if (!active && compositionStatus != "Current")
+                EditorGUILayout.HelpBox(
+                    "Use Validate or Apply / Rebuild in Advanced / Debug before enabling Preview.",
+                    MessageType.Info);
+
+            bool usesTarget = composer.EffectiveFollowRequirement != CameraTargetRequirement.NotUsed;
+            using (new EditorGUI.DisabledScope(!usesTarget))
+            {
+                Transform currentTarget = active
+                    ? CameraRigPreviewController.GetPreviewTarget(composer)
+                    : _pendingPreviewTarget;
+                Transform selectedTarget = (Transform)EditorGUILayout.ObjectField(
+                    composer.PresentationIntent == CameraRigPresentationIntent.Group ? "Group Member" : "Tracking Target",
+                    currentTarget,
+                    typeof(Transform),
+                    true);
+                if (selectedTarget != currentTarget)
+                {
+                    if (active)
+                        CameraRigPreviewController.SetPreviewTarget(composer, selectedTarget, out _previewIssue);
+                    _pendingPreviewTarget = selectedTarget;
+                }
+            }
+
+            if (!active)
+            {
+                using (new EditorGUI.DisabledScope(
+                           Application.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode ||
+                           compositionStatus != "Current"))
+                {
+                    if (GUILayout.Button(new GUIContent(
+                            "Enable Preview",
+                            "Uses the original CinemachineCamera with a temporary output below this rig.")))
+                    {
+                        if (CameraRigPreviewController.TryEnablePreview(composer, out _previewIssue) &&
+                            _pendingPreviewTarget != null)
+                            CameraRigPreviewController.SetPreviewTarget(
+                                composer,
+                                _pendingPreviewTarget,
+                                out _previewIssue);
+                    }
+                }
+
+                DrawFollowDesignerControls(composer, false);
+            }
+            else
+            {
+                DrawFollowDesignerControls(composer, true);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button(new GUIContent(
+                        "Save Configuration",
+                        "Validates, captures canonical authoring values, reconciles the Cinemachine rig and persists only authored prefab properties.")))
+                    RunSaveConfiguration(composer);
+                if (GUILayout.Button(new GUIContent(
+                        "Disable Preview",
+                        "Restores unsaved values, restores runtime Targets and Channels, and removes the temporary output.")))
+                    CameraRigPreviewController.TryDisablePreview(composer, out _previewIssue);
+                GUILayout.EndHorizontal();
+
+                EditorGUILayout.LabelField(
+                    "Save Status",
+                    CameraRigPreviewController.HasUncapturedChanges(composer)
+                        ? "Unsaved changes"
+                        : "Configuration saved");
+                EditorGUILayout.HelpBox(
+                    "Adjust the controls here while Preview is active. Disable discards unsaved changes; Save Configuration writes them to their existing Behavior Definition and Composer owners. The selected Target remains preview-only.",
+                    MessageType.None);
+                if (composer.BehaviorDefinition != null && EditorUtility.IsPersistent(composer.BehaviorDefinition))
+                    EditorGUILayout.HelpBox(
+                        "Saving updates the assigned Behavior Definition asset. Other rigs that reference it use the same saved Follow settings; no asset copy is made.",
+                        MessageType.Warning);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_previewIssue))
+            {
+                EditorGUILayout.HelpBox(FormatBlockingIssueForInspector(_previewIssue), MessageType.Warning);
+                if (GUILayout.Button("Dismiss Preview Message"))
+                    _previewIssue = string.Empty;
+            }
+        }
+
+        private void DrawFollowDesignerControls(CameraRigComposer composer, bool previewActive)
+        {
+            if (!(composer.BehaviorDefinition is FollowCameraRigBehaviorDefinition behavior))
+                return;
+
+            FrameworkAuthoringInspectorGui.Section("Framing");
+            if (!previewActive)
+            {
+                EditorGUILayout.HelpBox(
+                    "Enable Preview to adjust framing against the selected Target. Changes remain transient until Save Configuration.",
+                    MessageType.Info);
+                return;
+            }
+
+            CinemachineCamera camera = CameraRigPreviewController.GetPreviewCamera(composer);
+            if (camera == null)
+                return;
+
+            if (!CameraRigPreviewController.CanEditPreviewFollowControls(composer, out string ownershipIssue))
+            {
+                EditorGUILayout.HelpBox(ownershipIssue, MessageType.Warning);
+                return;
+            }
+
+            CinemachineFollow follow = camera.GetComponent<CinemachineFollow>();
+            CinemachinePositionComposer screen = camera.GetComponent<CinemachinePositionComposer>();
+            bool fixedOffset = behavior.FollowMode == FollowCameraRigMode.FixedOffset;
+            if ((fixedOffset && follow == null) || (!fixedOffset && screen == null))
+            {
+                EditorGUILayout.HelpBox(
+                    fixedOffset
+                        ? "The Follow position control is missing. Resolve the ownership conflict in Advanced before previewing."
+                        : "The Position Composer control is missing. Resolve the ownership conflict in Advanced before previewing.",
+                    MessageType.Error);
+                return;
+            }
+
+            Vector3 fixedOffsetValue = follow != null ? follow.FollowOffset : Vector3.zero;
+            float distance = fixedOffset
+                ? CameraRigFramingEditorUtility.GetDistance(fixedOffsetValue)
+                : screen.CameraDistance;
+            float pitch;
+            float yaw;
+            if (fixedOffset)
+            {
+                pitch = CameraRigFramingEditorUtility.GetPitch(fixedOffsetValue);
+                yaw = CameraRigFramingEditorUtility.GetYaw(fixedOffsetValue);
+            }
+            else
+            {
+                Quaternion rigLocalRotation = Quaternion.Inverse(composer.transform.rotation) * camera.transform.rotation;
+                Vector3 euler = rigLocalRotation.eulerAngles;
+                pitch = Mathf.DeltaAngle(0f, euler.x);
+                yaw = Mathf.DeltaAngle(0f, euler.y);
+            }
+
+            LensSettings lens = camera.Lens;
+            float fieldOfView = lens.FieldOfView;
+            float targetHeight = screen != null ? screen.TargetOffset.y : fixedOffsetValue.y;
+            Vector2 deadZone = screen != null ? screen.Composition.DeadZone.Size : Vector2.zero;
+            Vector2 damping = screen != null ? new Vector2(screen.Damping.x, screen.Damping.y) : Vector2.zero;
+            Vector2 screenPosition = screen != null ? screen.Composition.ScreenPosition : Vector2.zero;
+
+            EditorGUI.BeginChangeCheck();
+            distance = EditorGUILayout.FloatField("Distance", distance);
+            pitch = EditorGUILayout.Slider("Pitch", pitch, -89f, 89f);
+            yaw = EditorGUILayout.FloatField("Yaw", yaw);
+            fieldOfView = EditorGUILayout.Slider("Field of View", fieldOfView, 1f, 179f);
+            if (fixedOffset)
+            {
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.FloatField("Target Height (offset Y)", targetHeight);
+            }
+            else
+            {
+                targetHeight = EditorGUILayout.FloatField("Target Height", targetHeight);
+                deadZone = EditorGUILayout.Vector2Field("Dead Zone (X / Y)", deadZone);
+                damping = EditorGUILayout.Vector2Field("Damping (X / Y)", damping);
+                screenPosition = EditorGUILayout.Vector2Field("Screen Position", screenPosition);
+            }
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (CameraRigPreviewController.TryUpdatePreviewFollowControls(
+                        composer,
+                        distance,
+                        pitch,
+                        yaw,
+                        fieldOfView,
+                        targetHeight,
+                        deadZone,
+                        damping,
+                        screenPosition,
+                        out string issue))
+                    _previewIssue = string.Empty;
+                else
+                    _previewIssue = issue;
             }
         }
 
@@ -230,6 +503,18 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             if (materialized != presentation)
             {
                 return "Needs Rebuild";
+            }
+
+            if (target is CameraRigComposer composer &&
+                composer.BehaviorDefinition is FollowCameraRigBehaviorDefinition follow)
+            {
+                CinemachineComponentBase positionControl =
+                    local.GetCinemachineComponent(CinemachineCore.Stage.Body);
+                bool matchesMode = follow.FollowMode == FollowCameraRigMode.ScreenComposer
+                    ? positionControl is CinemachinePositionComposer
+                    : positionControl is CinemachineFollow;
+                if (!matchesMode)
+                    return "Needs Rebuild";
             }
 
             return "Current";
@@ -548,6 +833,14 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             }
 
             EditorGUI.indentLevel++;
+
+            DrawMaterialization(ResolvePresentationIntent());
+            if (!TryGetValidSerializedObject(target, out _))
+                return;
+
+            DrawValidation();
+            if (!TryGetValidSerializedObject(target, out _))
+                return;
 
             DrawTargetContractEvidence();
             if (!TryGetValidSerializedObject(target, out _))
@@ -945,6 +1238,18 @@ namespace Immersive.Framework.Editor.CameraAuthoring
             _materializationOutdated = false;
 
             current.UpdateIfRequiredOrScript();
+        }
+
+        private void RunSaveConfiguration(CameraRigComposer composer)
+        {
+            if (!CameraRigPreviewController.TrySaveConfiguration(composer, out _previewIssue))
+                return;
+
+            _materializationOutdated = false;
+            _lastApplyResult = null;
+            _lastValidationResult = CameraRigComposerApplyRebuildUtility.Validate(composer);
+            _validationOutdated = false;
+            Repaint();
         }
 
         private bool TryGetValidSerializedObject(

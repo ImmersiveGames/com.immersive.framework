@@ -64,6 +64,39 @@ namespace Immersive.Framework.CameraAuthoring
         [SerializeField]
         private bool logApplyRebuildDiagnostics = true;
 
+        [SerializeField, HideInInspector]
+        private bool hasCapturedCameraPosition;
+
+        [SerializeField, HideInInspector]
+        private Vector3 capturedCameraLocalPosition;
+
+        [SerializeField, HideInInspector]
+        private bool hasCapturedCameraRotation;
+
+        [SerializeField, HideInInspector]
+        private Vector3 capturedCameraLocalEulerAngles;
+
+        [SerializeField, HideInInspector]
+        private bool hasCapturedCameraLens;
+
+        [SerializeField, HideInInspector]
+        private LensSettings.OverrideModes capturedLensMode = LensSettings.OverrideModes.Perspective;
+
+        [SerializeField, HideInInspector]
+        private float capturedFieldOfView = 40f;
+
+        [SerializeField, HideInInspector]
+        private float capturedOrthographicSize = 10f;
+
+        [SerializeField, HideInInspector]
+        private float capturedNearClipPlane = 0.1f;
+
+        [SerializeField, HideInInspector]
+        private float capturedFarClipPlane = 5000f;
+
+        [SerializeField, HideInInspector]
+        private float capturedDutch;
+
         [Header("Debug")]
         [SerializeField]
         private string lastApplyRebuildStatus;
@@ -175,8 +208,30 @@ namespace Immersive.Framework.CameraAuthoring
                 return false;
             }
 
+            if ((hasCapturedCameraPosition && !IsFinite(capturedCameraLocalPosition)) ||
+                (hasCapturedCameraRotation && !IsFinite(capturedCameraLocalEulerAngles)) ||
+                (hasCapturedCameraLens &&
+                 (!IsFinite(capturedFieldOfView) || capturedFieldOfView < 1f || capturedFieldOfView > 179f ||
+                  !IsFinite(capturedOrthographicSize) || capturedOrthographicSize <= 0f ||
+                  !IsFinite(capturedNearClipPlane) || capturedNearClipPlane <= 0f ||
+                  !IsFinite(capturedFarClipPlane) || capturedFarClipPlane <= capturedNearClipPlane ||
+                  !IsFinite(capturedDutch) ||
+                  (capturedLensMode != LensSettings.OverrideModes.Perspective &&
+                   capturedLensMode != LensSettings.OverrideModes.Orthographic &&
+                   capturedLensMode != LensSettings.OverrideModes.None))))
+            {
+                issue = "CameraRigComposer contains invalid captured camera settings.";
+                return false;
+            }
+
             return behaviorDefinition.TryValidate(out issue);
         }
+
+        private static bool IsFinite(float value) =>
+            !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private static bool IsFinite(Vector3 value) =>
+            IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
 
         private FollowCameraRigBehaviorDefinition RequireFollowBehavior() =>
             behaviorDefinition as FollowCameraRigBehaviorDefinition ??
@@ -250,6 +305,57 @@ namespace Immersive.Framework.CameraAuthoring
             frameworkOwnedGroupFraming = framing;
         }
 
+        public void EditorCaptureCameraSettings(
+            bool capturePosition,
+            Vector3 localPosition,
+            bool captureRotation,
+            Vector3 localEulerAngles,
+            LensSettings.OverrideModes lensMode,
+            float fieldOfView,
+            float orthographicSize,
+            float nearClipPlane,
+            float farClipPlane,
+            float dutch)
+        {
+            hasCapturedCameraPosition = capturePosition;
+            capturedCameraLocalPosition = localPosition;
+            hasCapturedCameraRotation = captureRotation;
+            capturedCameraLocalEulerAngles = localEulerAngles;
+            hasCapturedCameraLens = true;
+            capturedLensMode = lensMode;
+            capturedFieldOfView = fieldOfView;
+            capturedOrthographicSize = orthographicSize;
+            capturedNearClipPlane = nearClipPlane;
+            capturedFarClipPlane = farClipPlane;
+            capturedDutch = dutch;
+        }
+
+        public void EditorGetCapturedCameraSettings(
+            out bool capturePosition,
+            out Vector3 localPosition,
+            out bool captureRotation,
+            out Vector3 localEulerAngles,
+            out bool captureLens,
+            out LensSettings.OverrideModes lensMode,
+            out float fieldOfView,
+            out float orthographicSize,
+            out float nearClipPlane,
+            out float farClipPlane,
+            out float dutch)
+        {
+            capturePosition = hasCapturedCameraPosition;
+            localPosition = capturedCameraLocalPosition;
+            captureRotation = hasCapturedCameraRotation;
+            localEulerAngles = capturedCameraLocalEulerAngles;
+            captureLens = hasCapturedCameraLens;
+            lensMode = capturedLensMode;
+            fieldOfView = capturedFieldOfView;
+            orthographicSize = capturedOrthographicSize;
+            nearClipPlane = capturedNearClipPlane;
+            farClipPlane = capturedFarClipPlane;
+            dutch = capturedDutch;
+        }
+
         private void Reset()
         {
             behaviorDefinition = null;
@@ -266,6 +372,17 @@ namespace Immersive.Framework.CameraAuthoring
             frameworkOwnedGroupTargetGroup = null;
             frameworkOwnedGroupFraming = null;
             materializationRevision = 0;
+            hasCapturedCameraPosition = false;
+            capturedCameraLocalPosition = Vector3.zero;
+            hasCapturedCameraRotation = false;
+            capturedCameraLocalEulerAngles = Vector3.zero;
+            hasCapturedCameraLens = false;
+            capturedLensMode = LensSettings.OverrideModes.Perspective;
+            capturedFieldOfView = 40f;
+            capturedOrthographicSize = 10f;
+            capturedNearClipPlane = 0.1f;
+            capturedFarClipPlane = 5000f;
+            capturedDutch = 0f;
         }
 #endif
     }

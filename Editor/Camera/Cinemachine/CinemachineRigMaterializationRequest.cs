@@ -1,6 +1,8 @@
 using Immersive.Framework.Camera;
+using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.ApiStatus;
 using Unity.Cinemachine;
+using Unity.Cinemachine.TargetTracking;
 using UnityEngine;
 
 namespace Immersive.Framework.Editor.Camera.Cinemachine
@@ -45,8 +47,55 @@ namespace Immersive.Framework.Editor.Camera.Cinemachine
         /// </summary>
         public bool CreateCinemachineFollowIfMissing { get; set; } = true;
 
+        public bool CreateCinemachinePositionComposerIfMissing { get; set; } = true;
+
         public Vector3 FollowOffset { get; set; } =
             new Vector3(0f, 5f, -8f);
+
+        public bool ApplyCapturedFollowTrackerSettings { get; set; }
+
+        public TrackerSettings CapturedFollowTrackerSettings { get; set; } = TrackerSettings.Default;
+
+        public FollowCameraRigMode FollowMode { get; set; } =
+            FollowCameraRigMode.FixedOffset;
+
+        public float ScreenComposerCameraDistance { get; set; } = 10f;
+
+        public float ScreenComposerDeadZoneDepth { get; set; }
+
+        public ScreenComposerSettings ScreenComposerComposition { get; set; } =
+            ScreenComposerSettings.Default;
+
+        public bool ScreenComposerCenterOnActivate { get; set; } = true;
+
+        public Vector3 ScreenComposerTargetOffset { get; set; }
+
+        public Vector3 ScreenComposerDamping { get; set; } = Vector3.one;
+
+        public LookaheadSettings ScreenComposerLookahead { get; set; }
+
+        public bool ApplyCapturedCameraPosition { get; set; }
+
+        public Vector3 CapturedCameraLocalPosition { get; set; }
+
+        public bool ApplyCapturedCameraRotation { get; set; }
+
+        public Vector3 CapturedCameraLocalEulerAngles { get; set; }
+
+        public bool ApplyCapturedCameraLens { get; set; }
+
+        public LensSettings.OverrideModes CapturedLensMode { get; set; } =
+            LensSettings.OverrideModes.Perspective;
+
+        public float CapturedFieldOfView { get; set; } = 40f;
+
+        public float CapturedOrthographicSize { get; set; } = 10f;
+
+        public float CapturedNearClipPlane { get; set; } = 0.1f;
+
+        public float CapturedFarClipPlane { get; set; } = 5000f;
+
+        public float CapturedDutch { get; set; }
 
         public float MountedPositionDamping { get; set; }
 
