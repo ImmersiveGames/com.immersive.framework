@@ -324,6 +324,7 @@ namespace Immersive.Framework.Camera.Tests
 
             try
             {
+                var occurrenceIds = new ActorOccurrenceIdSequence();
                 Assert.That(handle.VisualContent != null, Is.EqualTo(withVisualContent));
                 Assert.That(handle.ActorRoot, Is.SameAs(actorRoot.transform));
                 Vector3 actorPosition = new Vector3(3f, 4f, 5f);
@@ -342,11 +343,27 @@ namespace Immersive.Framework.Camera.Tests
                     RoutePlayerSpatialEntryRuntimeBinding.ResolveActorRoot(handle.PlayerActorRuntimeHost),
                     Is.SameAs(actorRoot.transform),
                     "Route spatial entry targets the Actor root whether optional visual content exists or not.");
+                Assert.That(handle.TryCommitOccurrenceIdentity(occurrenceIds.Next()), Is.False,
+                    "A staged, inactive materialization cannot publish a physical occurrence identity.");
+                Assert.That(handle.OccurrenceId.IsValid, Is.False);
                 Assert.That(handle.TryActivate("test", "activate", out string activateIssue), Is.True, activateIssue);
                 Assert.That(handle.State, Is.EqualTo(PlayerActorMaterializationState.Active));
+                ActorOccurrenceId committedOccurrenceId = occurrenceIds.Next();
+                Assert.That(handle.TryCommitOccurrenceIdentity(committedOccurrenceId), Is.True);
+                Assert.That(handle.OccurrenceId, Is.EqualTo(committedOccurrenceId));
                 Assert.That(handle.TryDeactivate("test", "deactivate", out string deactivateIssue), Is.True, deactivateIssue);
+                Assert.That(handle.OccurrenceId, Is.EqualTo(committedOccurrenceId),
+                    "Temporary deactivation keeps the committed physical occurrence identity on the materialization handle.");
+                Assert.That(handle.TryActivate("test", "reactivate", out activateIssue), Is.True, activateIssue);
+                Assert.That(handle.OccurrenceId, Is.EqualTo(committedOccurrenceId),
+                    "Reactivation must expose the same committed occurrence instead of allocating a legacy identity.");
+                Assert.That(handle.TryCommitOccurrenceIdentity(occurrenceIds.Next()), Is.False,
+                    "A single materialization handle cannot be reassigned a different occurrence identity.");
+                Assert.That(handle.OccurrenceId, Is.EqualTo(committedOccurrenceId));
                 Assert.That(adapter.TryReleaseMaterialization(handle, "test", "release", out string releaseIssue), Is.True, releaseIssue);
                 Assert.That(handle.State, Is.EqualTo(PlayerActorMaterializationState.Released));
+                Assert.That(handle.OccurrenceId.IsValid, Is.False,
+                    "Terminal physical release invalidates the occurrence identity.");
             }
             finally
             {

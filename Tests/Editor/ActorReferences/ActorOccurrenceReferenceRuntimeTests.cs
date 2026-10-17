@@ -15,6 +15,7 @@ namespace Immersive.Framework.ActorReferences.Tests
     public sealed class ActorOccurrenceReferenceRuntimeTests
     {
         private readonly List<UnityEngine.Object> _created = new();
+        private readonly ActorOccurrenceIdSequence _occurrenceIds = new();
 
         [TearDown]
         public void TearDown()
@@ -190,35 +191,6 @@ namespace Immersive.Framework.ActorReferences.Tests
         }
 
         [Test]
-        public void PlayerOccurrenceIdentitySurvivesTemporaryPhysicalUnavailability()
-        {
-            var runtime = new ActorOccurrenceReferenceRuntime();
-            var source = new FakePlayerSource();
-            PlayerSlotId slot = PlayerSlotId.Player1;
-            RuntimeContentOwner sessionOwner = RuntimeContentOwner.Session("session.player-inactive", "Session");
-            PlayerActorPhysicalOccurrence committed = CreatePlayerPhysical(
-                slot,
-                sessionOwner,
-                "player.actor.inactive",
-                1);
-            source.SetCurrent(committed, notify: false);
-            runtime.SetPlayerSource(source);
-
-            ActorOccurrenceResolution first = runtime.Resolve(ActorOccurrenceReference.ForPlayerSlot(slot));
-            Assert.That(first.Status, Is.EqualTo(ActorOccurrenceResolutionStatus.Resolved));
-            Assert.That(first.Occurrence.Id, Is.EqualTo(committed.OccurrenceId));
-
-            source.SetCurrent(default, notify: true);
-            Assert.That(runtime.Resolve(ActorOccurrenceReference.ForPlayerSlot(slot)).Status,
-                Is.EqualTo(ActorOccurrenceResolutionStatus.Unavailable));
-
-            source.SetCurrent(committed, notify: true);
-            ActorOccurrenceResolution restored = runtime.Resolve(ActorOccurrenceReference.ForPlayerSlot(slot));
-            Assert.That(restored.Status, Is.EqualTo(ActorOccurrenceResolutionStatus.Resolved));
-            Assert.That(restored.Occurrence.Id, Is.EqualTo(first.Occurrence.Id));
-        }
-
-        [Test]
         public void ActorIdResolutionIncludesPlayerAndReportsCrossKindAmbiguity()
         {
             var runtime = new ActorOccurrenceReferenceRuntime();
@@ -370,7 +342,7 @@ namespace Immersive.Framework.ActorReferences.Tests
                 revision,
                 revision);
             return new PlayerActorPhysicalOccurrence(
-                new ActorOccurrenceId(1000 + revision),
+                _occurrenceIds.Next(),
                 slot,
                 token,
                 declaration,
