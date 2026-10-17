@@ -1,6 +1,7 @@
 # IF-ADR-050 — Accepted-ADR Reconciliation for Actor Lifecycle and Composition — 2026-10-17
 
-Status: **Proposed architectural reconciliation — non-normative while IF-ADR-050 remains Proposed**  
+Status: **Reconciled — accepted future architecture; current runtime contracts preserved**
+Reconciliation updated: **2026-10-17**  
 Date: **2026-10-17**  
 Scope: **documentation only; no runtime/API, certification, package, serialization or maturity change**  
 Target decision: [IF-ADR-050](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md)  
@@ -9,14 +10,14 @@ Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GO
 
 ## 1. Purpose and authority rule
 
-This record reconciles the **proposed** Actor occurrence/composition direction with **accepted** Framework decisions, without retrospectively replacing their requirements, changing completed QA evidence or suggesting the new behavior has shipped.
+This record reconciles the **accepted future** Actor occurrence/composition direction with existing **accepted** Framework runtime decisions, without retrospectively replacing their requirements, changing completed QA evidence or suggesting the new behavior has shipped.
 
 **Two time-scoped authorities must not be confused:**
 
 1. **Current/published runtime contract:** accepted ADRs and the actually implemented API still govern consumers. Historical certifications retain only their tested revision and scope.
-2. **Future architecture candidate:** IF-ADR-050/IF-SPEC-050 describe the intended migration, but are non-normative until a formal acceptance changes their status and authorizes corresponding scoped amendments. A new runtime contract must not silently replace Stable guarantees.
+2. **Accepted future architecture:** IF-ADR-050/IF-SPEC-050 now authorize the target design for subsequent migration planning. The [accepted contract migration boundary](IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) resolves prospective contract direction; the new runtime behavior is **not yet implemented**, and Stable guarantees cannot be silently replaced.
 
-This reconciliation is a **decision crosswalk**, not an acceptance vote, code plan or product release. Where the proposed target conflicts with accepted text, the current text wins *today*; the proposed resolution is explicitly conditional. Do not rename existing runtime types, reclassify QA results or advance API maturity on this record alone.
+This reconciliation is a **decision crosswalk**, not a code plan or product release. Where the accepted *future* target conflicts with current implemented/published contracts, the latter continue to govern existing consumers until their exact migrations are released. The target governs what future implementation must achieve. Do not rename existing runtime types, reclassify QA results or advance API maturity on this record alone.
 
 ## 2. Boundaries that remain intact
 
@@ -34,7 +35,7 @@ The proposed `com.immersive.composition` kernel is **not implemented or installe
 
 ## 3. Explicit conflict / reconciliation matrix
 
-| ID | Accepted evidence and present behavior | Proposed target under IF-ADR-050 | Required normative action **before implementation** |
+| ID | Accepted evidence and present behavior | Accepted future target under IF-ADR-050 | Contract migration action before implementation/release |
 |---|---|---|---|
 | R01 — ActorId domain | [IF-ADR-023A](IF-ADR-023A-PLAYER-ACTOR-OCCURRENCE-IDENTITY-BOUNDARY-2026-08-31.md) says preparation/adoption establishes an occurrence-like `ActorId`; current Player materializer creates ActorId per materialization. | `ActorId` identifies logical Actor; `ActorOccurrenceId` identifies one committed physical incarnation; neither is a universal alias of `PlayerOccurrenceId`. | Expressly amend the historical identity boundary for the future contract, preserve 023A as historical evidence; define migration of `PlayerActorDeclaration`, tokens, selectors and serialized references. |
 | R02 — Player lifetime | IF-ADR-003/020/025 separate Joined Player from Activity and PlayerInput. | PlayerOccurrenceId remains per Join; a single Player can continue with another logical Actor; recomposition preserves PlayerOccurrenceId. | Clarify identity vocabulary, without moving Session/PlayerInput authority to Composition. |
@@ -75,9 +76,9 @@ Composition revision is not `SelectionRevision` and does not establish physical 
 
 ## 6. Required sequencing and documentation dispositions
 
-1. **Now (documentation):** maintain IF-ADR-050 and IF-SPEC-050 as Proposed/Draft; add bounded forward-reconciliation notices to relevant accepted ADRs; track this record as non-normative. No accepted behavior is silently superseded.
-2. **At architecture acceptance:** explicitly accept/amend the future contract, including R01/R03/R04, with public-contract maturity and compatibility classification. Record which historical scopes remain binding for existing releases.
-3. **Before implementation plan:** decide profile change policy (content-only vs physical replacement), new/refined result and availability surface, and typed/serialized migration for ActorId/ActorOccurrenceId and `presentationPrefab`.
+1. **Architecture accepted (2026-10-17):** IF-ADR-050 and IF-SPEC-050 establish the future architecture. The [migration boundary](IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) documents exact R01/R03/R04 effects and protects existing contract evidence. Forward-reconciliation notices in accepted ADRs describe prospective changes without silently superseding current runtime.
+2. **Implementation plan next:** design the explicit content-only versus physical replacement command/policy; define the typed availability/result surfaces, public-API maturity and serialized `ActorId`/`ActorOccurrenceId`/`presentationPrefab` migration according to the accepted contract boundary.
+3. **Before any breaking API release:** complete the scoped compatibility and migration review under IF-GOV-001 and IF-ADR-047.
 4. **Implementation increments:** fix separately evidenced current defects N1 visual reactivation on release, N2 early selection publication, N3 rollback revision stale, N4 lazy occurrence ID and N6 A/B overlap, either as bounded corrections or within explicit migration tasks. Test changed Actor/Camera/Player workflows in Framework, with canonical logger evidence.
 5. **After verification:** update implementation/maturity matrices and current-status tracking. Do not rewrite historical QA or retroactively claim passed tests.
 
@@ -89,4 +90,4 @@ No request here to alter IF-ADR-014 stable identity rules, IF-ADR-020 terminal L
 
 The target Unity version may require a bounded callback-order and exception-propagation proof before anyone claims that `SetActive` detects callback exceptions; no such claim is made. The architectural contract itself is conservative and does not depend on exception propagation.
 
-This record **completes the documentary crosswalk** but **does not approve IF-ADR-050, change accepted APIs or implement the target**. Those are separate, explicit status changes. Existing consumer QA remains valid only for its dated tested boundary.
+This record **completes the documentary crosswalk**. IF-ADR-050 is now **Accepted as architecture target**; this crosswalk does **not** change implemented/published APIs, execute their migrations, approve a UPM release or certify the target runtime. Those remain separate actions. Existing consumer QA remains valid only for its dated tested boundary.

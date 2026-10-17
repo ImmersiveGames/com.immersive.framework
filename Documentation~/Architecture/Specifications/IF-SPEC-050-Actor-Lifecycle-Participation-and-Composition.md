@@ -1,15 +1,17 @@
 # IF-SPEC-050 — Actor Lifecycle Participation and Composition
 
-Status: **Draft for architectural review — non-normative until IF-ADR-050 and affected accepted decisions are reconciled**
-Revised proposal: **2026-10-17 — independent architecture reconciliation**<br>
+Status: **Accepted architectural design companion to IF-ADR-050 — exact public APIs, implementation and validation pending**
+Design reconciled: **2026-10-17 — independent architecture assessment**<br>
+Architecture accepted: **2026-10-17**<br>
 Proposed: **2026-10-17**<br>
 Authority: [IF-ADR-050 — Actor Occurrence Lifecycle, Authority and Commit](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md)<br>
 Governance: [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)<br>
-Accepted-ADR reconciliation: [IF-ADR-050 scoped crosswalk — 2026-10-17](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) (**non-normative**)
+Accepted-ADR reconciliation: [IF-ADR-050 scoped crosswalk — 2026-10-17](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md)<br>
+Contract migration boundary: [IF-ADR-050 accepted target — 2026-10-17](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md)
 
 ## 1. Purpose and evidence boundary
 
-This specification expands the revised lifecycle authority into candidate, replacement, minimal composition-kernel integration, identity and failure contracts. IF-ADR-050 is the sole decision authority for the proposed direction. This file is a technical companion, not an accepted contract, implementation plan or API inventory.
+This specification expands the revised lifecycle authority into candidate, replacement, minimal composition-kernel integration, identity and failure contracts. IF-ADR-050 is the sole decision authority for the **accepted future target**. This companion records its approved conceptual design, but does not declare final signatures, a published/implemented consumer contract, an implementation plan or an API-maturity inventory.
 
 The reviewed source demonstrates the following current behavior:
 
@@ -18,14 +20,14 @@ The reviewed source demonstrates the following current behavior:
 - Player initial preparation activates the handle before adding the prepared record. Replacement mutates selected-Actor evidence before activating B, then updates the prepared record after activation. The physical current-source predicate requires the selected Slot/revision and prepared record to agree. See [PlayerActorPreparationRuntimeContext](../../../Runtime/PlayerParticipation/Runtime/PlayerActorPreparationRuntimeContext.cs) and [PhysicalOccurrence](../../../Runtime/PlayerParticipation/Runtime/PlayerActorPreparationRuntimeContext.PhysicalOccurrence.cs).
 - `PreparedActorReplacement` releases current gameplay admission/occupancy before starting physical replacement and reprojects gameplay after B commits. Failure after B commit does not reconstruct A. See [PreparedActorReplacement](../../../Runtime/PlayerParticipation/Runtime/ActivityPlayerActorLifecycleParticipant.PreparedActorReplacement.cs) and [IF-ADR-024](../ADRs/IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md).
 - The PlayerInput adapter gates a Gameplay Action Map; it is not an Actor-wide gate. `PlayerActorRuntimeHost` validates runtime composition and Actor identity but does not gate arbitrary Actor behavior. See [UnityPlayerInputGateAdapter](../../../Runtime/UnityInput/UnityPlayerInputGateAdapter.cs) and [PlayerActorRuntimeHost](../../../Runtime/PlayerParticipation/Authoring/PlayerActorRuntimeHost.cs).
-- Player occurrence reference resolution asks the current physical source before creating evidence; the current Player identity path must be reconciled with the proposed candidate-time `ActorOccurrenceId`. See [ActorOccurrenceReferenceRuntime](../../../Runtime/Actors/References/ActorOccurrenceReferenceRuntime.cs), [IF-ADR-049](../ADRs/IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md) and [Actor Occurrence References guide](../../Guides/Actor-Occurrence-References.md).
+- Player occurrence reference resolution asks the current physical source before creating evidence; the current Player identity path must be reconciled with the accepted **commit-time** `ActorOccurrenceId`. See [ActorOccurrenceReferenceRuntime](../../../Runtime/Actors/References/ActorOccurrenceReferenceRuntime.cs), [IF-ADR-049](../ADRs/IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md) and [Actor Occurrence References guide](../../Guides/Actor-Occurrence-References.md).
 - `RuntimeScopeCancellationToken` is a passive transition token. `RuntimeContentRuntime` is internal and delegates physical release to adapters; logical release is not proof of physical destruction. See [RuntimeScopeCancellationToken](../../../Runtime/RuntimeContent/RuntimeScopeCancellationToken.cs), [RuntimeContentRuntime](../../../Runtime/RuntimeContent/RuntimeContentRuntime.cs) and [IRuntimeReleaseAdapter](../../../Runtime/RuntimeContent/IRuntimeReleaseAdapter.cs).
 
 Unity may run `Awake` and `OnEnable` when an inactive hierarchy becomes active; `Start` is scheduled before the enabled component's first `Update`. Unity does not establish arbitrary cross-GameObject callback ordering. `Object.Destroy` is deferred until after the current Update loop and before rendering. These engine behaviors constrain guarantees; they do not implement the proposed protocol. See the Unity 6.5 references for [Instantiate](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Object.Instantiate.html), [SetActive](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/GameObject.SetActive.html), [Awake](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/MonoBehaviour.Awake.html), [OnEnable](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/MonoBehaviour.OnEnable.html), [Start](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/MonoBehaviour.Start.html) and [Object.Destroy](https://docs.unity3d.com/6000.5/Documentation/ScriptReference/Object.Destroy.html).
 
 ## 2. Identity, vocabulary and authority
 
-The following is **proposed**, not a description of the present Player runtime. IF-ADR-050 owns the architectural decision; this section supplies its technical meaning.
+The following is **accepted as the target identity model**, not a description of the present Player runtime. IF-ADR-050 owns the architectural decision; this section supplies its technical meaning.
 
 | Identity or concept | Domain and lifetime | Authority and migration |
 |---|---|---|
@@ -46,7 +48,7 @@ For NonPlayer there may be no Slot or PlayerOccurrenceId. For a Player switching
 
 ## 3. Modular boundary — minimal composition kernel
 
-### 3.1 Chosen proposed direction
+### 3.1 Accepted target direction
 
 ```text
 Unity consumer
@@ -221,13 +223,13 @@ Do not modify another owner's resources merely to simplify Actor teardown. For S
 | N4 lazy occurrence identity | `ActorOccurrenceReferenceRuntime.TryGetPlayer` mints ID during lookup and removes record when active-root predicate fails. | Move identity authority to commit and preserve across temporary unavailability. |
 | N6 physical coexistence | Replacement activates B before releasing/deactivating A. | Use guarded order A inactive → B active, allowing for non-cooperative callbacks as a separate limitation. |
 
-These are source-observed paths, not evidence of a Unity execution. The accepted public API surface must not be changed by this documentation proposal.
+These are source-observed paths, not evidence of a Unity execution. The currently published API surface is unchanged by accepting this architecture; migration is a later, separately validated implementation.
 
 ## 10. Decision register
 
-### Proposed architectural choices consolidated for review
+### Accepted architectural choices — implementation pending
 
-| Choice | Proposed disposition | Qualification |
+| Choice | Accepted target disposition | Qualification |
 |---|---|---|
 | Package boundary | Required `framework → composition` with small generic kernel. | Package not yet created; no non-Actor consumer proof yet. |
 | Content model | Key + part + materializer + Composer + owner-scoped contribution + delta/revision. | Authoring/UI signatures remain undecided. |
@@ -250,7 +252,7 @@ These are source-observed paths, not evidence of a Unity execution. The accepted
 
 ## 11. Existing ADR reconciliation
 
-| Existing decision | What remains authoritative | Reconciliation required if this proposal is accepted |
+| Existing decision | What remains authoritative in current runtime | Migration required under accepted target |
 |---|---|---|
 | IF-ADR-001 | Exact owner/scoped teardown authority. | Actor/part release honors root and resource owners. |
 | IF-ADR-003 | Session Player selection, participation and Actor preparation authority. | Commit selection only with coherent current binding; no premature Changed event. |
@@ -262,12 +264,12 @@ These are source-observed paths, not evidence of a Unity execution. The accepted
 | IF-ADR-038 | Root spatial identity and Player/Camera assignment separation. | Preserve PlayerOccurrenceId and Camera subject boundaries; default anchor remains root-stable. |
 | IF-ADR-040 | Bounded discovery and Scene composition ownership within its scope. | Useful validation precedent, not authority for Actor part composition. |
 | IF-ADR-049 | Exact public Actor occurrence resolution and invalidation. | Allocate ID at lifecycle commit; distinguish committed identity from active-root availability; change accepted resolver semantics only through explicit reconciliation. |
-| IF-GOV-001 | Per-contract API maturity, validation governance and Stable protection. | Proposed kernel/Core APIs are not Stable, not implemented and not an API maturity map change. |
+| IF-GOV-001 | Per-contract API maturity, validation governance and Stable protection. | Accepted architecture does not create implemented kernel/Core APIs, promote Stable contracts or alter the current API maturity map. |
 
-## 12. Readiness for review
+## 12. Accepted architecture and implementation readiness
 
-This document and IF-ADR-050 remain **non-normative proposals**. They provide one coherent target for lifecycle authority and a small generic composition kernel; no C# signatures, UPM files, assemblies, code, tests, assets or consumer migration are implemented.
+IF-ADR-050 and this companion define the **accepted architecture target** for lifecycle authority and a small generic composition kernel. This is not an implementation or Stable API acceptance: no final C# signatures, UPM files, assemblies, code, tests, assets or consumer migration are implemented.
 
 A bounded Unity proof may record `OnDisable(A)`, `Awake(B)`, `OnEnable(B)`, active-state/Current observations and callback exception behavior, using the canonical logger. This validates the engine-facing assumptions without duplicating unrelated Framework validation. It does not block a conservative documentation review.
 
-The next formal action, **after architectural review**, is to reconcile the accepted ADR contracts explicitly, then author a separate implementation/migration plan. Neither this draft nor IF-ADR-050 automatically supersedes those authorities.
+The dated crosswalk and [accepted target contract migration boundary](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) now specify the future contract changes. The next action is a separate implementation/migration plan, with per-contract compatibility, owner, public API and targeted evidence gates. Current accepted runtime guarantees continue until their migrations are implemented and validated; architectural acceptance is not retroactive runtime certification.
