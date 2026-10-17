@@ -1,7 +1,8 @@
 # IF-ADR-049 — Public Actor Occurrence Reference and Resolution
 
-Status: **Proposed**
+Status: **Accepted**
 Proposed: **2026-10-16**
+Accepted: **2026-10-16**
 Type: architecture / Actor / runtime identity / public API
 Related decisions: [IF-ADR-003](IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md), [IF-ADR-014](IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md), [IF-ADR-038](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-040](IF-ADR-040-Scene-Composition-Binding-Model.md)
 Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
@@ -361,10 +362,14 @@ This ADR may be considered implemented when:
 - Neither gameplay consumers nor the new public surface depend on internal Framework types.
 - The corresponding public API documentation and usage guidance are consistent with the implemented behavior.
 
-## 15. Status and next action
+## 15. Decision status and implementation evidence
 
-This ADR records the proposed architectural direction.
+The architecture defined by this ADR is **Accepted**. Acceptance establishes the intended consumer and ownership boundaries; it does not certify implementation, promote API maturity, or authorize a package release.
 
-Acceptance does not imply implementation, testing, API stabilization, or package release.
+As of 2026-10-16, local implementation of the Experimental Actor Occurrence Reference contracts and the related lifecycle integration has been reported. A Unity EditMode run supplied by the project owner showed **11/11 PASS** for `Immersive.Framework.ActorReferences.Editor.Tests`. This is functional evidence for that test assembly, not an external-game integration certificate. The same reported overall EditMode run had four failures in `CameraRigPreviewTests`, outside the Actor References test assembly; they are being handled separately.
 
-Once accepted, the implementation work should be derived from this decision and validated against the exact Framework source revision used for development.
+The local implementation, updated guide, and test files have **not yet been committed/published** to this GitHub branch as of this record. Do not infer their availability from this ADR commit. The installed source revision, complete implementation diff, and eventual release provenance must be recorded when the implementation is consolidated.
+
+**Pending closure:** validate a public consumer in a Unity project, including Player Slot resolution across Activity transitions, replacement and Leave; owner-aware NonPlayer publication, ambiguity, and release invalidation. Reconcile the local implementation and public API documentation, then record the exact source revision and validation evidence.
+
+The contract remains **Experimental** under IF-GOV-001. ADR acceptance, implementation completion, consumer validation, and Stable promotion are separate decisions.
