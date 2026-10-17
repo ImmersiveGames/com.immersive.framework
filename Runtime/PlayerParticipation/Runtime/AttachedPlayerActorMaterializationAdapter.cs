@@ -197,6 +197,7 @@ namespace Immersive.Framework.PlayerParticipation
                 {
                     if (handle.VisualContent != null)
                     {
+                        handle.VisualContent.SetActive(false);
                         handle.VisualContent.transform.SetParent(null, true);
                         DestroyObject(handle.VisualContent);
                     }

@@ -1,10 +1,18 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using Immersive.Framework.Actors;
+using Immersive.Framework.Authoring;
+using Immersive.Framework.Diagnostics;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Logging.Records;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.TestTools;
 
 namespace Immersive.Framework.Camera.Tests
 {
@@ -347,6 +355,134 @@ namespace Immersive.Framework.Camera.Tests
             }
         }
 
+        [Test]
+        public void ExternallyOwnedActorRelease_DoesNotDestroyBorrowedActorOrVisual()
+        {
+            const string sessionId = "session.scene-actor-release-ownership";
+            var runtime = new RuntimeContentRuntime();
+            RuntimeContentOwner owner = RuntimeContentOwner.Session(sessionId, "Scene Actor ownership test");
+            Assert.That(runtime.CreateScopeRoot(owner, "test", "setup").Applied, Is.True);
+            Assert.That(runtime.TryCreateScopeContext(owner, "test", "setup", out RuntimeScopeContext scope), Is.True);
+
+            ActorProfile profile = ScriptableObject.CreateInstance<ActorProfile>();
+            PlayerSlotProfile slotProfile = ScriptableObject.CreateInstance<PlayerSlotProfile>();
+            GameObject localPlayerRoot = new GameObject("Scene Local Player Host");
+            localPlayerRoot.SetActive(false);
+            PlayerInput playerInput = localPlayerRoot.AddComponent<PlayerInput>();
+            LocalPlayerHostAuthoring localPlayerHost = localPlayerRoot.AddComponent<LocalPlayerHostAuthoring>();
+
+            GameObject borrowedActorRoot = new GameObject("Borrowed Scene Actor");
+            PlayerActorDeclaration declaration = borrowedActorRoot.AddComponent<PlayerActorDeclaration>();
+            PlayerActorRuntimeHost runtimeHost = borrowedActorRoot.AddComponent<PlayerActorRuntimeHost>();
+            SetPrivateField(runtimeHost, "playerActorDeclaration", declaration);
+            GameObject borrowedVisual = new GameObject("Borrowed Scene Visual");
+            borrowedVisual.transform.SetParent(borrowedActorRoot.transform, false);
+
+            var slot = new PlayerSlotRuntimeSnapshot(
+                0,
+                slotProfile,
+                PlayerSlotId.Player1,
+                PlayerSlotAllocationState.Joined,
+                default,
+                default,
+                1,
+                "test",
+                "setup",
+                profile,
+                1,
+                "test",
+                "selection");
+            Assert.That(PlayerActorMaterializationOperationId.TryCreate(
+                sessionId,
+                owner,
+                PlayerSlotId.Player1,
+                1,
+                out PlayerActorMaterializationOperationId operationId,
+                out string operationIssue), Is.True, operationIssue);
+            var request = new PlayerActorMaterializationRequest(
+                operationId,
+                sessionId,
+                scope,
+                slot,
+                profile,
+                localPlayerHost,
+                ActorId.From("actor.scene-owned-release-test"),
+                RuntimeContentId.From("scene-owned-actor"),
+                1,
+                "test",
+                "scene-adoption");
+            Assert.That(request.IsValid, Is.True, request.ToDiagnosticString());
+            Assert.That(runtime.TryCreateMaterializationRequest(
+                scope,
+                request.RuntimeContentId,
+                new RuntimeMaterializationResource("test", "scene-actor", "Borrowed Actor", string.Empty),
+                "test",
+                "scene-adoption",
+                out RuntimeMaterializationRequest runtimeRequest,
+                out _), Is.True);
+            RuntimeContentHandle contentHandle = RuntimeContentHandle.Materialized(
+                runtimeRequest.Identity,
+                "test",
+                "scene-adoption");
+            RuntimeMaterializationResult registered = runtime.ApplyMaterializationResult(
+                RuntimeMaterializationResult.Success(
+                    runtimeRequest,
+                    contentHandle,
+                    "test",
+                    "scene-adoption",
+                    "Borrowed Scene Actor registered without physical instantiation."),
+                "test",
+                "scene-adoption");
+            Assert.That(registered.Succeeded, Is.True, registered.ToDiagnosticString());
+
+            var handle = new PlayerActorMaterializationHandle(
+                request,
+                runtimeRequest,
+                contentHandle,
+                localPlayerHost,
+                playerInput,
+                runtimeHost,
+                borrowedVisual,
+                null,
+                true,
+                "test",
+                "scene-adoption");
+            Assert.That(handle.TryActivate("test", "activate-borrowed-actor", out string activationIssue),
+                Is.True, activationIssue);
+
+            var adapter = new AttachedPlayerActorMaterializationAdapter(runtime, sessionId);
+            try
+            {
+                Assert.That(adapter.TryReleaseMaterialization(
+                    handle,
+                    "test",
+                    "release-scene-adoption",
+                    out string releaseIssue), Is.True, releaseIssue);
+                Assert.That(handle.RuntimeContentRequest.Identity.Owner, Is.EqualTo(owner));
+                Assert.That(borrowedActorRoot, Is.Not.Null,
+                    "Scene-Provided ownership keeps the Actor root outside Framework destruction.");
+                Assert.That(borrowedActorRoot.activeSelf, Is.False,
+                    "Release deactivates the adopted Actor before returning it to its Scene owner.");
+                Assert.That(borrowedVisual, Is.Not.Null,
+                    "The adopted visual remains owned by the Scene Actor.");
+                Assert.That(borrowedVisual.transform.parent, Is.SameAs(borrowedActorRoot.transform));
+                Assert.That(borrowedVisual.activeSelf, Is.True);
+                Assert.That(borrowedVisual.activeInHierarchy, Is.False);
+                Assert.That(handle.State, Is.EqualTo(PlayerActorMaterializationState.Released));
+                Assert.That(runtime.TryGetHandle(
+                    handle.RuntimeContentRequest.Context,
+                    handle.RuntimeContentRequest.Identity,
+                    out _), Is.False);
+            }
+            finally
+            {
+                if (localPlayerRoot != null) Object.DestroyImmediate(localPlayerRoot);
+                if (borrowedActorRoot != null) Object.DestroyImmediate(borrowedActorRoot);
+                if (profile != null) Object.DestroyImmediate(profile);
+                if (slotProfile != null) Object.DestroyImmediate(slotProfile);
+            }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ManagerProvisionedMaterializerStagesAndReleasesActorWithOptionalVisualContent(bool withVisualContent)
@@ -481,6 +617,215 @@ namespace Immersive.Framework.Camera.Tests
                 .GetField(fieldName, System.Reflection.BindingFlags.Instance |
                     System.Reflection.BindingFlags.NonPublic)
                 .SetValue(target, value);
+        }
+    }
+
+    public sealed class ActorMaterializationReleasePlayModeTests
+    {
+        private readonly List<UnityEngine.Object> _createdObjects = new List<UnityEngine.Object>();
+
+        [UnityTest]
+        public IEnumerator ManagedVisualRelease_DoesNotReactivateVisualWhenDetachingFromInactiveActor()
+        {
+            yield return new EnterPlayMode(expectDomainReload: false);
+            Assert.That(Application.isPlaying, Is.True,
+                "The visual release regression requires Play Mode and deferred Unity destruction.");
+
+            const string sessionId = "session.actor-release-visual-reactivation";
+            var logger = FrameworkLogger.Create<ActorMaterializationReleasePlayModeTests>();
+            var runtime = new RuntimeContentRuntime();
+            RuntimeContentOwner owner = RuntimeContentOwner.Session(sessionId, "Actor release regression");
+            Assert.That(runtime.CreateScopeRoot(owner, "d01-test", "setup").Applied, Is.True);
+            Assert.That(runtime.TryCreateScopeContext(owner, "d01-test", "setup", out RuntimeScopeContext scope), Is.True);
+
+            ActorProfile profile = Track(ScriptableObject.CreateInstance<ActorProfile>());
+            PlayerSlotProfile slotProfile = Track(ScriptableObject.CreateInstance<PlayerSlotProfile>());
+            RouteAsset route = Track(ScriptableObject.CreateInstance<RouteAsset>());
+            SetPrivateField(route, "routeId", "actor-release-regression");
+
+            GameObject hostRoot = Track(new GameObject("Local Player Host"));
+            hostRoot.SetActive(false);
+            PlayerInput playerInput = hostRoot.AddComponent<PlayerInput>();
+            LocalPlayerHostAuthoring localPlayerHost = hostRoot.AddComponent<LocalPlayerHostAuthoring>();
+            GameObject actorMount = Track(new GameObject("Actor Mount"));
+            actorMount.transform.SetParent(hostRoot.transform, false);
+            SetPrivateField(localPlayerHost, "playerInput", playerInput);
+            SetPrivateField(localPlayerHost, "actorMount", actorMount.transform);
+
+            var discoveryScope = new RouteContentDiscoveryScope(
+                route,
+                Array.Empty<RouteContentDiscoveryScene>(),
+                Array.Empty<GameObject>());
+            var routeBinding = hostRoot.AddComponent<RoutePlayerSpatialEntryRuntimeBinding>();
+            routeBinding.Configure(new RoutePlayerSpatialEntryContext(route, 1, discoveryScope));
+
+            GameObject runtimeHostPrefabObject = Track(new GameObject("Player Actor Runtime Host Prefab"));
+            PlayerActorDeclaration prefabDeclaration = runtimeHostPrefabObject.AddComponent<PlayerActorDeclaration>();
+            PlayerActorRuntimeHost runtimeHostPrefab = runtimeHostPrefabObject.AddComponent<PlayerActorRuntimeHost>();
+            SetPrivateField(runtimeHostPrefab, "playerActorDeclaration", prefabDeclaration);
+            GameObject visualMount = Track(new GameObject("Visual Content Mount"));
+            visualMount.transform.SetParent(runtimeHostPrefabObject.transform, false);
+            SetPrivateField(runtimeHostPrefab, "presentationMount", visualMount.transform);
+
+            GameObject visualPrefab = Track(new GameObject("Actor Visual Prefab"));
+            visualPrefab.SetActive(false);
+            visualPrefab.AddComponent<ActorVisualReleaseLifecycleProbe>();
+            SetPrivateField(profile, "presentationPrefab", visualPrefab);
+            SetPrivateField(localPlayerHost, "playerActorRuntimeHostPrefab", runtimeHostPrefab);
+
+            var slot = new PlayerSlotRuntimeSnapshot(
+                0,
+                slotProfile,
+                PlayerSlotId.Player1,
+                PlayerSlotAllocationState.Joined,
+                default,
+                default,
+                1,
+                "d01-test",
+                "setup",
+                profile,
+                1,
+                "d01-test",
+                "selection");
+
+            Assert.That(localPlayerHost.TryRestoreCommittedAdmission(
+                slot,
+                "d01-test",
+                "setup",
+                false,
+                null,
+                out string admissionIssue), Is.True, admissionIssue);
+            hostRoot.SetActive(true);
+
+            var adapter = new AttachedPlayerActorMaterializationAdapter(runtime, sessionId);
+            PlayerActorMaterializationResult materialized = adapter.TryMaterialize(
+                scope,
+                slot,
+                profile,
+                localPlayerHost,
+                "d01-test",
+                "materialize-for-release-regression");
+
+            Assert.That(materialized.Succeeded, Is.True, materialized.ToDiagnosticString());
+            PlayerActorMaterializationHandle handle = materialized.Handle;
+            GameObject visual = materialized.VisualContent;
+            ActorVisualReleaseLifecycleProbe probe = visual.GetComponent<ActorVisualReleaseLifecycleProbe>();
+            probe.Initialize(owner.StableText);
+            Assert.That(handle.RuntimeContentRequest.Identity.Owner, Is.EqualTo(owner));
+            Assert.That(probe.OnEnableCount, Is.Zero, "Staged visual content is inactive before Actor activation.");
+
+            Assert.That(handle.TryActivate("d01-test", "activate-for-release-regression", out string activationIssue),
+                Is.True, activationIssue);
+            Assert.That(probe.OnEnableCount, Is.EqualTo(1));
+            Assert.That(probe.OnDisableCount, Is.Zero);
+
+            logger.Info(
+                "IF-ADR-050 D01 visual release requested",
+                new LogField("owner", owner.StableText),
+                new LogField("actorId", handle.Request.ActorId.StableText),
+                new LogField("operationId", handle.Request.OperationId.StableText),
+                new LogField("visualActiveSelf", visual.activeSelf),
+                new LogField("visualActiveInHierarchy", visual.activeInHierarchy));
+
+            bool released = adapter.TryReleaseMaterialization(
+                handle,
+                "d01-test",
+                "release-active-visual",
+                out string releaseIssue);
+
+            logger.Info(
+                "IF-ADR-050 D01 visual release outcome",
+                new LogField("owner", owner.StableText),
+                new LogField("released", released),
+                new LogField("handleState", handle.State.ToString()),
+                new LogField("issue", releaseIssue),
+                new LogField("onEnableCount", probe.OnEnableCount),
+                new LogField("onDisableCount", probe.OnDisableCount));
+
+            Assert.That(released, Is.True, releaseIssue);
+            Assert.That(handle.State, Is.EqualTo(PlayerActorMaterializationState.Released));
+            Assert.That(probe.OnDisableCount, Is.EqualTo(1), "Deactivating the Actor root disables the visual once.");
+            Assert.That(probe.OnEnableCount, Is.EqualTo(1), "Detaching the visual must not reactivate it before deferred Destroy.");
+            Assert.That(visual.activeSelf, Is.False);
+            Assert.That(visual.activeInHierarchy, Is.False);
+            Assert.That(visual.transform.parent, Is.Null);
+            Assert.That(runtime.TryGetHandle(
+                handle.RuntimeContentRequest.Context,
+                handle.RuntimeContentRequest.Identity,
+                out _), Is.False, "Successful logical release unregisters only this owner's RuntimeContent handle.");
+
+            yield return null;
+            Assert.That(visual == null, Is.True, "Physical Destroy is observed after the frame; scheduling it alone is not treated as completion.");
+        }
+
+        [UnityTearDown]
+        public IEnumerator TearDownPlayMode()
+        {
+            for (int i = 0; i < _createdObjects.Count; i++)
+            {
+                if (_createdObjects[i] != null)
+                {
+                    UnityEngine.Object.Destroy(_createdObjects[i]);
+                }
+            }
+
+            _createdObjects.Clear();
+            if (Application.isPlaying)
+            {
+                yield return null;
+                yield return new ExitPlayMode();
+            }
+        }
+
+        private T Track<T>(T value) where T : UnityEngine.Object
+        {
+            _createdObjects.Add(value);
+            return value;
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            target.GetType()
+                .GetField(fieldName, System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic)
+                .SetValue(target, value);
+        }
+    }
+
+    internal sealed class ActorVisualReleaseLifecycleProbe : MonoBehaviour
+    {
+        private FrameworkLogger _logger;
+        private string _owner;
+
+        internal int OnEnableCount { get; private set; }
+        internal int OnDisableCount { get; private set; }
+
+        internal void Initialize(string owner)
+        {
+            _owner = owner;
+            _logger = FrameworkLogger.Create<ActorVisualReleaseLifecycleProbe>();
+        }
+
+        private void OnEnable()
+        {
+            OnEnableCount++;
+            Record("OnEnable");
+        }
+
+        private void OnDisable()
+        {
+            OnDisableCount++;
+            Record("OnDisable");
+        }
+
+        private void Record(string callback)
+        {
+            _logger?.Info(
+                "IF-ADR-050 D01 visual lifecycle callback",
+                new LogField("owner", _owner ?? string.Empty),
+                new LogField("callback", callback),
+                new LogField("activeSelf", gameObject.activeSelf),
+                new LogField("activeInHierarchy", gameObject.activeInHierarchy));
         }
     }
 }
