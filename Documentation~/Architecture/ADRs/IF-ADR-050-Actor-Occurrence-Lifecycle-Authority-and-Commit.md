@@ -6,7 +6,8 @@ Revised proposal: **2026-10-17 — independent architecture reconciliation**
 Type: architecture / Actor / lifecycle / runtime authority  
 Related decisions: [IF-ADR-001](IF-ADR-001-Core-Lifecycle-and-Runtime-Authority.md), [IF-ADR-003](IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md), [IF-ADR-014](IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md), [IF-ADR-020](IF-ADR-020-Session-Player-Leave-and-Resource-Release-Authority.md), [IF-ADR-024](IF-ADR-024-Prepared-Actor-Replacement-Public-Contract.md), [IF-ADR-025](IF-ADR-025-Local-Player-Input-Ownership-and-Device-Association.md), [IF-ADR-038](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-040](IF-ADR-040-Scene-Composition-Binding-Model.md), [IF-ADR-049](IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md); identity semantics also require reconciliation with IF-ADR-023A.  
 Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)  
-Companion proposal: [IF-SPEC-050 — Actor Lifecycle Participation and Composition](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md)
+Companion proposal: [IF-SPEC-050 — Actor Lifecycle Participation and Composition](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md)  
+Accepted-ADR reconciliation: [IF-ADR-050 scoped crosswalk — 2026-10-17](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) (**non-normative while this ADR remains Proposed**)
 
 ## Context
 
