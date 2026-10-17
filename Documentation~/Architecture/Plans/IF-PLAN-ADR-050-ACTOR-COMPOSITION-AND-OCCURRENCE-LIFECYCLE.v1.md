@@ -1,6 +1,6 @@
 # IF-PLAN-ADR-050 — Actor Composition and Occurrence Lifecycle Migration
 
-Status: **Proposed — ordered implementation route; execution not yet authorized**  
+Status: **Approved — implementation task-gated**
 Version: **v1**  
 Date: **2026-10-17**  
 Architecture authority: [IF-ADR-050 — Accepted future target](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md)  
