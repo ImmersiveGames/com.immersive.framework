@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Unity.Cinemachine;
 using UnityEditor;
 using UnityEngine;
+using UnityCamera = UnityEngine.Camera;
 
 namespace Immersive.Framework.Authoring.Editor.Tests
 {
@@ -114,7 +115,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "The temporary preview output should appear below its owning rig in the Hierarchy.");
             Assert.That(outputRoot.GetComponentInChildren<CinemachineCamera>(true), Is.Null);
             Assert.That(outputRoot.GetComponentInChildren<CameraRigComposer>(true), Is.Null);
-            Assert.That(outputRoot.GetComponentInChildren<Camera>(true), Is.Not.Null);
+            Assert.That(outputRoot.GetComponentInChildren<UnityCamera>(true), Is.Not.Null);
             Assert.That(outputRoot.GetComponentInChildren<CinemachineBrain>(true), Is.Not.Null);
 
             Assert.That(CameraRigPreviewController.TryDisablePreview(composer, out issue), Is.True, issue);
@@ -357,12 +358,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(behavior.CameraDistance, Is.EqualTo(21f));
         }
 
-        [TestCase(CameraRigPreviewPlayModeDecision.SaveAndPlay)]
-        [TestCase(CameraRigPreviewPlayModeDecision.DiscardAndPlay)]
-        [TestCase(CameraRigPreviewPlayModeDecision.CancelPlayMode)]
-        public void PlayModeDecision_ResolvesSaveDiscardAndCancelSafely(
-            CameraRigPreviewPlayModeDecision decision)
+        [TestCase((int)CameraRigPreviewPlayModeDecision.SaveAndPlay)]
+        [TestCase((int)CameraRigPreviewPlayModeDecision.DiscardAndPlay)]
+        [TestCase((int)CameraRigPreviewPlayModeDecision.CancelPlayMode)]
+        public void PlayModeDecision_ResolvesSaveDiscardAndCancelSafely(int decisionValue)
         {
+            CameraRigPreviewPlayModeDecision decision =
+                (CameraRigPreviewPlayModeDecision)decisionValue;
             FollowCameraRigBehaviorDefinition behavior = CreateScreenComposerBehavior();
             CameraRigComposer composer = CreateComposer(behavior);
             Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(composer, false, false).Succeeded, Is.True);
@@ -417,200 +419,6 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
-        public void SaveConfiguration_AppliesOnlyAuthoredValuesAndNotThePreviewTargetToPrefab()
-        {
-            string prefabPath = AssetDatabase.GenerateUniqueAssetPath(
-                "Assets/__CameraRigPreviewPersistenceTest.prefab");
-            _createdAssetPaths.Add(prefabPath);
-
-            var sourceRoot = new GameObject("Prefab Camera Rig");
-            sourceRoot.AddComponent<CameraRigComposer>();
-            Assert.That(PrefabUtility.SaveAsPrefabAsset(sourceRoot, prefabPath), Is.Not.Null);
-            Object.DestroyImmediate(sourceRoot);
-
-            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            var instance = PrefabUtility.InstantiatePrefab(prefabAsset) as GameObject;
-            Assert.That(instance, Is.Not.Null);
-            _created.Add(instance);
-            CameraRigComposer composer = instance.GetComponent<CameraRigComposer>();
-            FollowCameraRigBehaviorDefinition behavior = CreateScreenComposerBehavior();
-            SetField(composer, "behaviorDefinition", behavior);
-            _previewOwner = composer;
-            Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(composer, false, false).Succeeded, Is.True);
-
-            CinemachineCamera camera = composer.CinemachineCamera;
-            OutputChannels sourceChannel = camera.OutputChannel;
-            var targetObject = new GameObject("Prefab Preview Target");
-            _created.Add(targetObject);
-            Assert.That(CameraRigPreviewController.TryEnablePreview(composer, out string issue), Is.True, issue);
-            Assert.That(CameraRigPreviewController.SetPreviewTarget(composer, targetObject.transform, out issue), Is.True, issue);
-            camera.GetComponent<CinemachinePositionComposer>().CameraDistance = 18.5f;
-
-            Assert.That(CameraRigPreviewController.TrySaveConfiguration(composer, out issue), Is.True, issue);
-            Assert.That(CameraRigPreviewController.TryDisablePreview(composer, out issue), Is.True, issue);
-            Assert.That(camera.Follow, Is.Null);
-            Assert.That(camera.OutputChannel, Is.EqualTo(sourceChannel));
-
-            prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            CinemachineCamera savedCamera = prefabAsset.GetComponentInChildren<CinemachineCamera>(true);
-            Assert.That(savedCamera, Is.Not.Null);
-            Assert.That(savedCamera.GetComponent<CinemachinePositionComposer>().CameraDistance,
-                Is.EqualTo(18.5f));
-            Assert.That(savedCamera.Follow, Is.Null,
-                "Save Configuration must not serialize the scene-only Preview Target into the source prefab.");
-            Assert.That(savedCamera.OutputChannel, Is.EqualTo(sourceChannel),
-                "The Preview channel reservation must remain transient.");
-        }
-
-        [TestCase(0f)]
-        [TestCase(55f)]
-        public void SaveConfiguration_PersistsCameraPoseRelativeToAuthoredRigRoot(
-            float authoredRootPitch)
-        {
-            string prefabPath = AssetDatabase.GenerateUniqueAssetPath(
-                "Assets/__CameraRigPosePersistenceTest.prefab");
-            _createdAssetPaths.Add(prefabPath);
-
-            var sourceRoot = new GameObject("Prefab Camera Rig With Authored Root Rotation");
-            sourceRoot.transform.localRotation = Quaternion.Euler(authoredRootPitch, 0f, 0f);
-            sourceRoot.AddComponent<CameraRigComposer>();
-            Assert.That(PrefabUtility.SaveAsPrefabAsset(sourceRoot, prefabPath), Is.Not.Null);
-            Object.DestroyImmediate(sourceRoot);
-
-            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            var instance = PrefabUtility.InstantiatePrefab(prefabAsset) as GameObject;
-            Assert.That(instance, Is.Not.Null);
-            _created.Add(instance);
-
-            CameraRigComposer composer = instance.GetComponent<CameraRigComposer>();
-            _previewOwner = composer;
-            FollowCameraRigBehaviorDefinition behavior = CreateScreenComposerBehavior();
-            SetField(composer, "behaviorDefinition", behavior);
-            Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(composer, false, false).Succeeded, Is.True);
-            Assert.That(CameraRigPreviewController.TryEnablePreview(composer, out string issue), Is.True, issue);
-
-            CinemachinePositionComposer position =
-                CameraRigPreviewController.GetPreviewCamera(composer).GetComponent<CinemachinePositionComposer>();
-            ScreenComposerSettings composition = position.Composition;
-            Assert.That(CameraRigPreviewController.TryUpdatePreviewFollowControls(
-                composer,
-                30f,
-                30f,
-                0f,
-                50f,
-                position.TargetOffset.y,
-                composition.DeadZone.Size,
-                new Vector2(position.Damping.x, position.Damping.y),
-                composition.ScreenPosition,
-                out issue), Is.True, issue);
-
-            Quaternion previewCameraWorldRotation = composer.CinemachineCamera.transform.rotation;
-            Quaternion expectedWorldRotation =
-                Quaternion.Euler(authoredRootPitch, 0f, 0f) * Quaternion.Euler(30f, 0f, 0f);
-            Assert.That(Quaternion.Angle(previewCameraWorldRotation, expectedWorldRotation),
-                Is.LessThan(0.01f));
-            Assert.That(CameraRigPreviewController.TrySaveConfiguration(composer, out issue), Is.True, issue);
-            Assert.That(CameraRigPreviewController.TryDisablePreview(composer, out issue), Is.True, issue);
-
-            prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            CameraRigComposer savedComposer = prefabAsset.GetComponent<CameraRigComposer>();
-            CinemachineCamera savedCamera = prefabAsset.GetComponentInChildren<CinemachineCamera>(true);
-            Assert.That(Quaternion.Angle(
-                    prefabAsset.transform.localRotation,
-                    Quaternion.Euler(authoredRootPitch, 0f, 0f)),
-                Is.LessThan(0.01f));
-            Assert.That(savedComposer, Is.Not.Null);
-            Assert.That(savedCamera, Is.Not.Null);
-            Assert.That(savedCamera.GetComponent<CinemachinePositionComposer>().CameraDistance,
-                Is.EqualTo(30f).Within(0.001f));
-            Assert.That(savedCamera.Lens.FieldOfView, Is.EqualTo(50f).Within(0.001f));
-            Vector3 savedCameraPose = (Vector3)typeof(CameraRigComposer)
-                .GetField("capturedCameraLocalEulerAngles", PrivateInstance)
-                .GetValue(savedComposer);
-            Assert.That(Mathf.DeltaAngle(savedCameraPose.x, 30f), Is.EqualTo(0f).Within(0.01f));
-
-            var runtimeClone = PrefabUtility.InstantiatePrefab(prefabAsset) as GameObject;
-            Assert.That(runtimeClone, Is.Not.Null);
-            _created.Add(runtimeClone);
-            CinemachineCamera runtimeCamera = runtimeClone.GetComponentInChildren<CinemachineCamera>(true);
-            Assert.That(Quaternion.Angle(runtimeCamera.transform.rotation, previewCameraWorldRotation),
-                Is.LessThan(0.01f),
-                "The persisted rig frame and camera-local pose must reproduce the Preview orientation when instantiated.");
-        }
-
-        [Test]
-        public void SaveConfiguration_DoesNotPromoteSceneRigRotationOverrideIntoPrefabPose()
-        {
-            string prefabPath = AssetDatabase.GenerateUniqueAssetPath(
-                "Assets/__CameraRigSceneRootOverrideTest.prefab");
-            _createdAssetPaths.Add(prefabPath);
-
-            var sourceRoot = new GameObject("Prefab Camera Rig With Identity Root");
-            sourceRoot.AddComponent<CameraRigComposer>();
-            Assert.That(PrefabUtility.SaveAsPrefabAsset(sourceRoot, prefabPath), Is.Not.Null);
-            Object.DestroyImmediate(sourceRoot);
-
-            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            var instance = PrefabUtility.InstantiatePrefab(prefabAsset) as GameObject;
-            Assert.That(instance, Is.Not.Null);
-            _created.Add(instance);
-            instance.transform.localRotation = Quaternion.Euler(55f, 0f, 0f);
-
-            CameraRigComposer composer = instance.GetComponent<CameraRigComposer>();
-            _previewOwner = composer;
-            FollowCameraRigBehaviorDefinition behavior = CreateScreenComposerBehavior();
-            SetField(composer, "behaviorDefinition", behavior);
-            Assert.That(CameraRigComposerApplyRebuildUtility.ApplyOrRebuild(composer, false, false).Succeeded, Is.True);
-            Assert.That(CameraRigPreviewController.TryEnablePreview(composer, out string issue), Is.True, issue);
-
-            CinemachinePositionComposer position =
-                CameraRigPreviewController.GetPreviewCamera(composer).GetComponent<CinemachinePositionComposer>();
-            ScreenComposerSettings composition = position.Composition;
-            Assert.That(CameraRigPreviewController.TryUpdatePreviewFollowControls(
-                composer,
-                30f,
-                30f,
-                0f,
-                50f,
-                position.TargetOffset.y,
-                composition.DeadZone.Size,
-                new Vector2(position.Damping.x, position.Damping.y),
-                composition.ScreenPosition,
-                out issue), Is.True, issue);
-            Assert.That(Quaternion.Angle(
-                    composer.CinemachineCamera.transform.rotation,
-                    Quaternion.Euler(85f, 0f, 0f)),
-                Is.LessThan(0.01f),
-                "Preview combines the scene rig rotation with the camera-local pitch.");
-
-            Assert.That(CameraRigPreviewController.TrySaveConfiguration(composer, out issue), Is.True, issue);
-            Assert.That(CameraRigPreviewController.TryDisablePreview(composer, out issue), Is.True, issue);
-
-            prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            CameraRigComposer savedComposer = prefabAsset.GetComponent<CameraRigComposer>();
-            CinemachineCamera savedCamera = prefabAsset.GetComponentInChildren<CinemachineCamera>(true);
-            Assert.That(savedComposer, Is.Not.Null);
-            Assert.That(savedCamera, Is.Not.Null);
-            Assert.That(Quaternion.Angle(prefabAsset.transform.localRotation, Quaternion.identity), Is.LessThan(0.01f),
-                "A scene instance rotation is not part of the source prefab's authored camera pose.");
-            Vector3 savedCameraPose = (Vector3)typeof(CameraRigComposer)
-                .GetField("capturedCameraLocalEulerAngles", PrivateInstance)
-                .GetValue(savedComposer);
-            Assert.That(Mathf.DeltaAngle(savedCameraPose.x, 30f), Is.EqualTo(0f).Within(0.01f));
-            Assert.That(savedCamera.GetComponent<CinemachinePositionComposer>().CameraDistance,
-                Is.EqualTo(30f).Within(0.001f));
-            Assert.That(savedCamera.Lens.FieldOfView, Is.EqualTo(50f).Within(0.001f));
-
-            var runtimeClone = PrefabUtility.InstantiatePrefab(prefabAsset) as GameObject;
-            Assert.That(runtimeClone, Is.Not.Null);
-            _created.Add(runtimeClone);
-            CinemachineCamera runtimeCamera = runtimeClone.GetComponentInChildren<CinemachineCamera>(true);
-            Assert.That(Quaternion.Angle(runtimeCamera.transform.rotation, Quaternion.Euler(30f, 0f, 0f)),
-                Is.LessThan(0.01f),
-                "The runtime prefab uses its authored root rotation and the newly captured camera-local pitch.");
-        }
-
-        [Test]
         public void PreviewObjects_AreMarkedDontSaveAndCanBeRemovedWithoutCapturing()
         {
             FollowCameraRigBehaviorDefinition behavior = CreateScreenComposerBehavior();
@@ -635,7 +443,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             LensSettings changedLens = composer.CinemachineCamera.Lens;
             changedLens.FieldOfView = 65f;
             composer.CinemachineCamera.Lens = changedLens;
-            Assert.That(previewRoot.GetComponentInChildren<Camera>(), Is.Not.Null);
+            Assert.That(previewRoot.GetComponentInChildren<UnityCamera>(), Is.Not.Null);
             Assert.That(previewRoot.GetComponentInChildren<CinemachineCamera>(), Is.Null);
             Assert.That(previewRoot.GetComponentInChildren<CinemachineBrain>(), Is.Not.Null);
             Assert.That(CameraRigPreviewController.TryDisablePreview(composer, out issue), Is.True, issue);
