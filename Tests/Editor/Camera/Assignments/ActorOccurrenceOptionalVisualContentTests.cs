@@ -10,6 +10,7 @@ using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Logging.Records;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
@@ -641,6 +642,19 @@ namespace Immersive.Framework.Camera.Tests
     public sealed class ActorMaterializationReleasePlayModeTests
     {
         private readonly List<UnityEngine.Object> _createdObjects = new List<UnityEngine.Object>();
+        private bool _originalEnterPlayModeOptionsEnabled;
+        private EnterPlayModeOptions _originalEnterPlayModeOptions;
+
+        [SetUp]
+        public void ConfigurePlayModeOptions()
+        {
+            _originalEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            _originalEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions =
+                EnterPlayModeOptions.DisableDomainReload |
+                EnterPlayModeOptions.DisableSceneReload;
+        }
 
         [UnityTest]
         public IEnumerator ManagedVisualRelease_DoesNotReactivateVisualWhenDetachingFromInactiveActor()
@@ -793,6 +807,9 @@ namespace Immersive.Framework.Camera.Tests
                 yield return null;
                 yield return new ExitPlayMode();
             }
+
+            EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled;
+            EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
         }
 
         private T Track<T>(T value) where T : UnityEngine.Object
