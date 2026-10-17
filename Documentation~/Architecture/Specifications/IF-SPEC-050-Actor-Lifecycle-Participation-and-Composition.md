@@ -4,7 +4,8 @@ Status: **Draft for architectural review — non-normative until IF-ADR-050 and 
 Revised proposal: **2026-10-17 — independent architecture reconciliation**<br>
 Proposed: **2026-10-17**<br>
 Authority: [IF-ADR-050 — Actor Occurrence Lifecycle, Authority and Commit](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md)<br>
-Governance: [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
+Governance: [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)<br>
+Accepted-ADR reconciliation: [IF-ADR-050 scoped crosswalk — 2026-10-17](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) (**non-normative**)
 
 ## 1. Purpose and evidence boundary
 

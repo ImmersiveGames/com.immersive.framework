@@ -373,3 +373,13 @@ The Project Owner reports **11/11 PASS** for `Immersive.Framework.ActorReference
 The exact candidate source commit and signed artifact provenance are recorded in the Framework tracker after publication. **Pending consumer validation:** exercise public Player Slot resolution across Activity transitions, replacement and Leave, plus owner-aware NonPlayer publication, ambiguity and release invalidation in PEGA. No PEGA integration result is claimed by this release.
 
 The contract remains **Experimental** under IF-GOV-001. ADR acceptance, implementation completion, consumer validation, and Stable promotion are separate decisions.
+
+## Forward reconciliation notice — committed identity versus physical availability (2026-10-17)
+
+The **current accepted public contract** resolves authoritative **valid physical occurrences**, distinguishing unavailable, invalid and stale resolution. Its Player/NonPlayer ownership rules, authored selectors, rejection of global searches and physical-reference-versus-gameplay-eligibility boundary remain in force.
+
+[IF-ADR-050](IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) proposes that `ActorOccurrenceId` be **allocated and retained by lifecycle commit**, not lazily minted/discarded by resolver lookups. Temporary deactivation would **not** invent a new physical incarnation. During guarded physical A→B handoff, A may remain the last **committed logical binding** while its root is physically inactive; B remains a private candidate until B's conditional commit.
+
+**Critical API distinction:** a committed-binding query can report A's persistent identity while a physically-active resolver reports `Unavailable`. The latter must **not** be silently changed to return successful physical resolution for inactive A, nor may B be exposed as current before commit. A new typed availability/binding view or a formally amended resolver contract is required if callbacks or consumers need logical binding while the physical root is unavailable. This also preserves the prohibition on publishing intermediate materialization.
+
+This is **non-normative while IF-ADR-050 remains Proposed**. See [R01/R04/R05](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md). Current API maturity, implementation coverage and historical evidence are unchanged.
