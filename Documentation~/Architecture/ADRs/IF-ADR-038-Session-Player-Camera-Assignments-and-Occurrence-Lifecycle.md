@@ -374,3 +374,11 @@ Unity import/compile, Play Mode and QA certification are manual validation gates
 ## 10. Decision status
 
 This ADR records the accepted canonical architecture and the current product scope. Runtime/API names and serialized asset shapes follow the Assignment-owned model above. Explicit Session/world target authoring is deferred and does not block the current zero-Player targetless camera contract. Acceptance does not certify Unity import, runtime behavior or QA; those implementation gates remain open and are tracked separately. Historical acceptance of the replaced Camera model does not validate this ADR's implementation.
+
+## Forward reconciliation notice — Actor content and Camera Subject (2026-10-17)
+
+The accepted Camera ownership, Session Player membership, output assignment and spatial authority remain unchanged. `PlayerOccurrenceId` identifies a Joined Player participation; replacing the physical Actor root or its presentation does **not** inherently replace the Player/Camera assignment occurrence. The Actor root, not optional visual content, remains the physical/spatial authority.
+
+[IF-ADR-050](IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) proposes future **keyed content recomposition**: replacing a visual or data part would preserve the Actor root and ActorOccurrenceId and increment a separate composition revision. A Camera Subject anchored to a replaceable part can become stale; the proposed minimum contract uses a **root-stable observation anchor** or explicitly rebinds Camera when the affected content delta commits. A full root replacement still requires physical occurrence/Subject reconciliation after coherent commit, not a Camera callback invoked during a half-committed Player selection.
+
+This is a **non-normative prospective clarification**, documented in the [reconciliation crosswalk](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) (R02/R06/R08). It neither broadens Camera ownership nor claims Scene-Provided/Manager-Provisioned parity in preactivation guarantees; the current accepted Camera architecture and its validation status are preserved.
