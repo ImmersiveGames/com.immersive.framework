@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.Actors;
+using UnityEngine;
 
 namespace Immersive.Framework.ActivityFlow
 {
@@ -15,6 +18,7 @@ namespace Immersive.Framework.ActivityFlow
     {
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindingRegistry;
+        private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
@@ -25,6 +29,11 @@ namespace Immersive.Framework.ActivityFlow
         internal void SetStableObjectBindingRegistry(StableObjectBindingRegistry registry)
         {
             _stableObjectBindingRegistry = registry;
+        }
+
+        internal void SetActorOccurrenceReferenceRuntime(ActorOccurrenceReferenceRuntime runtime)
+        {
+            _actorOccurrenceReferenceRuntime = runtime;
         }
 
         private void PrepareResettableRegistration(
@@ -55,14 +64,19 @@ namespace Immersive.Framework.ActivityFlow
             RuntimeContentOwner owner,
             ActivitySceneCompositionResult compositionResult)
         {
-            if (_stableObjectBindingRegistry == null) return;
-            if (!_stableObjectBindingRegistry.TryRegisterOwnerContent(
-                    owner,
-                    ResolveMaterializedActivitySceneRoots(compositionResult),
-                    out string diagnostic))
+            IReadOnlyList<GameObject> roots = ResolveMaterializedActivitySceneRoots(compositionResult);
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryRegisterOwnerContent(owner, roots, out string diagnostic))
             {
                 throw new InvalidOperationException(
                     "Stable Object Binding admission failed for Activity content. " + diagnostic);
+            }
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryRegisterOwnerContent(owner, roots, out string actorDiagnostic))
+            {
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                throw new InvalidOperationException(
+                    "Actor occurrence publication admission failed for Activity content. " + actorDiagnostic);
             }
         }
 
@@ -110,24 +124,38 @@ namespace Immersive.Framework.ActivityFlow
         private string RollbackTargetStableObjectBindings(
             ActivityAsset targetActivity)
         {
-            if (_stableObjectBindingRegistry == null || targetActivity == null) return string.Empty;
-            return _stableObjectBindingRegistry.TryRollbackOwner(CreateActivityOwner(targetActivity), out string diagnostic)
-                ? string.Empty
-                : " Stable Object Binding rollback failed. " + diagnostic;
+            if (targetActivity == null) return string.Empty;
+            RuntimeContentOwner owner = CreateActivityOwner(targetActivity);
+            string diagnostic = string.Empty;
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryRollbackOwner(owner, out diagnostic))
+                return " Stable Object Binding rollback failed. " + diagnostic;
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryRollbackOwner(owner, out diagnostic))
+                return " Actor occurrence publication rollback failed. " + diagnostic;
+            return string.Empty;
         }
 
         private void CommitStableObjectBindings(RuntimeContentOwner owner)
         {
-            if (_stableObjectBindingRegistry == null) return;
-            if (!_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
                 throw new InvalidOperationException("Stable Object Binding commit failed for Activity content. " + diagnostic);
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryCommitOwner(owner, out string actorDiagnostic))
+                throw new InvalidOperationException("Actor occurrence publication commit failed for Activity content. " + actorDiagnostic);
         }
 
         private void ReleaseStableObjectBindingsForPreviousActivity(ActivityAsset previousActivity)
         {
-            if (_stableObjectBindingRegistry == null || previousActivity == null) return;
-            if (!_stableObjectBindingRegistry.TryReleaseOwner(CreateActivityOwner(previousActivity), out string diagnostic))
+            if (previousActivity == null) return;
+            RuntimeContentOwner owner = CreateActivityOwner(previousActivity);
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryReleaseOwner(owner, out string diagnostic))
                 throw new InvalidOperationException("Stable Object Binding release failed for the exiting Activity. " + diagnostic);
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
+                throw new InvalidOperationException("Actor occurrence publication release failed for the exiting Activity. " + actorDiagnostic);
         }
     }
 }

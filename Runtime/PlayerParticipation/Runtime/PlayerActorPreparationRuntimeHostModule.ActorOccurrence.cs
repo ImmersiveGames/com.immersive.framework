@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerSlots;
 
@@ -60,6 +61,35 @@ namespace Immersive.Framework.PlayerParticipation
                 actorDeclaration,
                 materialization.VisualContent);
             return occurrence.IsValid;
+        }
+
+        bool IPlayerPreparedActorOccurrenceSource.TryGetCurrentPhysicalActorOccurrence(
+            PlayerSlotId playerSlotId,
+            out PlayerActorPhysicalOccurrence occurrence)
+        {
+            occurrence = default;
+            return _preparationContext != null &&
+                _sessionPhysicalScopeContext.IsValid &&
+                _preparationContext.TryGetCurrentPhysicalActorOccurrence(
+                    playerSlotId,
+                    _sessionPhysicalScopeContext.Owner,
+                    out occurrence);
+        }
+
+        void IPlayerPreparedActorOccurrenceSource.CollectCurrentPhysicalActorOccurrences(
+            ICollection<PlayerActorPhysicalOccurrence> occurrences)
+        {
+            if (occurrences == null || _participationContext == null || _preparationContext == null ||
+                !_sessionPhysicalScopeContext.IsValid) return;
+            PlayerParticipationSnapshot snapshot = _participationContext.CreateSnapshot();
+            IReadOnlyList<PlayerSlotRuntimeSnapshot> slots = snapshot.Slots;
+            for (int index = 0; index < slots.Count; index++)
+            {
+                PlayerSlotRuntimeSnapshot slot = slots[index];
+                if (slot.IsJoined && ((IPlayerPreparedActorOccurrenceSource)this)
+                    .TryGetCurrentPhysicalActorOccurrence(slot.PlayerSlotId, out PlayerActorPhysicalOccurrence occurrence))
+                    occurrences.Add(occurrence);
+            }
         }
 
         internal void InvalidateCurrentActorOccurrence(PlayerSlotId playerSlotId)

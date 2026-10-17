@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.Actors;
+using UnityEngine;
 
 namespace Immersive.Framework.RouteLifecycle
 {
@@ -14,6 +17,7 @@ namespace Immersive.Framework.RouteLifecycle
     {
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindingRegistry;
+        private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
@@ -26,6 +30,12 @@ namespace Immersive.Framework.RouteLifecycle
         {
             _stableObjectBindingRegistry = registry;
             _activityFlowRuntime.SetStableObjectBindingRegistry(registry);
+        }
+
+        internal void SetActorOccurrenceReferenceRuntime(ActorOccurrenceReferenceRuntime runtime)
+        {
+            _actorOccurrenceReferenceRuntime = runtime;
+            _activityFlowRuntime.SetActorOccurrenceReferenceRuntime(runtime);
         }
 
         private bool TryPrepareRouteResettableRegistration(
@@ -63,20 +73,35 @@ namespace Immersive.Framework.RouteLifecycle
             out string diagnostic)
         {
             diagnostic = string.Empty;
-            if (_stableObjectBindingRegistry == null || route == null) return true;
-            if (_stableObjectBindingRegistry.TryRegisterOwnerContent(
-                    CreateRouteOwner(route),
-                    ResolveMaterializedRouteSceneRoots(compositionResult),
-                    out diagnostic)) return true;
-            diagnostic = "Stable Object Binding admission failed for Route content. " + diagnostic;
-            return false;
+            if (route == null) return true;
+            RuntimeContentOwner owner = CreateRouteOwner(route);
+            IReadOnlyList<GameObject> roots = ResolveMaterializedRouteSceneRoots(compositionResult);
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryRegisterOwnerContent(owner, roots, out diagnostic))
+            {
+                diagnostic = "Stable Object Binding admission failed for Route content. " + diagnostic;
+                return false;
+            }
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryRegisterOwnerContent(owner, roots, out diagnostic))
+            {
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                diagnostic = "Actor occurrence publication admission failed for Route content. " + diagnostic;
+                return false;
+            }
+            return true;
         }
 
         private void CommitRouteStableObjectBindings(RouteAsset route)
         {
-            if (_stableObjectBindingRegistry == null || route == null) return;
-            if (!_stableObjectBindingRegistry.TryCommitOwner(CreateRouteOwner(route), out string diagnostic))
+            if (route == null) return;
+            RuntimeContentOwner owner = CreateRouteOwner(route);
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
                 throw new System.InvalidOperationException("Stable Object Binding commit failed for Route content. " + diagnostic);
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryCommitOwner(owner, out string actorDiagnostic))
+                throw new System.InvalidOperationException("Actor occurrence publication commit failed for Route content. " + actorDiagnostic);
         }
 
         private void RollbackRouteResettableRegistration(
@@ -88,6 +113,7 @@ namespace Immersive.Framework.RouteLifecycle
             RuntimeContentOwner owner = CreateRouteOwner(route);
             _resettableOwnerRegistration?.TryRollbackOwner(owner, source, reason, out _);
             _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+            _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
         }
 
         private bool TryReleasePreviousRouteResettableRegistration(
@@ -114,14 +140,20 @@ namespace Immersive.Framework.RouteLifecycle
                 return false;
             }
 
-            if (_stableObjectBindingRegistry == null || _stableObjectBindingRegistry.TryReleaseOwner(
-                    CreateRouteOwner(previousRoute), out string bindingDiagnostic))
+            RuntimeContentOwner owner = CreateRouteOwner(previousRoute);
+            if (_stableObjectBindingRegistry != null &&
+                !_stableObjectBindingRegistry.TryReleaseOwner(owner, out string bindingDiagnostic))
             {
-                return true;
+                diagnostic = "Stable Object Binding release failed for the exiting Route. " + bindingDiagnostic;
+                return false;
             }
-
-            diagnostic = "Stable Object Binding release failed for the exiting Route. " + bindingDiagnostic;
-            return false;
+            if (_actorOccurrenceReferenceRuntime != null &&
+                !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
+            {
+                diagnostic = "Actor occurrence publication release failed for the exiting Route. " + actorDiagnostic;
+                return false;
+            }
+            return true;
         }
     }
 }

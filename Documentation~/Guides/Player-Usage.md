@@ -1,8 +1,8 @@
 # Player Usage
 
 Status: **Scene-Provided authoring and runtime adoption are implemented. IF-ADR-044 block/release value types and PlayerGameplayAvailabilityBlockTrigger are Stable in the bounded contract; IPlayerSessionScopedAccess, ActorProfile and admission timing remain Experimental. QA is 8/8; trigger integration has Local Multiplayer manual validation PASS (2026-10-08).**
-Last updated: **2026-10-08**
-Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-044](../Architecture/ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md)
+Last updated: **2026-10-16**
+Decision sources: IF-ADR-003, IF-ADR-007, IF-ADR-012, IF-ADR-015, IF-ADR-016, IF-ADR-019, IF-ADR-020, IF-ADR-021, [IF-ADR-038](../Architecture/ADRs/IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-044](../Architecture/ADRs/IF-ADR-044-Consumer-Controlled-Player-Runtime-Gameplay-Availability.md), [IF-ADR-049](../Architecture/ADRs/IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md)
 
 ## Product model
 
@@ -105,6 +105,13 @@ Visual content, when authored, is optional and subordinate; it is never the spat
 authority. The Actor explicitly supplies `ObservationTransform`, which may differ
 from its root and must belong to that Actor occurrence. Camera performs no name or
 hierarchy lookup and has no implicit root fallback.
+
+Consumers can resolve the admitted physical Player root through an authored
+`ActorOccurrenceReferenceBinding` that targets its `PlayerSlotProfile`. The
+reference follows the Session-owned occurrence across Activity transitions; Actor
+replacement changes the occurrence evidence, and Leave or physical release makes
+the reference unavailable. See [Actor Occurrence References](Actor-Occurrence-References.md)
+for the read-only API and NonPlayer publication path.
 
 ## Scene-Provided
 

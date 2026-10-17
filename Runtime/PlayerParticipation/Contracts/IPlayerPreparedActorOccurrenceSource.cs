@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.PlayerSlots;
 
 namespace Immersive.Framework.PlayerParticipation
@@ -12,5 +13,12 @@ namespace Immersive.Framework.PlayerParticipation
         bool TryGetCurrentActorOccurrence(
             PlayerSlotId playerSlotId,
             out PlayerPreparedActorOccurrence occurrence);
+
+        bool TryGetCurrentPhysicalActorOccurrence(
+            PlayerSlotId playerSlotId,
+            out PlayerActorPhysicalOccurrence occurrence);
+
+        void CollectCurrentPhysicalActorOccurrences(
+            ICollection<PlayerActorPhysicalOccurrence> occurrences);
     }
 }

@@ -11,6 +11,7 @@ using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Loading;
 using Immersive.Framework.Common;
+using Immersive.Framework.Actors;
 using Immersive.Framework.GameFlow;
 using Immersive.Framework.CycleReset;
 using Immersive.Framework.Diagnostics;
@@ -445,6 +446,7 @@ namespace Immersive.Framework.ActivityFlow
                 currentActivity,
                 source,
                 reason);
+            _actorOccurrenceReferenceRuntime?.RefreshAll();
         }
 
         internal void SetPauseActivityBindingLifecycle(

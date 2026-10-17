@@ -15,4 +15,10 @@ namespace Immersive.Framework.SceneLifecycle
             IReadOnlyList<GameObject> roots,
             string reason);
     }
+
+    /// <summary>Callback opcional para participantes que precisam restaurar uma liberação de Scene compensada.</summary>
+    internal interface ISceneLifecycleReleaseCompensationParticipant
+    {
+        void OnSceneReleaseCompensated(SceneCompositionScope scope);
+    }
 }

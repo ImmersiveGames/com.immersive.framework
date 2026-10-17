@@ -2,11 +2,16 @@
 
 All notable package changes are documented in this file.
 
-## [1.2.0-preview.1] - 2026-10-16 — experimental evolution candidate, Unity certification pending
+## [1.2.0-preview.2] - 2026-10-17 — Experimental Actor occurrence references; PEGA integration pending
+
+- Implemented IF-ADR-049 Experimental Actor occurrence references for Player Slot and ActorId selection, owner-scoped NonPlayer publication, committed Route/Activity/Persistent Content lifecycles, read-only change observation and stale/ambiguous outcomes.
+- The Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. PEGA consumer integration remains pending; this preview does not promote Stable contracts.
+
+## [1.2.0-preview.1] - 2026-10-16 — experimental Camera Authoring candidate; OpenUPM publication pending
 
 - Evolution candidate: added Experimental Screen Composer Follow through Cinemachine Position Composer while keeping Fixed Offset as the default. No Stable contract promotion is included.
 - Refactored Camera Rig Preview to use the original materialized CinemachineCamera with only a temporary Unity Camera and CinemachineBrain output. Enable/Disable restores target and channel state; uncaptured edits revert to the latest captured state, and Apply / Rebuild retains captured values.
-- Added read-only materialization preflight, focused Editor tests, and Camera Usage/Public API guidance for original-camera identity, FixedOffset/ScreenComposer ownership, external OrbitalFollow conflicts, Save Configuration, Prefab Stage, shared Behavior Definitions and Play Mode limits. Unity import, Editor tests and consumer validation remain pending; this candidate is not certified for Stable publication.
+- Added read-only materialization preflight, focused Editor tests, and Camera Usage/Public API guidance for original-camera identity, FixedOffset/ScreenComposer ownership, external OrbitalFollow conflicts, Save Configuration, Prefab Stage, shared Behavior Definitions and Play Mode limits. This tag produced a signed candidate artifact but no GitHub Release or OpenUPM version; IF-ADR-049 is first included in `1.2.0-preview.2`.
 
 ## [1.1.0] - 2026-10-14 — first official Stable baseline
 

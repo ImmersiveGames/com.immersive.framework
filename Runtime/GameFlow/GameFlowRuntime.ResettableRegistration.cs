@@ -1,5 +1,6 @@
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
+using Immersive.Framework.Actors;
 
 namespace Immersive.Framework.GameFlow
 {
@@ -18,6 +19,11 @@ namespace Immersive.Framework.GameFlow
         internal void SetStableObjectBindingRegistry(StableObjectBindingRegistry registry)
         {
             _routeLifecycleRuntime.SetStableObjectBindingRegistry(registry);
+        }
+
+        internal void SetActorOccurrenceReferenceRuntime(ActorOccurrenceReferenceRuntime runtime)
+        {
+            _routeLifecycleRuntime.SetActorOccurrenceReferenceRuntime(runtime);
         }
     }
 }

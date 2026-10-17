@@ -32,6 +32,7 @@ using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Common.LifecycleOperations;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.Actors;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -862,6 +863,19 @@ namespace Immersive.Framework.ApplicationLifecycle
 
             if (!string.IsNullOrWhiteSpace(ownershipCommit.Diagnostic))
                 _logger.Warning(ownershipCommit.Diagnostic);
+
+            if (!TryCommitPersistentActorOccurrencePublications(out string actorPublicationIssue))
+            {
+                SceneCompositionResult releaseResult = _sceneLifecycleRuntime.ReleaseSessionScope(
+                    this,
+                    _globalUiSceneRuntime.PersistedRoots,
+                    "persistent-actor-publication-rollback");
+                _persistentContentScopeComposed = !releaseResult.Succeeded;
+                var failed = FrameworkGameFlowStartResult.Failed(
+                    actorPublicationIssue + (releaseResult.Succeeded ? string.Empty : " " + releaseResult.Diagnostic));
+                _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                return failed;
+            }
 
             IRouteRuntimePort routeRuntimePort = this;
             IActivityRuntimePort activityRuntimePort = this;
@@ -2421,6 +2435,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _sceneLifecycleRuntime = new SceneLifecycleRuntime(
                 new PauseProductBindingSceneLifecycleParticipant(_pauseProductBindingRuntime),
                 _pauseSurfaceSceneLifecycleParticipant,
+                new ActorOccurrenceReferenceSceneLifecycleParticipant(ActorOccurrenceReferences),
                 new ResetRequestTriggerSceneLifecycleParticipant(this),
                 new SessionCameraAssignmentCommandSceneLifecycleParticipant(this),
                 new RouteRequestSceneLifecycleParticipant(this),
@@ -2430,6 +2445,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                 new ActivityRestartSceneLifecycleParticipant(this),
                 new SceneLifecycleEventsParticipant());
             _runtimeSessionScopeResult = CreateSessionScopeRoot(application, "FrameworkRuntimeHost", "session-start");
+            ActorOccurrenceReferences.SetSessionOwner(_runtimeSessionScopeResult.Owner);
             _state = FrameworkRuntimeState.Empty(application);
         }
 
@@ -3973,6 +3989,11 @@ namespace Immersive.Framework.ApplicationLifecycle
                 diagnostic = result.Diagnostic;
                 return false;
             }
+
+            if (_runtimeSessionScopeResult.HasOwner &&
+                !ActorOccurrenceReferences.TryReleaseOwner(_runtimeSessionScopeResult.Owner, out diagnostic))
+                return false;
+            ActorOccurrenceReferences.RefreshAll();
 
             _persistentContentScopeComposed = false;
             return true;

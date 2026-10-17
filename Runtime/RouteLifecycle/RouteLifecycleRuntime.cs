@@ -534,6 +534,7 @@ namespace Immersive.Framework.RouteLifecycle
             _hasCurrentRouteContext = true;
             CommitRouteStableObjectBindings(route);
             PublishRouteTransition(previousRoute, route, source, reason);
+            _actorOccurrenceReferenceRuntime?.RefreshAll();
             return result;
         }
 

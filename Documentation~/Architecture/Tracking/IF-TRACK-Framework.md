@@ -2,7 +2,7 @@
 
 Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-10-14**
+Last updated: **2026-10-17**
 
 ## 1.1.0 first Stable release readiness
 
@@ -940,6 +940,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 046 | ACCEPTED — bounded Player Join closure APPROVED Stable; I1/I2/I3 implemented; public entrypoint retirement committed; I4 accepted by composed evidence; physical compensation accepted under Amendment 002; partial provenance expressly accepted under Amendment 003 | Only `PlayerSessionJoinTrigger` and the explicitly listed Join contract closure are Stable; Session/Slot/Actor/Leave/participation/readiness, broad scoped access and the Framework remain at their separately declared maturities | See [Stable-promotion decision](../ADRs/IF-ADR-046-STABLE-PROMOTION-DECISION.md), convergence audit and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md). Preserve the accepted residuals and provenance scope recorded there; this bounded decision does not promote adjacent APIs or the Framework. |
 | 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Release publication pending; apply the four GO/NO-GO gates above. |
 | 048 | ACCEPTED — ordered 1.1.0 Stable readiness roadmap | No Runtime/API behavior; no maturity changes | Execution pending; no phase is certified complete; current 1.1.0 disposition remains NO-GO. |
+| 049 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED IN `1.2.0-preview.2` | Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode; raw logs and execution SHA were not attached. | PEGA consumer integration remains pending; see [Actor Occurrence References](../Guides/Actor-Occurrence-References.md). |
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 

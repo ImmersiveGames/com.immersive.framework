@@ -680,6 +680,10 @@ namespace Immersive.Framework.SceneLifecycle
                 return false;
             }
 
+            NotifyReleaseCompensated(
+                SceneCompositionScope.ForScene(scene),
+                CreateParticipantSnapshot());
+
             compensationDiagnostic =
                 $" Scene Lifecycle composition was restored for Scene '{scene.name.NormalizeTextOrFallback("<unnamed>")}' that remained loaded after the failed operation.";
             return true;
@@ -968,6 +972,8 @@ namespace Immersive.Framework.SceneLifecycle
                 {
                     _availableScopes.Remove(scope);
                     SceneCompositionResult restored = NotifyAvailable(scope, roots);
+                    if (restored.Succeeded)
+                        NotifyReleaseCompensated(scope, participants);
                     compensation = restored.Succeeded
                         ? " Composition was restored because the Scene remains loaded."
                         : $" Composition restoration failed: {restored.Diagnostic}";
@@ -985,6 +991,18 @@ namespace Immersive.Framework.SceneLifecycle
                 scope,
                 SceneCompositionOperation.Releasing,
                 $"Scene Lifecycle release completed for scope '{scope.Label}' reason='{reason.NormalizeTextOrFallback("scene-release")}'.");
+        }
+
+        private static void NotifyReleaseCompensated(
+            SceneCompositionScope scope,
+            IReadOnlyList<ISceneLifecycleParticipant> participants)
+        {
+            if (participants == null) return;
+            for (int index = 0; index < participants.Count; index++)
+            {
+                if (participants[index] is ISceneLifecycleReleaseCompensationParticipant compensationParticipant)
+                    compensationParticipant.OnSceneReleaseCompensated(scope);
+            }
         }
 
         private List<ISceneLifecycleParticipant> CollectCompositionParticipants(

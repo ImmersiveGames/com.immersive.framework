@@ -142,6 +142,7 @@ namespace Immersive.Framework.RouteLifecycle
                 }
 
                 ledger.ResettableOwnersReleased = true;
+                _actorOccurrenceReferenceRuntime?.RefreshAll();
             }
 
             if (!ledger.RouteContentReleased)
