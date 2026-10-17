@@ -82,6 +82,7 @@ namespace Immersive.Framework.PlayerParticipation
                         request.Reason,
                         slot.SelectionRevision),
                     previousActor.Token,
+                    request.IdentityPolicy,
                     request.Source,
                     request.Reason);
             bool physicalCommitted = replacement != null &&

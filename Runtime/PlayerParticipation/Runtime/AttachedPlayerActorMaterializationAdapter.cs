@@ -37,6 +37,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeScopeContext scopeContext,
             PlayerSlotRuntimeSnapshot slot,
             ActorProfile actorProfile,
+            ActorId actorId,
             LocalPlayerHostAuthoring localPlayerHost,
             string source,
             string reason)
@@ -59,6 +60,11 @@ namespace Immersive.Framework.PlayerParticipation
                 return Failure(profileStatus, default, localPlayerHost, localPlayerHost.PlayerInput, profileIssue);
             }
 
+            if (!actorId.IsValid)
+            {
+                return Failure(PlayerActorMaterializationStatus.FailedActorIdentity, default, localPlayerHost, localPlayerHost.PlayerInput, "Player Actor materialization requires a logical ActorId issued by Framework Core.");
+            }
+
             _materializationSequence++;
             int materializationRevision = _materializationSequence;
             if (!PlayerActorMaterializationOperationId.TryCreate(
@@ -72,11 +78,10 @@ namespace Immersive.Framework.PlayerParticipation
                 return Failure(PlayerActorMaterializationStatus.FailedActorIdentity, default, localPlayerHost, localPlayerHost.PlayerInput, operationIssue);
             }
 
-            if (!TryCreateRuntimeIdentities(
+            if (!TryCreateRuntimeContentIdentity(
                     scopeContext,
                     slot,
                     materializationRevision,
-                    out ActorId actorId,
                     out RuntimeContentId runtimeContentId,
                     out string identityIssue))
             {
@@ -319,21 +324,19 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
-        private bool TryCreateRuntimeIdentities(RuntimeScopeContext scopeContext, PlayerSlotRuntimeSnapshot slot, int sequence, out ActorId actorId, out RuntimeContentId runtimeContentId, out string issue)
+        private bool TryCreateRuntimeContentIdentity(RuntimeScopeContext scopeContext, PlayerSlotRuntimeSnapshot slot, int sequence, out RuntimeContentId runtimeContentId, out string issue)
         {
             try
             {
                 string suffix = $"{_sessionContextId}:{scopeContext.Owner.Scope}:{scopeContext.Owner.OwnerIdentity.Value.Value}:{slot.PlayerSlotId.Value.Value}:{sequence}";
-                actorId = ActorId.From($"player-actor:{suffix}");
                 runtimeContentId = RuntimeContentId.From($"player-actor-content:{suffix}");
                 issue = string.Empty;
                 return true;
             }
             catch (Exception exception)
             {
-                actorId = default;
                 runtimeContentId = default;
-                issue = $"Framework-generated Player Actor identity failed. {exception.Message}";
+                issue = $"Framework-generated Player Actor Runtime Content identity failed. {exception.Message}";
                 return false;
             }
         }

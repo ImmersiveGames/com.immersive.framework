@@ -328,7 +328,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"{_sessionContextId}:{physicalScopeContext.Owner.Scope}:" +
                     $"{physicalScopeContext.Owner.OwnerIdentity.Value.Value}:" +
                     $"{playerSlotId.Value.Value}:{adoptionRevision}";
-                actorId = ActorId.From($"scene-player-actor:{suffix}");
+                actorId = CreateLogicalActorId();
                 runtimeContentId = RuntimeContentId.From(
                     $"scene-player-actor-content:{suffix}");
             }

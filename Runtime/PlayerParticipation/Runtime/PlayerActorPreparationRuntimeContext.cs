@@ -430,12 +430,14 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             LocalPlayerHostAuthoring localPlayerHost = hostEvidence.Host;
+            ActorId logicalActorId = CreateLogicalActorId();
 
             PlayerActorMaterializationResult materializationResult =
                 _materializationAdapter.TryMaterialize(
                     physicalScopeContext,
                     slot,
                     slot.SelectedActorProfile,
+                    logicalActorId,
                     localPlayerHost,
                     resolvedSource,
                     resolvedReason);
@@ -833,6 +835,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeScopeContext physicalScopeContext,
             PlayerActorSelectionRequest replacementRequest,
             PlayerActorPreparationToken expectedPreparation,
+            PlayerActorReplacementIdentityPolicy identityPolicy,
             string source,
             string reason)
         {
@@ -1028,7 +1031,8 @@ namespace Immersive.Framework.PlayerParticipation
             if (replacementRequest.ActorProfile.TryGetActorProfileId(
                     out ActorProfileId requestedProfileId,
                     out _) &&
-                requestedProfileId == currentSlot.SelectedActorProfileId)
+                requestedProfileId == currentSlot.SelectedActorProfileId &&
+                identityPolicy == PlayerActorReplacementIdentityPolicy.PreserveLogicalActor)
             {
                 return CreateResult(
                     PlayerActorPreparationStatus.SucceededAlreadyPrepared,
@@ -1095,11 +1099,35 @@ namespace Immersive.Framework.PlayerParticipation
             Vector3 previousActorPosition = previousActorRoot.position;
             Quaternion previousActorRotation = previousActorRoot.rotation;
 
+            if (!TryResolveReplacementActorId(
+                    currentRecord.Handle.Request.ActorId,
+                    identityPolicy,
+                    out ActorId replacementActorId,
+                    out string identityIssue))
+            {
+                return CreateResult(
+                    PlayerActorPreparationStatus.FailedMaterialization,
+                    operation,
+                    playerSlotId,
+                    currentRecord.Summary,
+                    currentRecord.Summary,
+                    null,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    identityIssue);
+            }
+
             PlayerActorMaterializationResult replacementMaterialization =
                 _materializationAdapter.TryMaterialize(
                     physicalScopeContext,
                     currentSlot,
                     replacementRequest.ActorProfile,
+                    replacementActorId,
                     currentRecord.Handle.LocalPlayerHost,
                     resolvedSource,
                     resolvedReason);
@@ -1798,6 +1826,42 @@ namespace Immersive.Framework.PlayerParticipation
             if (!handle.TryCommitOccurrenceIdentity(occurrenceId))
                 throw new InvalidOperationException(
                     "Player Actor occurrence identity can only be committed once its exact materialization is active.");
+        }
+
+        internal static ActorId CreateLogicalActorId()
+        {
+            return ActorId.From($"player-actor:{Guid.NewGuid():N}");
+        }
+
+        internal static bool TryResolveReplacementActorId(
+            ActorId currentActorId,
+            PlayerActorReplacementIdentityPolicy identityPolicy,
+            out ActorId replacementActorId,
+            out string issue)
+        {
+            switch (identityPolicy)
+            {
+                case PlayerActorReplacementIdentityPolicy.PreserveLogicalActor:
+                    replacementActorId = currentActorId;
+                    if (!replacementActorId.IsValid)
+                    {
+                        issue = "Prepared Actor replacement cannot preserve a missing logical ActorId.";
+                        return false;
+                    }
+
+                    issue = string.Empty;
+                    return true;
+
+                case PlayerActorReplacementIdentityPolicy.StartNewLogicalActor:
+                    replacementActorId = CreateLogicalActorId();
+                    issue = string.Empty;
+                    return true;
+
+                default:
+                    replacementActorId = default;
+                    issue = $"Prepared Actor replacement identity policy '{identityPolicy}' is unsupported.";
+                    return false;
+            }
         }
 
         private PlayerActorPreparationSummary CreatePreparedSummary(

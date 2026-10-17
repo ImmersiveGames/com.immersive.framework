@@ -731,6 +731,7 @@ namespace Immersive.Framework.PlayerParticipation
             RuntimeScopeContext activityScopeContext,
             PlayerActorSelectionRequest replacementRequest,
             PlayerActorPreparationToken expectedPreparation,
+            PlayerActorReplacementIdentityPolicy identityPolicy,
             string source,
             string reason)
         {
@@ -758,6 +759,7 @@ namespace Immersive.Framework.PlayerParticipation
                     _sessionPhysicalScopeContext,
                     replacementRequest,
                     expectedPreparation,
+                    identityPolicy,
                     source,
                     reason);
             _diagnostic = result.ToDiagnosticString();

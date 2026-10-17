@@ -96,6 +96,61 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void PreparedActorReplacementPreservesLogicalIdentityUnlessExplicitlyChanged()
+        {
+            ActorProfile profile = ScriptableObject.CreateInstance<ActorProfile>();
+            ActorId currentActorId = ActorId.From("actor.logical-identity-policy-test");
+
+            try
+            {
+                var defaultRequest = new PlayerPreparedActorReplacementRequest(
+                    PlayerSlotId.Player1,
+                    profile,
+                    "test",
+                    "default-policy");
+                Assert.That(defaultRequest.IsValid, Is.True);
+                Assert.That(
+                    defaultRequest.IdentityPolicy,
+                    Is.EqualTo(PlayerActorReplacementIdentityPolicy.PreserveLogicalActor));
+
+                Assert.That(PlayerActorPreparationRuntimeContext.TryResolveReplacementActorId(
+                    currentActorId,
+                    defaultRequest.IdentityPolicy,
+                    out ActorId preservedActorId,
+                    out string preserveIssue), Is.True, preserveIssue);
+                Assert.That(preservedActorId, Is.EqualTo(currentActorId));
+
+                var switchRequest = new PlayerPreparedActorReplacementRequest(
+                    PlayerSlotId.Player1,
+                    profile,
+                    "test",
+                    "explicit-logical-actor-switch",
+                    PlayerActorReplacementIdentityPolicy.StartNewLogicalActor);
+                Assert.That(switchRequest.IsValid, Is.True);
+                Assert.That(PlayerActorPreparationRuntimeContext.TryResolveReplacementActorId(
+                    currentActorId,
+                    switchRequest.IdentityPolicy,
+                    out ActorId newActorId,
+                    out string switchIssue), Is.True, switchIssue);
+                Assert.That(newActorId.IsValid, Is.True);
+                Assert.That(newActorId, Is.Not.EqualTo(currentActorId));
+
+                var invalidPolicyRequest = new PlayerPreparedActorReplacementRequest(
+                    PlayerSlotId.Player1,
+                    profile,
+                    "test",
+                    "invalid-identity-policy",
+                    (PlayerActorReplacementIdentityPolicy)99);
+                Assert.That(invalidPolicyRequest.IsValid, Is.False,
+                    "Unknown logical Actor identity policies must be rejected instead of falling back silently.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(profile);
+            }
+        }
+
+        [Test]
         public void SceneProvidedActorCompositionMayOmitVisualContent()
         {
             SceneProvidedLocalPlayerAuthoring authoring = CreateSceneProvidedActor(out GameObject hostObject);
@@ -555,6 +610,7 @@ namespace Immersive.Framework.Camera.Tests
                 1,
                 "test",
                 "selection");
+            ActorId actorId = ActorId.From("actor.manager-provisioned-materialization-test");
 
             try
             {
@@ -571,11 +627,24 @@ namespace Immersive.Framework.Camera.Tests
                     scope,
                     slot,
                     profile,
+                    default,
+                    host,
+                    "test",
+                    "reject-missing-logical-actor-id");
+                Assert.That(materialized.Succeeded, Is.False);
+                Assert.That(materialized.Status, Is.EqualTo(PlayerActorMaterializationStatus.FailedActorIdentity));
+
+                materialized = adapter.TryMaterialize(
+                    scope,
+                    slot,
+                    profile,
+                    actorId,
                     host,
                     "test",
                     "manager-provisioned-materialize");
 
                 Assert.That(materialized.Succeeded, Is.True, materialized.ToDiagnosticString());
+                Assert.That(materialized.Request.ActorId, Is.EqualTo(actorId));
                 Assert.That(materialized.HasPhysicalEvidence, Is.True);
                 Assert.That(materialized.VisualContent != null, Is.EqualTo(withVisualContent));
                 Assert.That(adapter.TryReleaseMaterialization(
@@ -730,10 +799,12 @@ namespace Immersive.Framework.Camera.Tests
             hostRoot.SetActive(true);
 
             var adapter = new AttachedPlayerActorMaterializationAdapter(runtime, sessionId);
+            ActorId actorId = ActorId.From("actor.d01-release-visual-regression");
             PlayerActorMaterializationResult materialized = adapter.TryMaterialize(
                 scope,
                 slot,
                 profile,
+                actorId,
                 localPlayerHost,
                 "d01-test",
                 "materialize-for-release-regression");
