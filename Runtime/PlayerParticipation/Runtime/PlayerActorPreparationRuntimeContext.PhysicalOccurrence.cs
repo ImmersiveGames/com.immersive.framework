@@ -50,6 +50,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
 
             occurrence = new PlayerActorPhysicalOccurrence(
+                record.Handle.OccurrenceId,
                 playerSlotId,
                 record.Summary.Token,
                 record.Handle.PlayerActorDeclaration,

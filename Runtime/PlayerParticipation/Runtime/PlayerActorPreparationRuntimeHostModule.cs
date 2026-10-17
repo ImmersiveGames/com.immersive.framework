@@ -149,6 +149,7 @@ namespace Immersive.Framework.PlayerParticipation
                     targetParticipationContext,
                     targetHostEvidenceProjection,
                     adapter,
+                    targetRuntimeHost.ActorOccurrenceReferences.OccurrenceIds,
                     out PlayerActorPreparationRuntimeContext targetPreparationContext,
                     out issue))
             {

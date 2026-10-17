@@ -16,6 +16,7 @@ namespace Immersive.Framework.PlayerParticipation
     {
         private PlayerActorMaterializationState _state;
         private bool _hasEverActivated;
+        private ActorOccurrenceId _occurrenceId;
         private string _source;
         private string _reason;
         private string _message;
@@ -86,6 +87,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal bool DestroyLocalPlayerHostOnRelease { get; }
         internal bool RequiresRouteSpatialEntryOnFirstActivation => !DestroyLocalPlayerHostOnRelease;
         internal PlayerActorMaterializationState State => _state;
+        internal ActorOccurrenceId OccurrenceId => _occurrenceId;
         internal string Source => _source ?? string.Empty;
         internal string Reason => _reason ?? string.Empty;
         internal string Message => _message ?? string.Empty;
@@ -134,6 +136,16 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
 
+        internal bool TryCommitOccurrenceIdentity(ActorOccurrenceId occurrenceId)
+        {
+            if (!occurrenceId.IsValid || _state != PlayerActorMaterializationState.Active)
+                return false;
+            if (_occurrenceId.IsValid)
+                return _occurrenceId == occurrenceId;
+            _occurrenceId = occurrenceId;
+            return true;
+        }
+
         internal bool TryDeactivate(string operationSource, string operationReason, out string issue)
         {
             if (_state == PlayerActorMaterializationState.StagedInactive)
@@ -168,6 +180,7 @@ namespace Immersive.Framework.PlayerParticipation
         internal void MarkReleased(string operationSource, string operationReason)
         {
             _state = PlayerActorMaterializationState.Released;
+            _occurrenceId = default;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
             _message = "Player Actor Runtime Host physical instances released.";

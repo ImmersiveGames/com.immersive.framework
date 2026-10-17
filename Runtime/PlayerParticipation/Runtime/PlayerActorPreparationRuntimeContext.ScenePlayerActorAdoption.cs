@@ -520,6 +520,7 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"{activationIssue} Rollback failed. {rollbackIssue}");
                 }
 
+                CommitOccurrenceIdentity(handle);
                 PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                     slot,
                     handle,

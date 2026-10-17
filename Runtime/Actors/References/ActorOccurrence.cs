@@ -47,4 +47,16 @@ namespace Immersive.Framework.Actors
         public static bool operator ==(ActorOccurrenceId left, ActorOccurrenceId right) => left.Equals(right);
         public static bool operator !=(ActorOccurrenceId left, ActorOccurrenceId right) => !left.Equals(right);
     }
+
+    internal sealed class ActorOccurrenceIdSequence
+    {
+        private long _sequence;
+
+        internal ActorOccurrenceId Next()
+        {
+            if (_sequence == long.MaxValue)
+                throw new InvalidOperationException("Actor occurrence sequence exhausted for this Framework host.");
+            return new ActorOccurrenceId(++_sequence);
+        }
+    }
 }

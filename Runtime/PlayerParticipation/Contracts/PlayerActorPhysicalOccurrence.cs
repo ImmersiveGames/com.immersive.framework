@@ -9,12 +9,14 @@ namespace Immersive.Framework.PlayerParticipation
     internal readonly struct PlayerActorPhysicalOccurrence
     {
         internal PlayerActorPhysicalOccurrence(
+            ActorOccurrenceId occurrenceId,
             PlayerSlotId playerSlotId,
             PlayerActorPreparationToken preparation,
             PlayerActorDeclaration declaration,
             GameObject actorRoot,
             RuntimeContentOwner owner)
         {
+            OccurrenceId = occurrenceId;
             PlayerSlotId = playerSlotId;
             Preparation = preparation;
             Declaration = declaration;
@@ -22,6 +24,7 @@ namespace Immersive.Framework.PlayerParticipation
             Owner = owner;
         }
 
+        internal ActorOccurrenceId OccurrenceId { get; }
         internal PlayerSlotId PlayerSlotId { get; }
         internal PlayerActorPreparationToken Preparation { get; }
         internal PlayerActorDeclaration Declaration { get; }
@@ -35,7 +38,7 @@ namespace Immersive.Framework.PlayerParticipation
                 catch { return default; }
             }
         }
-        internal bool IsValid => PlayerSlotId.IsValid && Preparation.IsValid &&
+        internal bool IsValid => OccurrenceId.IsValid && PlayerSlotId.IsValid && Preparation.IsValid &&
             Declaration != null && ActorRoot != null && Owner.IsValid && ActorId.IsValid;
     }
 }

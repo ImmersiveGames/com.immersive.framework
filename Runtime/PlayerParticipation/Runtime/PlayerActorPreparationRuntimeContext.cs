@@ -59,6 +59,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerParticipationRuntimeContext _participationContext;
         private readonly PlayerHostEvidenceProjection _hostEvidenceProjection;
         private readonly AttachedPlayerActorMaterializationAdapter _materializationAdapter;
+        private readonly ActorOccurrenceIdSequence _occurrenceIds;
         private readonly string _sessionContextId;
         private readonly Dictionary<PlayerSlotId, PreparationRecord> _records =
             new Dictionary<PlayerSlotId, PreparationRecord>();
@@ -74,11 +75,13 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationRuntimeContext participationContext,
             PlayerHostEvidenceProjection hostEvidenceProjection,
             AttachedPlayerActorMaterializationAdapter materializationAdapter,
+            ActorOccurrenceIdSequence occurrenceIds,
             string sessionContextId)
         {
             this._participationContext = participationContext;
             this._hostEvidenceProjection = hostEvidenceProjection;
             this._materializationAdapter = materializationAdapter;
+            this._occurrenceIds = occurrenceIds;
             this._sessionContextId = sessionContextId;
             _revision = 1;
             _actorCorrelationRevision = 0;
@@ -93,6 +96,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationRuntimeContext participationContext,
             PlayerHostEvidenceProjection hostEvidenceProjection,
             AttachedPlayerActorMaterializationAdapter materializationAdapter,
+            ActorOccurrenceIdSequence occurrenceIds,
             out PlayerActorPreparationRuntimeContext context,
             out string issue)
         {
@@ -108,6 +112,12 @@ namespace Immersive.Framework.PlayerParticipation
             if (materializationAdapter == null)
             {
                 issue = "Player Actor preparation requires an attached materialization adapter.";
+                return false;
+            }
+
+            if (occurrenceIds == null)
+            {
+                issue = "Player Actor preparation requires the Framework Host occurrence identity sequence.";
                 return false;
             }
 
@@ -150,6 +160,7 @@ namespace Immersive.Framework.PlayerParticipation
                 participationContext,
                 hostEvidenceProjection,
                 materializationAdapter,
+                occurrenceIds,
                 participationSnapshot.ContextId);
             return true;
         }
@@ -487,6 +498,7 @@ namespace Immersive.Framework.PlayerParticipation
                         : PlayerActorPreparationStatus.FailedActivation);
             }
 
+            CommitOccurrenceIdentity(handle);
             PlayerActorPreparationSummary prepared = CreatePreparedSummary(
                 slot,
                 handle,
@@ -1248,6 +1260,7 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerSlotRuntimeSnapshot committedSlot = selectionResult.Slot;
+            CommitOccurrenceIdentity(replacementHandle);
             PlayerActorPreparationSummary replacementSummary = CreatePreparedSummary(
                 committedSlot,
                 replacementHandle,
@@ -1772,6 +1785,19 @@ namespace Immersive.Framework.PlayerParticipation
                 source,
                 reason,
                 message);
+        }
+
+        private void CommitOccurrenceIdentity(PlayerActorMaterializationHandle handle)
+        {
+            if (handle == null)
+                throw new ArgumentNullException(nameof(handle));
+            if (handle.OccurrenceId.IsValid)
+                return;
+
+            ActorOccurrenceId occurrenceId = _occurrenceIds.Next();
+            if (!handle.TryCommitOccurrenceIdentity(occurrenceId))
+                throw new InvalidOperationException(
+                    "Player Actor occurrence identity can only be committed once its exact materialization is active.");
         }
 
         private PlayerActorPreparationSummary CreatePreparedSummary(

@@ -43,26 +43,16 @@ namespace Immersive.Framework.Actors
             internal ActorOccurrencePublicationScope PublicationScope { get; }
         }
 
-        private sealed class PlayerRecord
-        {
-            internal PlayerRecord(PlayerActorPhysicalOccurrence physical, ActorOccurrence occurrence)
-            {
-                Physical = physical;
-                Occurrence = occurrence;
-            }
-            internal PlayerActorPhysicalOccurrence Physical { get; }
-            internal ActorOccurrence Occurrence { get; }
-        }
-
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _stagedOwners = new();
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _committedOwners = new();
         private readonly Dictionary<ActorOccurrenceId, PublicationRecord> _publications = new();
         private readonly Dictionary<ActorOccurrencePublicationScope, List<PublicationRecord>> _suspendedScopePublications = new();
-        private readonly Dictionary<PlayerSlotId, PlayerRecord> _players = new();
         private readonly List<ActorOccurrenceReferenceBinding> _consumers = new();
+        private readonly ActorOccurrenceIdSequence _occurrenceIds = new();
         private IPlayerPreparedActorOccurrenceSource _playerSource;
         private RuntimeContentOwner _sessionOwner;
-        private long _sequence;
+
+        internal ActorOccurrenceIdSequence OccurrenceIds => _occurrenceIds;
 
         internal void SetPlayerSource(IPlayerPreparedActorOccurrenceSource playerSource)
         {
@@ -424,30 +414,20 @@ namespace Immersive.Framework.Actors
             if (_playerSource == null || !_playerSource.TryGetCurrentPhysicalActorOccurrence(
                     slot, out PlayerActorPhysicalOccurrence physical))
             {
-                _players.Remove(slot);
                 return false;
             }
 
             if (!physical.IsValid)
             {
-                _players.Remove(slot);
                 return false;
-            }
-            if (_players.TryGetValue(slot, out PlayerRecord previous) &&
-                previous.Physical.Preparation == physical.Preparation &&
-                ReferenceEquals(previous.Physical.ActorRoot, physical.ActorRoot))
-            {
-                occurrence = previous.Occurrence;
-                return true;
             }
 
             occurrence = new ActorOccurrence(
-                NextOccurrenceId(),
+                physical.OccurrenceId,
                 physical.ActorId,
                 physical.ActorRoot,
                 physical.Owner,
                 physical.PlayerSlotId);
-            _players[slot] = new PlayerRecord(physical, occurrence);
             return true;
         }
 
@@ -466,7 +446,7 @@ namespace Immersive.Framework.Actors
                 diagnostic = "This physical Actor root already has an active publication.";
                 return false;
             }
-            ActorOccurrenceId id = NextOccurrenceId();
+            ActorOccurrenceId id = _occurrenceIds.Next();
             var record = new PublicationRecord(id, actorId, publisher, owner, publicationScope);
             _publications.Add(id, record);
             token = new ActorOccurrencePublicationToken(id, owner);
@@ -529,13 +509,6 @@ namespace Immersive.Framework.Actors
 
         private ActorOccurrence CreatePublicationOccurrence(PublicationRecord record) =>
             new ActorOccurrence(record.Id, record.ActorId, record.Publisher.gameObject, record.Owner, default);
-
-        private ActorOccurrenceId NextOccurrenceId()
-        {
-            if (_sequence == long.MaxValue)
-                throw new InvalidOperationException("Actor occurrence sequence exhausted for this Framework host.");
-            return new ActorOccurrenceId(++_sequence);
-        }
 
         private static ActorOccurrenceResolution MatchExpectedOccurrence(
             ActorOccurrenceReference reference,
