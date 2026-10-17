@@ -249,3 +249,13 @@ claim Scene-Provided prepared Actor replacement.
 
 - Scene-Provided physical ownership and replacement contract for a future capability.
 - Additional focused negative certification for failure branches beyond the current integrated Player QA evidence, where separately required.
+
+## Forward reconciliation notice — proposed guarded replacement (2026-10-17)
+
+**Current scope remains Accepted / Manager-Provisioned V1.** The existing release-gameplay → release-occupancy → replace-physical-root → reproject-gameplay contract and its dated QA certification are not rewritten or reclassified.
+
+[IF-ADR-050](IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) and [IF-SPEC-050](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md) propose a **future physical replacement protocol**: stage B and mandatory content while A remains logically Current; validate owner, expected selection/revision, root and spatial entry; guard against incompatible reentrant mutations; deactivate A; activate B; revalidate; commit B's exact physical occurrence and selection together; publish only coherent state; project gameplay/Camera; then release A. Async work occurs only in the preparation phase.
+
+During `OnDisable(A)` and `Awake/OnEnable(B)`, committed selection still denotes A, although A can be **physically inactive**. The Framework must distinguish logical Current from physical availability and cannot claim Unity callbacks are transactional. Once A is physically deactivated, a failed handoff may retain A's last binding with **degraded/unavailable** operation; a successful logical commit of B is never rolled back merely because gameplay projection or old-root cleanup fails. The exact future occupancy/input gate timing and typed outcomes require an accepted public-contract amendment and new evidence; existing V1 recovery/result expectations remain binding for the current published path.
+
+A **content-only recomposition** would preserve Actor root/ActorOccurrenceId and is not automatically `RequestReplacePreparedActor`, nor does it change `RequestReplaceActorSelection` semantics. Scene-Provided replacement remains excluded from certified V1. See [R03/R05/R08](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) for explicit migration and authority boundaries. **This notice is non-normative while IF-ADR-050 is Proposed.**
