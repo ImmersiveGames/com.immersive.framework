@@ -13,6 +13,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Camera.Tests
 {
