@@ -213,6 +213,206 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  publish-preview:
+    name: Publish signed preview candidate
+    needs: build-candidate
+    if: ${{ contains(github.ref_name, '-preview.') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out the exact tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Download candidate artifact from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-candidate.outputs.artifact-name }}
+          path: ${{ runner.temp }}/signed-upm-candidate
+
+      - name: Verify approved candidate, tag and artifact identity
+        id: candidate
+        shell: bash
+        env:
+          DIST_DIR: ${{ runner.temp }}/signed-upm-candidate
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          tag_sha="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
+          manifest_name="$(jq -r '.name' package.json)"
+          manifest_version="$(jq -r '.version' package.json)"
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-preview\.(0|[1-9][0-9]*)$ ]]; then
+            printf 'Preview tag must use vMAJOR.MINOR.PATCH-preview.N: %s\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          if [[ ! "$manifest_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-preview\.(0|[1-9][0-9]*)$ ]]; then
+            printf 'Package version is not a valid preview version: %s\n' "$manifest_version" >&2
+            exit 1
+          fi
+          provenance="$DIST_DIR/provenance.json"
+          test -f "$provenance"
+          archive_name="$(jq -r '.archive' "$provenance")"
+          archive="$DIST_DIR/$archive_name"
+          test -f "$archive"
+
+          if [ "$source_sha" != "$GITHUB_SHA" ] || [ "$tag_sha" != "$GITHUB_SHA" ] || [ "$(jq -r '.sourceCommit' "$provenance")" != "$GITHUB_SHA" ]; then
+            printf 'Candidate source/tag SHA does not match triggering SHA %s\n' "$GITHUB_SHA" >&2
+            exit 1
+          fi
+          if [ "$(jq -r '.tag' "$provenance")" != "$GITHUB_REF_NAME" ] || [ "$(jq -r '.package' "$provenance")" != "$manifest_name" ] || [ "$(jq -r '.version' "$provenance")" != "$manifest_version" ]; then
+            printf 'Candidate provenance does not match tag/package manifest identity\n' >&2
+            exit 1
+          fi
+          if [ "$(jq -cS '.dependencies' "$provenance")" != "$(jq -cS '.dependencies // {}' package.json)" ]; then
+            printf 'Candidate provenance dependency graph differs from tagged source\n' >&2
+            exit 1
+          fi
+
+          expected_sha="$(jq -r '.sha256' "$provenance")"
+          actual_sha="$(sha256sum "$archive" | awk '{print $1}')"
+          recorded_sha="$(awk 'NR == 1 {print $1}' "$DIST_DIR/SHA256SUMS")"
+          if [ "$actual_sha" != "$expected_sha" ] || [ "$actual_sha" != "$recorded_sha" ] || [ "$actual_sha" != "${{ needs.build-candidate.outputs.artifact-sha256 }}" ]; then
+            printf 'Candidate archive SHA-256 mismatch: expected %s, actual %s\n' "$expected_sha" "$actual_sha" >&2
+            exit 1
+          fi
+
+          archive_identity="$(tar -xOzf "$archive" package/package.json | jq -cS '{name, version, dependencies: (.dependencies // {})}')"
+          manifest_identity="$(jq -cS '{name, version, dependencies: (.dependencies // {})}' package.json)"
+          if [ "$archive_identity" != "$manifest_identity" ]; then
+            printf 'Candidate embedded package identity/dependencies do not match tagged source\n' >&2
+            exit 1
+          fi
+          echo "name=$manifest_name" >> "$GITHUB_OUTPUT"
+          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "filename=$archive_name" >> "$GITHUB_OUTPUT"
+          echo "sha256=$actual_sha" >> "$GITHUB_OUTPUT"
+          printf 'Approved candidate verified: %s@%s, SHA-256 %s\n' "$manifest_name" "$manifest_version" "$actual_sha"
+
+      - name: Require OpenUPM GitHub Release asset tracking
+        shell: bash
+        run: |
+          set -euo pipefail
+          metadata="$(curl -fsSL https://raw.githubusercontent.com/openupm/openupm/master/data/packages/com.immersive.framework.yml)"
+          if ! grep -Eq '^trackingMode:[[:space:]]*githubRelease[[:space:]]*$' <<< "$metadata"; then
+            printf 'OpenUPM metadata does not use trackingMode: githubRelease; refusing publication.\n' >&2
+            exit 1
+          fi
+          if ! grep -Eq "^githubReleaseAssetName:[[:space:]]*['\"]?com\.immersive\.framework-" <<< "$metadata"; then
+            printf 'OpenUPM metadata does not constrain the release asset to the Framework tarball prefix; refusing publication.\n' >&2
+            exit 1
+          fi
+
+      - name: Ensure any existing Release already contains this exact artifact
+        id: release_asset
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.candidate.outputs.filename }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          verify_dir="$RUNNER_TEMP/release-asset-check"
+          error_file="$RUNNER_TEMP/release-lookup-error.txt"
+          mkdir -p "$verify_dir"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" >/dev/null 2>"$error_file"; then
+            gh release download "$GITHUB_REF_NAME" --pattern "$ARCHIVE_NAME" --dir "$verify_dir"
+            existing_archive="$verify_dir/$ARCHIVE_NAME"
+            test -f "$existing_archive"
+            existing_sha="$(sha256sum "$existing_archive" | awk '{print $1}')"
+            if [ "$existing_sha" != "$EXPECTED_SHA256" ]; then
+              printf 'Existing GitHub Release asset hash %s differs from approved candidate %s\n' "$existing_sha" "$EXPECTED_SHA256" >&2
+              exit 1
+            fi
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          elif grep -q 'HTTP 404' "$error_file"; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          else
+            cat "$error_file" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release and attach the approved archive
+        if: ${{ steps.release_asset.outputs.exists == 'false' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.candidate.outputs.name }} ${{ steps.candidate.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ steps.candidate.outputs.archive }}
+
+      - name: Verify GitHub Release preview identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME")"
+          release_tag="$(jq -r '.tag_name' <<< "$release")"
+          release_prerelease="$(jq -r '.prerelease' <<< "$release")"
+          release_draft="$(jq -r '.draft' <<< "$release")"
+          if [ "$release_tag" != "$GITHUB_REF_NAME" ] || [ "$release_prerelease" != 'true' ] || [ "$release_draft" != 'false' ]; then
+            printf 'GitHub Release tag/channel mismatch: tag=%s prerelease=%s draft=%s\n' "$release_tag" "$release_prerelease" "$release_draft" >&2
+            exit 1
+          fi
+      - name: Verify GitHub Release asset hash
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.candidate.outputs.filename }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          verify_dir="$RUNNER_TEMP/release-asset-verified"
+          mkdir -p "$verify_dir"
+          gh release download "$GITHUB_REF_NAME" --pattern "$ARCHIVE_NAME" --dir "$verify_dir"
+          actual_sha="$(sha256sum "$verify_dir/$ARCHIVE_NAME" | awk '{print $1}')"
+          if [ "$actual_sha" != "$EXPECTED_SHA256" ]; then
+            printf 'GitHub Release asset hash %s differs from approved candidate %s\n' "$actual_sha" "$EXPECTED_SHA256" >&2
+            exit 1
+          fi
+
+      - name: Publish the Release asset through OpenUPM
+        id: openupm
+        uses: openupm/openupm-action@v1
+        with:
+          package: ${{ steps.candidate.outputs.name }}
+          tag: ${{ github.ref_name }}
+          timeout-minutes: 30
+
+      - name: Verify OpenUPM publishes the same tarball bytes
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.candidate.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.candidate.outputs.version }}
+          EXPECTED_SHA256: ${{ steps.candidate.outputs.sha256 }}
+          OPENUPM_SIGNED: ${{ steps.openupm.outputs.signed }}
+        run: |
+          set -euo pipefail
+          if [ "$OPENUPM_SIGNED" != 'true' ]; then
+            printf 'OpenUPM did not report the published package as signed.\n' >&2
+            exit 1
+          fi
+          metadata_url="https://package.openupm.com/$PACKAGE_NAME"
+          metadata="$(curl --retry 8 --retry-delay 5 --retry-all-errors -fsSL "$metadata_url")"
+          tarball_url="$(jq -r --arg version "$PACKAGE_VERSION" '.versions[$version].dist.tarball // empty' <<< "$metadata")"
+          if [ -z "$tarball_url" ]; then
+            printf 'OpenUPM metadata has no tarball URL for %s@%s\n' "$PACKAGE_NAME" "$PACKAGE_VERSION" >&2
+            exit 1
+          fi
+          curl --retry 8 --retry-delay 5 --retry-all-errors -fsSL "$tarball_url" -o "$RUNNER_TEMP/openupm-published.tgz"
+          published_sha="$(sha256sum "$RUNNER_TEMP/openupm-published.tgz" | awk '{print $1}')"
+          if [ "$published_sha" != "$EXPECTED_SHA256" ]; then
+            printf 'OpenUPM tarball SHA-256 %s differs from approved artifact %s\n' "$published_sha" "$EXPECTED_SHA256" >&2
+            exit 1
+          fi
+          printf 'GitHub Release and OpenUPM both distribute approved SHA-256 %s\n' "$EXPECTED_SHA256" >> "$GITHUB_STEP_SUMMARY"
+
+
   publish:
     name: Approve and promote the certified artifact
     needs: build-candidate
