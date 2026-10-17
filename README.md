@@ -56,10 +56,10 @@ from Git alone. Earlier package releases remain in the
 [changelog](CHANGELOG.md) as history; they are not migration baselines for
 1.1.0.
 
-The Experimental Actor Occurrence Reference preview is `1.2.0-preview.2`.
-Consumers evaluating IF-ADR-049 through OpenUPM should pin this exact version;
-PEGA integration validation is still pending. This preview does not change the
-Stable baseline or promote the new API contracts.
+The Experimental Actor Occurrence Reference preview is published on OpenUPM as
+`1.2.0-preview.2`. Consumers evaluating IF-ADR-049 should pin this exact
+version; PEGA integration validation is still pending. This preview does not
+change the Stable baseline or promote the new API contracts.
 
 ## Getting started
 
