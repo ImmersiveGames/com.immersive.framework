@@ -38,6 +38,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             serializedObject.ApplyModifiedProperties();
 
             DrawConfigurationStatus((PlayerActorRuntimeHost)target);
+            DrawCompositionMountGuidance((PlayerActorRuntimeHost)target);
             DrawAdvanced((PlayerActorRuntimeHost)target);
         }
 
@@ -54,6 +55,19 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
             EditorGUILayout.LabelField("Status", "Invalid");
             EditorGUILayout.HelpBox(issue, MessageType.Error);
+        }
+
+        private static void DrawCompositionMountGuidance(
+            PlayerActorRuntimeHost runtimeHost)
+        {
+            if (runtimeHost == null || runtimeHost.VisualContentMount != null)
+            {
+                return;
+            }
+
+            EditorGUILayout.HelpBox(
+                "This Actor Runtime Host supports Actor Profiles without Base content. Profiles that declare composition parts require a Visual Content Mount and will be rejected during materialization when it is missing.",
+                MessageType.Info);
         }
 
         private void DrawAdvanced(PlayerActorRuntimeHost runtimeHost)

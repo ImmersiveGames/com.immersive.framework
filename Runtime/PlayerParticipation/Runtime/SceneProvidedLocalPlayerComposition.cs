@@ -77,6 +77,15 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            if (profile.HasLegacyPresentationPrefab ||
+                !ActorCompositionProfileContract.TryValidate(profile, out issue))
+            {
+                issue = string.IsNullOrWhiteSpace(issue)
+                    ? $"Scene-Provided Actor Profile '{profile.name}' requires the explicit visual-content migration before composition."
+                    : issue;
+                return false;
+            }
+
             if (!System.Enum.IsDefined(typeof(SceneLocalPlayerAdmissionTiming), authoring.AdmissionTiming))
             {
                 issue = "Scene-Provided Local Player admission timing is invalid.";
@@ -119,9 +128,29 @@ namespace Immersive.Framework.PlayerParticipation
             GameObject visualContent = visualContentMount != null && visualContentMount.childCount == 1
                 ? visualContentMount.GetChild(0).gameObject
                 : null;
-            if (profile.VisualContentPrefab != null && visualContent == null)
+            bool hasVisualPart = profile.TryGetVisualContentPrefab(out _);
+            if (profile.CompositionParts.Count > 1 ||
+                (profile.CompositionParts.Count == 1 && !hasVisualPart))
+            {
+                issue = "Scene-Provided Actor currently supports the exact authored Base 'visual' part only; additional keyed scene-part bindings are not authored yet.";
+                return false;
+            }
+
+            if (hasVisualPart && visualContentMount == null)
+            {
+                issue = "Scene-Provided Actor Profile declares Base 'visual' content, but the exact Actor Runtime Host has no Visual Content Mount.";
+                return false;
+            }
+
+            if (hasVisualPart && visualContent == null)
             {
                 issue = "Scene-Provided Actor Profile configures visual content, but the exact authored visual-content instance is missing.";
+                return false;
+            }
+
+            if (!hasVisualPart && visualContent != null)
+            {
+                issue = "Scene-Provided Actor has an authored object under Visual Content Mount without a matching Actor Profile Base 'visual' part.";
                 return false;
             }
 

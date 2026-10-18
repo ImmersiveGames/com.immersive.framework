@@ -1,13 +1,15 @@
 using System;
+using System.Collections.Generic;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Common;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Immersive.Framework.Actors
 {
     /// <summary>
     /// Immutable reusable product identity for an Actor option before any runtime Actor exists.
-    /// Runtime selection, ActorId, owner scope, occupancy and runtime visual-content state remain outside this asset.
+    /// Runtime selection, ActorId, owner scope, occupancy and runtime composition state remain outside this asset.
     /// </summary>
     [CreateAssetMenu(
         fileName = "ActorProfile",
@@ -34,8 +36,14 @@ namespace Immersive.Framework.Actors
         [Tooltip("Broad framework Actor role. This is not a loadout, team or character class.")]
         [SerializeField] private ActorRole actorRole = ActorRole.Protagonist;
 
-        [Tooltip("Optional visual content prefab. It is subordinate to the Actor occurrence and never owns physical or spatial state.")]
-        [SerializeField] private GameObject presentationPrefab;
+        [SerializeField]
+        [Tooltip("Base content contributions materialized below this Actor occurrence. The 'visual' key is the optional visual part.")]
+        private List<ActorCompositionPart> compositionParts = new List<ActorCompositionPart>();
+
+        [FormerlySerializedAs("presentationPrefab")]
+        [SerializeField]
+        [Tooltip("Legacy serialized visual reference. Run Tools > Immersive Framework > Migrate Actor Profile Visual Content before runtime use.")]
+        private GameObject legacyPresentationPrefab;
 
         public string ActorProfileIdText => actorProfileId.NormalizeText();
 
@@ -51,7 +59,10 @@ namespace Immersive.Framework.Actors
 
         public ActorRole ActorRole => actorRole;
 
-        public GameObject VisualContentPrefab => presentationPrefab;
+        [Obsolete("Use the Actor Profile's migrated 'visual' composition part.")]
+        public GameObject VisualContentPrefab => TryGetVisualContentPrefab(out GameObject prefab)
+            ? prefab
+            : null;
 
         public bool HasDefinedActorKind =>
             Enum.IsDefined(typeof(ActorKind), actorKind) && actorKind != ActorKind.Unknown;
@@ -59,7 +70,47 @@ namespace Immersive.Framework.Actors
         public bool HasDefinedActorRole =>
             Enum.IsDefined(typeof(ActorRole), actorRole) && actorRole != ActorRole.Unknown;
 
-        public bool HasVisualContentPrefab => presentationPrefab != null;
+        public bool HasVisualContentPrefab => TryGetVisualContentPrefab(out _);
+
+        internal IReadOnlyList<ActorCompositionPart> CompositionParts
+        {
+            get
+            {
+                if (compositionParts == null)
+                {
+                    return Array.Empty<ActorCompositionPart>();
+                }
+
+                return compositionParts;
+            }
+        }
+
+        internal bool HasCompositionPartsList => compositionParts != null;
+
+        internal bool HasLegacyPresentationPrefab => legacyPresentationPrefab != null;
+
+        internal bool TryGetVisualContentPrefab(out GameObject prefab)
+        {
+            prefab = null;
+            if (compositionParts == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < compositionParts.Count; index++)
+            {
+                ActorCompositionPart part = compositionParts[index];
+                if (part == null || !string.Equals(part.Key, "visual", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                prefab = part.Prefab;
+                return prefab != null;
+            }
+
+            return false;
+        }
 
         public bool TryGetActorProfileId(
             out ActorProfileId resolvedActorProfileId,

@@ -74,8 +74,19 @@ The root GameObject name equals its prefab filename without `.prefab`.
 
 `LocalPlayerHostAuthoring.PlayerActorRuntimeHostPrefab` remains the technical Host
 reference. The Actor occurrence root owns physical/spatial state. Optional visual
-content is subordinate. `VisualContentMount` and `ActorProfile.VisualContentPrefab`
-are optional authoring/runtime content; neither is required for Actor validity,
+content is subordinate. Actor visuals are authored as the Actor Profile Base
+composition part with key `visual` and are mounted below the existing
+`VisualContentMount`. An empty Base list remains valid and requires no mount.
+Before using an existing Profile that serialized `presentationPrefab`, run
+**Tools > Immersive Framework > Migrate Actor Profile Visual Content** in the
+Unity Editor. The migration copies the same Prefab reference into the `visual`
+entry, clears its legacy value, and preserves the Profile and Prefab GUIDs; a
+conflicting existing entry is reported without overwriting either reference.
+There is no runtime fallback for unmigrated Profiles. For Scene-Provided
+Actors, author the matching visual instance under that exact mount and validate
+its Prefab provenance in the Scene-Provided Local Player Inspector.
+
+Neither the visual part nor its mount is required for Actor validity,
 activation, placement, relocation or replacement.
 
 For a generic Player Actor prefab:

@@ -2,6 +2,7 @@
   "name": "Immersive.Framework.Runtime",
   "rootNamespace": "Immersive.Framework",
   "references": [
+    "Immersive.Composition.Runtime",
     "Immersive.Foundation.Runtime",
     "Immersive.Logging.Runtime",
     "Immersive.Logging.Unity",

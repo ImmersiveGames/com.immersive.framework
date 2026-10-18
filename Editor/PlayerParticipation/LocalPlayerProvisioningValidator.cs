@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
@@ -168,6 +170,17 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 }
                 else
                 {
+                    LocalPlayerHostAuthoring localHostAuthoring =
+                        localPlayerHostPrefab != null
+                            ? localPlayerHostPrefab.GetComponent<LocalPlayerHostAuthoring>()
+                            : null;
+                    ValidateDefaultActorCompositionMounts(
+                        playerSessionProfile,
+                        localHostAuthoring != null
+                            ? localHostAuthoring.PlayerActorRuntimeHostPrefab
+                            : null,
+                        report);
+
                     report.AddInfo(
                         $"PlayerInputManager limit is derived from Player Session Profile Supported Slots. configuredSlots='{configuredSlots}' managerLimit='{manager.maxPlayerCount}'.",
                         manager);
@@ -189,6 +202,46 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             }
 
             return report;
+        }
+
+        internal static void ValidateDefaultActorCompositionMounts(
+            PlayerSessionProfile playerSessionProfile,
+            PlayerActorRuntimeHost runtimeHostPrefab,
+            FrameworkAuthoringValidationReport report)
+        {
+            if (playerSessionProfile == null || report == null)
+            {
+                return;
+            }
+
+            if (playerSessionProfile.HostProvisioning !=
+                PlayerHostProvisioningMode.ManagerProvisioned)
+            {
+                return;
+            }
+
+            IReadOnlyList<PlayerSlotProfile> supportedSlots =
+                playerSessionProfile.SupportedSlots;
+            for (int index = 0; index < supportedSlots.Count; index++)
+            {
+                PlayerSlotProfile slot = supportedSlots[index];
+                ActorProfile actorProfile = slot != null
+                    ? slot.DefaultActorProfile
+                    : null;
+                if (actorProfile == null || actorProfile.CompositionParts.Count == 0)
+                {
+                    continue;
+                }
+
+                if (runtimeHostPrefab == null || runtimeHostPrefab.VisualContentMount != null)
+                {
+                    continue;
+                }
+
+                report.AddError(
+                    $"Default Actor Profile '{actorProfile.name}' for Slot '{slot.PlayerSlotIdText}' declares Base composition content, but the Manager-Provisioned Player Actor Runtime Host Prefab has no Visual Content Mount. Add an explicit child mount before using this Profile.",
+                    runtimeHostPrefab);
+            }
         }
     }
 }

@@ -15,6 +15,7 @@
     "email": "contato@immersivegames.com.br"
   },
   "dependencies": {
+    "com.immersive.composition": "0.1.0-preview.1",
     "com.immersive.foundation": "0.2.2",
     "com.immersive.logging": "0.2.3",
     "com.unity.cinemachine": "3.1.7",

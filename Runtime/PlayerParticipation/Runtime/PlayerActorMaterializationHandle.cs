@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 namespace Immersive.Framework.PlayerParticipation
 {
     /// <summary>
-    /// Typed physical handle for one Player Actor occurrence and optional subordinate visual content.
+    /// Typed physical handle for one Player Actor occurrence and its optional subordinate Base content.
     /// </summary>
     [FrameworkApiStatus(FrameworkApiStatus.Internal, "ADR-038 Player Actor occurrence materialization handle.")]
     internal sealed class PlayerActorMaterializationHandle
@@ -32,7 +32,8 @@ namespace Immersive.Framework.PlayerParticipation
             GameObject releaseProxy,
             bool destroyLocalPlayerHostOnRelease,
             string source,
-            string reason)
+            string reason,
+            ActorCompositionRuntimeBinding composition = null)
         {
             if (!request.IsValid)
             {
@@ -55,7 +56,8 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost = localPlayerHost ?? throw new ArgumentNullException(nameof(localPlayerHost));
             PlayerInput = playerInput ?? throw new ArgumentNullException(nameof(playerInput));
             PlayerActorRuntimeHost = playerActorRuntimeHost ?? throw new ArgumentNullException(nameof(playerActorRuntimeHost));
-            VisualContent = presentation;
+            Composition = composition;
+            VisualContent = composition != null ? composition.VisualContent : presentation;
             ReleaseProxy = releaseProxy;
             DestroyLocalPlayerHostOnRelease = destroyLocalPlayerHostOnRelease;
             _state = PlayerActorMaterializationState.StagedInactive;
@@ -83,6 +85,7 @@ namespace Immersive.Framework.PlayerParticipation
         }
         internal PlayerActorDeclaration PlayerActorDeclaration => PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.PlayerActorDeclaration : null;
         internal GameObject VisualContent { get; }
+        internal ActorCompositionRuntimeBinding Composition { get; }
         internal GameObject ReleaseProxy { get; }
         internal bool DestroyLocalPlayerHostOnRelease { get; }
         internal bool RequiresRouteSpatialEntryOnFirstActivation => !DestroyLocalPlayerHostOnRelease;
@@ -125,7 +128,18 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (VisualContent != null) VisualContent.SetActive(true);
+            if (Composition != null)
+            {
+                if (!Composition.TrySetPartsActive(true, out issue))
+                {
+                    return false;
+                }
+            }
+            else if (VisualContent != null)
+            {
+                VisualContent.SetActive(true);
+            }
+
             PlayerActorRuntimeHost.gameObject.SetActive(true);
             _hasEverActivated = true;
             _state = PlayerActorMaterializationState.Active;

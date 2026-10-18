@@ -387,6 +387,7 @@ namespace Immersive.Framework.PlayerParticipation
 
             GameObject releaseProxy = null;
             RuntimeContentHandle runtimeHandle = null;
+            ActorCompositionRuntimeBinding actorComposition = null;
             string previousActorId = sceneActor.StoredActorIdText;
             string previousDisplayName = sceneActor.ActorDisplayName;
             string previousReason = sceneActor.Reason;
@@ -469,6 +470,43 @@ namespace Immersive.Framework.PlayerParticipation
                             : $"{appliedResult.Message} Rollback failed. {rollbackIssue}");
                 }
 
+                if (!ActorCompositionRuntimeBinding.TryCreate(
+                        authoring.ActorProfile,
+                        composition.VisualContentMount,
+                        visualContent,
+                        operationId,
+                        out actorComposition,
+                        out issue))
+                {
+                    bool rollbackSucceeded = TryRollbackSceneAdoptionRegistration(
+                        runtimeContentRuntime,
+                        runtimeRequest,
+                        sceneActor,
+                        host.PlayerInput,
+                        null,
+                        previousActorId,
+                        previousDisplayName,
+                        previousReason,
+                        previousPlayerInput,
+                        resolvedSource,
+                        "scene-adoption-composition-rollback",
+                        out string rollbackIssue);
+                    return SceneAdoptionResult(
+                        rollbackSucceeded
+                            ? ScenePlayerActorAdoptionStatus.FailedRuntimeContentRegistration
+                            : ScenePlayerActorAdoptionStatus.FailedRollback,
+                        operation,
+                        playerSlotId,
+                        authoring,
+                        default,
+                        false,
+                        resolvedSource,
+                        resolvedReason,
+                        rollbackSucceeded
+                            ? issue
+                            : $"{issue} Rollback failed. {rollbackIssue}");
+                }
+
                 releaseProxy = new GameObject(
                     $"[_Framework Scene Actor Adoption] {playerSlotId.StableText}");
                 releaseProxy.SetActive(false);
@@ -485,12 +523,21 @@ namespace Immersive.Framework.PlayerParticipation
                     releaseProxy,
                     true,
                     resolvedSource,
-                    resolvedReason);
+                    resolvedReason,
+                    actorComposition);
                 if (!handle.TryActivate(
                         resolvedSource,
                         resolvedReason,
                         out string activationIssue))
                 {
+                    string closeIssue = string.Empty;
+                    bool compositionClosed = actorComposition == null ||
+                        actorComposition.TryClose(out closeIssue);
+                    if (!compositionClosed)
+                    {
+                        activationIssue = $"{activationIssue} Composition cleanup failed. {closeIssue}";
+                    }
+
                     bool rollbackSucceeded = TryRollbackSceneAdoptionRegistration(
                         runtimeContentRuntime,
                         runtimeRequest,
@@ -504,6 +551,7 @@ namespace Immersive.Framework.PlayerParticipation
                         resolvedSource,
                         "scene-adoption-activation-rollback",
                         out string rollbackIssue);
+                    rollbackSucceeded &= compositionClosed;
                     return SceneAdoptionResult(
                         rollbackSucceeded
                             ? ScenePlayerActorAdoptionStatus.FailedActivation
@@ -583,6 +631,10 @@ namespace Immersive.Framework.PlayerParticipation
                     _revision++;
                 }
 
+                string compositionIssue = string.Empty;
+                bool compositionClosed = actorComposition == null ||
+                    actorComposition.TryClose(out compositionIssue);
+
                 bool rollbackSucceeded = TryRollbackSceneAdoptionRegistration(
                     runtimeContentRuntime,
                     runtimeRequest,
@@ -596,6 +648,13 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     "scene-adoption-exception-rollback",
                     out string rollbackIssue);
+                rollbackSucceeded &= compositionClosed;
+                if (!compositionClosed && !string.IsNullOrWhiteSpace(compositionIssue))
+                {
+                    rollbackIssue = string.IsNullOrWhiteSpace(rollbackIssue)
+                        ? compositionIssue
+                        : $"{rollbackIssue} Composition cleanup failed. {compositionIssue}";
+                }
                 return SceneAdoptionResult(
                     rollbackSucceeded
                         ? ScenePlayerActorAdoptionStatus.FailedRuntimeContentRegistration
@@ -608,7 +667,9 @@ namespace Immersive.Framework.PlayerParticipation
                     resolvedSource,
                     resolvedReason,
                     rollbackSucceeded
-                        ? $"Scene Player Actor adoption threw '{exception.GetType().Name}'. {exception.Message}"
+                        ? compositionClosed
+                            ? $"Scene Player Actor adoption threw '{exception.GetType().Name}'. {exception.Message}"
+                            : $"Scene Player Actor adoption threw '{exception.GetType().Name}'. {exception.Message} Composition cleanup failed. {compositionIssue}"
                         : $"Scene Player Actor adoption threw '{exception.GetType().Name}'. {exception.Message} Rollback failed. {rollbackIssue}");
             }
         }

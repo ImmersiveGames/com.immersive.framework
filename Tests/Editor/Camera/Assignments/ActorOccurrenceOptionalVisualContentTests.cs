@@ -64,7 +64,6 @@ namespace Immersive.Framework.Camera.Tests
 
             try
             {
-                Assert.That(profile.VisualContentPrefab, Is.Null);
                 Assert.That(profile.HasVisualContentPrefab, Is.False);
                 Assert.That(profile.TryGetActorProfileId(out _, out string issue), Is.True, issue);
             }
@@ -91,6 +90,30 @@ namespace Immersive.Framework.Camera.Tests
             }
             finally
             {
+                Object.DestroyImmediate(profile);
+            }
+        }
+
+        [Test]
+        public void ManagerProvisionedProfileValidationRejectsUnmigratedLegacyVisual()
+        {
+            ActorProfile profile = ScriptableObject.CreateInstance<ActorProfile>();
+            GameObject legacyVisual = new GameObject("Legacy Visual");
+            SetPrivateField(profile, "legacyPresentationPrefab", legacyVisual);
+
+            try
+            {
+                Assert.That(AttachedPlayerActorMaterializationAdapter.TryValidateProfile(
+                    profile,
+                    out _,
+                    out PlayerActorMaterializationStatus status,
+                    out string issue), Is.False);
+                Assert.That(status, Is.EqualTo(PlayerActorMaterializationStatus.RejectedInvalidProfile));
+                StringAssert.Contains("explicit Actor Profile visual-content migration", issue);
+            }
+            finally
+            {
+                Object.DestroyImmediate(legacyVisual);
                 Object.DestroyImmediate(profile);
             }
         }
@@ -177,6 +200,8 @@ namespace Immersive.Framework.Camera.Tests
         {
             SceneProvidedLocalPlayerAuthoring authoring = CreateSceneProvidedActor(out GameObject hostObject);
             PlayerActorRuntimeHost runtimeHost = hostObject.GetComponentInChildren<PlayerActorRuntimeHost>(true);
+            GameObject visualPrefab = new GameObject("Actor Visual Prefab");
+            SetActorVisualContent(authoring.ActorProfile, visualPrefab);
             var mountObject = new GameObject("Visual Content Mount");
             mountObject.transform.SetParent(runtimeHost.transform, false);
             var visualObject = new GameObject("Visual Content");
@@ -193,9 +218,59 @@ namespace Immersive.Framework.Camera.Tests
             }
             finally
             {
+                Object.DestroyImmediate(visualPrefab);
                 Object.DestroyImmediate(authoring.ActorProfile);
                 Object.DestroyImmediate(authoring.PlayerSlotProfile);
                 Object.DestroyImmediate(hostObject);
+            }
+        }
+
+        [Test]
+        public void CompositionAdoptsSceneVisualWithoutDuplicatingOrDestroyingIt()
+        {
+            const string sessionId = "session.scene-composition-adoption";
+            RuntimeContentOwner owner = RuntimeContentOwner.Session(sessionId, "Scene composition adoption test");
+            Assert.That(PlayerActorMaterializationOperationId.TryCreate(
+                sessionId,
+                owner,
+                PlayerSlotId.Player1,
+                1,
+                out PlayerActorMaterializationOperationId operationId,
+                out string operationIssue), Is.True, operationIssue);
+
+            ActorProfile profile = ScriptableObject.CreateInstance<ActorProfile>();
+            GameObject actorRoot = new GameObject("Scene Actor Root");
+            var mount = new GameObject("Visual Content Mount");
+            mount.transform.SetParent(actorRoot.transform, false);
+            var visualPrefab = new GameObject("Actor Visual Prefab");
+            var sceneVisual = new GameObject("Authored Scene Visual");
+            sceneVisual.transform.SetParent(mount.transform, false);
+            SetActorVisualContent(profile, visualPrefab);
+
+            try
+            {
+                Assert.That(ActorCompositionRuntimeBinding.TryCreate(
+                    profile,
+                    mount.transform,
+                    sceneVisual,
+                    operationId,
+                    out ActorCompositionRuntimeBinding binding,
+                    out string issue), Is.True, issue);
+                Assert.That(binding, Is.Not.Null);
+                Assert.That(binding.VisualContent, Is.SameAs(sceneVisual));
+                Assert.That(mount.transform.childCount, Is.EqualTo(1),
+                    "Composer adopts the exact Scene object and must not instantiate the Profile prefab beside it.");
+                Assert.That(binding.TryClose(out issue), Is.True, issue);
+                Assert.That(sceneVisual, Is.Not.Null,
+                    "Composer release retains an adopted Scene object; its producer remains responsible for root teardown.");
+                Assert.That(sceneVisual.transform.parent, Is.SameAs(mount.transform));
+                Assert.That(mount.transform.childCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(actorRoot);
+                Object.DestroyImmediate(visualPrefab);
+                Object.DestroyImmediate(profile);
             }
         }
 
@@ -579,6 +654,16 @@ namespace Immersive.Framework.Camera.Tests
             actorMountObject.transform.SetParent(hostRoot.transform, false);
             SetPrivateField(host, "playerInput", playerInput);
             SetPrivateField(host, "actorMount", actorMountObject.transform);
+            RouteAsset route = ScriptableObject.CreateInstance<RouteAsset>();
+            SetPrivateField(route, "routeId", "manager-composition-activation-test");
+            var routeBinding = hostRoot.AddComponent<RoutePlayerSpatialEntryRuntimeBinding>();
+            routeBinding.Configure(new RoutePlayerSpatialEntryContext(
+                route,
+                1,
+                new RouteContentDiscoveryScope(
+                    route,
+                    Array.Empty<RouteContentDiscoveryScene>(),
+                    Array.Empty<GameObject>())));
 
             GameObject runtimeHostPrefabObject = new GameObject("Player Actor Runtime Host Prefab");
             PlayerActorDeclaration prefabDeclaration =
@@ -592,7 +677,7 @@ namespace Immersive.Framework.Camera.Tests
                 mountObject.transform.SetParent(runtimeHostPrefabObject.transform, false);
                 SetPrivateField(runtimeHostPrefab, "presentationMount", mountObject.transform);
                 GameObject visualPrefab = new GameObject("Visual Content Prefab");
-                SetPrivateField(profile, "presentationPrefab", visualPrefab);
+                SetActorVisualContent(profile, visualPrefab);
             }
             SetPrivateField(host, "playerActorRuntimeHostPrefab", runtimeHostPrefab);
 
@@ -647,6 +732,25 @@ namespace Immersive.Framework.Camera.Tests
                 Assert.That(materialized.Request.ActorId, Is.EqualTo(actorId));
                 Assert.That(materialized.HasPhysicalEvidence, Is.True);
                 Assert.That(materialized.VisualContent != null, Is.EqualTo(withVisualContent));
+                if (withVisualContent)
+                {
+                    Assert.That(materialized.Handle.Composition, Is.Not.Null);
+                    Assert.That(materialized.VisualContent.transform.parent,
+                        Is.SameAs(materialized.Handle.PlayerActorRuntimeHost.VisualContentMount));
+                    Assert.That(materialized.Handle.PlayerActorRuntimeHost.VisualContentMount.childCount,
+                        Is.EqualTo(1), "Initial Manager materialization must produce the single Base visual once.");
+                    Assert.That(materialized.VisualContent.activeSelf, Is.False,
+                        "The acquired Base visual is staged inactive until Actor activation.");
+                }
+                Assert.That(materialized.Handle.TryActivate(
+                    "test",
+                    "manager-provisioned-activate",
+                    out string activationIssue), Is.True, activationIssue);
+                if (withVisualContent)
+                {
+                    Assert.That(materialized.VisualContent.activeSelf, Is.True,
+                        "Actor activation activates the Composer-managed Base visual.");
+                }
                 Assert.That(adapter.TryReleaseMaterialization(
                     materialized.Handle,
                     "test",
@@ -655,14 +759,15 @@ namespace Immersive.Framework.Camera.Tests
             }
             finally
             {
-                if (profile.VisualContentPrefab != null)
+                if (profile.TryGetVisualContentPrefab(out GameObject profileVisualPrefab))
                 {
-                    Object.DestroyImmediate(profile.VisualContentPrefab);
+                    Object.DestroyImmediate(profileVisualPrefab);
                 }
                 Object.DestroyImmediate(hostRoot);
                 Object.DestroyImmediate(runtimeHostPrefabObject);
                 Object.DestroyImmediate(profile);
                 Object.DestroyImmediate(slotProfile);
+                Object.DestroyImmediate(route);
             }
         }
 
@@ -771,7 +876,7 @@ namespace Immersive.Framework.Camera.Tests
             GameObject visualPrefab = Track(new GameObject("Actor Visual Prefab"));
             visualPrefab.SetActive(false);
             visualPrefab.AddComponent<ActorVisualReleaseLifecycleProbe>();
-            SetPrivateField(profile, "presentationPrefab", visualPrefab);
+            SetActorVisualContent(profile, visualPrefab);
             SetPrivateField(localPlayerHost, "playerActorRuntimeHostPrefab", runtimeHostPrefab);
 
             var slot = new PlayerSlotRuntimeSnapshot(
@@ -895,6 +1000,17 @@ namespace Immersive.Framework.Camera.Tests
                 .GetField(fieldName, System.Reflection.BindingFlags.Instance |
                     System.Reflection.BindingFlags.NonPublic)
                 .SetValue(target, value);
+        }
+
+        private static void SetActorVisualContent(ActorProfile profile, GameObject prefab)
+        {
+            SetPrivateField(
+                profile,
+                "compositionParts",
+                new List<ActorCompositionPart>
+                {
+                    new ActorCompositionPart("visual", prefab)
+                });
         }
     }
 

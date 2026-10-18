@@ -17,7 +17,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty _icon;
         private SerializedProperty _actorKind;
         private SerializedProperty _actorRole;
-        private SerializedProperty _presentationPrefab;
+        private SerializedProperty _compositionParts;
+        private SerializedProperty _legacyPresentationPrefab;
 
         private bool _showAdvanced;
         private bool _hasValidationResult;
@@ -31,7 +32,8 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             _icon = serializedObject.FindProperty("icon");
             _actorKind = serializedObject.FindProperty("actorKind");
             _actorRole = serializedObject.FindProperty("actorRole");
-            _presentationPrefab = serializedObject.FindProperty("presentationPrefab");
+            _compositionParts = serializedObject.FindProperty("compositionParts");
+            _legacyPresentationPrefab = serializedObject.FindProperty("legacyPresentationPrefab");
         }
 
         public override void OnInspectorGUI()
@@ -177,13 +179,37 @@ namespace Immersive.Framework.Editor.PlayerParticipation
 
         private void DrawPresentation()
         {
-            DrawSection("Optional Visual Content");
+            DrawSection("Base Composition");
 
             EditorGUILayout.PropertyField(
-                _presentationPrefab,
+                _compositionParts,
                 new GUIContent(
-                    "Visual Content Prefab",
-                    "Optional Actor-specific visual content materialized under the configured Actor visual-content mount. It does not own Actor state or pose."));
+                    "Base Content Parts",
+                    "Initial keyed parts for this Actor occurrence. The 'visual' key is mounted below Visual Content Mount."),
+                true);
+
+            if (_legacyPresentationPrefab.objectReferenceValue != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "This profile still contains legacy presentationPrefab data. Runtime materialization requires the explicit migration below; there is no runtime fallback.",
+                    MessageType.Warning);
+                if (GUILayout.Button("Migrate This Actor Profile"))
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    ActorProfileVisualContentMigrationResult result =
+                        ActorProfileVisualContentMigration.MigrateAsset((ActorProfile)target);
+                    serializedObject.Update();
+                    ClearValidationResult();
+                    if (result.Status is ActorProfileVisualContentMigrationStatus.Invalid or ActorProfileVisualContentMigrationStatus.Conflict)
+                    {
+                        Debug.LogError($"[IF-ADR-050] {result.Status} '{result.AssetPath}'. {result.Message}", target);
+                    }
+                    else
+                    {
+                        Debug.Log($"[IF-ADR-050] {result.Status} '{result.AssetPath}'. {result.Message}", target);
+                    }
+                }
+            }
         }
 
         private void DrawConfigurationStatus()
@@ -287,9 +313,9 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     "Typed ActorProfileId",
                     typedIdentity);
 
-                GameObject visualContent = profile.VisualContentPrefab;
+                profile.TryGetVisualContentPrefab(out GameObject visualContent);
                 EditorGUILayout.TextField(
-                    "Visual Content Asset Path",
+                    "Base Visual Asset Path",
                     visualContent != null
                         ? AssetDatabase.GetAssetPath(visualContent)
                         : string.Empty);

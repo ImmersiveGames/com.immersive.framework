@@ -5,7 +5,6 @@ using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.PlayerParticipation;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.InputSystem;
 namespace Immersive.Framework.Editor.PlayerParticipation
 {
     /// <summary>
@@ -63,7 +62,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     profile);
             }
 
-            ValidateOptionalVisualContent(profile, report);
+            ValidateCompositionParts(profile, report);
 
             if (includeProjectDuplicateScan)
             {
@@ -90,7 +89,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' visualContent='{(profile.VisualContentPrefab != null ? profile.VisualContentPrefab.name : "<none>")}'.",
+                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' compositionParts='{profile.CompositionParts.Count}'.",
                     profile);
             }
 
@@ -150,31 +149,33 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             return report;
         }
 
-        private static void ValidateOptionalVisualContent(
+        private static void ValidateCompositionParts(
             ActorProfile profile,
             FrameworkAuthoringValidationReport report)
         {
-            GameObject visualContent = profile.VisualContentPrefab;
-            if (visualContent == null)
-            {
-                return;
-            }
-
-            if (!PrefabUtility.IsPartOfPrefabAsset(visualContent))
+            if (profile.HasLegacyPresentationPrefab)
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' configured optional visual content '{visualContent.name}' is not a prefab asset.",
+                    $"ActorProfile '{profile.name}' still has a legacy visual reference. Run Tools > Immersive Framework > Migrate Actor Profile Visual Content.",
                     profile);
                 return;
             }
 
-            if (visualContent.GetComponentInChildren<ActorDeclaration>(true) != null ||
-                visualContent.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null ||
-                visualContent.GetComponentInChildren<PlayerInput>(true) != null)
+            if (!ActorCompositionProfileContract.TryValidate(profile, out string issue))
             {
-                report.AddError(
-                    $"Visual-content Prefab '{visualContent.name}' must not contain PlayerInput, Framework Actor declarations or Player Actor Runtime Host infrastructure.",
-                    visualContent);
+                report.AddError(issue, profile);
+                return;
+            }
+
+            for (int index = 0; index < profile.CompositionParts.Count; index++)
+            {
+                ActorCompositionPart part = profile.CompositionParts[index];
+                if (!PrefabUtility.IsPartOfPrefabAsset(part.Prefab))
+                {
+                    report.AddError(
+                        $"Actor Profile composition key '{part.Key}' requires a Prefab asset; '{part.Prefab.name}' is not a Prefab asset.",
+                        part.Prefab);
+                }
             }
         }
     }
