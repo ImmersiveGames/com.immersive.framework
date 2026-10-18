@@ -941,7 +941,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Release publication pending; apply the four GO/NO-GO gates above. |
 | 048 | ACCEPTED — ordered 1.1.0 Stable readiness roadmap | No Runtime/API behavior; no maturity changes | Execution pending; no phase is certified complete; current 1.1.0 disposition remains NO-GO. |
 | 049 | ACCEPTED / EXPERIMENTAL / PUBLISHED in `1.2.0-preview.2` | Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. Source `d588e1c481692393360e93962cd587fe60a031d3`, tag `v1.2.0-preview.2`, workflow [#22](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38998090165) succeeded; Stable promotion job was skipped. [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.2) is a prerelease with `com.immersive.framework-1.2.0-preview.2.tgz`, SHA-256 `af3408453bd238f9ed8f0f786419c729eb8cd65fae5f07026b1c1da0e3d816c5`. OpenUPM status: `succeeded`, signed, published version `1.2.0-preview.2`; downloaded registry tarball SHA-256 matches the Release asset. | PEGA consumer integration remains pending; see [Actor Occurrence References](../Guides/Actor-Occurrence-References.md). |
-| 050 | ACCEPTED — FUTURE ARCHITECTURE; PLAN v1 APPROVED; D00–D07 COMPLETE; D08 MIGRATION OPEN; FRAMEWORK PREVIEW PUBLICATION AUTHORIZED | Target accepted 2026-10-17; [contract migration](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) and [reconciliation crosswalk](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) recorded. D01 changes only the existing managed visual release order. D02 shifts Player occurrence-ID issuance to physical preparation commit and preserves physical resolver availability semantics; M02 keeps `ActorId` with the logical Actor across root replacement unless an explicit logical switch is requested. Its identity-policy request remains Experimental and non-serialized. D05 adds a task-gated scoped API that targets only the exact current physical Actor; no Stable schema changed. D06 postcommit Gameplay/Camera reprojection, retired-A cleanup and selection recovery proofs are complete. The Project Owner's 2026-10-18 QAFramework EditMode result reports 430/430 passed, 0 failed, including Composition 16/16 and Camera 99/99; this closes D07's focused EditMode acceptance at owner-reported provenance. D08 migration disposition remains open. | [IF-ADR-050](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) / [IF-SPEC-050](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md) accepted target. [Implementation plan v1](../Plans/IF-PLAN-ADR-050-ACTOR-COMPOSITION-AND-OCCURRENCE-LIFECYCLE.v1.md) is **Approved — implementation task-gated**. [D00 baseline](../Reconciliation/IF-ADR-050-D00-IMPLEMENTATION-BASELINE-2026-10-17.md) completed at `086efe9cd5f5aa3b52d3e0757c4fe2a7c25f617b`. The Project Owner explicitly authorized Framework preview `1.2.0-preview.3` publication on 2026-10-18; this supersedes the earlier hold for that Framework preview only and does not close D08 or promote Stable contracts. |
+| 050 | ACCEPTED — FUTURE ARCHITECTURE; PLAN v1 APPROVED; D00–D07 COMPLETE; D08 MIGRATION OPEN; FRAMEWORK PREVIEW 1.2.0-preview.3 PUBLISHED | Target accepted 2026-10-17; [contract migration](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) and [reconciliation crosswalk](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) recorded. D01 changes only the existing managed visual release order. D02 shifts Player occurrence-ID issuance to physical preparation commit and preserves physical resolver availability semantics; M02 keeps `ActorId` with the logical Actor across root replacement unless an explicit logical switch is requested. Its identity-policy request remains Experimental and non-serialized. D05 adds a task-gated scoped API that targets only the exact current physical Actor; no Stable schema changed. D06 postcommit Gameplay/Camera reprojection, retired-A cleanup and selection recovery proofs are complete. The Project Owner's 2026-10-18 QAFramework EditMode result reports 430/430 passed, 0 failed, including Composition 16/16 and Camera 99/99; this closes D07's focused EditMode acceptance at owner-reported provenance. D08 migration disposition remains open. | [IF-ADR-050](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) / [IF-SPEC-050](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md) accepted target. [Implementation plan v1](../Plans/IF-PLAN-ADR-050-ACTOR-COMPOSITION-AND-OCCURRENCE-LIFECYCLE.v1.md) is **Approved — implementation task-gated**. [D00 baseline](../Reconciliation/IF-ADR-050-D00-IMPLEMENTATION-BASELINE-2026-10-17.md) completed at `086efe9cd5f5aa3b52d3e0757c4fe2a7c25f617b`. The Project Owner explicitly authorized Framework preview `1.2.0-preview.3` publication on 2026-10-18; this supersedes the earlier hold for that Framework preview only and does not close D08 or promote Stable contracts. |
 
 ## IF-ADR-050 implementation entry — D00 — 2026-10-17
 
@@ -1145,6 +1145,30 @@ D08 remains **open** for the user-run migration and disposition of populated
 Actor Profiles in FirstGame and PEGA. The test result does not certify those
 serialized asset migrations. No consumer assets were modified by this release
 preparation.
+
+### Framework preview publication result — 2026-10-18
+
+Tag `v1.2.0-preview.3` points to source commit
+`56fd7b836804d6602cae568658a526f29a88e8d1`. GitHub Actions run
+[#23](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/39099208423)
+completed successfully: candidate build/sign, provenance and artifact identity
+checks, GitHub Release creation, OpenUPM publication, and registry byte-hash
+verification all passed. Stable promotion was skipped, as expected for a
+preview.
+
+The [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.3)
+is a prerelease and contains
+`com.immersive.framework-1.2.0-preview.3.tgz` (2,044,017 bytes; SHA-256
+`f079dfad9a9a46b596f572a7b5c3de13b83c55f53bdfee496080238eb25fdba1`). The
+workflow confirmed the OpenUPM tarball has the same SHA-256. The workflow's
+signed-pack/provenance steps are pipeline evidence; independent cryptographic
+signature verification is not claimed.
+
+This publication does not close D08. Migration of populated FirstGame and PEGA
+Actor Profiles remains unverified and must be recorded separately before
+claiming their migrated serialized assets are validated. This publication
+result is a post-tag tracker update; the published tag remains at the source
+commit above.
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
