@@ -21,11 +21,13 @@ reimplementing their primitives.
 
 ## Requirements
 
-- Unity `6000.5.0f1` or newer in the supported `6000.5` line;
-- `com.immersive.foundation` `0.2.2`;
-- `com.immersive.logging` `0.2.3`;
-- Cinemachine `3.1.7`;
-- Input System `1.19.0`.
+- Stable Framework `1.1.0` uses Unity `6000.5.0f1` or newer in the supported
+  `6000.5` line, Foundation `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7`,
+  and Input System `1.19.0`.
+- The current `master` source candidate, Framework `1.2.0-preview.4`, declares
+  Composition `0.1.0-preview.3`, Foundation `0.2.3`, Logging `0.2.4`,
+  Cinemachine `3.1.7`, and Input System `1.19.0`. It has not been tagged or
+  released.
 
 There is no support or validation matrix for earlier Unity versions.
 
@@ -49,19 +51,45 @@ scope, then declare the Framework package:
 }
 ```
 
-Version `1.1.0` declares Foundation `0.2.2`, Logging `0.2.3`, Cinemachine
-`3.1.7` and Input System `1.19.0`. Git consumers must declare custom Git
-dependencies themselves because Unity cannot resolve their semantic versions
-from Git alone. Earlier package releases remain in the
-[changelog](CHANGELOG.md) as history; they are not migration baselines for
-1.1.0.
+This manifest value deliberately keeps Framework on Stable `1.1.0`. Package
+Manager will not replace it automatically with a preview release or a newer
+Git branch. To use the current `.4` source candidate before publication, use the
+Git development setup below and refresh the package resolution.
 
-The planned next Experimental Actor lifecycle and composition candidate is
-`1.2.0-preview.4`; its package metadata will advance after Composition `.3` is
-signed and available through OpenUPM. The Stable
-baseline remains `1.1.0`; the preview does not promote Experimental contracts
-to Stable. After the candidate appears in OpenUPM, install Framework by its
-minimum SemVer only:
+The Stable `1.1.0` baseline remains the released OpenUPM installation example
+above. The current source candidate is Framework `1.2.0-preview.4` on `master`;
+its `package.json` declares Composition `0.1.0-preview.3`, Foundation `0.2.3`
+and Logging `0.2.4`. Composition `.3` has a signed [GitHub Release](https://github.com/ImmersiveGames/com.immersive.composition/releases/tag/v0.1.0-preview.3),
+but its OpenUPM listing/installability and a Framework `.4` registry release
+have not been confirmed. The preview does not promote Experimental contracts
+to Stable. Earlier package releases remain in the [changelog](CHANGELOG.md)
+as history; they are not migration baselines for `1.1.0`.
+
+For Framework development from Git, Unity cannot resolve custom-package SemVer
+dependencies to Git packages. Add Framework and each custom package it
+depends on as direct Git dependencies in the project's existing
+`Packages/manifest.json`; the current candidate graph includes:
+
+```json
+{
+  "dependencies": {
+    "com.immersive.framework": "https://github.com/ImmersiveGames/com.immersive.framework",
+    "com.immersive.composition": "https://github.com/ImmersiveGames/com.immersive.composition.git",
+    "com.immersive.foundation": "https://github.com/ImmersiveGames/com.immersive.foundation.git",
+    "com.immersive.logging": "https://github.com/ImmersiveGames/com.immersive.logging.git"
+  }
+}
+```
+
+These URLs select the repositories' default branches because no tag/ref is
+specified. `Packages/packages-lock.json` still pins the resolved commit hashes;
+Unity does not continuously follow branch updates. Refresh a package through
+Package Manager to resolve a newer commit. Do not hand-edit the lockfile.
+
+When Framework `.4` and Composition `.3` are confirmed available from OpenUPM,
+the registry installation path can declare Framework only and resolve
+Composition transitively. The Framework package declares Composition's minimum
+SemVer, so do not add a second Composition source in that registry-based setup:
 
 ```json
 {
@@ -78,12 +106,9 @@ minimum SemVer only:
 }
 ```
 
-The Framework package declares Composition's minimum SemVer, so Unity installs
-it transitively from the same OpenUPM registry. Do not add Composition as a
-second project dependency. `Packages/packages-lock.json` records the exact
-resolved graph; update it through Package Manager, not by hand. The Project
-Owner's QAFramework EditMode result and FirstGame / PEGA Actor Profile
-migrations are recorded in the
+`Packages/packages-lock.json` records the exact resolved graph; update it
+through Package Manager, not by hand. The Project Owner's QAFramework EditMode
+result and FirstGame / PEGA Actor Profile migrations are recorded in the
 [Framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md#if-adr-050-d08-closeout--consumer-actor-profile-migration--2026-10-18).
 For the new Base-part and runtime contribution model, see the
 [Actor Composition Usage guide](Documentation~/Guides/Actor-Composition-Usage.md).

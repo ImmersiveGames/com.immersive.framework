@@ -2,10 +2,11 @@
 
 Status: **Experimental — IF-ADR-050**. This guide describes the Actor composition
 source model following the ScriptableObject-per-part serialization decision in
-IF-SPEC-050 §3.4. The model is present in the current local source and planned
-for Framework `1.2.0-preview.4`; its package metadata will advance after signed
-Composition `.3` is available in OpenUPM. Consumer import evidence for the
-signed package graph remains pending. It is not a Stable API promise.
+IF-SPEC-050 §3.4. The model is present in Framework `master`, whose current
+source candidate is `1.2.0-preview.4`; that candidate is not tagged or released.
+Composition `.3` has a signed GitHub Release, but OpenUPM registry installation
+has not been confirmed. These Experimental surfaces are not a Stable API
+promise.
 
 ## What changed
 
@@ -181,14 +182,18 @@ results must be checked rather than treated as successful rollback.
   this guide are Experimental. Follow
   [API maturity governance](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
   and the [public API reference](../API/Public-API.md#player-participation-and-actor).
-- Install both packages as described in the [package README](../../README.md).
+- For the released OpenUPM graph, install Framework only after the required
+  Framework and Composition versions are available there; Framework declares
+  Composition transitively. For Framework development from Git, list Framework,
+  Composition and its other custom Git dependencies directly in the project
+  manifest as described in the [package README](../../README.md). Unity's lock
+  file records exact commits, so a default-branch Git URL does not update itself.
 
-When Framework `1.2.0-preview.4` is published, it will declare Composition as a
-UPM dependency. Consumers will configure the `com.immersive` OpenUPM scope and
+Framework `1.2.0-preview.4` already declares Composition `.3` as a UPM package
+dependency. The registry path will use the `com.immersive` OpenUPM scope and
 declare only Framework in `Packages/manifest.json`; Unity will resolve
-Composition transitively and record the exact versions in
-`Packages/packages-lock.json`. Composition is not a parallel Actor runtime.
-The composition feature remains optional for an Actor Profile with no Base
-parts.
+Composition transitively when both package versions are available from that
+registry. Composition is not a parallel Actor runtime. The feature remains
+optional for an Actor Profile with no Base parts.
 
 Decision: [IF-ADR-050](../Architecture/ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md).
