@@ -2,7 +2,7 @@
 
 Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-10-17**
+Last updated: **2026-10-18**
 
 ## 1.1.0 first Stable release readiness
 
@@ -1097,6 +1097,21 @@ Camera Observation authoring rejects a target inside the NonPlayer publication m
 **Compatibility and maturity:** these APIs remain Experimental; no Stable contract changed. The new serialized mount is optional and existing occurrence publication continues without composition. A producer must assign it before opening a composition contribution. Camera Observation targets previously placed under a Player visual mount or assigned NonPlayer composition mount must move to a stable Actor-root anchor outside that mount. Scene-Provided full-root replacement remains unsupported. Existing evidence reused includes `ActorCompositionRecompositionTests.ClosingVisualOverrideRestoresExactSceneProvidedObject` and `ActorOccurrenceReferenceRuntimeTests.PlayerPhysicalReferenceSurvivesActivityExitAndObservesReplacementAndLeave`; existing exact dynamic publication and scope-compensation tests remain in place.
 
 **Validation:** no Unity import, compile or tests were run by this session, per repository `AGENTS.md`. Static `git diff --check` completed without whitespace errors; all 1,242 package `.meta` GUIDs are unique; repository search found no serialized Framework assets using `ActorOccurrencePublication` or `ActorCameraSubjectAuthoring`. The Project Owner's 2026-10-18 Unity Test Runner screenshot reports **QAFramework EditMode 430/430 passed, 0 failed**, including Camera Editor **99/99**. This supersedes the pre-D07 baseline and the intermediate failures in `TestResults_20261018_011824.xml` and `TestResults_20261018_012256.xml`; the new NonPlayer composition and mount-boundary cases are included in the 99 Camera tests. Evidence is user-reported and the screenshot does not identify an exact Framework SHA or Unity version. D07 is complete. Residual failure boundary: after a Composition close returns failed/degraded, the current kernel cannot retry that close; Framework retains the exact pending receipt and reports it without claiming completion. D08 candidate preparation is the next active work.
+
+### D08 — local package candidates and manual import gate — 2026-10-18
+
+**Status: Candidate artifacts prepared; exact-tarball Unity import, compile and EditMode validation pending.** These local archives are not tagged or published; no release decision has been made.
+
+| Package | Source commit | Package version | Local archive | SHA-256 |
+|---|---|---|---|---|
+| `com.immersive.composition` | `ce2ffe30c392f375a27e74c964cfe0e9b4b36c4a` | `0.1.0-preview.2` | `Candidates/IF-ADR-050-D08-20261018/com.immersive.composition-0.1.0-preview.2.tgz` | `69920dd6715f334bebc2d5b9b31d97b9ff2fd84ee547a7a77ff511607364930d` |
+| `com.immersive.framework` | `5f6556d2622300b6b93ba4c40d86d329f0cea397` | `1.2.0-preview.3` | `Candidates/IF-ADR-050-D08-20261018/com.immersive.framework-1.2.0-preview.3.tgz` | `d3f2b5c46a15446fa4cc5e250e2b8782687abe5cb6811b110aa2122dc86f9235` |
+
+Framework `.2` is already a released tag, so D08 advances the local candidate metadata to `.3`; the Framework dependency graph pins Composition `.2`. Both package JSON files were parsed, candidate archives contain their package manifests, runtime/test asmdefs, implementation/tests and documentation, and archive manifests match the recorded names, versions and dependency. `npm pack` produced the local UPM-compatible tarballs. The Project Owner's 430/430 screenshot is source-tree evidence before these exact archives were imported; it does not certify either tarball.
+
+Read-only serialized-asset inventory found five QAFramework Actor Profiles with null legacy visual references; FirstGame has five populated legacy visual references plus one null visual; PEGA has two populated legacy visual references. The package already provides the idempotent Editor migration at `Tools/Immersive Framework/Migrate Actor Profile Visual Content`. No consumer repository or asset was modified. FirstGame and PEGA profile migration and reimport/reopen evidence remain D08 work; the current manual checkpoint can run in the existing QAFramework project.
+
+**Next manual checkpoint in QAFramework:** replace its two local package references with the Composition `.2` and Framework `.3` archives above (Composition first); wait for UPM import and confirm zero compile errors; run full EditMode and confirm 430/430, including Camera 99 and Composition 16; run the migration menu and provide its final per-asset summary. Its five null-visual profiles should be reported as ignored, with zero invalid/conflict results. Do not tag or publish either package at this checkpoint. D08 remains open until exact-artifact validation and the populated FirstGame/PEGA asset migration disposition are recorded.
 
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
