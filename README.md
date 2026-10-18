@@ -56,10 +56,35 @@ from Git alone. Earlier package releases remain in the
 [changelog](CHANGELOG.md) as history; they are not migration baselines for
 1.1.0.
 
-The Experimental Actor Occurrence Reference preview is published on OpenUPM as
-`1.2.0-preview.2`. Consumers evaluating IF-ADR-049 should pin this exact
-version; PEGA integration validation is still pending. This preview does not
-change the Stable baseline or promote the new API contracts.
+The Experimental Actor lifecycle and composition preview is `1.2.0-preview.3`.
+The Stable baseline remains `1.1.0`; the preview does not promote Experimental
+contracts to Stable. To evaluate IF-ADR-050, declare both packages in the
+project manifest:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": ["com.immersive"]
+    }
+  ],
+  "dependencies": {
+    "com.immersive.framework": "1.2.0-preview.3",
+    "com.immersive.composition": "https://github.com/ImmersiveGames/com.immersive.composition.git#v0.1.0-preview.2"
+  }
+}
+```
+
+The Framework package declares Composition's semantic version. Unity does not
+support Git dependencies inside a package's `package.json`, so consumers must
+declare Composition as a direct project dependency and pin its Git tag in
+`Packages/manifest.json`. The QAFramework candidate import and 430/430 EditMode
+result were owner-reported against the local D08 tarballs; migration of
+populated FirstGame and PEGA Actor Profiles remains unverified. Use **Tools >
+Immersive Framework > Migrate Actor Profile Visual Content** and review its
+per-asset summary before runtime use of those profiles.
 
 ## Getting started
 

@@ -2,11 +2,12 @@
 
 All notable package changes are documented in this file.
 
-## [1.2.0-preview.3] - 2026-10-18 — IF-ADR-050 Actor lifecycle and composition candidate; unpublished
+## [1.2.0-preview.3] - 2026-10-18 — IF-ADR-050 Actor lifecycle and composition preview
 
-- Adds Experimental committed Actor occurrence identity, guarded prepared Actor replacement, in-place keyed composition, root-stable Camera observation and owner-scoped NonPlayer composition integration. Existing Stable contracts and serialized schemas are not promoted or changed by this candidate.
-- Pins the Framework dependency on `com.immersive.composition` `0.1.0-preview.2`. QAFramework source EditMode evidence is Project Owner-reported at 430/430 passed, including Camera 99/99; import and validation of the immutable local package artifacts and populated consumer Actor Profile migration remain pending.
-- This is a local candidate only. No tag, GitHub Release, registry publication or Stable promotion is included.
+- Adds Experimental committed Actor occurrence identity, guarded prepared Actor replacement, in-place keyed composition, root-stable Camera observation and owner-scoped NonPlayer composition integration. Existing Stable contracts are not promoted or changed; the Experimental Actor Profile serialization change has an explicit Editor migration.
+- Pins the Framework dependency on `com.immersive.composition` `0.1.0-preview.2`. Project-level Git consumers should pin Composition to `v0.1.0-preview.2` in `Packages/manifest.json`; Unity does not support Git dependencies inside a package's `package.json`.
+- The Project Owner reports that QAFramework imported the local D08 candidate tarballs and its EditMode run passed 430/430 tests (Composition 16/16; Camera 99/99). The supplied NUnit XML does not record package hashes or Unity version. The tested Framework tarball SHA-256 was `d3f2b5c46a15446fa4cc5e250e2b8782687abe5cb6811b110aa2122dc86f9235`.
+- No Stable contract is promoted. Migration of populated legacy Actor Profiles in FirstGame and PEGA remains unverified; use **Tools > Immersive Framework > Migrate Actor Profile Visual Content** and review the per-asset result before relying on those migrated assets.
 
 ## [1.2.0-preview.2] - 2026-10-17 — Experimental Actor occurrence references; PEGA integration pending
 
