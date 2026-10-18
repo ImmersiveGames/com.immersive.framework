@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Immersive.Composition;
+using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
