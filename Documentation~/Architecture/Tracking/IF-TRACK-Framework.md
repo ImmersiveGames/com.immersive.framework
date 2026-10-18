@@ -1170,6 +1170,39 @@ claiming their migrated serialized assets are validated. This publication
 result is a post-tag tracker update; the published tag remains at the source
 commit above.
 
+### IF-ADR-050 D08 closeout — consumer Actor Profile migration — 2026-10-18
+
+**Status: Complete — package candidate, publication, QAFramework EditMode, and
+consumer migration gates have owner-provided evidence.**
+
+| Consumer | Prior serialized inventory | Project Owner migration report | Result |
+|---|---|---|---|
+| FirstGame | Five populated legacy visuals; one profile without a visual | `migrated='5' unchanged='0' ignored='1' invalid='0' conflicts='0'` | All populated profiles migrated; empty visual ignored. |
+| PEGA | Two populated legacy visuals | `migrated='2' unchanged='0' ignored='0' invalid='0' conflicts='0'` | Both populated profiles migrated; no invalid or conflicting asset reported. |
+
+The PEGA Editor log identifies
+`ActorProfileVisualContentMigration.MigrateAllMenu` in the installed package
+cache. The migration implementation applies serialized changes and calls
+`AssetDatabase.SaveAssetIfDirty` for each migrated profile. The per-asset
+preservation, conflict, null-content and idempotency cases remain covered by
+`ActorProfileVisualContentMigrationTests`. The existing QAFramework candidate
+run remains the exact-tarball NUnit result recorded above (430/430 passed,
+including Composition 16/16 and Camera 99/99); the successful preview
+publication and archive hash are recorded above.
+
+These consumer migration summaries are Project Owner reports, not raw
+per-asset diffs. Their logs do not identify a full immutable Framework SHA or
+show a separate close/reopen capture, so no such provenance or reopen claim is
+made. This is a residual evidence limitation, not a reported migration error.
+No Stable API or serialized contract changed; `ActorProfile` migration remains
+Experimental. No consumer project or Unity asset was edited by this worktree.
+
+The focused Framework/Composition tests cover same-root content recomposition,
+visual migration behavior, owner cleanup, and the Actor occurrence/selection
+commit boundaries. No extra PEGA-specific Play Mode scenario was run or is
+claimed. D08 closes at the package, test, publication, and authored-data
+migration boundary above; this does not certify unrelated PEGA gameplay flows.
+
 ## Current Activity content / visibility closure — IF-ADR-009 — 2026-08-30
 
 Current architecture:
