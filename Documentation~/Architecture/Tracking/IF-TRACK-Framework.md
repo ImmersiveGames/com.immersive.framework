@@ -2053,3 +2053,162 @@ Editor test was repeated. On that evidence, Phase 4 is **closed**. Phase 5
 was **pending / NO-GO** at this checkpoint. The Project Owner subsequently
 approved Stable `v1.1.0` on 2026-10-14; the current release execution is
 tracked in the current-status section above.
+
+## IF-ADR-050 ActorProfile Base-part serialization follow-up — plan approval — 2026-10-18
+
+**Status:** Supplemental plan v1 approved — implementation task-gated. The Project Owner selected one ScriptableObject per Base content part, approved the serialization/migration specification in IF-SPEC-050 §3.4, and authorized implementation with “implemente”. This is a separate serialization follow-up; the original IF-ADR-050 D08 closeout remains complete and is not reopened.
+
+**Plan:** [ActorProfile Base Content Part Assets and Migration v1](../Plans/IF-PLAN-ADR-050-ACTOR-PROFILE-PART-ASSETS.v1.md). The plan body is now a stable route. Progress, source revisions and validation results belong here.
+
+**Compatibility gate:** inline serialized values cannot be converted to object references by a field rename. Keep the old inline/legacy shape as explicit migration input, out of Runtime materialization, until identified consumer assets have migrated. Verify the generated asset references before clearing source fields. Preserve ActorProfile and existing Prefab GUIDs; each generated part asset receives a new GUID.
+
+## IF-ADR-050 ActorProfile Base Content Part assets — implementation — 2026-10-18
+
+**Plan:** v1 approved — implementation task-gated. This execution covers T1–T5 in the Framework checkout and stops at the owner-run QAFramework Unity validation gate. T6 consumer migration, legacy-field removal, package version changes and publication have not started.
+
+**Baseline captured before source edits:** Framework branch `master`, HEAD `c6636561581cd4eb49e918d163f73712e64c1bcf`. The initial working tree already contained documentation edits in `Public-API.md`, IF-SPEC-050, this Tracker, `Player-Usage.md`, both READMEs, plus the proposed part-asset plan and Actor Composition guide. Those pre-existing edits were preserved. This Tracker entry records the baseline after the source edit began; the exact pre-edit Git state was captured at task start but was not written into the Tracker before editing.
+
+The Framework package metadata remains `1.2.0-preview.3` and its existing dependency remains `com.immersive.composition` `0.1.0-preview.2`. The Composition checkout was read at `ce2ffe30c392f375a27e74c964cfe0e9b4b36c4a` on `main`; no Composition files, dependency declarations or package versions were changed. No consumer project, QAFramework asset, package release or tag was changed.
+
+An earlier uncommitted implementation snapshot was bound by SHA-256 manifest `a793c14417b4c7762d9d8a2e21db538bb89508209f7aee6c5ec03eaaaa6c0de6` over 2,350 files under `Runtime/`, `Editor/`, `Tests/` and `package.json`. Later source edits mean this digest does not identify the current working tree. The supplied QAFramework screenshot does not expose a source revision or package hash that could bind its run to a manifest.
+
+| Task | Source and evidence produced | Current status |
+|---|---|---|
+| T1 — part asset/profile schema | Added internal `Runtime/Actors/ActorCompositionPartAsset.cs`; `ActorProfile` now serializes ordered `baseContentParts` references and retains `compositionParts`/`legacyPresentationPrefab` only as migration input. Added serialization/share/no-auto-conversion tests in `Tests/Editor/CameraAuthoring/ActorProfileCompositionPartAssetTests.cs`. | Owner-reported full EditMode suite is green; exact source resolution and serialized-instance inspection remain unverified. |
+| T2 — one Runtime binding and validation | `ActorCompositionProfileContract` validates the referenced asset set and rejects legacy-only data. `ActorCompositionRuntimeBinding.TryCreate` converts the assets to the existing Composer descriptors. Manager/Scene-Provided validators and preparation paths now inspect `BaseContentParts`; the old inline list is not a Runtime materialization path. | Owner-reported full EditMode suite is green; exact source resolution remains unverified. |
+| T3 — Inspector and guidance | `ActorProfileEditor` shows the ordered asset list, creates and assigns a part under an editable profile-scoped `Assets/` folder, and describes sharing. Updated Actor Composition, Player Usage and Public API maturity text. | Inspector behavior has not been visually confirmed in the supplied evidence. |
+| T4 — explicit serialized migration | Reused `ActorProfileVisualContentMigration`; it validates inline dependencies/prefabs, merges equal legacy+inline visual values, writes deterministic per-profile assets, reuses only exact partial outputs, saves/verifies references before clearing input, blocks paths outside editable `Assets/`, and attempts rollback on failure. Expanded migration tests for order/dependencies, conflicts, invalid inputs, path blocking, sharing and partial output. | Owner-reported full EditMode suite is green; migration result and persisted asset/reference inspection remain pending. |
+| T5 — fixture conversion and validation gate | Camera/recomposition and optional-visual fixtures now build part assets; added rejection coverage for the no-fallback rule. | Owner-reported QAFramework screenshot shows 441/441 tests green; package provenance and individual test names are not visible. |
+
+**Maturity and compatibility:** `ActorProfile` remains Experimental under IF-GOV-001; `ActorCompositionPartAsset` is internal and introduces no public C# API. Stable schemas such as `GameApplicationAsset`, `RouteAsset` and `ActivityAsset` are untouched. Existing profiles with inline or legacy data are rejected by Runtime until explicitly migrated; there is no fallback. The prior visual-only D08 migration results do not migrate the new per-part asset references. Keep the old fields and migration reader until the identified consumers report successful migration.
+
+**Static checks:** `git diff --check` produced no whitespace errors. This session did not run Unity compile/import, tests, Play Mode, smoke or batchmode, as required by repository instructions. The Project Owner's screenshots report a green EditMode run and local package versions; the Framework checkout path/revision is not identified, so the run is not yet bound to this exact source tree.
+
+**Remaining manual validation:** inspect the Actor Profile migration result, ordered part references and generated assets in the project that owns the profiles, then save/reopen and rerun migration to confirm `Unchanged` without duplicates. QAFramework has no legacy Base-content data to exercise on its current durable profiles; the PEGA consumer assets remain inline and PEGA currently resolves the registry package. Do not create a clean Unity project.
+
+**Next eligible gate:** bind the QAFramework run to the visible Framework checkout/revision, then complete and record the serialized asset migration inspection. T6's consumer migration remains unstarted until those results are reviewed. D08 remains closed; no field removal or release is authorized by this record.
+
+### QAFramework validation evidence — 2026-10-18
+
+The Project Owner supplied a Unity Test Runner screenshot for QAFramework showing
+**441 tests passed, 0 failed and 0 ignored**. The visible assemblies include
+`Immersive.Framework.Authoring.Editor.Tests.dll` (47 tests) and
+`Immersive.Framework.Camera.Editor.Tests.dll` (100 tests), both green. This is
+owner-reported full EditMode evidence for the current QAFramework session and
+supersedes the earlier “NOT RUN” state for the test-run portion of T5.
+
+The QAFramework `Packages/manifest.json` and `Packages/packages-lock.json`
+resolve both `com.immersive.framework` and `com.immersive.composition` from
+`C:/Projetos/ImmersivePackages/...` with source `local`. The Package Manager
+screenshot shows Framework `1.2.0-preview.3` and Composition `0.1.0-preview.2`;
+`ProjectSettings/ProjectVersion.txt` identifies Unity `6000.5.0f1`. The local
+Framework checkout is on `master` at HEAD
+`c6636561581cd4eb49e918d163f73712e64c1bcf`, with uncommitted implementation
+changes present. Thus the project path/version are confirmed and match the
+working checkout, but the screenshots do not fingerprint the exact working
+tree contents loaded at test time. The test result remains **PASS —
+owner-reported against the local package; exact source snapshot not fingerprinted**.
+
+Read-only inspection after the Project Owner's migration logs found the
+serialized results persisted. In PEGA, the two ActorProfiles now each reference
+one generated `00_visual.asset`; in `planet-devourer`, all five sample
+ActorProfiles each reference one generated `00_visual.asset`. All seven profile
+references resolve to generated ScriptableObject assets, each asset has key
+`visual`, the original prefab GUID, and an empty dependency list. All seven
+profiles have `compositionParts: []` and `legacyPresentationPrefab: null`. The
+extra FirstGame `MinimalGame/PlayerProfiles/FG_FirstPersonActorProfile.asset`
+has no content and remains without a part, matching the reported `ignored=1`.
+This agrees with the supplied first-run results: PEGA `migrated=2`; FirstGame
+`migrated=5, ignored=1`; both have zero invalid/conflict/blocked results.
+
+Both consumer manifests and lockfiles now resolve Framework and Composition
+from `C:/Projetos/ImmersivePackages/...` as local packages. The Unity log stack
+path also identifies the local Framework migration source. The current
+Framework checkout remains on `master` at HEAD
+`c6636561581cd4eb49e918d163f73712e64c1bcf` with uncommitted implementation
+changes. The existing registry/Git tag `v1.2.0-preview.3` lacks
+`Runtime/Actors/ActorCompositionPartAsset.cs`; do not restore that old package
+after migration unless a newer compatible package is published. No consumer
+files were edited by this session and no Unity operation was run by Codex.
+
+| Gate | Result | Evidence boundary / remaining action |
+|---|---|---|
+| QAFramework full EditMode suite | **PASS — owner-reported** | Screenshot: 441/441 green, 0 failures, 0 ignored. Manifest/lock confirm local Framework + Composition paths; Framework is `1.2.0-preview.3`, Composition `0.1.0-preview.2`, Unity `6000.5.0f1`. Local Framework HEAD is `c6636561581c` with implementation changes in the working tree; exact test-time source fingerprint is unavailable. |
+| T5 focused fixture tests | **PASS within reported suite, conditional on Framework checkout resolution** | Authoring and Camera assemblies are green (47 and 100 tests). Test groups are collapsed, so individual names are not visible. |
+| T4 migration tests | **PASS within owner-reported full EditMode run, exact test names not visible** | QAFramework uses the local migration-capable checkout; all 441 tests are green. No migration-bearing durable QAFramework profile exists for an end-to-end asset conversion check. |
+| T6 FirstGame/PEGA consumer migration | **Complete — owner-run migration and serialized asset audit** | Owner logs: PEGA 2 migrated; FirstGame 5 migrated and 1 ignored; no invalid/conflict/blocked. Static inspection confirms seven generated assets and seven resolving profile references, with legacy lists cleared. The full 441-test suite includes `Migration_ConvertsLegacyReferenceToPartAssetAndIsIdempotent`, which verifies the second invocation returns `Unchanged`; no separate consumer menu rerun was performed or claimed. |
+
+T5's code and automated-test validation is accepted on the supplied screenshot
+against the QAFramework local package path. T6 migration was performed by the
+Project Owner in FirstGame and PEGA. The supplied logs, current local package
+manifests and on-disk reference audit satisfy the consumer migration gate; the
+idempotency behavior is covered by the passing focused Editor test. The
+serialization follow-up gate is **closed**. The legacy reader/fields remain in
+the Framework during the compatibility window; field removal, version changes
+and publication require their separate decisions. No consumer project was
+modified by this session.
+
+**Next eligible action:** none for the ActorProfile Base-part serialization follow-up. The known consumers are migrated and the gate is closed independently of release. Keep both consumers on a Framework source/version that contains `ActorCompositionPartAsset`; reverting to the old `v1.2.0-preview.3` tag would leave the new serialized references unsupported. Any field removal or package publication remains a separate, explicitly authorized release task. D08 remains closed; no consumer files were modified by this session and no release was made.
+
+## Signed OpenUPM distribution — Composition auto-install — 2026-10-18
+
+**Plan:** [Signed OpenUPM Distribution v3](../Plans/IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v3.md) is **Accepted — immutable**. On 2026-10-18 the Project Owner selected signed OpenUPM as the installation route to preserve Framework's transitive dependency on Composition. This authorizes package-by-package execution; it does not authorize a batch release.
+
+| Evidence | Current state |
+|---|---|
+| Framework baseline | `master`, HEAD `c6636561581cd4eb49e918d163f73712e64c1bcf`, with uncommitted ActorProfile part-asset implementation and documentation changes. Package version is `1.2.0-preview.3`; its manifest declares Composition `0.1.0-preview.2`. |
+| Composition baseline | `main`, HEAD `ce2ffe30c392f375a27e74c964cfe0e9b4b36c4a`, clean. Package version/tag is `0.1.0-preview.2`. GitHub Releases currently has no Composition release; its local package source is not yet a signed OpenUPM artifact. |
+| Framework preview distribution | GitHub Release `v1.2.0-preview.3` exists with signed archive `com.immersive.framework-1.2.0-preview.3.tgz`, SHA-256 `f079dfad9a9a46b596f572a7b5c3de13b83c55f53bdfee496080238eb25fdba1`. This immutable tag predates `ActorCompositionPartAsset.cs`. |
+| Test evidence | Owner-reported QAFramework EditMode screenshot: 441/441 passed, 0 failed, 0 ignored; manifest/lock resolve both local package directories and Unity is `6000.5.0f1`. The screenshots do not fingerprint every working-tree file, so bind the release candidate to a reviewed source commit and rerun/confirm the relevant Unity validation before tagging. |
+
+**Distribution decision:** use immutable, signed GitHub Release tags consumed by OpenUPM. Keep existing default branches (`master` for Framework, `main` for Composition and the other package repositories); branch names are not the install/version authority. The package version in the tagged commit, immutable tag, signed release asset and OpenUPM registry entry must agree. Do not rewrite history, move existing tags, or create no-op releases for unaffected packages.
+
+**Next compatible candidate sequence:** publish Composition `0.1.0-preview.3` first; after OpenUPM confirms that exact signed version is installable, prepare Framework `1.2.0-preview.4` with `com.immersive.composition: 0.1.0-preview.3`. Framework `.4` must contain the current ActorProfile per-part asset changes so consumers do not revert to `.3`, which lacks that serialized type. These versions are plan targets only; no package metadata, workflow, tag or release was changed in this update.
+
+**External gates:** The accepted v2 signing-secret allowlist names only five repositories and does not include Composition; whether the live organization secret scope has since changed is unverified. Composition has no signed-release workflow, and its OpenUPM `githubRelease` metadata is not confirmed. Complete those gates before its tag. The Framework candidate must then be tested against the exact reviewed source and a consumer manifest declaring Framework only; confirm UPM installs Composition transitively and records the expected versions in `packages-lock.json`.
+
+**Scope boundary:** this update changes architecture/release documentation only. No runtime/API, package metadata, dependency, Unity asset, workflow, tag, consumer project or QAFramework file was changed. Unity, tests and release workflows were not run by Codex.
+
+**Next eligible action:** prepare and review Composition's package-scoped signed-release workflow plus its OpenUPM metadata change; stop before tagging until the signing-secret scope and OpenUPM metadata are confirmed. Then release Composition before preparing the Framework `.4` candidate.
+
+## Signed package and consumer normalization v4 — 2026-10-18
+
+**Plan:** [Signed OpenUPM Distribution v4](../Plans/IF-PLAN-OPENUPM-SIGNED-DISTRIBUTION.v4.md) is **Approved — implementation task-gated** by the Project Owner's instruction to normalize all Immersive packages and the two consuming projects. It supersedes v3, expands scope to Face System and the PEGA / planet-devourer manifests, and preserves v3 as the prior stable reference. The approved project rule is minimum SemVer in `Packages/manifest.json`, exact resolved version/source in Unity-generated `packages-lock.json`, and Package Manager for updates.
+
+### Repository inventory and current default-branch evidence
+
+The local and GitHub default-branch refs were compared before changes. All six `com.immersive.*` repositories and Face System matched their local base revisions; no worktree was created.
+
+| Package | Default branch and resulting source | Current distribution state |
+|---|---|---|
+| Audio | `main`, `481f5e01a26f158118ff475230910944aba676ef` | Existing signed `0.2.4` release and OpenUPM metadata retained; no no-op release. |
+| Foundation | `main`, `86b5e17d69ffa72b302f323628ec494362702f42` | Existing signed `0.2.3` release and OpenUPM metadata retained. |
+| Logging | `main`, `fe19eff32faea98a8f1005ba060ffd1babdbcadb` | Existing signed `0.2.4` release and OpenUPM metadata retained. |
+| Pooling | `main`, `8befe28927408a2fb9883ef56dd7d0d294275305` | Existing signed `0.2.3` release and OpenUPM metadata retained. |
+| Composition | `main`, new commit `ef577765d0b565a020f3e98f6e5eaae681333c29` | `0.1.0-preview.3` metadata and package-scoped signing workflow are on `main`; no tag or release was created. |
+| Framework | `master`, remote HEAD remains `c6636561581cd4eb49e918d163f73712e64c1bcf` | Local working tree prepares `1.2.0-preview.4`, depending on Composition `.3`, Foundation `.2.3` and Logging `.2.4`; previous ActorProfile part-asset changes are preserved. This candidate is not committed or released while Composition `.3` is unavailable from signed OpenUPM. |
+| Face System | `main`, new commit `66c0ae7d977466ec98abed1bb9703c9ec2bf6266` | Existing stable source `1.1.0` now has a package-scoped signing workflow and OpenUPM installation guidance; no tag or release was created. |
+
+The GitHub organization also contains `com.immersivegames.docs`. It is a documentation framework repository: its README describes document methodology and it has no root `package.json`; it is not a Unity UPM package and is outside the package release inventory.
+
+### OpenUPM index and signing gates
+
+PR [openupm/openupm#7097](https://github.com/openupm/openupm/pull/7097) adds `githubRelease` entries for Composition (`0.1.0-preview.3`, archive prefix `com.immersive.composition-`) and Face System (`1.1.0`, prefix `com.immersivegames.face-system-`). It is **open and mergeable**, not merged. OpenUPM's automatic validator first rejected topic slugs that were absent from `data/topics.yml`; the PR branch was corrected to existing `frameworks` / `integration` and `animation` / `sprite-management` slugs. No passing rerun was visible at the time of this record.
+
+Composition and Face System tag-triggered workflows were committed to their default branches. Each checks its package identity/version, requires the tagged source commit to be reachable from `origin/main`, signs with the established Unity UPM CLI, and publishes the matching release asset through OpenUPM. The live GitHub Organization secret visibility cannot be inspected through the available GitHub connector. Add both repositories to the existing signing-secret allowlist before creating tags; do not expose or copy the secret values.
+
+### Consumer state, compatibility and validation boundary
+
+PEGA (`main`, baseline `7756366bbcb41983047f497d8ea240600f119b6c`) and planet-devourer (`main`, baseline `16781128c48c032cd3c1cd30027fa8a311930131`) still have pre-existing modifications in `Packages/manifest.json`, `Packages/packages-lock.json` and migrated ActorProfile assets. Their manifests were read but **not edited**. PEGA currently uses local Framework/Composition, registry versions of Audio/Foundation/Logging/Pooling, and the unpinned Face System Git URL. planet-devourer currently uses local Framework/Composition and unpinned Git URLs for Audio/Foundation/Logging/Pooling. Preserve all existing asset migrations. Change only the manifests after signed registry versions exist; let Unity regenerate lock files.
+
+The earlier Project Owner QAFramework screenshot reports 441/441 EditMode tests passed against local Framework and Composition directories. This task added no Runtime source or tests. Static JSON/version/dependency assertions and `git diff --check` passed for the candidate package metadata; no Unity, test runner, release workflow, tag, GitHub Release, or Unity consumer import was run by Codex.
+
+### Residual gates and next eligible action
+
+1. OpenUPM PR #7097 must pass metadata validation and be merged.
+2. GitHub Organization signing-secret visibility for Composition and Face System must be confirmed/configured.
+3. Publish and verify signed Composition `v0.1.0-preview.3` and Face System `v1.1.0` separately; do not move existing tags.
+4. Only after Composition is available, commit Framework `.4` and the preserved ActorProfile part-asset source to `master`, bind owner-run QA/import evidence to that exact candidate, and publish its signed release.
+5. Then update PEGA and planet-devourer manifests to registry SemVer minima, remove direct Composition and local/Git references, add PEGA's `com.immersivegames` scope, regenerate locks in the existing Unity projects, and verify transitive installation/signatures.
+
+**Distro normalization remains in progress.** The concrete blockers are the unmerged OpenUPM index PR and unverified signing-secret repository scope. No consumer is switched to an unavailable package, no tag was created, and no Unity project or generated lock was modified.
