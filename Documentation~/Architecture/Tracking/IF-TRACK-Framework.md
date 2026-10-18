@@ -2193,9 +2193,9 @@ The GitHub organization also contains `com.immersivegames.docs`. It is a documen
 
 ### OpenUPM index and signing gates
 
-PR [openupm/openupm#7097](https://github.com/openupm/openupm/pull/7097) adds `githubRelease` entries for Composition (`0.1.0-preview.3`, archive prefix `com.immersive.composition-`) and Face System (`1.1.0`, prefix `com.immersivegames.face-system-`). It is **open and mergeable**, not merged. OpenUPM's automatic validator first rejected topic slugs that were absent from `data/topics.yml`; the PR branch was corrected to existing `frameworks` / `integration` and `animation` / `sprite-management` slugs. No passing rerun was visible at the time of this record.
+PR [openupm/openupm#7097](https://github.com/openupm/openupm/pull/7097) was merged into `master` as merge commit `fac1ef3dd172dd78da9f6e68a42151348f9be6cb`. The resulting entries use `githubRelease` for Composition (`0.1.0-preview.3`, archive prefix `com.immersive.composition-`) and Face System (`1.1.0`, prefix `com.immersivegames.face-system-`); both entries are present on OpenUPM `master`. The validator initially rejected topic slugs, which were corrected before merge. OpenUPM's bot says its package import pipeline can take up to 30 minutes; this session did not verify either package's registry metadata or published version.
 
-Composition and Face System tag-triggered workflows were committed to their default branches. Each checks its package identity/version, requires the tagged source commit to be reachable from `origin/main`, signs with the established Unity UPM CLI, and publishes the matching release asset through OpenUPM. The live GitHub Organization secret visibility cannot be inspected through the available GitHub connector. Add both repositories to the existing signing-secret allowlist before creating tags; do not expose or copy the secret values.
+Composition and Face System tag-triggered workflows are committed to their default branches. Each checks package identity/version and source reachability, signs with Unity UPM CLI, and publishes the matching release asset through OpenUPM. GitHub Organization Settings confirms all three signing secrets are restricted to five repositories: Audio, Foundation, Framework, Logging, and Pooling. Composition and Face System are not included, and neither repository has repository-level or environment secrets; both repository Settings pages state that no organization secrets are available to them. The Project Owner declined expanding the organization-secret allowlist. An attempted update to `UPM_ORG_ID` was reauthenticated, but the saved scope was rechecked and remains the original five repositories; the secret value was never changed or read. No signing access was added to either new package repository.
 
 ### Consumer state, compatibility and validation boundary
 
@@ -2205,10 +2205,9 @@ The earlier Project Owner QAFramework screenshot reports 441/441 EditMode tests 
 
 ### Residual gates and next eligible action
 
-1. OpenUPM PR #7097 must pass metadata validation and be merged.
-2. GitHub Organization signing-secret visibility for Composition and Face System must be confirmed/configured.
-3. Publish and verify signed Composition `v0.1.0-preview.3` and Face System `v1.1.0` separately; do not move existing tags.
-4. Only after Composition is available, commit Framework `.4` and the preserved ActorProfile part-asset source to `master`, bind owner-run QA/import evidence to that exact candidate, and publish its signed release.
-5. Then update PEGA and planet-devourer manifests to registry SemVer minima, remove direct Composition and local/Git references, add PEGA's `com.immersivegames` scope, regenerate locks in the existing Unity projects, and verify transitive installation/signatures.
+1. A permitted signing-credential path must be established for Composition and Face System. The current organization allowlist remains unchanged; do not create tags or route credentials through another repository.
+2. Once signing access is available, publish and verify Composition `v0.1.0-preview.3` and Face System `v1.1.0`; the two versions are independent, but Composition must precede Framework `.4`.
+3. After Composition is signed and installable, commit Framework `.4` and the preserved ActorProfile part-asset source to `master`, bind owner-run QA/import evidence to that exact candidate, and publish its signed release.
+4. Then update PEGA and planet-devourer manifests to registry SemVer minimums, remove direct Composition and local/Git references, add PEGA's `com.immersivegames` scope, regenerate locks inside the existing Unity projects, and verify transitive installation/signatures.
 
-**Distro normalization remains in progress.** The concrete blockers are the unmerged OpenUPM index PR and unverified signing-secret repository scope. No consumer is switched to an unavailable package, no tag was created, and no Unity project or generated lock was modified.
+**Distribution normalization remains in progress.** The OpenUPM index PR is merged, but neither new repository can access the signing secrets and the Project Owner declined widening their organization-level scope. Therefore Composition/Face releases, Framework `.4`, and consumer manifest changes remain blocked. No tag or release was created, and no consumer manifest, lock file, or migrated ActorProfile asset was changed during this continuation. The Framework working tree still contains the previously authorized ActorProfile part-asset implementation; it has not been rewritten or committed here.
