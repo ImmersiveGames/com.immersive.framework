@@ -56,10 +56,12 @@ from Git alone. Earlier package releases remain in the
 [changelog](CHANGELOG.md) as history; they are not migration baselines for
 1.1.0.
 
-The Experimental Actor lifecycle and composition preview is `1.2.0-preview.3`.
-The Stable baseline remains `1.1.0`; the preview does not promote Experimental
-contracts to Stable. To evaluate IF-ADR-050, declare both packages in the
-project manifest:
+The planned next Experimental Actor lifecycle and composition candidate is
+`1.2.0-preview.4`; its package metadata will advance after Composition `.3` is
+signed and available through OpenUPM. The Stable
+baseline remains `1.1.0`; the preview does not promote Experimental contracts
+to Stable. After the candidate appears in OpenUPM, install Framework by its
+minimum SemVer only:
 
 ```json
 {
@@ -71,20 +73,20 @@ project manifest:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.2.0-preview.3",
-    "com.immersive.composition": "https://github.com/ImmersiveGames/com.immersive.composition.git#v0.1.0-preview.2"
+    "com.immersive.framework": "1.2.0-preview.4"
   }
 }
 ```
 
-The Framework package declares Composition's semantic version. Unity does not
-support Git dependencies inside a package's `package.json`, so consumers must
-declare Composition as a direct project dependency and pin its Git tag in
-`Packages/manifest.json`. The QAFramework candidate import and 430/430 EditMode
-result were owner-reported against the local D08 tarballs; migration of
-populated FirstGame and PEGA Actor Profiles remains unverified. Use **Tools >
-Immersive Framework > Migrate Actor Profile Visual Content** and review its
-per-asset summary before runtime use of those profiles.
+The Framework package declares Composition's minimum SemVer, so Unity installs
+it transitively from the same OpenUPM registry. Do not add Composition as a
+second project dependency. `Packages/packages-lock.json` records the exact
+resolved graph; update it through Package Manager, not by hand. The Project
+Owner's QAFramework EditMode result and FirstGame / PEGA Actor Profile
+migrations are recorded in the
+[Framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md#if-adr-050-d08-closeout--consumer-actor-profile-migration--2026-10-18).
+For the new Base-part and runtime contribution model, see the
+[Actor Composition Usage guide](Documentation~/Guides/Actor-Composition-Usage.md).
 
 ## Getting started
 
