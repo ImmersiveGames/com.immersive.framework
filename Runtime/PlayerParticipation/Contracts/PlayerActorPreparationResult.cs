@@ -29,7 +29,8 @@ namespace Immersive.Framework.PlayerParticipation
             string previousReleaseMessage,
             PlayerActorPreparationSnapshot snapshot,
             string message,
-            PlayerActorPreparationStatus originalStatus = PlayerActorPreparationStatus.None)
+            PlayerActorPreparationStatus originalStatus = PlayerActorPreparationStatus.None,
+            bool cleanupPending = false)
         {
             Status = status;
             OriginalStatus = originalStatus == PlayerActorPreparationStatus.None
@@ -51,6 +52,7 @@ namespace Immersive.Framework.PlayerParticipation
             PreviousReleaseMessage = previousReleaseMessage ?? string.Empty;
             Snapshot = snapshot;
             Message = message ?? string.Empty;
+            CleanupPending = cleanupPending;
         }
 
         public PlayerActorPreparationStatus Status { get; }
@@ -71,6 +73,7 @@ namespace Immersive.Framework.PlayerParticipation
         public string PreviousReleaseMessage { get; }
         public PlayerActorPreparationSnapshot Snapshot { get; }
         public string Message { get; }
+        public bool CleanupPending { get; }
 
         public bool Succeeded => Status is
             PlayerActorPreparationStatus.SucceededPrepared or
@@ -85,7 +88,9 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationStatus.FailedSelectionCommit or
             PlayerActorPreparationStatus.FailedRelease or
             PlayerActorPreparationStatus.FailedRollback or
-            PlayerActorPreparationStatus.FailedPreviousRelease;
+            PlayerActorPreparationStatus.FailedPreviousRelease or
+            PlayerActorPreparationStatus.FailedHandoffPreparation or
+            PlayerActorPreparationStatus.FailedHandoffAfterPreviousDeactivation;
 
         public bool Rejected => !Succeeded && !Failed && Status != PlayerActorPreparationStatus.None;
         public bool Completed => Status != PlayerActorPreparationStatus.None;
@@ -167,7 +172,7 @@ namespace Immersive.Framework.PlayerParticipation
                 $"selectionStatus='{(HasSelectionResult ? SelectionResult.Status.ToString() : string.Empty)}' " +
                 $"rollbackAttempted='{RollbackAttempted}' rollbackSucceeded='{RollbackSucceeded}' rollbackMessage='{RollbackMessage}' " +
                 $"previousReleaseAttempted='{PreviousReleaseAttempted}' previousReleaseSucceeded='{PreviousReleaseSucceeded}' " +
-                $"previousReleaseMessage='{PreviousReleaseMessage}' message='{Message}'";
+                $"previousReleaseMessage='{PreviousReleaseMessage}' cleanupPending='{CleanupPending}' message='{Message}'";
         }
     }
 }

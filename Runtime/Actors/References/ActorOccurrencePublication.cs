@@ -8,15 +8,20 @@ namespace Immersive.Framework.Actors
     /// <summary>Marcador explícito e opt-in na raiz física exata de um Actor NonPlayer.</summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Actors/Actor Occurrence Publication")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-049 explicit owner-aware NonPlayer occurrence declaration.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-049 owner-aware NonPlayer occurrence declaration; IF-ADR-050 D07 optional composition mount.")]
     public sealed class ActorOccurrencePublication : MonoBehaviour
     {
         [SerializeField] private ActorDeclaration actorDeclaration;
+        [Tooltip("Optional mount for replaceable content. Assign it to open composition contributions; keep Camera Observation outside this mount.")]
+        [SerializeField] private Transform compositionMount;
         private ActorOccurrenceReferenceRuntime _runtime;
 
         internal ActorDeclaration ActorDeclaration => actorDeclaration != null
             ? actorDeclaration
             : GetComponent<ActorDeclaration>();
+
+        /// <summary>Exact authored mount for replaceable content, when this publication supports composition.</summary>
+        public Transform CompositionMount => compositionMount;
 
         internal bool TryValidate(out ActorId actorId, out string diagnostic)
         {
@@ -31,6 +36,12 @@ namespace Immersive.Framework.Actors
             if (declaration.ActorKind != ActorKind.NonPlayer)
             {
                 diagnostic = "ActorOccurrencePublication accepts only NonPlayer declarations. Player publication is owned by Player Session.";
+                return false;
+            }
+            Transform mount = CompositionMount;
+            if (mount != null && mount != transform && !mount.IsChildOf(transform))
+            {
+                diagnostic = "Published Actor composition mount must be the exact producer-owned root or one of its children.";
                 return false;
             }
             try
@@ -87,7 +98,7 @@ namespace Immersive.Framework.Actors
     /// <summary>Porta de publicação no escopo do owner para Actors NonPlayer criados por produtores em runtime.</summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Actors/Actor Occurrence Publication Scope")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-049 explicit composition-bound dynamic publisher.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-049 owner-bound NonPlayer publisher; IF-ADR-050 D07 exact-occurrence composition access.")]
     public sealed class ActorOccurrencePublicationScope : MonoBehaviour
     {
         private ActorOccurrenceReferenceRuntime _runtime;
@@ -133,6 +144,47 @@ namespace Immersive.Framework.Actors
                 return false;
             }
             return _runtime.TryUnpublish(this, publication, token, out diagnostic);
+        }
+
+        /// <summary>Opens a keyed contribution for the exact published NonPlayer occurrence and owner token.</summary>
+        public bool TryOpenCompositionContribution(
+            ActorOccurrencePublication publication,
+            ActorOccurrencePublicationToken token,
+            int priority,
+            string source,
+            string reason,
+            out ActorOccurrenceCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            if (_runtime == null)
+            {
+                diagnostic = "Publication Scope is not bound to an active Framework composition.";
+                return false;
+            }
+            return _runtime.TryOpenDynamicCompositionContribution(
+                this,
+                publication,
+                token,
+                priority,
+                source,
+                reason,
+                out contribution,
+                out diagnostic);
+        }
+
+        public bool TryRetryCompositionCleanup(
+            ActorOccurrencePublication publication,
+            ActorOccurrencePublicationToken token,
+            out string diagnostic)
+        {
+            ActorOccurrenceReferenceRuntime runtime = _runtime ?? _cleanupRuntime;
+            if (runtime == null)
+            {
+                diagnostic = "Publication Scope is not bound to an active Framework composition.";
+                return false;
+            }
+            return runtime.TryRetryCompositionCleanup(this, publication, token, out diagnostic);
         }
 
         internal void BindRuntime(ActorOccurrenceReferenceRuntime runtime)

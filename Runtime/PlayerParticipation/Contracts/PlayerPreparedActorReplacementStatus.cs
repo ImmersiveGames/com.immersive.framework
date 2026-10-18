@@ -18,6 +18,8 @@ namespace Immersive.Framework.PlayerParticipation
         FailedGameplayRelease = 200,
         FailedBeforeCommit = 210,
         FailedRollback = 220,
-        SucceededCommittedGameplayReprojectionFailed = 230
+        SucceededCommittedGameplayReprojectionFailed = 230,
+        RejectedTransitionInProgress = 160,
+        FailedAfterPreviousDeactivation = 240
     }
 }

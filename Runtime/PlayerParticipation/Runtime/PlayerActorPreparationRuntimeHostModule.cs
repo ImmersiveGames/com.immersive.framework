@@ -733,7 +733,9 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationToken expectedPreparation,
             PlayerActorReplacementIdentityPolicy identityPolicy,
             string source,
-            string reason)
+            string reason,
+            Func<bool> prepareHandoff,
+            Func<bool> isHandoffTargetCurrent)
         {
             _preparationRequestCount++;
             if (_preparationContext == null)
@@ -761,9 +763,17 @@ namespace Immersive.Framework.PlayerParticipation
                     expectedPreparation,
                     identityPolicy,
                     source,
-                    reason);
+                    reason,
+                    prepareHandoff,
+                    isHandoffTargetCurrent);
             _diagnostic = result.ToDiagnosticString();
-            InvalidateCurrentActorOccurrence(replacementRequest.PlayerSlotId);
+            if (result.Status is PlayerActorPreparationStatus.SucceededReplaced or
+                PlayerActorPreparationStatus.FailedPreviousRelease or
+                PlayerActorPreparationStatus.FailedHandoffAfterPreviousDeactivation)
+            {
+                InvalidateCurrentActorOccurrence(replacementRequest.PlayerSlotId);
+            }
+
             return result;
         }
 

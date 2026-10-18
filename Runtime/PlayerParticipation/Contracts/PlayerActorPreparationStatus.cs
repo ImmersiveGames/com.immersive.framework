@@ -32,6 +32,9 @@ namespace Immersive.Framework.PlayerParticipation
         FailedSelectionCommit = 220,
         FailedRelease = 230,
         FailedRollback = 240,
-        FailedPreviousRelease = 250
+        FailedPreviousRelease = 250,
+        RejectedTransitionInProgress = 260,
+        FailedHandoffPreparation = 270,
+        FailedHandoffAfterPreviousDeactivation = 280
     }
 }

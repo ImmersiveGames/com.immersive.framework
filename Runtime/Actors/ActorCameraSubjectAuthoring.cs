@@ -10,7 +10,7 @@ namespace Immersive.Framework.Actors
     [AddComponentMenu("Immersive Framework/Actors/Camera Subject")]
     [FrameworkApiStatus(
         FrameworkApiStatus.Experimental,
-        "CAMERA-038 Actor occurrence observation Transform.")]
+        "CAMERA-038 Actor occurrence observation Transform; IF-ADR-050 D07 requires targets outside replaceable composition mounts.")]
     public sealed class ActorCameraSubjectAuthoring : MonoBehaviour
     {
         [Header("Camera Subject")]
@@ -70,8 +70,28 @@ namespace Immersive.Framework.Actors
                 return false;
             }
 
+            if (observationTransform != actor.transform &&
+                IsWithinReplaceableCompositionMount(actor, observationTransform))
+            {
+                issue = "Actor Camera Subject Observation Transform must remain outside the replaceable composition mount; author a stable Actor-root anchor.";
+                return false;
+            }
+
             observation = observationTransform;
             return true;
+        }
+
+        internal bool TryValidateReplaceableContentMount(Transform mount, out string issue)
+        {
+            issue = string.Empty;
+            if (observationTransform == null || observationTransform == transform ||
+                !IsWithinMount(observationTransform, mount))
+            {
+                return true;
+            }
+
+            issue = "Actor Camera Subject Observation Transform must remain outside the replaceable composition mount; author a stable Actor-root anchor.";
+            return false;
         }
 
         /// <summary>
@@ -107,5 +127,16 @@ namespace Immersive.Framework.Actors
         {
             return TryResolveSubject(GetComponent<ActorDeclaration>(), out _, out _, out issue);
         }
+
+        private static bool IsWithinReplaceableCompositionMount(
+            ActorDeclaration actor,
+            Transform observation)
+        {
+            ActorOccurrencePublication publication = actor.GetComponent<ActorOccurrencePublication>();
+            return publication != null && IsWithinMount(observation, publication.CompositionMount);
+        }
+
+        private static bool IsWithinMount(Transform observation, Transform mount) =>
+            mount != null && (observation == mount || observation.IsChildOf(mount));
     }
 }

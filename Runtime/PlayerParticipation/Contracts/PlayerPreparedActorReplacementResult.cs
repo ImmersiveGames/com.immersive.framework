@@ -20,7 +20,9 @@ namespace Immersive.Framework.PlayerParticipation
         public bool ReplacementCommitted { get; }
         public bool GameplayReprojected { get; }
         public bool CleanupPending { get; }
+        public bool PreviousActorMayBeUnavailable =>
+            Status == PlayerPreparedActorReplacementStatus.FailedAfterPreviousDeactivation;
         public string Message { get; }
-        public bool Rejected => !ReplacementCommitted && Status is PlayerPreparedActorReplacementStatus.RejectedInvalidRequest or PlayerPreparedActorReplacementStatus.RejectedRuntimeUnavailable or PlayerPreparedActorReplacementStatus.RejectedStalePublicRevision or PlayerPreparedActorReplacementStatus.RejectedNoActiveActivity or PlayerPreparedActorReplacementStatus.RejectedUnsupportedProvisioning or PlayerPreparedActorReplacementStatus.RejectedPreparedActorUnavailable;
+        public bool Rejected => !ReplacementCommitted && Status is PlayerPreparedActorReplacementStatus.RejectedInvalidRequest or PlayerPreparedActorReplacementStatus.RejectedRuntimeUnavailable or PlayerPreparedActorReplacementStatus.RejectedStalePublicRevision or PlayerPreparedActorReplacementStatus.RejectedNoActiveActivity or PlayerPreparedActorReplacementStatus.RejectedUnsupportedProvisioning or PlayerPreparedActorReplacementStatus.RejectedPreparedActorUnavailable or PlayerPreparedActorReplacementStatus.RejectedTransitionInProgress;
     }
 }

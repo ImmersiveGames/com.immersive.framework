@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Immersive.Framework.Actors;
 using Immersive.Framework.Camera;
 using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PlayerSlots;
+using Immersive.Framework.RuntimeContent;
 using NUnit.Framework;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -1444,6 +1446,93 @@ namespace Immersive.Framework.Camera.Tests
         }
 
         [Test]
+        public void CameraMembershipReconcilesCurrentActorAfterSelectionCommitAndRecoversFromInvalidSubject()
+        {
+            Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.MemberActorTargets);
+            SessionCameraAssignmentRuntime assignments = CreateIndividualRuntime(fixture);
+            PlayerSlotProfile playerOne = CreatePlayerSlotProfile("player.1", "Player One Session");
+            PlayerSlotProfile playerTwo = CreatePlayerSlotProfile("player.2", "Player Two Session");
+            Assert.That(PlayerParticipationRuntimeContext.TryCreateWithActorSelectionPolicy(
+                new[] { playerOne, playerTwo },
+                true,
+                PlayerActorSelectionDuplicatePolicy.AllowDuplicates,
+                nameof(SessionCameraAssignmentRuntimeTests),
+                "Camera Actor replacement membership test",
+                out PlayerParticipationRuntimeContext players).Succeeded, Is.True);
+
+            ActorProfile firstProfile = CreateActorProfile("actor-profile.camera.first");
+            ActorProfile invalidProfile = CreateActorProfile("actor-profile.camera.invalid-subject");
+            ActorProfile recoveredProfile = CreateActorProfile("actor-profile.camera.recovered");
+            PlayerParticipationOperationResult reservation = players.TryReserveNextAvailableSlot(
+                "test", "reserve Player One");
+            Assert.That(reservation.Succeeded, Is.True, reservation.ToDiagnosticString());
+            PlayerParticipationOperationResult joined = players.TryMarkJoined(
+                reservation.ReservationToken, "test", "join Player One");
+            Assert.That(joined.Succeeded, Is.True, joined.ToDiagnosticString());
+            PlayerActorSelectionResult firstSelection = players.TrySelectActorProfile(
+                new PlayerActorSelectionRequest(
+                    joined.Slot.PlayerSlotId,
+                    firstProfile,
+                    "test",
+                    "select first camera Actor",
+                    expectedSelectionRevision: 0));
+            Assert.That(firstSelection.Succeeded, Is.True, firstSelection.ToDiagnosticString());
+
+            var actorSource = new SelectionBackedActorOccurrenceSource(players);
+            actorSource.SetOccurrence(firstProfile.ActorProfileId,
+                CreatePreparedActorOccurrence(players, joined.Slot.PlayerSlotId, firstProfile, 1, true));
+            actorSource.SetOccurrence(invalidProfile.ActorProfileId,
+                CreatePreparedActorOccurrence(players, joined.Slot.PlayerSlotId, invalidProfile, 2, false));
+            PlayerPreparedActorOccurrence recoveredOccurrence = CreatePreparedActorOccurrence(
+                players, joined.Slot.PlayerSlotId, recoveredProfile, 3, true);
+            actorSource.SetOccurrence(recoveredProfile.ActorProfileId, recoveredOccurrence);
+
+            Assert.That(SessionCameraMembershipRuntime.TryCreate(
+                assignments,
+                players,
+                actorSource,
+                out SessionCameraMembershipRuntime membership,
+                out string membershipIssue), Is.True, membershipIssue);
+            _runtimes.Add(membership);
+            SessionCameraOccurrence occurrence = assignments.Occurrences.Single();
+            Assert.That(membership.LastReconciliationSucceeded, Is.True, membership.Diagnostic);
+            Assert.That(occurrence.Members.Single().Subject.Observation,
+                Is.SameAs(actorSource.GetObservation(firstProfile.ActorProfileId)));
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow,
+                Is.SameAs(actorSource.GetObservation(firstProfile.ActorProfileId)));
+
+            PlayerActorSelectionResult invalidSelection = players.TryReplaceActorSelection(
+                new PlayerActorSelectionRequest(
+                    joined.Slot.PlayerSlotId,
+                    invalidProfile,
+                    "test",
+                    "replace with Actor with unavailable Camera Subject",
+                    expectedSelectionRevision: firstSelection.Slot.SelectionRevision));
+            Assert.That(invalidSelection.Succeeded, Is.True, invalidSelection.ToDiagnosticString());
+            Assert.That(membership.LastReconciliationSucceeded, Is.False);
+            StringAssert.Contains("explicit Observation Transform", membership.Diagnostic);
+            Assert.That(occurrence.Members.Single().HasSubject, Is.False);
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow, Is.Null);
+
+            PlayerActorSelectionResult recoveredSelection = players.TryReplaceActorSelection(
+                new PlayerActorSelectionRequest(
+                    joined.Slot.PlayerSlotId,
+                    recoveredProfile,
+                    "test",
+                    "replace with Actor that restores Camera Subject",
+                    expectedSelectionRevision: invalidSelection.Slot.SelectionRevision));
+            Assert.That(recoveredSelection.Succeeded, Is.True, recoveredSelection.ToDiagnosticString());
+            Assert.That(membership.LastReconciliationSucceeded, Is.True, membership.Diagnostic);
+            Assert.That(occurrence.Members.Single().HasSubject, Is.True);
+            Assert.That(occurrence.Members.Single().Subject.Observation,
+                Is.SameAs(recoveredOccurrence.ActorDeclaration.GetComponent<ActorCameraSubjectAuthoring>()
+                    .ObservationTransform));
+            Assert.That(occurrence.Composer.CinemachineCamera.Follow,
+                Is.SameAs(recoveredOccurrence.ActorDeclaration.GetComponent<ActorCameraSubjectAuthoring>()
+                    .ObservationTransform));
+        }
+
+        [Test]
         public void FailedIndividualMaterializationLeavesNoOccurrenceOrOutputStatePartial()
         {
             Fixture fixture = CreateIndividualFixture(CameraTargetPolicy.NoSubject);
@@ -1611,6 +1700,60 @@ namespace Immersive.Framework.Camera.Tests
             return CreateSubject(name, 0f);
         }
 
+        private ActorProfile CreateActorProfile(string actorProfileId)
+        {
+            var profile = ScriptableObject.CreateInstance<ActorProfile>();
+            profile.name = actorProfileId;
+            SetField(profile, "actorProfileId", actorProfileId);
+            SetField(profile, "displayName", actorProfileId);
+            _created.Add(profile);
+            return profile;
+        }
+
+        private PlayerPreparedActorOccurrence CreatePreparedActorOccurrence(
+            PlayerParticipationRuntimeContext players,
+            PlayerSlotId playerSlotId,
+            ActorProfile profile,
+            int selectionRevision,
+            bool withObservation)
+        {
+            string actorLabel = profile.DisplayName;
+            ActorId actorId = ActorId.From($"camera.actor-occurrence.{selectionRevision}");
+            var root = new GameObject(actorLabel);
+            _created.Add(root);
+            PlayerActorDeclaration declaration = root.AddComponent<PlayerActorDeclaration>();
+            declaration.EstablishRuntimeOccurrenceIdentity(
+                actorId,
+                actorLabel,
+                null,
+                "Camera membership Actor replacement test");
+
+            ActorCameraSubjectAuthoring subjectAuthoring =
+                root.AddComponent<ActorCameraSubjectAuthoring>();
+            if (withObservation)
+            {
+                var observation = new GameObject("Observation");
+                observation.transform.SetParent(root.transform, false);
+                _created.Add(observation);
+                SetField(subjectAuthoring, "observationTransform", observation.transform);
+            }
+
+            string sessionContextId = players.CreateSnapshot().ContextId;
+            RuntimeContentIdentity contentIdentity = RuntimeContentIdentity.From(
+                RuntimeContentOwner.Session(sessionContextId, "Camera membership test"),
+                $"camera.actor-content.{selectionRevision}");
+            var token = new PlayerActorPreparationToken(
+                sessionContextId,
+                playerSlotId,
+                profile.ActorProfileId,
+                selectionRevision,
+                actorId,
+                contentIdentity,
+                selectionRevision,
+                selectionRevision);
+            return new PlayerPreparedActorOccurrence(token, declaration, null);
+        }
+
         private CameraSubject CreateSubject(string name, float framingRadius)
         {
             var root = new GameObject(name);
@@ -1758,6 +1901,76 @@ namespace Immersive.Framework.Camera.Tests
         private static void SetField(object target, string name, object value)
         {
             target.GetType().GetField(name, PrivateInstance).SetValue(target, value);
+        }
+
+        private sealed class SelectionBackedActorOccurrenceSource : IPlayerPreparedActorOccurrenceSource
+        {
+            private readonly PlayerParticipationRuntimeContext _players;
+            private readonly Dictionary<ActorProfileId, PlayerPreparedActorOccurrence> _occurrences =
+                new Dictionary<ActorProfileId, PlayerPreparedActorOccurrence>();
+
+            internal SelectionBackedActorOccurrenceSource(PlayerParticipationRuntimeContext players)
+            {
+                _players = players;
+            }
+
+            public event System.Action<PlayerSlotId> CurrentActorInvalidated;
+
+            public string SessionContextId => _players.CreateSnapshot().ContextId;
+
+            internal void SetOccurrence(
+                ActorProfileId actorProfileId,
+                PlayerPreparedActorOccurrence occurrence)
+            {
+                _occurrences[actorProfileId] = occurrence;
+            }
+
+            internal Transform GetObservation(ActorProfileId actorProfileId)
+            {
+                return _occurrences[actorProfileId]
+                    .ActorDeclaration.GetComponent<ActorCameraSubjectAuthoring>()
+                    .ObservationTransform;
+            }
+
+            public bool TryGetCurrentActorOccurrence(
+                PlayerSlotId playerSlotId,
+                out PlayerPreparedActorOccurrence occurrence)
+            {
+                occurrence = default;
+                if (!_players.TryGetSlotSnapshot(
+                        playerSlotId,
+                        out PlayerSlotRuntimeSnapshot slot) ||
+                    !slot.IsJoined ||
+                    slot.SelectedActorProfile == null ||
+                    !_occurrences.TryGetValue(
+                        slot.SelectedActorProfile.ActorProfileId,
+                        out occurrence) ||
+                    !occurrence.IsValid)
+                {
+                    occurrence = default;
+                    return false;
+                }
+
+                return true;
+            }
+
+            public bool TryGetCurrentPhysicalActorOccurrence(
+                PlayerSlotId playerSlotId,
+                out PlayerActorPhysicalOccurrence occurrence)
+            {
+                occurrence = default;
+                return false;
+            }
+
+            public void CollectCurrentPhysicalActorOccurrences(
+                ICollection<PlayerActorPhysicalOccurrence> occurrences)
+            {
+            }
+
+            internal void InvalidateCurrentActor(PlayerSlotId playerSlotId)
+            {
+                CurrentActorInvalidated?.Invoke(playerSlotId);
+            }
         }
 
         private sealed class Fixture

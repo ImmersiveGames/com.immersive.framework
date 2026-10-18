@@ -2,6 +2,12 @@
 
 All notable package changes are documented in this file.
 
+## [1.2.0-preview.3] - 2026-10-18 — IF-ADR-050 Actor lifecycle and composition candidate; unpublished
+
+- Adds Experimental committed Actor occurrence identity, guarded prepared Actor replacement, in-place keyed composition, root-stable Camera observation and owner-scoped NonPlayer composition integration. Existing Stable contracts and serialized schemas are not promoted or changed by this candidate.
+- Pins the Framework dependency on `com.immersive.composition` `0.1.0-preview.2`. QAFramework source EditMode evidence is Project Owner-reported at 430/430 passed, including Camera 99/99; import and validation of the immutable local package artifacts and populated consumer Actor Profile migration remain pending.
+- This is a local candidate only. No tag, GitHub Release, registry publication or Stable promotion is included.
+
 ## [1.2.0-preview.2] - 2026-10-17 — Experimental Actor occurrence references; PEGA integration pending
 
 - Implemented IF-ADR-049 Experimental Actor occurrence references for Player Slot and ActorId selection, owner-scoped NonPlayer publication, committed Route/Activity/Persistent Content lifecycles, read-only change observation and stale/ambiguous outcomes.

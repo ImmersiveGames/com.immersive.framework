@@ -324,7 +324,7 @@ namespace Immersive.Framework.PlayerParticipation
                     null,
                     resolvedSource,
                     resolvedReason,
-                    false);
+                    publishChange: false);
             }
 
             slot.AllocationState = PlayerSlotAllocationState.Available;

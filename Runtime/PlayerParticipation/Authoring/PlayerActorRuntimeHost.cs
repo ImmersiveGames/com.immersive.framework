@@ -81,6 +81,13 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
+            ActorCameraSubjectAuthoring cameraSubject = GetComponent<ActorCameraSubjectAuthoring>();
+            if (cameraSubject != null &&
+                !cameraSubject.TryValidateReplaceableContentMount(presentationMount, out issue))
+            {
+                return false;
+            }
+
             if (presentationMount != null && presentationMount.GetComponentInChildren<PlayerInput>(true) != null)
             {
                 issue = "Optional visual-content mount must not contain PlayerInput.";

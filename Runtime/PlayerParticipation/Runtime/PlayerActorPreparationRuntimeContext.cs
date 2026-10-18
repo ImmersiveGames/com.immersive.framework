@@ -65,6 +65,10 @@ namespace Immersive.Framework.PlayerParticipation
             new Dictionary<PlayerSlotId, PreparationRecord>();
         private readonly List<RetainedReleaseFailure> _retainedReleaseFailures =
             new List<RetainedReleaseFailure>();
+        private readonly HashSet<PlayerSlotId> _actorReplacementTransitions =
+            new HashSet<PlayerSlotId>();
+        private readonly HashSet<PlayerSlotId> _invalidatedActorReplacementTransitions =
+            new HashSet<PlayerSlotId>();
 
         private int _revision;
         private int _actorCorrelationRevision;
@@ -640,6 +644,12 @@ namespace Immersive.Framework.PlayerParticipation
             string reason)
         {
             const string operation = "ReleasePreparedActor";
+            if (playerSlotId.IsValid &&
+                _actorReplacementTransitions.Contains(playerSlotId))
+            {
+                _invalidatedActorReplacementTransitions.Add(playerSlotId);
+            }
+
             string resolvedSource = source.NormalizeTextOrFallback(
                 nameof(PlayerActorPreparationRuntimeContext));
             string resolvedReason = reason.NormalizeTextOrFallback(
@@ -837,7 +847,78 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerActorPreparationToken expectedPreparation,
             PlayerActorReplacementIdentityPolicy identityPolicy,
             string source,
-            string reason)
+            string reason,
+            Func<bool> prepareHandoff,
+            Func<bool> isHandoffTargetCurrent)
+        {
+            PlayerSlotId playerSlotId = replacementRequest.PlayerSlotId;
+            if (!playerSlotId.IsValid)
+            {
+                return TryReplacePreparedActorCore(
+                    activityScopeContext,
+                    physicalScopeContext,
+                    replacementRequest,
+                    expectedPreparation,
+                    identityPolicy,
+                    source,
+                    reason,
+                    prepareHandoff,
+                    isHandoffTargetCurrent);
+            }
+
+            if (!_actorReplacementTransitions.Add(playerSlotId))
+            {
+                PreparationRecord current = _records.TryGetValue(playerSlotId, out PreparationRecord found)
+                    ? found
+                    : null;
+                return CreateResult(
+                    PlayerActorPreparationStatus.RejectedTransitionInProgress,
+                    "ReplacePreparedActor",
+                    playerSlotId,
+                    current != null ? current.Summary : default,
+                    current != null ? current.Summary : default,
+                    null,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    "Another Actor transition for this Player Slot is already in progress.");
+            }
+
+            _invalidatedActorReplacementTransitions.Remove(playerSlotId);
+            try
+            {
+                return TryReplacePreparedActorCore(
+                    activityScopeContext,
+                    physicalScopeContext,
+                    replacementRequest,
+                    expectedPreparation,
+                    identityPolicy,
+                    source,
+                    reason,
+                    prepareHandoff,
+                    isHandoffTargetCurrent);
+            }
+            finally
+            {
+                _actorReplacementTransitions.Remove(playerSlotId);
+                _invalidatedActorReplacementTransitions.Remove(playerSlotId);
+            }
+        }
+
+        private PlayerActorPreparationResult TryReplacePreparedActorCore(
+            RuntimeScopeContext activityScopeContext,
+            RuntimeScopeContext physicalScopeContext,
+            PlayerActorSelectionRequest replacementRequest,
+            PlayerActorPreparationToken expectedPreparation,
+            PlayerActorReplacementIdentityPolicy identityPolicy,
+            string source,
+            string reason,
+            Func<bool> prepareHandoff,
+            Func<bool> isHandoffTargetCurrent)
         {
             const string operation = "ReplacePreparedActor";
             string resolvedSource = source.NormalizeTextOrFallback(
@@ -1190,6 +1271,203 @@ namespace Immersive.Framework.PlayerParticipation
                         : PlayerActorPreparationStatus.FailedMaterialization);
             }
 
+            PlayerActorPreparationSummary previousSummary = currentRecord.Summary;
+            bool IsPreviousActorOperational()
+            {
+                Transform previousRoot = currentRecord.Handle.ActorRoot;
+                return currentRecord.Handle.State == PlayerActorMaterializationState.Active &&
+                    previousRoot != null &&
+                    previousRoot.gameObject.activeInHierarchy;
+            }
+
+            bool IsHandoffStillCurrent()
+            {
+                if (_invalidatedActorReplacementTransitions.Contains(playerSlotId) ||
+                    !activityScopeContext.IsValid ||
+                    !physicalScopeContext.IsValid ||
+                    physicalScopeContext.Scope != RuntimeContentScope.Session ||
+                    isHandoffTargetCurrent == null ||
+                    !isHandoffTargetCurrent() ||
+                    !_records.TryGetValue(playerSlotId, out PreparationRecord current) ||
+                    !ReferenceEquals(current, currentRecord) ||
+                    !MatchesExpectedPreparation(current, expectedPreparation) ||
+                    current.Handle.Request.Owner != physicalScopeContext.Owner ||
+                    !_participationContext.TryGetActorSelection(
+                        playerSlotId,
+                        out PlayerSlotRuntimeSnapshot latestSlot) ||
+                    !latestSlot.IsJoined ||
+                    latestSlot.SelectionRevision != currentSlot.SelectionRevision ||
+                    !ReferenceEquals(latestSlot.SelectedActorProfile, currentSlot.SelectedActorProfile))
+                {
+                    return false;
+                }
+
+                return TryResolveCurrentActorCorrelation(
+                        activityScopeContext,
+                        playerSlotId,
+                        currentRecord.Host,
+                        out _,
+                        out PlayerHostEvidenceSnapshot latestHostEvidence,
+                        out _) &&
+                    latestHostEvidence.AssignmentToken == hostEvidence.AssignmentToken &&
+                    latestHostEvidence.HostBindingIdentity == hostEvidence.HostBindingIdentity &&
+                    ReferenceEquals(latestHostEvidence.Host, hostEvidence.Host);
+            }
+
+            bool TryReleaseReplacementCandidate(out string cleanupIssue)
+            {
+                bool released = _materializationAdapter.TryReleaseMaterialization(
+                    replacementHandle,
+                    resolvedSource,
+                    "release-uncommitted-replacement-actor-candidate",
+                    out cleanupIssue);
+                if (!released)
+                {
+                    RetainReleaseFailure(replacementHandle, cleanupIssue);
+                }
+
+                return released;
+            }
+
+            PlayerActorPreparationResult HandoffFailedBeforePreviousDeactivation(
+                PlayerActorPreparationStatus status,
+                string failure)
+            {
+                if (!IsPreviousActorOperational())
+                {
+                    return HandoffFailedAfterPreviousDeactivation(
+                        failure + " Actor A is no longer physically available.");
+                }
+
+                bool candidateReleased = TryReleaseReplacementCandidate(out string cleanupIssue);
+                string message = candidateReleased
+                    ? failure
+                    : JoinMessages(failure, "Uncommitted replacement candidate cleanup failed: " + cleanupIssue);
+                return CreateResult(
+                    status,
+                    operation,
+                    playerSlotId,
+                    previousSummary,
+                    previousSummary,
+                    replacementMaterialization,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    message,
+                    candidateReleased ? PlayerActorPreparationStatus.None : status,
+                    cleanupPending: !candidateReleased);
+            }
+
+            PlayerActorPreparationResult HandoffFailedAfterPreviousDeactivation(
+                string failure)
+            {
+                bool candidateReleased = TryReleaseReplacementCandidate(out string cleanupIssue);
+                string message = candidateReleased
+                    ? failure + " Actor A remains the last committed binding but may be physically unavailable. Retry replacement or close the Session owner."
+                    : JoinMessages(
+                        failure + " Actor A remains the last committed binding but may be physically unavailable.",
+                        "Uncommitted replacement candidate cleanup failed and was retained: " + cleanupIssue);
+                return CreateResult(
+                    PlayerActorPreparationStatus.FailedHandoffAfterPreviousDeactivation,
+                    operation,
+                    playerSlotId,
+                    previousSummary,
+                    previousSummary,
+                    replacementMaterialization,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    false,
+                    false,
+                    string.Empty,
+                    message,
+                    PlayerActorPreparationStatus.FailedHandoffAfterPreviousDeactivation,
+                    cleanupPending: !candidateReleased);
+            }
+
+            if (!IsHandoffStillCurrent())
+            {
+                return HandoffFailedBeforePreviousDeactivation(
+                    PlayerActorPreparationStatus.FailedHandoffPreparation,
+                    "The replacement target changed while Actor B was being staged; Actor A was not deactivated.");
+            }
+
+            if (prepareHandoff == null || !prepareHandoff())
+            {
+                return HandoffFailedBeforePreviousDeactivation(
+                    PlayerActorPreparationStatus.FailedHandoffPreparation,
+                    "Gameplay/occupancy preparation for the physical handoff failed; Actor A was not deactivated.");
+            }
+
+            if (!IsHandoffStillCurrent())
+            {
+                return HandoffFailedBeforePreviousDeactivation(
+                    PlayerActorPreparationStatus.FailedHandoffPreparation,
+                    "The replacement owner, Session or expected Actor changed before the handoff barrier; Actor A was not deactivated.");
+            }
+
+            bool deactivated = currentRecord.Handle.TryDeactivate(
+                resolvedSource,
+                resolvedReason + "; deactivate-previous-actor",
+                out string deactivationIssue);
+            if (!deactivated)
+            {
+                return currentRecord.Handle.State == PlayerActorMaterializationState.Active
+                    ? HandoffFailedBeforePreviousDeactivation(
+                        PlayerActorPreparationStatus.FailedActivation,
+                        "Actor A could not be deactivated: " + deactivationIssue)
+                    : HandoffFailedAfterPreviousDeactivation(
+                        "Actor A became unavailable while its deactivation callback was running: " + deactivationIssue);
+            }
+
+            if (!IsHandoffStillCurrent())
+            {
+                return HandoffFailedAfterPreviousDeactivation(
+                    "The Session/Activity owner closed or the expected Actor changed during Actor A deactivation.");
+            }
+
+            if (!replacementHandle.TryActivateReplacement(
+                    resolvedSource,
+                    resolvedReason + "; activate-replacement-actor",
+                    out string activationIssue))
+            {
+                return HandoffFailedAfterPreviousDeactivation(
+                    "Actor B activation failed after Actor A was deactivated: " + activationIssue);
+            }
+
+            if (!IsHandoffStillCurrent())
+            {
+                return HandoffFailedAfterPreviousDeactivation(
+                    "The Session/Activity owner closed or the expected Actor changed during Actor B activation.");
+            }
+
+            PlayerActorPreparationSummary replacementSummary = default;
+            bool physicalBindingCommitted = false;
+            void CommitPhysicalBinding(PlayerSlotRuntimeSnapshot committedSlot)
+            {
+                CommitOccurrenceIdentity(replacementHandle);
+                replacementSummary = CreatePreparedSummary(
+                    committedSlot,
+                    replacementHandle,
+                    hostEvidence,
+                    PlayerActorPhysicalOwnership.FrameworkOwned,
+                    PlayerActorPreparationState.Prepared,
+                    resolvedSource,
+                    resolvedReason,
+                    "Replacement Logical Player Actor prepared and activated.");
+                _records[playerSlotId] = new PreparationRecord(
+                    replacementHandle,
+                    currentRecord.Host,
+                    replacementSummary);
+                _revision++;
+                physicalBindingCommitted = true;
+            }
+
             var canonicalSelectionRequest = new PlayerActorSelectionRequest(
                 playerSlotId,
                 replacementRequest.ActorProfile,
@@ -1197,113 +1475,25 @@ namespace Immersive.Framework.PlayerParticipation
                 resolvedReason,
                 currentSlot.SelectionRevision);
             PlayerActorSelectionResult selectionResult =
-                _participationContext.TryReplaceActorSelection(canonicalSelectionRequest);
+                _participationContext.TryReplaceActorSelection(
+                    canonicalSelectionRequest,
+                    CommitPhysicalBinding);
             if (selectionResult == null || !selectionResult.Succeeded)
             {
-                bool rollbackSucceeded = _materializationAdapter.TryReleaseMaterialization(
-                    replacementHandle,
-                    resolvedSource,
-                    "replacement-selection-rollback",
-                    out string rollbackIssue);
-                if (!rollbackSucceeded)
-                {
-                    RetainReleaseFailure(replacementHandle, rollbackIssue);
-                }
-
-                return CreateResult(
-                    rollbackSucceeded
-                        ? PlayerActorPreparationStatus.FailedSelectionCommit
-                        : PlayerActorPreparationStatus.FailedRollback,
-                    operation,
-                    playerSlotId,
-                    currentRecord.Summary,
-                    currentRecord.Summary,
-                    replacementMaterialization,
-                    selectionResult,
-                    true,
-                    rollbackSucceeded,
-                    rollbackIssue,
-                    false,
-                    false,
-                    string.Empty,
+                return HandoffFailedAfterPreviousDeactivation(
                     selectionResult != null
-                        ? selectionResult.Message
-                        : "Replacement Actor selection returned no result.",
-                    rollbackSucceeded
-                        ? PlayerActorPreparationStatus.None
-                        : PlayerActorPreparationStatus.FailedSelectionCommit);
+                        ? "Actor selection commit failed after Actor A was deactivated: " + selectionResult.Message
+                        : "Actor selection commit returned no result after Actor A was deactivated.");
             }
 
-            if (!replacementHandle.TryActivate(
-                    resolvedSource,
-                    resolvedReason,
-                    out string activationIssue))
+            if (!physicalBindingCommitted)
             {
-                var restoreRequest = new PlayerActorSelectionRequest(
-                    playerSlotId,
-                    currentSlot.SelectedActorProfile,
-                    resolvedSource,
-                    "replacement-activation-selection-rollback",
-                    selectionResult.SelectionRevision);
-                PlayerActorSelectionResult restoreSelection =
-                    _participationContext.TryReplaceActorSelection(restoreRequest);
-                bool physicalRollbackSucceeded = _materializationAdapter.TryReleaseMaterialization(
-                    replacementHandle,
-                    resolvedSource,
-                    "replacement-activation-physical-rollback",
-                    out string physicalRollbackIssue);
-                if (!physicalRollbackSucceeded)
-                {
-                    RetainReleaseFailure(replacementHandle, physicalRollbackIssue);
-                }
-
-                bool rollbackSucceeded =
-                    restoreSelection != null &&
-                    restoreSelection.Succeeded &&
-                    physicalRollbackSucceeded;
-                return CreateResult(
-                    rollbackSucceeded
-                        ? PlayerActorPreparationStatus.FailedActivation
-                        : PlayerActorPreparationStatus.FailedRollback,
-                    operation,
-                    playerSlotId,
-                    currentRecord.Summary,
-                    currentRecord.Summary,
-                    replacementMaterialization,
-                    selectionResult,
-                    true,
-                    rollbackSucceeded,
-                    JoinMessages(
-                        restoreSelection != null ? restoreSelection.Message : "Selection rollback returned no result.",
-                        physicalRollbackIssue),
-                    false,
-                    false,
-                    string.Empty,
-                    rollbackSucceeded
-                        ? activationIssue
-                        : $"{activationIssue} Replacement rollback failed.",
-                    rollbackSucceeded
-                        ? PlayerActorPreparationStatus.None
-                        : PlayerActorPreparationStatus.FailedActivation);
+                // Replacing with the already selected profile can be a valid explicit
+                // physical handoff with no ActorSelectionChanged publication.
+                CommitPhysicalBinding(selectionResult.Slot);
             }
 
-            PlayerSlotRuntimeSnapshot committedSlot = selectionResult.Slot;
-            CommitOccurrenceIdentity(replacementHandle);
-            PlayerActorPreparationSummary replacementSummary = CreatePreparedSummary(
-                committedSlot,
-                replacementHandle,
-                hostEvidence,
-                PlayerActorPhysicalOwnership.FrameworkOwned,
-                PlayerActorPreparationState.Prepared,
-                resolvedSource,
-                resolvedReason,
-                "Replacement Logical Player Actor prepared and activated.");
-            PlayerActorPreparationSummary previousSummary = currentRecord.Summary;
-            _records[playerSlotId] = new PreparationRecord(
-                replacementHandle,
-                currentRecord.Host,
-                replacementSummary);
-            _revision++;
+            PlayerActorPreparationSummary committedSummary = replacementSummary;
 
             bool previousReleased = _materializationAdapter.TryReleaseMaterialization(
                 currentRecord.Handle,
@@ -1318,7 +1508,7 @@ namespace Immersive.Framework.PlayerParticipation
                     operation,
                     playerSlotId,
                     previousSummary,
-                    replacementSummary,
+                    committedSummary,
                     replacementMaterialization,
                     selectionResult,
                     false,
@@ -1335,7 +1525,7 @@ namespace Immersive.Framework.PlayerParticipation
                 operation,
                 playerSlotId,
                 previousSummary,
-                replacementSummary,
+                committedSummary,
                 replacementMaterialization,
                 selectionResult,
                 false,
@@ -1350,6 +1540,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorSelectionResult TrySelectActorProfile(
             PlayerActorSelectionRequest request)
         {
+            if (TryCreateActorTransitionSelectionRejection(
+                    "SelectActorProfile",
+                    request,
+                    out PlayerActorSelectionResult transitionRejection))
+            {
+                return transitionRejection;
+            }
+
             return HasPreparedOrFailedRecord(request.PlayerSlotId)
                 ? CreatePreparedSelectionRejection(
                     "SelectActorProfile",
@@ -1361,6 +1559,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorSelectionResult TryReplaceActorSelection(
             PlayerActorSelectionRequest request)
         {
+            if (TryCreateActorTransitionSelectionRejection(
+                    "ReplaceActorSelection",
+                    request,
+                    out PlayerActorSelectionResult transitionRejection))
+            {
+                return transitionRejection;
+            }
+
             return HasPreparedOrFailedRecord(request.PlayerSlotId)
                 ? CreatePreparedSelectionRejection(
                     "ReplaceActorSelection",
@@ -1372,6 +1578,14 @@ namespace Immersive.Framework.PlayerParticipation
         internal PlayerActorSelectionResult TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
+            if (TryCreateActorTransitionSelectionRejection(
+                    "ClearActorSelection",
+                    request,
+                    out PlayerActorSelectionResult transitionRejection))
+            {
+                return transitionRejection;
+            }
+
             return HasPreparedOrFailedRecord(request.PlayerSlotId)
                 ? CreatePreparedSelectionRejection(
                     "ClearActorSelection",
@@ -1386,6 +1600,20 @@ namespace Immersive.Framework.PlayerParticipation
             string source,
             string reason)
         {
+            if (_actorReplacementTransitions.Contains(playerSlotId) &&
+                _participationContext.TryGetActorSelection(
+                    playerSlotId,
+                    out PlayerSlotRuntimeSnapshot transitionSlot))
+            {
+                return CreateSelectionRejection(
+                    PlayerActorSelectionStatus.RejectedTransitionInProgress,
+                    "SelectDefaultActor",
+                    transitionSlot,
+                    source,
+                    reason,
+                    "Actor selection cannot change during the Player Slot's guarded physical Actor transition.");
+            }
+
             if (HasPreparedOrFailedRecord(playerSlotId))
             {
                 var request = new PlayerActorSelectionRequest(
@@ -1445,6 +1673,30 @@ namespace Immersive.Framework.PlayerParticipation
                 expectedSelectionRevision,
                 source,
                 reason);
+        }
+
+        private bool TryCreateActorTransitionSelectionRejection(
+            string operation,
+            PlayerActorSelectionRequest request,
+            out PlayerActorSelectionResult result)
+        {
+            result = null;
+            if (!_actorReplacementTransitions.Contains(request.PlayerSlotId) ||
+                !_participationContext.TryGetActorSelection(
+                    request.PlayerSlotId,
+                    out PlayerSlotRuntimeSnapshot slot))
+            {
+                return false;
+            }
+
+            result = CreateSelectionRejection(
+                PlayerActorSelectionStatus.RejectedTransitionInProgress,
+                operation,
+                slot,
+                request.Source,
+                request.Reason,
+                "Actor selection cannot change during the Player Slot's guarded physical Actor transition.");
+            return true;
         }
 
         internal bool TryGetPreparationSummary(
@@ -2000,7 +2252,8 @@ namespace Immersive.Framework.PlayerParticipation
             bool previousReleaseSucceeded,
             string previousReleaseMessage,
             string message,
-            PlayerActorPreparationStatus originalStatus = PlayerActorPreparationStatus.None)
+            PlayerActorPreparationStatus originalStatus = PlayerActorPreparationStatus.None,
+            bool cleanupPending = false)
         {
             _lastOperationStatus = status;
             _lastOperationMessage = message.NormalizeText();
@@ -2022,7 +2275,8 @@ namespace Immersive.Framework.PlayerParticipation
                 previousReleaseMessage,
                 CreateSnapshot(),
                 message,
-                originalStatus);
+                originalStatus,
+                cleanupPending);
         }
 
         private static string JoinMessages(string left, string right)

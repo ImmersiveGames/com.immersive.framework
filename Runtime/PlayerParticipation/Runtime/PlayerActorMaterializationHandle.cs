@@ -17,6 +17,8 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorMaterializationState _state;
         private bool _hasEverActivated;
         private ActorOccurrenceId _occurrenceId;
+        private readonly GameObject _initialVisualContent;
+        private ActorCompositionRuntimeBinding _composition;
         private string _source;
         private string _reason;
         private string _message;
@@ -56,8 +58,8 @@ namespace Immersive.Framework.PlayerParticipation
             LocalPlayerHost = localPlayerHost ?? throw new ArgumentNullException(nameof(localPlayerHost));
             PlayerInput = playerInput ?? throw new ArgumentNullException(nameof(playerInput));
             PlayerActorRuntimeHost = playerActorRuntimeHost ?? throw new ArgumentNullException(nameof(playerActorRuntimeHost));
-            Composition = composition;
-            VisualContent = composition != null ? composition.VisualContent : presentation;
+            _composition = composition;
+            _initialVisualContent = presentation;
             ReleaseProxy = releaseProxy;
             DestroyLocalPlayerHostOnRelease = destroyLocalPlayerHostOnRelease;
             _state = PlayerActorMaterializationState.StagedInactive;
@@ -84,8 +86,10 @@ namespace Immersive.Framework.PlayerParticipation
             return true;
         }
         internal PlayerActorDeclaration PlayerActorDeclaration => PlayerActorRuntimeHost != null ? PlayerActorRuntimeHost.PlayerActorDeclaration : null;
-        internal GameObject VisualContent { get; }
-        internal ActorCompositionRuntimeBinding Composition { get; }
+        internal GameObject VisualContent => _composition != null
+            ? _composition.VisualContent
+            : _initialVisualContent;
+        internal ActorCompositionRuntimeBinding Composition => _composition;
         internal GameObject ReleaseProxy { get; }
         internal bool DestroyLocalPlayerHostOnRelease { get; }
         internal bool RequiresRouteSpatialEntryOnFirstActivation => !DestroyLocalPlayerHostOnRelease;
@@ -96,6 +100,31 @@ namespace Immersive.Framework.PlayerParticipation
         internal string Message => _message ?? string.Empty;
 
         internal bool TryActivate(string operationSource, string operationReason, out string issue)
+        {
+            return TryActivate(
+                operationSource,
+                operationReason,
+                true,
+                false,
+                out issue);
+        }
+
+        internal bool TryActivateReplacement(string operationSource, string operationReason, out string issue)
+        {
+            return TryActivate(
+                operationSource,
+                operationReason,
+                false,
+                true,
+                out issue);
+        }
+
+        private bool TryActivate(
+            string operationSource,
+            string operationReason,
+            bool applyRouteSpatialEntry,
+            bool requireActiveHierarchy,
+            out string issue)
         {
             issue = string.Empty;
             if (_state == PlayerActorMaterializationState.Active)
@@ -119,7 +148,7 @@ namespace Immersive.Framework.PlayerParticipation
             RoutePlayerSpatialEntryRuntimeBinding spatialEntryBinding = LocalPlayerHost != null
                 ? LocalPlayerHost.GetComponent<RoutePlayerSpatialEntryRuntimeBinding>()
                 : null;
-            if (RequiresRouteSpatialEntryOnFirstActivation && !_hasEverActivated &&
+            if (applyRouteSpatialEntry && RequiresRouteSpatialEntryOnFirstActivation && !_hasEverActivated &&
                 (spatialEntryBinding == null || !spatialEntryBinding.TryApplyBeforeActivation(this, out issue)))
             {
                 issue = string.IsNullOrEmpty(issue)
@@ -128,9 +157,9 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            if (Composition != null)
+            if (_composition != null)
             {
-                if (!Composition.TrySetPartsActive(true, out issue))
+                if (!_composition.TrySetPartsActive(true, out issue))
                 {
                     return false;
                 }
@@ -141,12 +170,34 @@ namespace Immersive.Framework.PlayerParticipation
             }
 
             PlayerActorRuntimeHost.gameObject.SetActive(true);
+            if (requireActiveHierarchy &&
+                (PlayerActorRuntimeHost == null ||
+                 !PlayerActorRuntimeHost.gameObject.activeInHierarchy))
+            {
+                _state = PlayerActorMaterializationState.StagedInactive;
+                issue = "Player Actor Runtime Host did not remain active after activation callbacks.";
+                return false;
+            }
+
             _hasEverActivated = true;
             _state = PlayerActorMaterializationState.Active;
             _source = operationSource.NormalizeTextOrFallback(Source);
             _reason = operationReason.NormalizeTextOrFallback(Reason);
             _message = "Player Actor occurrence activated.";
             issue = string.Empty;
+            return true;
+        }
+
+        internal bool TryAttachComposition(ActorCompositionRuntimeBinding composition)
+        {
+            if (composition == null || _composition != null ||
+                _state != PlayerActorMaterializationState.Active ||
+                PlayerActorRuntimeHost == null || ActorRoot == null)
+            {
+                return false;
+            }
+
+            _composition = composition;
             return true;
         }
 

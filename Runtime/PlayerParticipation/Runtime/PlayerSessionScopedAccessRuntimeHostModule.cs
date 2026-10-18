@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
@@ -568,13 +569,15 @@ namespace Immersive.Framework.PlayerParticipation
         }
     }
 
-    internal class PlayerSessionScopedAccess : IPlayerSessionScopedAccess, IDisposable
+    internal class PlayerSessionScopedAccess : IPlayerSessionScopedAccess, IPlayerActorCompositionAccess, IDisposable
     {
         private readonly FrameworkRuntimeHost _runtimeHost;
         private readonly PlayerParticipationRuntimeContext _participationContext;
         private readonly LocalPlayerProvisioningConsumerScope _scope;
         private readonly RuntimeContentOwner _owner;
         private readonly PlayerSessionScopedAccessConsumer _consumer;
+        private readonly HashSet<PlayerActorCompositionContribution> _compositionContributions =
+            new HashSet<PlayerActorCompositionContribution>();
         private event Action<PlayerSessionChange> _changed;
         private bool _disposed;
         private string _diagnostic;
@@ -780,6 +783,59 @@ namespace Immersive.Framework.PlayerParticipation
             return preparation.TryReplacePreparedActorForCurrentActivity(request);
         }
 
+        public bool TryOpenContribution(
+            PlayerActorCompositionContributionRequest request,
+            out PlayerActorCompositionContribution contribution,
+            out string issue)
+        {
+            contribution = null;
+            if (!TryGetContext(out issue))
+            {
+                return false;
+            }
+
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                issue = $"Actor composition contribution rejected while Host phase is '{_runtimeHost.LifecyclePhase}'.";
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
+            if (!_runtimeHost.TryGetPlayerActorPreparationRuntime(
+                    out PlayerActorPreparationRuntimeHostModule preparation))
+            {
+                issue = "Player Actor preparation runtime is unavailable.";
+                return false;
+            }
+
+            if (!preparation.TryOpenActorCompositionContribution(
+                    request,
+                    IsCompositionTargetCurrent,
+                    out contribution,
+                    out issue))
+            {
+                return false;
+            }
+
+            _compositionContributions.Add(contribution);
+            return true;
+        }
+
+        private bool IsCompositionTargetCurrent()
+        {
+            if (!_runtimeHost.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out IDisposable admission))
+            {
+                return false;
+            }
+
+            using IDisposable admissionLease = admission;
+            return IsCurrent();
+        }
+
         public PlayerActorSelectionResult RequestSelectActorProfile(
             PlayerActorSelectionRequest request)
         {
@@ -836,7 +892,84 @@ namespace Immersive.Framework.PlayerParticipation
             _disposed = true;
             _participationContext.Changed -= ForwardChange;
             _changed = null;
+            CloseCompositionContributions();
             _diagnostic = "Player Session scoped access was released because its Route or Activity scope was replaced or disposed.";
+        }
+
+        private void CloseCompositionContributions()
+        {
+            if (_compositionContributions.Count == 0)
+            {
+                return;
+            }
+
+            var contributions = new List<PlayerActorCompositionContribution>(
+                _compositionContributions);
+            for (int index = 0; index < contributions.Count; index++)
+            {
+                PlayerActorCompositionContribution contribution = contributions[index];
+                Task<PlayerActorCompositionOperationResult> closeTask =
+                    contribution.CloseAsync(
+                        "framework.player-session-scope",
+                        "The scoped Player Session access was disposed.");
+                if (closeTask.IsCompleted)
+                {
+                    try
+                    {
+                        PlayerActorCompositionOperationResult result =
+                            closeTask.GetAwaiter().GetResult();
+                        if (result.Status is not (PlayerActorCompositionOperationStatus.Committed or
+                            PlayerActorCompositionOperationStatus.NoChange))
+                        {
+                            FrameworkLogger.Create<PlayerSessionScopedAccess>().Warning(
+                                "Actor composition contribution cleanup did not commit at scope disposal.",
+                                LogFields.Of(
+                                    LogFields.Field("actor", result.ActorId.StableText),
+                                    LogFields.Field("actorOccurrence", result.ActorOccurrenceId.Value),
+                                    LogFields.Field("status", result.Status),
+                                    LogFields.Field("issue", result.Issue)));
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        FrameworkLogger.Create<PlayerSessionScopedAccess>().Warning(
+                            "Actor composition contribution cleanup threw at scope disposal.",
+                            LogFields.Of(LogFields.Field("exception", exception.GetType().Name)));
+                    }
+                }
+                else
+                {
+                    _ = ObserveCompositionCloseAsync(closeTask);
+                }
+            }
+
+            _compositionContributions.Clear();
+        }
+
+        private static async Task ObserveCompositionCloseAsync(
+            Task<PlayerActorCompositionOperationResult> closeTask)
+        {
+            try
+            {
+                PlayerActorCompositionOperationResult result = await closeTask;
+                if (result.Status is not (PlayerActorCompositionOperationStatus.Committed or
+                    PlayerActorCompositionOperationStatus.NoChange))
+                {
+                    FrameworkLogger.Create<PlayerSessionScopedAccess>().Warning(
+                        "Actor composition contribution cleanup did not commit at scope disposal.",
+                        LogFields.Of(
+                            LogFields.Field("actor", result.ActorId.StableText),
+                            LogFields.Field("actorOccurrence", result.ActorOccurrenceId.Value),
+                            LogFields.Field("status", result.Status),
+                            LogFields.Field("issue", result.Issue)));
+                }
+            }
+            catch (Exception exception)
+            {
+                FrameworkLogger.Create<PlayerSessionScopedAccess>().Warning(
+                    "Actor composition contribution cleanup threw at scope disposal.",
+                    LogFields.Of(LogFields.Field("exception", exception.GetType().Name)));
+            }
         }
 
         private bool TryGetSelectionModule(

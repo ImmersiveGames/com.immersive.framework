@@ -41,12 +41,14 @@ namespace Immersive.Framework.Actors
             internal ActorOccurrencePublication Publisher { get; }
             internal RuntimeContentOwner Owner { get; }
             internal ActorOccurrencePublicationScope PublicationScope { get; }
+            internal ActorCompositionRuntimeBinding CompositionBinding { get; set; }
         }
 
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _stagedOwners = new();
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _committedOwners = new();
         private readonly Dictionary<ActorOccurrenceId, PublicationRecord> _publications = new();
         private readonly Dictionary<ActorOccurrencePublicationScope, List<PublicationRecord>> _suspendedScopePublications = new();
+        private readonly List<PublicationRecord> _pendingCompositionCleanup = new();
         private readonly List<ActorOccurrenceReferenceBinding> _consumers = new();
         private readonly ActorOccurrenceIdSequence _occurrenceIds = new();
         private IPlayerPreparedActorOccurrenceSource _playerSource;
@@ -172,8 +174,8 @@ namespace Immersive.Framework.Actors
             }
             _stagedOwners.Remove(owner);
             if (_committedOwners.ContainsKey(owner))
-                RemoveOwner(owner);
-            return true;
+                return RemoveOwner(owner, out diagnostic);
+            return TryClosePendingCompositionCleanup(owner, out diagnostic);
         }
 
         internal bool TryReleaseOwner(RuntimeContentOwner owner, out string diagnostic)
@@ -185,9 +187,7 @@ namespace Immersive.Framework.Actors
                 return false;
             }
             _stagedOwners.Remove(owner);
-            if (_committedOwners.ContainsKey(owner))
-                RemoveOwner(owner);
-            return true;
+            return RemoveOwner(owner, out diagnostic);
         }
 
         internal bool TryPublishDynamic(
@@ -211,8 +211,9 @@ namespace Immersive.Framework.Actors
                 diagnostic = "This physical Actor root already has an active publication.";
                 return false;
             }
+            if (!TryRemoveSuspendedPublisher(publisher, out diagnostic))
+                return false;
             if (!TryAddPublication(scope, publisher, actorId, owner, out token, out diagnostic)) return false;
-            RemoveSuspendedPublisher(publisher);
             RefreshAll();
             return true;
         }
@@ -249,7 +250,86 @@ namespace Immersive.Framework.Actors
             }
             RemovePublication(record);
             RefreshAll();
-            return true;
+            return TryCloseCompositionBinding(record, out diagnostic);
+        }
+
+        internal bool TryOpenDynamicCompositionContribution(
+            ActorOccurrencePublicationScope scope,
+            ActorOccurrencePublication publisher,
+            ActorOccurrencePublicationToken token,
+            int priority,
+            string source,
+            string reason,
+            out ActorOccurrenceCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            diagnostic = string.Empty;
+            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(reason))
+            {
+                diagnostic = "Actor occurrence composition requires a non-empty source and reason.";
+                return false;
+            }
+            if (!TryGetExactPublication(scope, publisher, token, out PublicationRecord record, out diagnostic))
+                return false;
+            if (!IsCurrentPublication(record))
+            {
+                diagnostic = CleanupIdentity(record) + " Published Actor occurrence is no longer current.";
+                return false;
+            }
+
+            if (record.CompositionBinding == null)
+            {
+                if (!ActorCompositionRuntimeBinding.TryCreateForPublishedOccurrence(
+                        publisher.CompositionMount,
+                        out ActorCompositionRuntimeBinding binding,
+                        out diagnostic))
+                {
+                    diagnostic = CleanupIdentity(record) + " " + diagnostic;
+                    return false;
+                }
+                record.CompositionBinding = binding;
+            }
+
+            return record.CompositionBinding.TryOpenContribution(
+                record.ActorId,
+                record.Id,
+                record.Owner,
+                priority,
+                source,
+                reason,
+                () => IsCurrentPublication(record),
+                out contribution,
+                out diagnostic);
+        }
+
+        internal bool TryRetryCompositionCleanup(
+            ActorOccurrencePublicationScope scope,
+            ActorOccurrencePublication publisher,
+            ActorOccurrencePublicationToken token,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (scope == null || publisher == null || !token.IsValid)
+            {
+                diagnostic = "Composition cleanup retry requires its exact publication scope, Actor root and token.";
+                return false;
+            }
+
+            for (int index = 0; index < _pendingCompositionCleanup.Count; index++)
+            {
+                PublicationRecord record = _pendingCompositionCleanup[index];
+                if (record.Id != token.OccurrenceId || record.Owner != token.Owner ||
+                    !ReferenceEquals(record.PublicationScope, scope) ||
+                    !ReferenceEquals(record.Publisher, publisher))
+                {
+                    continue;
+                }
+                return TryCloseCompositionBinding(record, out diagnostic);
+            }
+
+            diagnostic = "No pending composition cleanup matches this exact Actor occurrence, owner, publication scope and publisher token.";
+            return false;
         }
 
         internal void RestoreScopePublications(ActorOccurrencePublicationScope scope)
@@ -278,11 +358,19 @@ namespace Immersive.Framework.Actors
             foreach (List<PublicationRecord> records in _suspendedScopePublications.Values)
                 for (int index = 0; index < records.Count; index++)
                     if (ReferenceEquals(records[index].Publisher, publisher)) return true;
+            for (int index = 0; index < _pendingCompositionCleanup.Count; index++)
+                if (ReferenceEquals(_pendingCompositionCleanup[index].Publisher, publisher)) return true;
             return false;
         }
 
-        internal bool HasScopePublications(ActorOccurrencePublicationScope scope) =>
-            scope != null && _suspendedScopePublications.ContainsKey(scope);
+        internal bool HasScopePublications(ActorOccurrencePublicationScope scope)
+        {
+            if (scope == null) return false;
+            if (_suspendedScopePublications.ContainsKey(scope)) return true;
+            for (int index = 0; index < _pendingCompositionCleanup.Count; index++)
+                if (ReferenceEquals(_pendingCompositionCleanup[index].PublicationScope, scope)) return true;
+            return false;
+        }
 
         internal ActorOccurrenceResolution Resolve(ActorOccurrenceReference reference)
         {
@@ -384,8 +472,12 @@ namespace Immersive.Framework.Actors
             var records = new List<PublicationRecord>();
             foreach (PublicationRecord record in _publications.Values)
                 if (ReferenceEquals(record.Publisher, publisher)) records.Add(record);
-            for (int index = 0; index < records.Count; index++) RemovePublication(records[index]);
-            RemoveSuspendedPublisher(publisher);
+            for (int index = 0; index < records.Count; index++)
+            {
+                RemovePublication(records[index]);
+                TryCloseCompositionBinding(records[index], out _);
+            }
+            TryRemoveSuspendedPublisher(publisher, out _);
             RefreshAll();
         }
 
@@ -405,7 +497,18 @@ namespace Immersive.Framework.Actors
         {
             if (scope == null) return;
             RemoveScopePublications(scope);
-            _suspendedScopePublications.Remove(scope);
+            if (_suspendedScopePublications.TryGetValue(scope, out List<PublicationRecord> records))
+            {
+                _suspendedScopePublications.Remove(scope);
+                for (int index = 0; index < records.Count; index++)
+                    TryCloseCompositionBinding(records[index], out _);
+            }
+            for (int index = _pendingCompositionCleanup.Count - 1; index >= 0; index--)
+            {
+                PublicationRecord record = _pendingCompositionCleanup[index];
+                if (ReferenceEquals(record.PublicationScope, scope))
+                    TryCloseCompositionBinding(record, out _);
+            }
         }
 
         private bool TryGetPlayer(PlayerSlotId slot, out ActorOccurrence occurrence)
@@ -453,14 +556,34 @@ namespace Immersive.Framework.Actors
             return true;
         }
 
-        private void RemoveOwner(RuntimeContentOwner owner)
+        private bool RemoveOwner(RuntimeContentOwner owner, out string diagnostic)
         {
             _committedOwners.Remove(owner);
             var records = new List<PublicationRecord>();
             foreach (PublicationRecord record in _publications.Values)
                 if (record.Owner == owner) records.Add(record);
             for (int index = 0; index < records.Count; index++) RemovePublication(records[index]);
-            RemoveSuspendedOwner(owner);
+            records.AddRange(RemoveSuspendedOwner(owner));
+            for (int index = 0; index < _pendingCompositionCleanup.Count; index++)
+            {
+                PublicationRecord pending = _pendingCompositionCleanup[index];
+                if (pending.Owner == owner && !records.Contains(pending))
+                    records.Add(pending);
+            }
+
+            bool succeeded = true;
+            var issues = new List<string>();
+            for (int index = 0; index < records.Count; index++)
+            {
+                if (!TryCloseCompositionBinding(records[index], out string issue))
+                {
+                    succeeded = false;
+                    issues.Add(issue);
+                }
+            }
+            RefreshAll();
+            diagnostic = string.Join(" | ", issues);
+            return succeeded;
         }
 
         private void RemoveOwnerPublications(RuntimeContentOwner owner)
@@ -476,28 +599,134 @@ namespace Immersive.Framework.Actors
             _publications.Remove(record.Id);
         }
 
-        private void RemoveSuspendedPublisher(ActorOccurrencePublication publisher)
+        private bool TryGetExactPublication(
+            ActorOccurrencePublicationScope scope,
+            ActorOccurrencePublication publisher,
+            ActorOccurrencePublicationToken token,
+            out PublicationRecord record,
+            out string diagnostic)
         {
-            var emptyScopes = new List<ActorOccurrencePublicationScope>();
-            foreach (KeyValuePair<ActorOccurrencePublicationScope, List<PublicationRecord>> pair in _suspendedScopePublications)
+            record = null;
+            if (scope == null || publisher == null || !token.IsValid ||
+                !_publications.TryGetValue(token.OccurrenceId, out record) ||
+                !ReferenceEquals(record.Publisher, publisher) ||
+                !ReferenceEquals(record.PublicationScope, scope) || record.Owner != token.Owner ||
+                !_committedOwners.ContainsKey(record.Owner))
             {
-                pair.Value.RemoveAll(record => ReferenceEquals(record.Publisher, publisher));
-                if (pair.Value.Count == 0) emptyScopes.Add(pair.Key);
+                diagnostic = "The exact published Actor occurrence, owner and scope token are required.";
+                record = null;
+                return false;
             }
-            for (int index = 0; index < emptyScopes.Count; index++)
-                _suspendedScopePublications.Remove(emptyScopes[index]);
+
+            diagnostic = string.Empty;
+            return true;
         }
 
-        private void RemoveSuspendedOwner(RuntimeContentOwner owner)
+        private bool IsCurrentPublication(PublicationRecord record)
+        {
+            return record != null && _committedOwners.ContainsKey(record.Owner) &&
+                _publications.TryGetValue(record.Id, out PublicationRecord current) &&
+                ReferenceEquals(current, record) && record.Publisher != null &&
+                record.Publisher.TryValidate(out ActorId actorId, out _) && actorId == record.ActorId &&
+                (record.CompositionBinding == null ||
+                 (record.Publisher.CompositionMount != null &&
+                  ReferenceEquals(record.CompositionBinding.CompositionMount, record.Publisher.CompositionMount)));
+        }
+
+        private bool TryCloseCompositionBinding(PublicationRecord record, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (record == null || record.CompositionBinding == null)
+            {
+                if (record != null)
+                {
+                    _pendingCompositionCleanup.Remove(record);
+                    record.Publisher?.UnbindRuntime(this);
+                }
+                return true;
+            }
+
+            if (record.CompositionBinding.TryClose(out string issue))
+            {
+                record.CompositionBinding = null;
+                _pendingCompositionCleanup.Remove(record);
+                record.Publisher?.UnbindRuntime(this);
+                return true;
+            }
+
+            if (!_pendingCompositionCleanup.Contains(record))
+                _pendingCompositionCleanup.Add(record);
+            diagnostic = CleanupIdentity(record) + " Composition cleanup remains pending. " + issue;
+            return false;
+        }
+
+        private bool TryClosePendingCompositionCleanup(RuntimeContentOwner owner, out string diagnostic)
+        {
+            var issues = new List<string>();
+            for (int index = _pendingCompositionCleanup.Count - 1; index >= 0; index--)
+            {
+                PublicationRecord record = _pendingCompositionCleanup[index];
+                if (record.Owner != owner) continue;
+                if (!TryCloseCompositionBinding(record, out string issue))
+                    issues.Add(issue);
+            }
+            diagnostic = string.Join(" | ", issues);
+            return issues.Count == 0;
+        }
+
+        private static string CleanupIdentity(PublicationRecord record) =>
+            record == null
+                ? "Actor occurrence composition cleanup has no publication record."
+                : $"actor='{record.ActorId.StableText}' occurrence='{record.Id}' owner='{record.Owner.StableText}'.";
+
+        private bool TryRemoveSuspendedPublisher(ActorOccurrencePublication publisher, out string diagnostic)
         {
             var emptyScopes = new List<ActorOccurrencePublicationScope>();
+            var records = new List<PublicationRecord>();
             foreach (KeyValuePair<ActorOccurrencePublicationScope, List<PublicationRecord>> pair in _suspendedScopePublications)
             {
-                pair.Value.RemoveAll(record => record.Owner == owner);
+                for (int index = pair.Value.Count - 1; index >= 0; index--)
+                {
+                    if (!ReferenceEquals(pair.Value[index].Publisher, publisher)) continue;
+                    records.Add(pair.Value[index]);
+                    pair.Value.RemoveAt(index);
+                }
                 if (pair.Value.Count == 0) emptyScopes.Add(pair.Key);
             }
             for (int index = 0; index < emptyScopes.Count; index++)
                 _suspendedScopePublications.Remove(emptyScopes[index]);
+
+            bool succeeded = true;
+            var issues = new List<string>();
+            for (int index = 0; index < records.Count; index++)
+            {
+                if (!TryCloseCompositionBinding(records[index], out string issue))
+                {
+                    succeeded = false;
+                    issues.Add(issue);
+                }
+            }
+            diagnostic = string.Join(" | ", issues);
+            return succeeded;
+        }
+
+        private List<PublicationRecord> RemoveSuspendedOwner(RuntimeContentOwner owner)
+        {
+            var emptyScopes = new List<ActorOccurrencePublicationScope>();
+            var records = new List<PublicationRecord>();
+            foreach (KeyValuePair<ActorOccurrencePublicationScope, List<PublicationRecord>> pair in _suspendedScopePublications)
+            {
+                for (int index = pair.Value.Count - 1; index >= 0; index--)
+                {
+                    if (pair.Value[index].Owner != owner) continue;
+                    records.Add(pair.Value[index]);
+                    pair.Value.RemoveAt(index);
+                }
+                if (pair.Value.Count == 0) emptyScopes.Add(pair.Key);
+            }
+            for (int index = 0; index < emptyScopes.Count; index++)
+                _suspendedScopePublications.Remove(emptyScopes[index]);
+            return records;
         }
 
         private bool IsPublished(ActorOccurrencePublication publisher)

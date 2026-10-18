@@ -407,6 +407,17 @@ namespace Immersive.Framework.PlayerParticipation
                 "ReplaceActorSelection");
         }
 
+        internal PlayerActorSelectionResult TryReplaceActorSelection(
+            PlayerActorSelectionRequest request,
+            Action<PlayerSlotRuntimeSnapshot> beforePublish)
+        {
+            return ApplyActorSelection(
+                request,
+                PlayerActorSelectionOperation.Replace,
+                "ReplaceActorSelection",
+                beforePublish);
+        }
+
         internal PlayerActorSelectionResult TryClearActorSelection(
             PlayerActorSelectionRequest request)
         {
@@ -511,7 +522,8 @@ namespace Immersive.Framework.PlayerParticipation
         private PlayerActorSelectionResult ApplyActorSelection(
             PlayerActorSelectionRequest request,
             PlayerActorSelectionOperation operation,
-            string operationName)
+            string operationName,
+            Action<PlayerSlotRuntimeSnapshot> beforePublish = null)
         {
             string source = request.Source.NormalizeText();
             string reason = request.Reason.NormalizeText();
@@ -785,7 +797,7 @@ namespace Immersive.Framework.PlayerParticipation
                     $"ActorProfile '{requestedActorProfileId.StableText}' is already selected by Joined Slot '{conflictingRecord.PlayerSlotId.StableText}'.");
             }
 
-            CommitActorSelection(record, request.ActorProfile, source, reason);
+            CommitActorSelection(record, request.ActorProfile, source, reason, beforePublish);
             return CreateActorSelectionResult(
                 previous == null
                     ? PlayerActorSelectionStatus.SucceededSelected
@@ -809,6 +821,7 @@ namespace Immersive.Framework.PlayerParticipation
             ActorProfile actorProfile,
             string source,
             string reason,
+            Action<PlayerSlotRuntimeSnapshot> beforePublish = null,
             bool publishChange = true)
         {
             PlayerSlotRuntimeSnapshot previousSlot = CreateSlotSnapshot(record);
@@ -818,11 +831,13 @@ namespace Immersive.Framework.PlayerParticipation
             record.SelectionReason = reason;
             record.Revision++;
             _revision++;
+            PlayerSlotRuntimeSnapshot currentSlot = CreateSlotSnapshot(record);
+            beforePublish?.Invoke(currentSlot);
             if (publishChange)
             {
                 PublishActorSelectionChange(
                     previousSlot,
-                    CreateSlotSnapshot(record));
+                    currentSlot);
             }
         }
 
