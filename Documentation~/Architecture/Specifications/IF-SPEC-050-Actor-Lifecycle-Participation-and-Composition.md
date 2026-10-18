@@ -3,6 +3,7 @@
 Status: **Accepted architectural design companion to IF-ADR-050 — exact public APIs, implementation and validation pending**
 Design reconciled: **2026-10-17 — independent architecture assessment**<br>
 Architecture accepted: **2026-10-17**<br>
+Base content serialization model approved: **2026-10-18 — implementation and migration plan pending**<br>
 Proposed: **2026-10-17**<br>
 Authority: [IF-ADR-050 — Actor Occurrence Lifecycle, Authority and Commit](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md)<br>
 Governance: [IF-GOV-001 — API Maturity and Validation Governance](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)<br>
@@ -84,6 +85,26 @@ Authoring of generic PartDefinition/prefab or data materializers should support 
 ### 3.3 Deferred abstractions
 
 Do not require `ActorShell` as a new universal class, `SlotDefinition` assets, fixed Base/Selection/Loadout/Activity layer taxonomy, `CapabilityTable`, sockets, generic `IConfigurable<T>` / part-state-transfer hierarchies, an Actor-specific provider plugin system, a Framework-owned NonPlayerSpawner, or generalized global asset lease registries in the first contract. Preserve extension seams in materializers/declared dependencies without promising these capabilities now.
+
+### 3.4 ActorProfile Base-part serialization — accepted authoring decision
+
+`ActorProfile` stores its ordered Base content as references to **one ScriptableObject asset per content part**. Each part asset describes one keyed Framework Actor contribution, including its key, required prefab reference and dependency keys. The `visual` key remains optional at the profile level; under the current ActorProfile contract, every authored part, including a non-`visual` part, still requires a prefab. Data-only part definitions in the generic kernel do not imply data-only ActorProfile authoring. A part asset is a Framework authoring asset; it does not move Unity types into `com.immersive.composition`, whose kernel remains engine-independent. Framework integration maps the authored assets to the existing keyed Composer contract.
+
+Dependency declarations remain content-key values, not references to other part assets. This lets a reusable part retain the same dependency contract when used by different profiles. Key uniqueness, dependency existence, cycles and prefab restrictions remain validated against the complete profile composition. The ordered profile references preserve authoring order; dependency order is still resolved by the Composer contract.
+
+Part assets may be intentionally shared by multiple profiles. Editing a shared asset changes every profile that references it, so sharing is explicit through assigning the same asset reference. Migration of existing inline entries creates a distinct part asset for each entry and does not infer sharing or deduplicate equal values.
+
+The profile asset remains the authoring and selection identity. Part assets define reusable content and do not create an Actor, occurrence, contribution owner, or runtime resource instance. Runtime acquisition, application and release continue through the single Framework-to-Composer integration path. Scene-Provided adoption and its producer ownership remain separate from this profile serialization decision.
+
+#### Serialized-data migration contract
+
+The migration is an explicit, idempotent Editor operation. It converts the current inline `compositionParts` entries and any remaining legacy `presentationPrefab` data into part assets and profile references. It preserves the ActorProfile asset GUID, prefab references/GUIDs, entry order, keys and dependency values. A legacy visual equal to an existing inline `visual` entry is one value and must not create a duplicate; conflicting legacy and inline visual values, malformed entries, duplicate keys or invalid dependencies produce a conflict/invalid result without overwriting source data.
+
+Generated assets are written beneath the owning editable project `Assets/` tree, in a profile-scoped content-parts folder. Migration must not write to immutable `PackageCache` paths; such profiles are reported as blocked for migration until they are copied or made editable in their owning project/package. It must not silently fall back to inline or legacy fields at runtime. Existing serialized fields may remain temporarily as migration input only; remove them only after the explicit migration has run and the supported consumer assets have been checked.
+
+The current inline custom-class list is serialized by value. Changing its element type directly to Unity object references is not a compatible field-shape conversion and may lose authored values. Therefore migration must read the old shape before it is removed or renamed, create and save the part assets, assign references, and verify all migrated profile data before the old shape stops being readable by the migration tool. The profile's GUID and existing prefab GUIDs remain stable; each generated part asset has a new Unity asset GUID, and the profile stores references to those new GUIDs.
+
+This serialization choice does not promote the ActorProfile surface or the new part-asset surface to Stable. Their maturity is governed per contract by IF-GOV-001; the ActorProfile authoring contract currently remains Experimental. Exact C# type/member names and Inspector presentation details remain implementation/API review items.
 
 ## 4. Keyed composition and contribution commits
 
@@ -238,7 +259,7 @@ These are source-observed paths, not evidence of a Unity execution. The currentl
 | Identity | Player participation, logical Actor and committed physical occurrence stay distinct. | Exact Player ActorId issuance/migration still requires acceptance. |
 | Operational gate | Keep specialized gates; no universal capability contract without a new product requirement. | Cannot claim suppression of arbitrary callbacks. |
 | Cleanup | Per-owner exact outcome; do not assert `Destroy` confirmation or invent global ledger. | Async future adapters must define longer-lived retry owner. |
-| Content authoring | Profile Base entry + visual mount; one runtime content path. | Migration of serialized assets requires plan. |
+| Content authoring | ActorProfile stores ordered references to one Framework ScriptableObject asset per Base content part; Framework maps those assets through one Composer path. | Explicit migration of inline and legacy serialized values, exact C# signatures and Inspector workflow require implementation planning and validation. |
 
 ### Residual decisions and evidence gates
 
@@ -247,7 +268,7 @@ These are source-observed paths, not evidence of a Unity execution. The currentl
 | Accepted-contract reconciliation | Review amendments to IF-ADR-003/023A/024/038/049 (and relevant 014/020/025 scopes) before implementation. Proposed architecture cannot silently override accepted replacement/reference semantics. |
 | Unity callback exception propagation | Small isolated Unity 6000.5 proof if claiming `SetActive` propagates/does not propagate callback exceptions. Conservative contract already avoids either promise. |
 | Profile replacement policy | Decide when a new root/ActorId is intentionally requested versus a content-only change; impacts authoring and migration, not generic Composer authority. |
-| Authoring/typed API shape | Decide Inspector serialization, default key/mount validation, public identity namespace and exact C# signatures in design/API review; these are not defined here. |
+| Authoring/typed API shape | Base-part serialization is decided in §3.4. Exact C# signatures, Inspector workflow, default key/mount validation and public identity namespace remain design/API review items. |
 | Async/pooling implementations | Require separate provider capability and staged/active semantics before claiming safe pooling or Addressables support. No such feature is asserted today. |
 
 ## 11. Existing ADR reconciliation
@@ -268,7 +289,7 @@ These are source-observed paths, not evidence of a Unity execution. The currentl
 
 ## 12. Accepted architecture and implementation readiness
 
-IF-ADR-050 and this companion define the **accepted architecture target** for lifecycle authority and a small generic composition kernel. This is not an implementation or Stable API acceptance: no final C# signatures, UPM files, assemblies, code, tests, assets or consumer migration are implemented.
+IF-ADR-050 and this companion define the **accepted architecture target** for lifecycle authority, the Base-part authoring serialization model and a small generic composition kernel. This is not an implementation or Stable API acceptance: no final C# signatures, UPM files, assemblies, code, tests, part assets or consumer migration are implemented.
 
 A bounded Unity proof may record `OnDisable(A)`, `Awake(B)`, `OnEnable(B)`, active-state/Current observations and callback exception behavior, using the canonical logger. This validates the engine-facing assumptions without duplicating unrelated Framework validation. It does not block a conservative documentation review.
 

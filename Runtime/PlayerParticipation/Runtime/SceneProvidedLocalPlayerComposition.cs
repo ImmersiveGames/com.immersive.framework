@@ -129,8 +129,8 @@ namespace Immersive.Framework.PlayerParticipation
                 ? visualContentMount.GetChild(0).gameObject
                 : null;
             bool hasVisualPart = profile.TryGetVisualContentPrefab(out _);
-            if (profile.CompositionParts.Count > 1 ||
-                (profile.CompositionParts.Count == 1 && !hasVisualPart))
+            if (profile.BaseContentParts.Count > 1 ||
+                (profile.BaseContentParts.Count == 1 && !hasVisualPart))
             {
                 issue = "Scene-Provided Actor currently supports the exact authored Base 'visual' part only; additional keyed scene-part bindings are not authored yet.";
                 return false;

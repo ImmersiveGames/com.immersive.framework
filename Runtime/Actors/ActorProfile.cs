@@ -37,7 +37,11 @@ namespace Immersive.Framework.Actors
         [SerializeField] private ActorRole actorRole = ActorRole.Protagonist;
 
         [SerializeField]
-        [Tooltip("Base content contributions materialized below this Actor occurrence. The 'visual' key is the optional visual part.")]
+        [Tooltip("Ordered references to reusable Base content part assets. The 'visual' key is optional.")]
+        private List<ActorCompositionPartAsset> baseContentParts = new List<ActorCompositionPartAsset>();
+
+        [SerializeField, HideInInspector]
+        [Tooltip("Legacy inline values retained only for the explicit Actor Profile part-asset migration.")]
         private List<ActorCompositionPart> compositionParts = new List<ActorCompositionPart>();
 
         [FormerlySerializedAs("presentationPrefab")]
@@ -72,7 +76,22 @@ namespace Immersive.Framework.Actors
 
         public bool HasVisualContentPrefab => TryGetVisualContentPrefab(out _);
 
-        internal IReadOnlyList<ActorCompositionPart> CompositionParts
+        internal IReadOnlyList<ActorCompositionPartAsset> BaseContentParts
+        {
+            get
+            {
+                if (baseContentParts == null)
+                {
+                    return Array.Empty<ActorCompositionPartAsset>();
+                }
+
+                return baseContentParts;
+            }
+        }
+
+        internal bool HasBaseContentPartsList => baseContentParts != null;
+
+        internal IReadOnlyList<ActorCompositionPart> LegacyCompositionParts
         {
             get
             {
@@ -85,21 +104,25 @@ namespace Immersive.Framework.Actors
             }
         }
 
-        internal bool HasCompositionPartsList => compositionParts != null;
+        internal bool HasLegacyCompositionParts => compositionParts != null && compositionParts.Count > 0;
 
         internal bool HasLegacyPresentationPrefab => legacyPresentationPrefab != null;
+
+        internal GameObject LegacyPresentationPrefab => legacyPresentationPrefab;
+
+        internal bool HasLegacyCompositionData => HasLegacyCompositionParts || HasLegacyPresentationPrefab;
 
         internal bool TryGetVisualContentPrefab(out GameObject prefab)
         {
             prefab = null;
-            if (compositionParts == null)
+            if (baseContentParts == null)
             {
                 return false;
             }
 
-            for (int index = 0; index < compositionParts.Count; index++)
+            for (int index = 0; index < baseContentParts.Count; index++)
             {
-                ActorCompositionPart part = compositionParts[index];
+                ActorCompositionPartAsset part = baseContentParts[index];
                 if (part == null || !string.Equals(part.Key, "visual", StringComparison.Ordinal))
                 {
                     continue;

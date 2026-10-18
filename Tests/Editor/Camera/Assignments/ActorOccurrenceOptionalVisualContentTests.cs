@@ -20,6 +20,28 @@ namespace Immersive.Framework.Camera.Tests
 {
     public sealed class ActorOccurrenceOptionalVisualContentTests
     {
+        private static readonly List<ActorCompositionPartAsset> CreatedPartAssets =
+            new List<ActorCompositionPartAsset>();
+
+        [TearDown]
+        public void DestroyCreatedPartAssets()
+        {
+            DestroyAllCreatedPartAssets();
+        }
+
+        internal static void DestroyAllCreatedPartAssets()
+        {
+            for (int index = 0; index < CreatedPartAssets.Count; index++)
+            {
+                if (CreatedPartAssets[index] != null)
+                {
+                    Object.DestroyImmediate(CreatedPartAssets[index]);
+                }
+            }
+
+            CreatedPartAssets.Clear();
+        }
+
         [Test]
         public void RuntimeHostIsValidWithoutOptionalVisualMount()
         {
@@ -110,6 +132,34 @@ namespace Immersive.Framework.Camera.Tests
                     out string issue), Is.False);
                 Assert.That(status, Is.EqualTo(PlayerActorMaterializationStatus.RejectedInvalidProfile));
                 StringAssert.Contains("explicit Actor Profile visual-content migration", issue);
+            }
+            finally
+            {
+                Object.DestroyImmediate(legacyVisual);
+                Object.DestroyImmediate(profile);
+            }
+        }
+
+        [Test]
+        public void ManagerProvisionedProfileValidationRejectsInlinePartsWithoutRuntimeFallback()
+        {
+            ActorProfile profile = ScriptableObject.CreateInstance<ActorProfile>();
+            GameObject legacyVisual = new GameObject("Inline Legacy Visual");
+            SetPrivateField(
+                profile,
+                "compositionParts",
+                new List<ActorCompositionPart> { new ActorCompositionPart("visual", legacyVisual) });
+
+            try
+            {
+                Assert.That(AttachedPlayerActorMaterializationAdapter.TryValidateProfile(
+                    profile,
+                    out _,
+                    out PlayerActorMaterializationStatus status,
+                    out string issue), Is.False);
+                Assert.That(status, Is.EqualTo(PlayerActorMaterializationStatus.RejectedInvalidProfile));
+                StringAssert.Contains("inline or legacy composition data", issue);
+                StringAssert.Contains("explicit Actor Profile part-asset migration", issue);
             }
             finally
             {
@@ -814,13 +864,10 @@ namespace Immersive.Framework.Camera.Tests
 
         internal static void SetActorVisualContent(ActorProfile profile, GameObject prefab)
         {
-            SetPrivateField(
-                profile,
-                "compositionParts",
-                new List<ActorCompositionPart>
-                {
-                    new ActorCompositionPart("visual", prefab)
-                });
+            ActorCompositionPartAsset part = ScriptableObject.CreateInstance<ActorCompositionPartAsset>();
+            part.Initialize("visual", prefab);
+            CreatedPartAssets.Add(part);
+            SetPrivateField(profile, "baseContentParts", new List<ActorCompositionPartAsset> { part });
         }
     }
 
@@ -997,6 +1044,7 @@ namespace Immersive.Framework.Camera.Tests
 
             EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled;
             EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
+            ActorOccurrenceOptionalVisualContentTests.DestroyAllCreatedPartAssets();
         }
 
         private T Track<T>(T value) where T : UnityEngine.Object

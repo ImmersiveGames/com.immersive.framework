@@ -53,7 +53,7 @@ namespace Immersive.Framework.PlayerParticipation
             if (composition == null)
             {
                 if (handle.Request.ActorProfile == null ||
-                    handle.Request.ActorProfile.CompositionParts.Count > 0)
+                    handle.Request.ActorProfile.BaseContentParts.Count > 0)
                 {
                     issue = "The current Actor Profile has authored composition parts but its authoritative Composer binding is unavailable.";
                     return false;

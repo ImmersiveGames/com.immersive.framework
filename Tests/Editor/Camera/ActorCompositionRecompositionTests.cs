@@ -22,6 +22,23 @@ namespace Immersive.Framework.Camera.Tests
 {
     public sealed class ActorCompositionRecompositionTests
     {
+        private readonly List<ActorCompositionPartAsset> _createdPartAssets =
+            new List<ActorCompositionPartAsset>();
+
+        [TearDown]
+        public void DestroyCreatedPartAssets()
+        {
+            for (int index = 0; index < _createdPartAssets.Count; index++)
+            {
+                if (_createdPartAssets[index] != null)
+                {
+                    Object.DestroyImmediate(_createdPartAssets[index]);
+                }
+            }
+
+            _createdPartAssets.Clear();
+        }
+
         [Test]
         public async Task RecompositionChangesVisualAndDependentPartWithoutReplacingActorOccurrence()
         {
@@ -1557,33 +1574,20 @@ namespace Immersive.Framework.Camera.Tests
             }
         }
 
-        private static void SetCompositionParts(
+        private void SetCompositionParts(
             ActorProfile profile,
             params ActorCompositionPart[] parts)
         {
-            var serialized = new UnityEditor.SerializedObject(profile);
-            UnityEditor.SerializedProperty compositionParts =
-                serialized.FindProperty("compositionParts");
-            compositionParts.arraySize = parts.Length;
+            var partAssets = new List<ActorCompositionPartAsset>(parts.Length);
             for (int index = 0; index < parts.Length; index++)
             {
-                UnityEditor.SerializedProperty part =
-                    compositionParts.GetArrayElementAtIndex(index);
-                part.FindPropertyRelative("key").stringValue = parts[index].Key;
-                part.FindPropertyRelative("prefab").objectReferenceValue = parts[index].Prefab;
-                UnityEditor.SerializedProperty dependencies =
-                    part.FindPropertyRelative("dependencies");
-                dependencies.arraySize = parts[index].Dependencies.Count;
-                for (int dependencyIndex = 0;
-                    dependencyIndex < parts[index].Dependencies.Count;
-                    dependencyIndex++)
-                {
-                    dependencies.GetArrayElementAtIndex(dependencyIndex).stringValue =
-                        parts[index].Dependencies[dependencyIndex];
-                }
+                ActorCompositionPartAsset asset = ScriptableObject.CreateInstance<ActorCompositionPartAsset>();
+                asset.Initialize(parts[index].Key, parts[index].Prefab, parts[index].Dependencies);
+                _createdPartAssets.Add(asset);
+                partAssets.Add(asset);
             }
 
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            SetPrivateField(profile, "baseContentParts", partAssets);
         }
 
         private static void SetPrivateField(object target, string fieldName, object value)

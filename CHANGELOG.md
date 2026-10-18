@@ -2,6 +2,12 @@
 
 All notable package changes are documented in this file.
 
+## [1.2.0-preview.4] - 2026-10-18 — Actor Profile composition part assets
+
+- Stores each Actor Profile base composition part as a referenced `ActorCompositionPartAsset` ScriptableObject. The Editor migration converts existing inline parts and reports migrated, unchanged, ignored, invalid, conflicting and blocked profiles.
+- Updates minimum package dependencies to Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`.
+- The Project Owner reports the QAFramework EditMode suite passed with 441/441 tests after the migration implementation. This evidence is not bound to the versioned source commit; confirm Unity import and tests against the tagged release candidate before publication.
+
 ## [1.2.0-preview.3] - 2026-10-18 — IF-ADR-050 Actor lifecycle and composition preview
 
 - Adds Experimental committed Actor occurrence identity, guarded prepared Actor replacement, in-place keyed composition, root-stable Camera observation and owner-scoped NonPlayer composition integration. Existing Stable contracts are not promoted or changed; the Experimental Actor Profile serialization change has an explicit Editor migration.

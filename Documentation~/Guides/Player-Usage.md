@@ -20,7 +20,7 @@ LocalPlayerHostAuthoring
   technical Player Host, PlayerInput boundary and ActorMount
 
 ActorProfile
-  reusable Actor identity/classification and optional visual-content reference
+  reusable Actor identity/classification and keyed Base content intent
 ```
 
 `PlayerSessionProfile` is a ScriptableObject with `SupportedSlots` in canonical
@@ -74,17 +74,21 @@ The root GameObject name equals its prefab filename without `.prefab`.
 
 `LocalPlayerHostAuthoring.PlayerActorRuntimeHostPrefab` remains the technical Host
 reference. The Actor occurrence root owns physical/spatial state. Optional visual
-content is subordinate. Actor visuals are authored as the Actor Profile Base
-composition part with key `visual` and are mounted below the existing
-`VisualContentMount`. An empty Base list remains valid and requires no mount.
-Before using an existing Profile that serialized `presentationPrefab`, run
-**Tools > Immersive Framework > Migrate Actor Profile Visual Content** in the
-Unity Editor. The migration copies the same Prefab reference into the `visual`
-entry, clears its legacy value, and preserves the Profile and Prefab GUIDs; a
-conflicting existing entry is reported without overwriting either reference.
-There is no runtime fallback for unmigrated Profiles. For Scene-Provided
+content is subordinate. Actor visuals are authored as an `ActorProfile` ordered
+reference to a ScriptableObject Base content part with key `visual`, mounted
+below the existing `VisualContentMount`. Create part assets from the Profile
+Inspector; each authored part requires a Prefab, while the `visual` part itself
+is optional. An empty Base list remains valid and requires no mount. Existing
+inline and legacy profile data requires the explicit **Tools > Immersive
+Framework > Migrate Actor Profile Visual Content** operation before runtime
+use. It creates and verifies per-part assets before clearing migration input;
+conflicts and unsupported paths are reported without source overwrite. There is
+no runtime fallback for unmigrated Profiles. For Scene-Provided
 Actors, author the matching visual instance under that exact mount and validate
 its Prefab provenance in the Scene-Provided Local Player Inspector.
+
+For the complete before/after model, Base authoring steps, runtime contribution
+limits and NonPlayer producer flow, see [Actor Composition Usage](Actor-Composition-Usage.md).
 
 Neither the visual part nor its mount is required for Actor validity,
 activation, placement, relocation or replacement.

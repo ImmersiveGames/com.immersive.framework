@@ -230,7 +230,7 @@ namespace Immersive.Framework.PlayerParticipation
                 return false;
             }
 
-            IReadOnlyList<ActorCompositionPart> authoredParts = profile.CompositionParts;
+            IReadOnlyList<ActorCompositionPartAsset> authoredParts = profile.BaseContentParts;
             if (authoredParts.Count == 0)
             {
                 if (adoptedVisual != null)
@@ -318,7 +318,7 @@ namespace Immersive.Framework.PlayerParticipation
             {
                 for (int index = 0; index < authoredParts.Count; index++)
                 {
-                    ActorCompositionPart authoredPart = authoredParts[index];
+                    ActorCompositionPartAsset authoredPart = authoredParts[index];
                     ContentKey key = ContentKey.Create(authoredPart.Key);
                     ContentKey[] dependencies = authoredPart.Dependencies
                         .Select(ContentKey.Create)
@@ -326,9 +326,13 @@ namespace Immersive.Framework.PlayerParticipation
                     GameObject instance = string.Equals(authoredPart.Key, "visual", StringComparison.Ordinal)
                         ? adoptedVisual
                         : null;
+                    var descriptor = new ActorCompositionPart(
+                        authoredPart.Key,
+                        authoredPart.Prefab,
+                        authoredPart.Dependencies);
                     var part = new ActorCompositionPartMaterializer.PartBinding(
                         profile,
-                        authoredPart,
+                        descriptor,
                         mount,
                         instance,
                         operationId.StableText);

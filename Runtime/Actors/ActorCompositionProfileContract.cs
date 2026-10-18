@@ -17,38 +17,86 @@ namespace Immersive.Framework.Actors
                 return false;
             }
 
-            if (!profile.HasCompositionPartsList)
+            if (profile.HasLegacyCompositionData)
             {
-                issue = $"Actor Profile '{profile.name}' has no serialized Base composition list. Repair or reimport the asset before materialization.";
+                issue = $"Actor Profile '{profile.name}' still contains inline or legacy composition data. Run the explicit Actor Profile part-asset migration before materialization.";
                 return false;
             }
 
-            IReadOnlyList<ActorCompositionPart> parts = profile.CompositionParts;
+            if (!profile.HasBaseContentPartsList)
+            {
+                issue = $"Actor Profile '{profile.name}' has no serialized Base content part asset list. Repair or reimport the asset before materialization.";
+                return false;
+            }
+
+            IReadOnlyList<ActorCompositionPartAsset> authoredParts = profile.BaseContentParts;
+            var parts = new List<ActorCompositionPart>(authoredParts.Count);
+            for (int index = 0; index < authoredParts.Count; index++)
+            {
+                ActorCompositionPartAsset asset = authoredParts[index];
+                if (asset == null)
+                {
+                    issue = $"Actor Profile '{profile.name}' Base content part reference '{index}' is missing.";
+                    return false;
+                }
+
+                if (!asset.HasDependenciesList)
+                {
+                    issue = $"Actor Profile composition key '{asset.Key}' has no serialized dependency list.";
+                    return false;
+                }
+
+                parts.Add(new ActorCompositionPart(asset.Key, asset.Prefab, asset.Dependencies));
+            }
+
+            return TryValidateParts(profile.name, parts, out issue);
+        }
+
+        internal static bool TryValidateLegacyParts(
+            string profileName,
+            IReadOnlyList<ActorCompositionPart> parts,
+            out string issue)
+        {
+            return TryValidateParts(profileName, parts, out issue);
+        }
+
+        private static bool TryValidateParts(
+            string profileName,
+            IReadOnlyList<ActorCompositionPart> parts,
+            out string issue)
+        {
+            issue = string.Empty;
+            if (parts == null)
+            {
+                issue = $"Actor Profile '{profileName}' has no serialized Base composition list.";
+                return false;
+            }
+
             var keys = new Dictionary<ContentKey, ActorCompositionPart>();
             for (int index = 0; index < parts.Count; index++)
             {
                 ActorCompositionPart part = parts[index];
                 if (part == null)
                 {
-                    issue = $"Actor Profile '{profile.name}' composition entry '{index}' is missing.";
+                    issue = $"Actor Profile '{profileName}' composition entry '{index}' is missing.";
                     return false;
                 }
 
                 if (!ContentKey.TryCreate(part.Key, out ContentKey key))
                 {
-                    issue = $"Actor Profile '{profile.name}' composition entry '{index}' has invalid key '{part.Key}'.";
+                    issue = $"Actor Profile '{profileName}' composition entry '{index}' has invalid key '{part.Key}'.";
                     return false;
                 }
 
                 if (keys.ContainsKey(key))
                 {
-                    issue = $"Actor Profile '{profile.name}' has duplicate composition key '{key.Value}'.";
+                    issue = $"Actor Profile '{profileName}' has duplicate composition key '{key.Value}'.";
                     return false;
                 }
 
                 if (part.Prefab == null)
                 {
-                    issue = $"Actor Profile '{profile.name}' composition key '{key.Value}' requires an explicit prefab.";
+                    issue = $"Actor Profile '{profileName}' composition key '{key.Value}' requires an explicit prefab.";
                     return false;
                 }
 

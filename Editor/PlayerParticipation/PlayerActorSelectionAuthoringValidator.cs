@@ -89,7 +89,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             if (report.IsValid)
             {
                 report.AddInfo(
-                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' compositionParts='{profile.CompositionParts.Count}'.",
+                    $"Actor Profile is valid. actorProfileId='{actorProfileId}' kind='{profile.ActorKind}' role='{profile.ActorRole}' baseContentParts='{profile.BaseContentParts.Count}'.",
                     profile);
             }
 
@@ -153,10 +153,10 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             ActorProfile profile,
             FrameworkAuthoringValidationReport report)
         {
-            if (profile.HasLegacyPresentationPrefab)
+            if (profile.HasLegacyCompositionData)
             {
                 report.AddError(
-                    $"ActorProfile '{profile.name}' still has a legacy visual reference. Run Tools > Immersive Framework > Migrate Actor Profile Visual Content.",
+                    $"ActorProfile '{profile.name}' still has inline or legacy composition data. Run Tools > Immersive Framework > Migrate Actor Profile Visual Content.",
                     profile);
                 return;
             }
@@ -167,9 +167,14 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 return;
             }
 
-            for (int index = 0; index < profile.CompositionParts.Count; index++)
+            for (int index = 0; index < profile.BaseContentParts.Count; index++)
             {
-                ActorCompositionPart part = profile.CompositionParts[index];
+                ActorCompositionPartAsset part = profile.BaseContentParts[index];
+                if (part == null)
+                {
+                    continue;
+                }
+
                 if (!PrefabUtility.IsPartOfPrefabAsset(part.Prefab))
                 {
                     report.AddError(

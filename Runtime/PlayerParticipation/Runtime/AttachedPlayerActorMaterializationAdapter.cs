@@ -126,7 +126,7 @@ namespace Immersive.Framework.PlayerParticipation
                         out string compositionIssue))
                 {
                     PlayerActorMaterializationStatus status = runtimeHost.VisualContentMount == null &&
-                        actorProfile.CompositionParts.Count > 0
+                        actorProfile.BaseContentParts.Count > 0
                             ? PlayerActorMaterializationStatus.RejectedInvalidRuntimeHostPrefab
                             : PlayerActorMaterializationStatus.RejectedInvalidProfile;
                     return RollbackFailure(status, request, runtimeRequest, localPlayerHost, localPlayerHost.PlayerInput, runtimeHost, null, compositionIssue, resolvedSource, resolvedReason);

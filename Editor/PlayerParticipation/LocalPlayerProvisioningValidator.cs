@@ -228,7 +228,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                 ActorProfile actorProfile = slot != null
                     ? slot.DefaultActorProfile
                     : null;
-                if (actorProfile == null || actorProfile.CompositionParts.Count == 0)
+                if (actorProfile == null || actorProfile.BaseContentParts.Count == 0)
                 {
                     continue;
                 }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Editor.Validation;
 using UnityEditor;
@@ -17,8 +20,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         private SerializedProperty _icon;
         private SerializedProperty _actorKind;
         private SerializedProperty _actorRole;
-        private SerializedProperty _compositionParts;
-        private SerializedProperty _legacyPresentationPrefab;
+        private SerializedProperty _baseContentParts;
 
         private bool _showAdvanced;
         private bool _hasValidationResult;
@@ -32,8 +34,7 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             _icon = serializedObject.FindProperty("icon");
             _actorKind = serializedObject.FindProperty("actorKind");
             _actorRole = serializedObject.FindProperty("actorRole");
-            _compositionParts = serializedObject.FindProperty("compositionParts");
-            _legacyPresentationPrefab = serializedObject.FindProperty("legacyPresentationPrefab");
+            _baseContentParts = serializedObject.FindProperty("baseContentParts");
         }
 
         public override void OnInspectorGUI()
@@ -182,16 +183,21 @@ namespace Immersive.Framework.Editor.PlayerParticipation
             DrawSection("Base Composition");
 
             EditorGUILayout.PropertyField(
-                _compositionParts,
+                _baseContentParts,
                 new GUIContent(
                     "Base Content Parts",
-                    "Initial keyed parts for this Actor occurrence. The 'visual' key is mounted below Visual Content Mount."),
+                    "Ordered references to keyed part assets for this Actor. The 'visual' key is mounted below Visual Content Mount."),
                 true);
 
-            if (_legacyPresentationPrefab.objectReferenceValue != null)
+            EditorGUILayout.HelpBox(
+                "Part assets can be shared intentionally. Editing a shared asset changes every Actor Profile that references it.",
+                MessageType.Info);
+
+            ActorProfile profile = (ActorProfile)target;
+            if (profile.HasLegacyCompositionData)
             {
                 EditorGUILayout.HelpBox(
-                    "This profile still contains legacy presentationPrefab data. Runtime materialization requires the explicit migration below; there is no runtime fallback.",
+                    "This profile still contains inline or legacy composition data. Runtime materialization uses only Base Content Part assets; run the explicit migration below.",
                     MessageType.Warning);
                 if (GUILayout.Button("Migrate This Actor Profile"))
                 {
@@ -200,9 +206,11 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                         ActorProfileVisualContentMigration.MigrateAsset((ActorProfile)target);
                     serializedObject.Update();
                     ClearValidationResult();
-                    if (result.Status is ActorProfileVisualContentMigrationStatus.Invalid or ActorProfileVisualContentMigrationStatus.Conflict)
+                    if (result.Status is ActorProfileVisualContentMigrationStatus.Invalid or
+                        ActorProfileVisualContentMigrationStatus.Conflict or
+                        ActorProfileVisualContentMigrationStatus.Blocked)
                     {
-                        Debug.LogError($"[IF-ADR-050] {result.Status} '{result.AssetPath}'. {result.Message}", target);
+                        Debug.LogWarning($"[IF-ADR-050] {result.Status} '{result.AssetPath}'. {result.Message}", target);
                     }
                     else
                     {
@@ -210,6 +218,165 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                     }
                 }
             }
+
+            if (GUILayout.Button("Create Base Content Part Asset"))
+            {
+                CreateBaseContentPartAsset(profile);
+            }
+        }
+
+        private void CreateBaseContentPartAsset(ActorProfile profile)
+        {
+            string profilePath = AssetDatabase.GetAssetPath(profile);
+            if (!profilePath.StartsWith("Assets/", StringComparison.Ordinal) ||
+                !AssetDatabase.IsOpenForEdit(profilePath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Cannot Create Part Asset",
+                    "Actor Profile part assets can only be created beneath an editable Assets folder. Copy this Profile into Assets before authoring new parts.",
+                    "OK");
+                return;
+            }
+
+            string profileDirectory = Path.GetDirectoryName(profilePath)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(profileDirectory))
+            {
+                EditorUtility.DisplayDialog("Cannot Create Part Asset", "The Actor Profile folder could not be resolved.", "OK");
+                return;
+            }
+
+            string folderName = SanitizeFileName(Path.GetFileNameWithoutExtension(profilePath)) + "_BaseContentParts";
+            string partFolder = $"{profileDirectory}/{folderName}";
+            if (!AssetDatabase.IsValidFolder(partFolder))
+            {
+                string folderGuid = AssetDatabase.CreateFolder(profileDirectory, folderName);
+                if (string.IsNullOrEmpty(folderGuid))
+                {
+                    EditorUtility.DisplayDialog("Cannot Create Part Asset", $"Could not create '{partFolder}'.", "OK");
+                    return;
+                }
+            }
+
+            string key = NextPartKey(profile.BaseContentParts);
+            var originalReferences = new List<ActorCompositionPartAsset>(profile.BaseContentParts);
+            ActorCompositionPartAsset part = ScriptableObject.CreateInstance<ActorCompositionPartAsset>();
+            part.Initialize(key, null);
+            string assetPath = AssetDatabase.GenerateUniqueAssetPath(
+                $"{partFolder}/{profile.BaseContentParts.Count:D2}_{SanitizeFileName(key)}.asset");
+            bool assetCreated = false;
+            bool profileReferencesChanged = false;
+            try
+            {
+                AssetDatabase.CreateAsset(part, assetPath);
+                assetCreated = true;
+                Undo.RecordObject(profile, "Add Actor Profile Base Content Part");
+                SerializedProperty references = serializedObject.FindProperty("baseContentParts");
+                int newIndex = references.arraySize;
+                references.InsertArrayElementAtIndex(newIndex);
+                references.GetArrayElementAtIndex(newIndex).objectReferenceValue = part;
+                profileReferencesChanged = true;
+                serializedObject.ApplyModifiedProperties();
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssetIfDirty(profile);
+                EditorGUIUtility.PingObject(part);
+                Selection.activeObject = part;
+            }
+            catch (Exception exception)
+            {
+                bool restored = !profileReferencesChanged || TryRestoreBaseReferences(profile, originalReferences);
+                if (restored && assetCreated)
+                {
+                    AssetDatabase.DeleteAsset(assetPath);
+                }
+
+                if (restored && part != null && !AssetDatabase.Contains(part))
+                {
+                    UnityEngine.Object.DestroyImmediate(part);
+                }
+
+                string recovery = restored
+                    ? "The Actor Profile reference list was restored."
+                    : "The Profile reference rollback failed; the created asset was retained to avoid a broken reference. Inspect the Profile and asset before retrying.";
+                Debug.LogError(
+                    $"[IF-ADR-050] Could not create Base content part asset for '{profile.name}'. {exception.GetType().Name}: {exception.Message} {recovery}",
+                    profile);
+            }
+
+            serializedObject.Update();
+            ClearValidationResult();
+        }
+
+        private static bool TryRestoreBaseReferences(
+            ActorProfile profile,
+            IReadOnlyList<ActorCompositionPartAsset> originalReferences)
+        {
+            try
+            {
+                Undo.RecordObject(profile, "Restore Actor Profile Base Content Parts");
+                var restore = new SerializedObject(profile);
+                SerializedProperty references = restore.FindProperty("baseContentParts");
+                if (references == null || !references.isArray)
+                {
+                    return false;
+                }
+
+                references.arraySize = originalReferences.Count;
+                for (int index = 0; index < originalReferences.Count; index++)
+                {
+                    references.GetArrayElementAtIndex(index).objectReferenceValue = originalReferences[index];
+                }
+
+                restore.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssetIfDirty(profile);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string NextPartKey(IReadOnlyList<ActorCompositionPartAsset> parts)
+        {
+            bool hasVisual = false;
+            var used = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < parts.Count; index++)
+            {
+                ActorCompositionPartAsset part = parts[index];
+                if (part == null)
+                {
+                    continue;
+                }
+
+                used.Add(part.Key);
+                hasVisual |= string.Equals(part.Key, "visual", StringComparison.Ordinal);
+            }
+
+            if (!hasVisual)
+            {
+                return "visual";
+            }
+
+            for (int suffix = 1; ; suffix++)
+            {
+                string candidate = $"part-{suffix}";
+                if (!used.Contains(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            string normalized = string.IsNullOrWhiteSpace(value) ? "Part" : value.Trim();
+            foreach (char invalidCharacter in Path.GetInvalidFileNameChars())
+            {
+                normalized = normalized.Replace(invalidCharacter, '_');
+            }
+
+            return normalized;
         }
 
         private void DrawConfigurationStatus()
@@ -361,6 +528,22 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         {
             EditorGUILayout.Space(6f);
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+        }
+    }
+
+    [CustomEditor(typeof(ActorCompositionPartAsset))]
+    internal sealed class ActorCompositionPartAssetEditor : UnityEditor.Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            serializedObject.Update();
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("key"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("prefab"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("dependencies"), true);
+            serializedObject.ApplyModifiedProperties();
+            EditorGUILayout.HelpBox(
+                "Assigning this same asset to multiple Actor Profiles is intentional sharing; edits apply to every reference.",
+                MessageType.Info);
         }
     }
 }
