@@ -811,6 +811,17 @@ namespace Immersive.Framework.Camera.Tests
                     System.Reflection.BindingFlags.NonPublic)
                 .SetValue(target, value);
         }
+
+        internal static void SetActorVisualContent(ActorProfile profile, GameObject prefab)
+        {
+            SetPrivateField(
+                profile,
+                "compositionParts",
+                new List<ActorCompositionPart>
+                {
+                    new ActorCompositionPart("visual", prefab)
+                });
+        }
     }
 
     public sealed class ActorMaterializationReleasePlayModeTests
@@ -876,7 +887,7 @@ namespace Immersive.Framework.Camera.Tests
             GameObject visualPrefab = Track(new GameObject("Actor Visual Prefab"));
             visualPrefab.SetActive(false);
             visualPrefab.AddComponent<ActorVisualReleaseLifecycleProbe>();
-            SetActorVisualContent(profile, visualPrefab);
+            ActorOccurrenceOptionalVisualContentTests.SetActorVisualContent(profile, visualPrefab);
             SetPrivateField(localPlayerHost, "playerActorRuntimeHostPrefab", runtimeHostPrefab);
 
             var slot = new PlayerSlotRuntimeSnapshot(
@@ -1002,16 +1013,6 @@ namespace Immersive.Framework.Camera.Tests
                 .SetValue(target, value);
         }
 
-        private static void SetActorVisualContent(ActorProfile profile, GameObject prefab)
-        {
-            SetPrivateField(
-                profile,
-                "compositionParts",
-                new List<ActorCompositionPart>
-                {
-                    new ActorCompositionPart("visual", prefab)
-                });
-        }
     }
 
     internal sealed class ActorVisualReleaseLifecycleProbe : MonoBehaviour
