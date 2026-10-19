@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Immersive.Framework.Actors;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.PlayerParticipation;
@@ -264,6 +265,103 @@ namespace Immersive.Framework.ActorReferences.Tests
             Assert.That(runtime.Resolve(ActorOccurrenceReference.ForActorId(
                 new ActorId("npc.scope-release"), owner)).Occurrence.Id,
                 Is.Not.EqualTo(oldOccurrence));
+        }
+
+        [Test]
+        public async Task StaticActivityActorContributionRestoresAdoptedVisualAndRejectsAfterOwnerRelease()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner owner = CreateActivityOwner("activity.static-composition");
+            ActorOccurrencePublication publication = CreateNonPlayer("npc.static-composition");
+            Transform mount = Track(new GameObject("Composition Mount")).transform;
+            mount.SetParent(publication.transform, false);
+            GameObject existingVisual = Track(new GameObject("Existing Visual"));
+            existingVisual.transform.SetParent(mount, false);
+            GameObject replacementPrefab = Track(new GameObject("Replacement Visual"));
+            SetPrivateField(typeof(ActorOccurrencePublication), publication,
+                "compositionMount", mount);
+
+            Assert.That(publication.GetComponent<ActorOccurrencePublicationScope>(), Is.Null,
+                "Static Activity content should not need a dynamic publication Scope.");
+            Assert.That(runtime.TryRegisterOwnerContent(owner,
+                new[] { publication.gameObject }, out string issue), Is.True, issue);
+            Assert.That(runtime.TryCommitOwner(owner, out issue), Is.True, issue);
+            var lifecycle = new ActorOccurrenceReferenceSceneLifecycleParticipant(runtime);
+            SceneCompositionScope sceneScope = SceneCompositionScope.ForScene(publication.gameObject.scene);
+            Assert.That(lifecycle.OnSceneAvailable(
+                sceneScope,
+                new[] { publication.gameObject }).Succeeded, Is.True);
+
+            ActorOccurrenceResolution resolved = runtime.Resolve(
+                ActorOccurrenceReference.ForActorId(new ActorId("npc.static-composition"), owner));
+            Assert.That(resolved.Status, Is.EqualTo(ActorOccurrenceResolutionStatus.Resolved));
+            ActorOccurrenceId occurrenceId = resolved.Occurrence.Id;
+
+            Assert.That(publication.TryOpenCompositionContribution(
+                priority: -10,
+                source: "ActivityBaseContent",
+                reason: "Adopt the authored visual as the Actor baseline",
+                out ActorOccurrenceCompositionContribution baseline,
+                out issue), Is.True, issue);
+            ActorOccurrenceCompositionOperationResult baselineResult =
+                await baseline.SetPartAsync(
+                    ActorOccurrenceCompositionPart.AdoptExisting("visual", existingVisual),
+                    "ActivityBaseContent",
+                    "Commit the authored visual baseline");
+            Assert.That(baselineResult.Status,
+                Is.EqualTo(ActorOccurrenceCompositionOperationStatus.Committed),
+                baselineResult.Issue);
+
+            Assert.That(publication.TryOpenCompositionContribution(
+                priority: 20,
+                source: "QuestPresentation",
+                reason: "Replace the current visual for this Activity",
+                out ActorOccurrenceCompositionContribution overrideContribution,
+                out issue), Is.True, issue);
+            ActorOccurrenceCompositionOperationResult replaceResult =
+                await overrideContribution.SetPartAsync(
+                    new ActorOccurrenceCompositionPart("visual", replacementPrefab),
+                    "QuestPresentation",
+                    "Apply temporary visual");
+            Assert.That(replaceResult.Status,
+                Is.EqualTo(ActorOccurrenceCompositionOperationStatus.Committed),
+                replaceResult.Issue);
+            Assert.That(replaceResult.ActorOccurrenceId, Is.EqualTo(occurrenceId));
+            Assert.That(replaceResult.Owner, Is.EqualTo(owner));
+            Assert.That(publication.gameObject, Is.SameAs(resolved.Occurrence.ActorRoot));
+            Assert.That(existingVisual.activeSelf, Is.False);
+
+            ActorOccurrenceCompositionOperationResult removeResult =
+                await overrideContribution.RemovePartAsync(
+                    "visual",
+                    "QuestPresentation",
+                    "Restore the Actor's previous visual");
+            Assert.That(removeResult.Status,
+                Is.EqualTo(ActorOccurrenceCompositionOperationStatus.Committed),
+                removeResult.Issue);
+            Assert.That(removeResult.ActorOccurrenceId, Is.EqualTo(occurrenceId));
+            Assert.That(removeResult.CompositionRevision,
+                Is.GreaterThan(replaceResult.CompositionRevision));
+            Assert.That(existingVisual.activeSelf, Is.True);
+            Assert.That(existingVisual.transform.parent, Is.SameAs(mount));
+            Assert.That(runtime.Resolve(ActorOccurrenceReference.ForOccurrence(
+                resolved.Occurrence)).Occurrence.ActorRoot,
+                Is.SameAs(publication.gameObject));
+
+            Assert.That(runtime.TryReleaseOwner(owner, out issue), Is.True, issue);
+            ActorOccurrenceCompositionOperationResult staleResult =
+                await overrideContribution.SetPartAsync(
+                    new ActorOccurrenceCompositionPart("visual", replacementPrefab),
+                    "QuestPresentation",
+                    "Attempt an update after Activity release");
+            Assert.That(staleResult.Status,
+                Is.EqualTo(ActorOccurrenceCompositionOperationStatus.Stale),
+                staleResult.Issue);
+            Assert.That(staleResult.ActorOccurrenceId, Is.EqualTo(occurrenceId));
+            Assert.That(lifecycle.OnSceneReleasing(
+                sceneScope,
+                new[] { publication.gameObject },
+                "release-static-composition-test").Succeeded, Is.True);
         }
 
         [Test]

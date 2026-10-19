@@ -1,6 +1,6 @@
 # IF-ADR-050 — Actor Occurrence Lifecycle, Authority and Commit
 
-Status: **Accepted — target architecture; implementation and validation pending**
+Status: **Accepted — target architecture; phased implementation in progress; full validation pending**
 Accepted: **2026-10-17**  
 Proposed: **2026-10-17**  
 Revised proposal: **2026-10-17 — independent architecture reconciliation**  
@@ -93,7 +93,7 @@ No claim is made that every MonoBehaviour obeys staged activation, that `SetActi
 - Spatial entry must separate candidate-local placement from shared Route completion evidence. Camera observation should remain on a stable root-owned anchor by default; consumers caching replaced part references need composition-delta rebinding.
 - Content replacement no longer implies physical Actor replacement. Physical replacement remains an explicit producer/lifecycle operation.
 - This decision replaces the earlier proposed UPM direction from `actor-composition → framework` to `framework → composition`. The earlier candidate remains historical design rationale only, not a second supported runtime architecture.
-- New contracts remain **unimplemented**; when introduced, public surfaces begin Experimental unless separately accepted under IF-GOV-001. A separate implementation/migration plan and evidence are required.
+- The broad target architecture remains only partially implemented. Actor composition and occurrence surfaces remain **Experimental** unless separately accepted under IF-GOV-001. Phased source, validation and release status is recorded in the [Framework tracker](../Tracking/IF-TRACK-Framework.md); the remaining target architecture still requires its own implementation and evidence gates.
 
 Current-code findings to track independently of package development: reactivation of visual during release; selection notifications before B is ready; selection rollback invalidating A's retained revision; resolver minting/losing occurrence IDs on transient predicate changes; and B activation while A remains physically active. These are reviewed code risks/defects, **not** claims of an executed Unity test.
 
@@ -103,4 +103,4 @@ IF-ADR-003, IF-ADR-020, IF-ADR-024, IF-ADR-025, IF-ADR-038 and IF-ADR-049, toget
 
 ## Review readiness
 
-**Architecture accepted on 2026-10-17 for implementation planning.** The [accepted-target migration contract](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) defines exact future-vs-current boundary conditions. IF-SPEC-050 owns detailed conceptual design and failure cases. No new UPM package, source implementation, Unity execution, public API promotion or release is asserted. Remaining API signatures, serializer migration and target-specific tests belong to a separate implementation plan; they do not undo this architecture decision.
+**Architecture accepted on 2026-10-17 for implementation planning.** The [accepted-target migration contract](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) defines exact future-vs-current boundary conditions. IF-SPEC-050 owns detailed conceptual design and failure cases. No new UPM package, full target implementation, Unity execution, Stable API promotion or release is asserted. The occurrence-scoped Actor composition access follow-up is tracked in the [Framework tracker](../Tracking/IF-TRACK-Framework.md); remaining target migrations and validation gates are still open.

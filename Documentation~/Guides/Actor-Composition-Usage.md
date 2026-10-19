@@ -67,43 +67,83 @@ earlier D08 visual migration reports remain recorded in the
 
 ## Change Player Actor content at runtime
 
-The Player contract is Experimental. A contribution targets one exact current
-Player and physical Actor occurrence; do not construct identity by parsing
-diagnostic strings or cache occurrence IDs across replacement.
+The Player contribution contracts and `PlayerActorCompositionAccess` component
+are Experimental. Add the access component to the consumer's Route or Activity
+content and set its **Scope** to that same owner scope. The Framework binds it
+to that exact Route/Activity occurrence and releases it with the scope. Each
+opened contribution is validated against the exact current Player and Actor
+occurrence IDs in its request, so a retained contribution cannot mutate a
+replaced Actor. Pair it with the public read-only `PlayerSessionObserver` and
+an `ActorOccurrenceReferenceBinding` configured for the same Player Slot. Do
+not construct identity by parsing diagnostic strings or cache occurrence IDs
+across Actor replacement.
+The gameplay component can hold a serialized reference to
+`PlayerActorCompositionAccess`; it does not implement or inherit an Internal
+Framework consumer type.
 
-When a Framework-scoped integration already holds its live
-`IPlayerSessionScopedAccess`, the current Player Slot observation supplies the
-`PlayerOccurrenceId`, and an `ActorOccurrenceReferenceBinding` for that Slot
-supplies the exact `ActorId` and `ActorOccurrenceId`. The integration can then
-open a contribution:
+This example opens a contribution for the exact joined Player and physical
+Actor currently observed, then applies and removes only the `visual` key:
 
 ```csharp
+if (!sessionObserver.TryGetObservation(
+        out PlayerSessionScopedObservationSnapshot observation))
+{
+    throw new InvalidOperationException(sessionObserver.Diagnostic);
+}
+
+PlayerSessionScopedSlotObservation slot = default;
+for (int index = 0; index < observation.Slots.Count; index++)
+{
+    PlayerSessionScopedSlotObservation candidate = observation.Slots[index];
+    if (candidate.Slot.PlayerSlotId == playerSlot.PlayerSlotId)
+    {
+        slot = candidate;
+        break;
+    }
+}
+
+if (!slot.IsJoined || !slot.Slot.PlayerOccurrenceId.IsValid)
+    throw new InvalidOperationException("The configured Player Slot is not joined.");
+
+if (!actorReference.TryGetCurrent(out ActorOccurrenceResolution currentActor) ||
+    !currentActor.Succeeded)
+    throw new InvalidOperationException(currentActor.Diagnostic);
+
 var request = new PlayerActorCompositionContributionRequest(
     slot.Slot.PlayerSlotId,
     slot.Slot.PlayerOccurrenceId,
-    occurrence.Occurrence.ActorId,
-    occurrence.Occurrence.Id,
+    currentActor.Occurrence.ActorId,
+    currentActor.Occurrence.Id,
     priority: 20,
-    source: "EquipmentLoadout",
-    reason: "Apply active equipment visual");
+    source: "AppearanceSelection",
+    reason: "Apply Petra's alternate visual");
 
-if (!((IPlayerActorCompositionAccess)sessionAccess).TryOpenContribution(
+if (!compositionAccess.TryOpenContribution(
         request,
         out PlayerActorCompositionContribution contribution,
         out string issue))
-{
     throw new InvalidOperationException(issue);
-}
 
-PlayerActorCompositionOperationResult result = await contribution.SetPartAsync(
-    new PlayerActorCompositionPart("equipment", equipmentPrefab),
-    "EquipmentLoadout",
-    "Apply active equipment visual");
+PlayerActorCompositionOperationResult applied = await contribution.SetPartAsync(
+    new PlayerActorCompositionPart("visual", visualPrefab),
+    "AppearanceSelection",
+    "Apply Petra's alternate visual");
+RequireCommitted(applied.Status, applied.Issue);
+visualContribution = contribution; // Mantenha este handle até a rotina de restauração.
 
-if (result.Status is not (PlayerActorCompositionOperationStatus.Committed or
-    PlayerActorCompositionOperationStatus.NoChange))
+PlayerActorCompositionOperationResult restored = await visualContribution.RemovePartAsync(
+    "visual",
+    "AppearanceSelection",
+    "Restore the profile's visual");
+RequireCommitted(restored.Status, restored.Issue);
+
+static void RequireCommitted(
+    PlayerActorCompositionOperationStatus status,
+    string issue)
 {
-    throw new InvalidOperationException(result.Issue);
+    if (status is not (PlayerActorCompositionOperationStatus.Committed or
+        PlayerActorCompositionOperationStatus.NoChange))
+        throw new InvalidOperationException(issue);
 }
 ```
 
@@ -113,15 +153,62 @@ removes one of this owner's keys. Close the contribution when its feature/scope
 ends so its parts are withdrawn. Check the returned status and `Issue`; a stale,
 cancelled, rejected or faulted result did not commit the requested change.
 
-**Consumer access limit:** the composition interface is Experimental and is
-implemented by the scoped Player access object, but the built-in public
-`PlayerSessionObserver` is read-only and does not expose that object. The current
-package has no general public component/binding that hands
-`IPlayerActorCompositionAccess` to arbitrary game code. The snippet therefore
-applies to Framework feature integrations that already receive the scoped port;
-it is not a recipe for global lookup or for deriving from an Internal access
-consumer. External Player runtime contributions need a supported public binding
-before they can use this interface directly.
+## Change a NonPlayer Actor already materialized by an Activity
+
+For a static Actor already included in Activity content, keep
+`ActorDeclaration` and `ActorOccurrencePublication` on the same physical Actor
+root and assign its explicit `CompositionMount`. The scene lifecycle binds the
+publication to the active Framework composition. Once the Activity owner has
+committed and that lifecycle binding is active, open the contribution directly
+on the root component; this path does not require an
+`ActorOccurrencePublicationScope` or dynamic publication token.
+
+If the Activity-authored visual is the previous composition to restore, author
+that instance below the mount and adopt it as a lower-priority contribution.
+Then a temporary higher-priority contribution can replace and remove the same
+`visual` key. Reuse the `RequireCommitted` helper from the Player example to
+reject results that did not commit:
+
+```csharp
+if (!publication.TryOpenCompositionContribution(
+        priority: -10,
+        source: "ActivityActorBase",
+        reason: "Register the Activity-authored visual",
+        out ActorOccurrenceCompositionContribution baseContribution,
+        out string issue))
+    throw new InvalidOperationException(issue);
+
+ActorOccurrenceCompositionOperationResult baseResult = await baseContribution.SetPartAsync(
+    ActorOccurrenceCompositionPart.AdoptExisting("visual", authoredVisual),
+    "ActivityActorBase",
+    "Adopt the Activity-authored visual");
+RequireCommitted(baseResult.Status, baseResult.Issue);
+
+if (!publication.TryOpenCompositionContribution(
+        priority: 20,
+        source: "QuestPresentation",
+        reason: "Show the temporary Actor visual",
+        out ActorOccurrenceCompositionContribution temporaryVisual,
+        out issue))
+    throw new InvalidOperationException(issue);
+
+ActorOccurrenceCompositionOperationResult applied = await temporaryVisual.SetPartAsync(
+    new ActorOccurrenceCompositionPart("visual", temporaryVisualPrefab),
+    "QuestPresentation",
+    "Apply the temporary Actor visual");
+RequireCommitted(applied.Status, applied.Issue);
+
+ActorOccurrenceCompositionOperationResult restored = await temporaryVisual.RemovePartAsync(
+    "visual",
+    "QuestPresentation",
+    "Restore the Activity-authored visual");
+RequireCommitted(restored.Status, restored.Issue);
+```
+
+`ActorOccurrenceCompositionOperationResult` reports the exact
+`ActorOccurrenceId`, `RuntimeContentOwner`, composition revision, status and
+issue for each operation. The physical root and occurrence remain the same;
+the adopted object remains owned by the Activity.
 
 ## Add content to a dynamically produced NonPlayer Actor
 

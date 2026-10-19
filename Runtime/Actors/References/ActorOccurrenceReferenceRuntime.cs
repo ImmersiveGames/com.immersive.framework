@@ -278,10 +278,66 @@ namespace Immersive.Framework.Actors
                 return false;
             }
 
+            return TryOpenCompositionContribution(
+                record, priority, source, reason, out contribution, out diagnostic);
+        }
+
+        internal bool TryOpenStaticCompositionContribution(
+            ActorOccurrencePublication publisher,
+            int priority,
+            string source,
+            string reason,
+            out ActorOccurrenceCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            diagnostic = string.Empty;
+            if (publisher == null || string.IsNullOrWhiteSpace(source) ||
+                string.IsNullOrWhiteSpace(reason))
+            {
+                diagnostic = "Static Actor composition requires its exact owner-registered Actor, source, and reason.";
+                return false;
+            }
+
+            PublicationRecord record = null;
+            foreach (PublicationRecord candidate in _publications.Values)
+            {
+                if (!ReferenceEquals(candidate.Publisher, publisher)) continue;
+                record = candidate;
+                break;
+            }
+
+            if (record == null || record.PublicationScope != null ||
+                !_committedOwners.ContainsKey(record.Owner))
+            {
+                diagnostic = "Static Actor composition requires this exact Actor occurrence to be registered under a committed content owner; dynamic publications require their Scope and token.";
+                return false;
+            }
+            if (!IsCurrentPublication(record))
+            {
+                diagnostic = CleanupIdentity(record) + " Owner-registered Actor occurrence is no longer current.";
+                return false;
+            }
+
+            return TryOpenCompositionContribution(
+                record, priority, source, reason, out contribution, out diagnostic);
+        }
+
+        private bool TryOpenCompositionContribution(
+            PublicationRecord record,
+            int priority,
+            string source,
+            string reason,
+            out ActorOccurrenceCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            diagnostic = string.Empty;
+
             if (record.CompositionBinding == null)
             {
                 if (!ActorCompositionRuntimeBinding.TryCreateForPublishedOccurrence(
-                        publisher.CompositionMount,
+                        record.Publisher.CompositionMount,
                         out ActorCompositionRuntimeBinding binding,
                         out diagnostic))
                 {

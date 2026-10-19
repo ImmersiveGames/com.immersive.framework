@@ -105,7 +105,9 @@ namespace Immersive.Framework.PlayerParticipation
                         SceneCompositionComponentQuery.GetComponents<
                             PlayerSessionScopedAccessConsumer>(routeScope),
                         SceneCompositionComponentQuery.GetComponents<
-                            PlayerSessionJoinTrigger>(routeScope)),
+                            PlayerSessionJoinTrigger>(routeScope),
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerActorCompositionAccess>(routeScope)),
                     LocalPlayerProvisioningConsumerScope.Route,
                     RuntimeContentOwner.Route(route.RouteId.StableText,
                         route.RouteName, RuntimeDefinitionToken.FromUnityObject(route)),
@@ -126,7 +128,9 @@ namespace Immersive.Framework.PlayerParticipation
                         SceneCompositionComponentQuery.GetComponents<
                             PlayerSessionScopedAccessConsumer>(activityScope, activity),
                         SceneCompositionComponentQuery.GetComponents<
-                            PlayerSessionJoinTrigger>(activityScope, activity)),
+                            PlayerSessionJoinTrigger>(activityScope, activity),
+                        SceneCompositionComponentQuery.GetComponents<
+                            PlayerActorCompositionAccess>(activityScope, activity)),
                     LocalPlayerProvisioningConsumerScope.Activity,
                     RuntimeContentOwner.Activity(activity.ActivityId.StableText,
                         activity.ActivityName, RuntimeDefinitionToken.FromUnityObject(activity)),
@@ -198,7 +202,8 @@ namespace Immersive.Framework.PlayerParticipation
 
         private List<PlayerSessionScopedBindingRecipient> CreateRecipients(
             IReadOnlyList<PlayerSessionScopedAccessConsumer> consumers,
-            IReadOnlyList<PlayerSessionJoinTrigger> joinTriggers)
+            IReadOnlyList<PlayerSessionJoinTrigger> joinTriggers,
+            IReadOnlyList<PlayerActorCompositionAccess> compositionAccesses)
         {
             var recipients = new List<PlayerSessionScopedBindingRecipient>();
             if (consumers != null)
@@ -224,6 +229,20 @@ namespace Immersive.Framework.PlayerParticipation
                     {
                         recipients.Add(PlayerSessionScopedBindingRecipient.ForJoinTrigger(trigger));
                     }
+                }
+            }
+
+            if (compositionAccesses != null)
+            {
+                for (int index = 0; index < compositionAccesses.Count; index++)
+                {
+                    PlayerActorCompositionAccess access = compositionAccesses[index];
+                    if (access == null)
+                        continue;
+
+                    recipients.Add(PlayerSessionScopedBindingRecipient.ForActorCompositionAccess(
+                        access,
+                        lease => CreateAccess(lease, access)));
                 }
             }
 
@@ -301,7 +320,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         private IDisposable CreateAccess(
             PlayerSessionJoinBindingLease lease,
-            PlayerSessionScopedAccessConsumer consumer)
+            Component consumer)
         {
             LocalPlayerProvisioningRuntimeHostModule manager = lease.Manager;
             return manager != null && manager.IsReady &&
@@ -575,7 +594,7 @@ namespace Immersive.Framework.PlayerParticipation
         private readonly PlayerParticipationRuntimeContext _participationContext;
         private readonly LocalPlayerProvisioningConsumerScope _scope;
         private readonly RuntimeContentOwner _owner;
-        private readonly PlayerSessionScopedAccessConsumer _consumer;
+        private readonly Component _consumer;
         private readonly HashSet<PlayerActorCompositionContribution> _compositionContributions =
             new HashSet<PlayerActorCompositionContribution>();
         private event Action<PlayerSessionChange> _changed;
@@ -587,7 +606,7 @@ namespace Immersive.Framework.PlayerParticipation
             PlayerParticipationRuntimeContext participationContext,
             LocalPlayerProvisioningConsumerScope scope,
             RuntimeContentOwner owner,
-            PlayerSessionScopedAccessConsumer consumer)
+            Component consumer)
         {
             _runtimeHost = runtimeHost ?? throw new ArgumentNullException(nameof(runtimeHost));
             _participationContext = participationContext ?? throw new ArgumentNullException(nameof(participationContext));
@@ -1089,7 +1108,7 @@ namespace Immersive.Framework.PlayerParticipation
 
         internal ManagerPlayerSessionScopedAccess(
             PlayerSessionJoinBindingLease joinBindingLease,
-            PlayerSessionScopedAccessConsumer consumer)
+            Component consumer)
             : base(
                 joinBindingLease.RuntimeHost,
                 joinBindingLease.ParticipationContext,

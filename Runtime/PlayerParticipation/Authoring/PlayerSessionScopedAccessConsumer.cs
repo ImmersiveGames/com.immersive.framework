@@ -140,6 +140,45 @@ namespace Immersive.Framework.PlayerParticipation
                 });
         }
 
+        internal static PlayerSessionScopedBindingRecipient ForActorCompositionAccess(
+            PlayerActorCompositionAccess access,
+            CreatePlayerSessionRecipientBinding createBinding)
+        {
+            if (access == null)
+                return null;
+
+            LocalPlayerProvisioningConsumerScope authoredScope = access.Scope;
+            return new PlayerSessionScopedBindingRecipient(
+                access,
+                authoredScope,
+                typeof(PlayerActorCompositionAccess),
+                (out string issue) =>
+                {
+                    if (!access.TryValidateScope(out issue))
+                        return false;
+
+                    if (access.Scope == authoredScope)
+                        return true;
+
+                    issue = "Player Actor composition access scope changed after binding discovery.";
+                    return false;
+                },
+                createBinding,
+                (IDisposable binding,
+                    LocalPlayerProvisioningConsumerScope actualScope,
+                    out string issue) =>
+                {
+                    if (binding is not IPlayerSessionScopedAccess scopedAccess)
+                    {
+                        issue = "Player Actor composition access requires its owner-scoped Player Session binding.";
+                        return false;
+                    }
+
+                    return access.TryBind(scopedAccess, actualScope, out issue);
+                },
+                access.ReleaseScopedAccess);
+        }
+
         internal bool TryValidateScope(out string issue)
         {
             if (_component == null)

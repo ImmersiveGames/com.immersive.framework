@@ -23,6 +23,34 @@ namespace Immersive.Framework.Actors
         /// <summary>Exact authored mount for replaceable content, when this publication supports composition.</summary>
         public Transform CompositionMount => compositionMount;
 
+        /// <summary>
+        /// Opens a contribution for this exact Actor when it was materialized as
+        /// owner-registered content, such as a static Actor in an Activity.
+        /// Dynamic producers continue to open through their publication Scope and token.
+        /// </summary>
+        public bool TryOpenCompositionContribution(
+            int priority,
+            string source,
+            string reason,
+            out ActorOccurrenceCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            if (_runtime == null)
+            {
+                diagnostic = "Static Actor composition access is not bound to an active Framework composition.";
+                return false;
+            }
+
+            return _runtime.TryOpenStaticCompositionContribution(
+                this,
+                priority,
+                source,
+                reason,
+                out contribution,
+                out diagnostic);
+        }
+
         internal bool TryValidate(out ActorId actorId, out string diagnostic)
         {
             actorId = default;
