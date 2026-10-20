@@ -253,18 +253,26 @@ namespace Immersive.Framework.Editor.PlayerParticipation
                                 declaration,
                                 currentActorId);
 
-                    using (new EditorGUI.DisabledScope(!canGenerate))
-                    {
-                        string buttonLabel =
-                            isLegacyPlaceholder
-                                ? "Replace ID"
-                                : "Generate ID";
+                    string buttonLabel =
+                        canGenerate
+                            ? (isLegacyPlaceholder ? "Replace ID" : "Generate ID")
+                            : "Regenerate ID";
 
+                    using (new EditorGUI.DisabledScope(Application.isPlaying))
+                    {
                         if (GUILayout.Button(
                                 buttonLabel,
-                                GUILayout.Width(90f)))
+                                GUILayout.Width(canGenerate ? 90f : 115f)) &&
+                            (canGenerate ||
+                             EditorUtility.DisplayDialog(
+                                 "Regenerate Actor ID",
+                                 $"Regenerate the stable Actor ID for '{declaration.name}'?\n\n" +
+                                 "Existing references and persisted data using the old ID will not be updated. " +
+                                 "Only continue if this represents a distinct Actor.",
+                                 "Regenerate ID",
+                                 "Cancel")))
                         {
-                            GenerateActorId(declaration);
+                            GenerateActorId(declaration, !canGenerate);
                             currentActorId =
                                 _actorId.stringValue ?? string.Empty;
                         }
@@ -287,11 +295,12 @@ namespace Immersive.Framework.Editor.PlayerParticipation
         }
 
         private void GenerateActorId(
-            ActorDeclaration declaration)
+            ActorDeclaration declaration,
+            bool isRegeneration)
         {
             Undo.RecordObject(
                 declaration,
-                "Generate Actor ID");
+                isRegeneration ? "Regenerate Actor ID" : "Generate Actor ID");
 
             _actorId.stringValue =
                 $"actor.{Guid.NewGuid():N}";
