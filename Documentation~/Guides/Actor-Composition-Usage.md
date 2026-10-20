@@ -20,6 +20,30 @@ promise.
 | Camera and world placement | Visual hierarchy could be mistaken for the Actor's physical or spatial root. | The physical Actor root remains the authority for pose and placement. Camera `ObservationTransform` stays outside the replaceable composition mount. |
 | Package boundary | Actor visual handling lived in Framework-specific code. | `com.immersive.composition` is the engine-independent keyed composition kernel; `com.immersive.framework` owns Actor/Player lifecycle, identity, Unity prefabs, mounts, materialization and cleanup. Consumers use Framework Actor surfaces rather than creating a second Composer for a Framework Actor. |
 
+## Duplicate a NonPlayer Actor without duplicating its identity
+
+`ActorDeclaration.ActorId` is a stable, authored logical identity. Duplicating
+a GameObject or prefab instance also copies the serialized Actor ID, so a
+distinct NonPlayer Actor needs an explicit identity change.
+
+1. Select the duplicated Actor and open **Actor Declaration > Advanced / Debug
+   > Stable Identity**.
+2. Click **Regenerate ID** and confirm the identity change. The action replaces
+   only the selected declaration's ID with a new `actor.<guid>` value. It
+   supports Unity Undo and records prefab instance overrides.
+3. Verify that the original Actor retains its ID and the duplicated Actor has
+   a different ID. Update any explicit references or persisted data that were
+   intended to target the new Actor; they are **not** rewritten automatically.
+
+**Generate ID** remains available for an empty ID, and **Replace ID** handles
+the legacy `qa.actor.generic` placeholder. Identity buttons are disabled in
+Play Mode. Renaming, moving or duplicating an Actor never automatically
+regenerates its identity.
+
+This workflow does **not** apply to `PlayerActorDeclaration`: the Framework
+assigns its Actor ID during runtime occurrence preparation, and the Inspector
+does not offer authored identity generation or regeneration for Player Actors.
+
 ## Author Base content on an Actor Profile
 
 1. Open the `ActorProfile` asset and find **Base Content Parts**.
