@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Immersive.Framework.RuntimeContent;
 using UnityEngine;
@@ -31,12 +32,15 @@ namespace Immersive.Framework.Actors
             internal ActorGroupSnapshot Snapshot { get; }
 
             internal RuntimeContentOwner Owner { get; }
+
+            internal HashSet<ActorId> Members { get; } = new();
         }
 
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _stagedOwners = new();
         private readonly Dictionary<RuntimeContentOwner, OwnerRegistration> _committedOwners = new();
         private readonly Dictionary<ActorGroupAccessBinding, RuntimeContentOwner> _bindingOwners = new();
         private readonly Dictionary<GroupId, GroupRecord> _groups = new();
+        private readonly Dictionary<ActorId, HashSet<GroupId>> _groupsByActor = new();
 
         internal bool TryRegisterOwnerContent(
             RuntimeContentOwner owner,
@@ -232,6 +236,160 @@ namespace Immersive.Framework.Actors
             return false;
         }
 
+        internal bool TryJoinGroup(GroupId groupId, ActorId actorId, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (!TryGetLiveGroup(groupId, out GroupRecord record, out diagnostic)) return false;
+            if (!actorId.IsValid)
+            {
+                diagnostic = "Actor Group membership requires a valid ActorId.";
+                return false;
+            }
+
+            bool hasReverseIndex = _groupsByActor.TryGetValue(actorId, out HashSet<GroupId> groups);
+            bool hasMembership = record.Members.Contains(actorId);
+            bool hasReverseMembership = hasReverseIndex && groups.Contains(groupId);
+            if (hasMembership != hasReverseMembership)
+            {
+                diagnostic = "Actor Group membership indexes are inconsistent; the join operation was rejected.";
+                return false;
+            }
+
+            if (hasMembership) return true;
+            if (!hasReverseIndex)
+            {
+                groups = new HashSet<GroupId>();
+                _groupsByActor.Add(actorId, groups);
+            }
+
+            record.Members.Add(actorId);
+            groups.Add(groupId);
+            return true;
+        }
+
+        internal bool TryLeaveGroup(GroupId groupId, ActorId actorId, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (!TryGetLiveGroup(groupId, out GroupRecord record, out diagnostic)) return false;
+            if (!actorId.IsValid)
+            {
+                diagnostic = "Actor Group membership requires a valid ActorId.";
+                return false;
+            }
+
+            bool hasMembership = record.Members.Contains(actorId);
+            bool hasReverseMembership = _groupsByActor.TryGetValue(actorId, out HashSet<GroupId> groups) && groups.Contains(groupId);
+            if (hasMembership != hasReverseMembership)
+            {
+                diagnostic = "Actor Group membership indexes are inconsistent; the leave operation was rejected.";
+                return false;
+            }
+            if (!hasMembership) return true;
+
+            record.Members.Remove(actorId);
+            groups.Remove(groupId);
+            if (groups.Count == 0) _groupsByActor.Remove(actorId);
+            return true;
+        }
+
+        internal bool TryIsMember(
+            GroupId groupId,
+            ActorId actorId,
+            out bool isMember,
+            out string diagnostic)
+        {
+            isMember = false;
+            if (!TryGetLiveGroup(groupId, out GroupRecord record, out diagnostic)) return false;
+            if (!actorId.IsValid)
+            {
+                diagnostic = "Actor Group membership query requires a valid ActorId.";
+                return false;
+            }
+
+            isMember = record.Members.Contains(actorId);
+            return true;
+        }
+
+        internal bool TryGetMembers(
+            GroupId groupId,
+            int maximumCount,
+            out IReadOnlyList<ActorId> members,
+            out string diagnostic)
+        {
+            members = Array.Empty<ActorId>();
+            if (!TryGetLiveGroup(groupId, out GroupRecord record, out diagnostic)) return false;
+            if (maximumCount < 0)
+            {
+                diagnostic = "Actor Group membership snapshot limit cannot be negative.";
+                return false;
+            }
+            if (record.Members.Count > maximumCount)
+            {
+                diagnostic = $"Actor Group membership snapshot contains {record.Members.Count} members, exceeding the requested limit of {maximumCount}.";
+                return false;
+            }
+
+            var snapshot = new List<ActorId>(record.Members);
+            snapshot.Sort((left, right) => StringComparer.Ordinal.Compare(left.StableText, right.StableText));
+            members = Array.AsReadOnly(snapshot.ToArray());
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        internal bool TryGetGroupsForActor(
+            ActorId actorId,
+            int maximumCount,
+            out IReadOnlyList<GroupId> groups,
+            out string diagnostic)
+        {
+            groups = Array.Empty<GroupId>();
+            if (!actorId.IsValid)
+            {
+                diagnostic = "Actor Group lookup requires a valid ActorId.";
+                return false;
+            }
+            if (maximumCount < 0)
+            {
+                diagnostic = "Actor Group membership snapshot limit cannot be negative.";
+                return false;
+            }
+            if (!_groupsByActor.TryGetValue(actorId, out HashSet<GroupId> actorGroups))
+            {
+                diagnostic = string.Empty;
+                return true;
+            }
+            if (actorGroups.Count > maximumCount)
+            {
+                diagnostic = $"Actor Group membership snapshot contains {actorGroups.Count} Groups, exceeding the requested limit of {maximumCount}.";
+                return false;
+            }
+
+            var snapshot = new List<GroupId>(actorGroups);
+            snapshot.Sort((left, right) => StringComparer.Ordinal.Compare(left.StableText, right.StableText));
+            groups = Array.AsReadOnly(snapshot.ToArray());
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        private bool TryGetLiveGroup(GroupId groupId, out GroupRecord record, out string diagnostic)
+        {
+            if (!groupId.IsValid)
+            {
+                record = null;
+                diagnostic = "A valid GroupId is required for Actor Group membership.";
+                return false;
+            }
+
+            if (_groups.TryGetValue(groupId, out record))
+            {
+                diagnostic = string.Empty;
+                return true;
+            }
+
+            diagnostic = $"No live Actor Group has identity '{groupId.StableText}'.";
+            return false;
+        }
+
         private static bool IsSupportedScope(RuntimeContentScope scope) =>
             scope == RuntimeContentScope.Session ||
             scope == RuntimeContentScope.Route ||
@@ -255,7 +413,18 @@ namespace Immersive.Framework.Actors
             foreach (KeyValuePair<GroupId, GroupRecord> pair in _groups)
                 if (pair.Value.Owner == owner) releasedGroups.Add(pair.Key);
             for (int index = 0; index < releasedGroups.Count; index++)
-                _groups.Remove(releasedGroups[index]);
+            {
+                GroupId groupId = releasedGroups[index];
+                GroupRecord record = _groups[groupId];
+                foreach (ActorId actorId in record.Members)
+                {
+                    if (!_groupsByActor.TryGetValue(actorId, out HashSet<GroupId> groups)) continue;
+                    groups.Remove(groupId);
+                    if (groups.Count == 0) _groupsByActor.Remove(actorId);
+                }
+
+                _groups.Remove(groupId);
+            }
         }
 
         private void RemoveBindingReservations(OwnerRegistration registration)
