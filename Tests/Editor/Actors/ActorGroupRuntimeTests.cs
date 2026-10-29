@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Immersive.Framework.ActivityFlow;
@@ -21,8 +20,8 @@ namespace Immersive.Framework.Actors.Tests
         [Test]
         public void RuntimeAccessContracts_AreExperimental()
         {
-            Type[] contracts = { typeof(ActorGroupSnapshot), typeof(ActorGroupAccessBinding) };
-            foreach (Type contract in contracts)
+            System.Type[] contracts = { typeof(ActorGroupSnapshot), typeof(ActorGroupAccessBinding) };
+            foreach (System.Type contract in contracts)
             {
                 FrameworkApiStatusAttribute metadata = contract.GetCustomAttribute<FrameworkApiStatusAttribute>(false);
                 Assert.That(metadata, Is.Not.Null, contract.FullName + " is missing its maturity attribute.");
