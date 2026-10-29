@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Immersive.Framework.ActivityFlow;
@@ -52,7 +53,7 @@ namespace Immersive.Framework.Actors.Tests
             GameObject root = CreateAccessRoot(out ActorGroupAccessBinding access);
             GroupId groupId = definition.GroupId;
 
-            Assert.That(runtime.TryGetGroup(groupId, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
             Assert.That(access.TryCreateGroup(definition, out _, out string unboundIssue), Is.False);
             StringAssert.Contains("bound", unboundIssue);
 
@@ -62,7 +63,7 @@ namespace Immersive.Framework.Actors.Tests
             Assert.That(group.IsValid, Is.True);
             Assert.That(group.GroupId, Is.EqualTo(groupId));
             Assert.That(group.Profile, Is.Null);
-            Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot registered), Is.True);
+            Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot registered, out _), Is.True);
             Assert.That(registered.GroupId, Is.EqualTo(groupId));
         }
 
@@ -112,7 +113,7 @@ namespace Immersive.Framework.Actors.Tests
             Assert.That(firstAccess.TryCreateGroup(sharedId, null, out ActorGroupSnapshot first, out string firstIssue), Is.True, firstIssue);
             Assert.That(secondAccess.TryCreateGroup(sharedId, null, out _, out string duplicateIssue), Is.False);
             StringAssert.Contains(sharedId.StableText, duplicateIssue);
-            Assert.That(runtime.TryGetGroup(sharedId, out ActorGroupSnapshot current), Is.True);
+            Assert.That(runtime.TryGetGroup(sharedId, out ActorGroupSnapshot current, out _), Is.True);
             Assert.That(current.GroupId, Is.EqualTo(first.GroupId));
         }
 
@@ -135,8 +136,8 @@ namespace Immersive.Framework.Actors.Tests
 
             Assert.That(runtime.TryReleaseOwner(firstOwner, out string releaseIssue), Is.True, releaseIssue);
 
-            Assert.That(runtime.TryGetGroup(firstId, out _), Is.False);
-            Assert.That(runtime.TryGetGroup(secondId, out ActorGroupSnapshot stillLive), Is.True);
+            Assert.That(runtime.TryGetGroup(firstId, out _, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(secondId, out ActorGroupSnapshot stillLive, out _), Is.True);
             Assert.That(stillLive.GroupId, Is.EqualTo(secondId));
             Assert.That(firstAccess.IsAccessAvailable, Is.False);
             Assert.That(secondAccess.IsAccessAvailable, Is.True);
@@ -152,11 +153,11 @@ namespace Immersive.Framework.Actors.Tests
             GroupId groupId = GroupId.From("group.empty");
 
             Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
-            Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot group), Is.True);
+            Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot group, out _), Is.True);
             Assert.That(group.GroupId, Is.EqualTo(groupId));
 
             Assert.That(runtime.TryReleaseOwner(owner, out issue), Is.True, issue);
-            Assert.That(runtime.TryGetGroup(groupId, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }
 
         [Test]
@@ -173,7 +174,7 @@ namespace Immersive.Framework.Actors.Tests
             Assert.That(access.TryCreateGroup(secondId, null, out _, out string secondIssue), Is.True, secondIssue);
             Assert.That(access.TryGetGroup(firstId, out ActorGroupSnapshot first, out string lookupIssue), Is.True, lookupIssue);
             Assert.That(first.GroupId, Is.EqualTo(firstId));
-            Assert.That(runtime.TryGetGroup(secondId, out ActorGroupSnapshot second), Is.True);
+            Assert.That(runtime.TryGetGroup(secondId, out ActorGroupSnapshot second, out _), Is.True);
             Assert.That(second.GroupId, Is.EqualTo(secondId));
         }
 
@@ -217,7 +218,7 @@ namespace Immersive.Framework.Actors.Tests
             bool released = (bool)release.Invoke(routeRuntime, arguments);
 
             Assert.That(released, Is.True, arguments[3] as string);
-            Assert.That(runtime.TryGetGroup(groupId, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }
 
         [Test]
@@ -240,7 +241,7 @@ namespace Immersive.Framework.Actors.Tests
 
             release.Invoke(activityRuntime, new object[] { activity });
 
-            Assert.That(runtime.TryGetGroup(groupId, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }
 
         [Test]
@@ -268,7 +269,7 @@ namespace Immersive.Framework.Actors.Tests
             Assert.That(host.TryReleaseSessionActorGroups(out string issue), Is.True, issue);
             Assert.That(host.TryReleaseSessionActorGroups(out issue), Is.True, issue);
 
-            Assert.That(runtime.TryGetGroup(groupId, out _), Is.False);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
             Assert.That(access.IsAccessAvailable, Is.False);
         }
 
