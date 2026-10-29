@@ -54,7 +54,8 @@ namespace Immersive.Framework.Actors.Tests
 
             Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
             Assert.That(access.TryCreateGroup(definition, out _, out string unboundIssue), Is.False);
-            StringAssert.Contains("bound", unboundIssue);
+            StringAssert.Contains("unavailable", unboundIssue);
+            StringAssert.Contains("committed", unboundIssue);
 
             RegisterOwner(runtime, owner, root);
 

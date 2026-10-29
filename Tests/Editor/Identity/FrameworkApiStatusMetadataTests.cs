@@ -201,7 +201,11 @@ namespace Immersive.Framework.Identity.Tests
                 string apiEntry = publicApi
                     .Replace("\r", string.Empty)
                     .Split('\n')
-                    .Single(line => line.Contains("`" + contract.Name + "`"));
+                    .Single(line =>
+                    {
+                        string[] columns = line.Split('|');
+                        return columns.Length > 2 && columns[1].Contains("`" + contract.Name + "`");
+                    });
                 StringAssert.Contains("Experimental", apiEntry, contract.Name);
             }
         }
