@@ -1159,6 +1159,19 @@ namespace Immersive.Framework.ApplicationLifecycle
                 return new FrameworkRuntimeHostStopResult(false, releaseDiagnostic);
             }
 
+            if (!TryReleaseSessionActorGroups(out string actorGroupReleaseDiagnostic))
+            {
+                _admission.CompleteStop(succeeded: false);
+                _logger?.Error(
+                    "FrameworkRuntimeHost controlled stop retained the live Host because Session-owned Actor Groups were not released.",
+                    LogFields.Of(
+                        LogFields.Field("phase", LifecyclePhase),
+                        LogFields.Field("reason", resolvedReason),
+                        LogFields.Field("diagnostic", actorGroupReleaseDiagnostic),
+                        LogFields.Field("retryAuthority", "same-framework-runtime-host")));
+                return new FrameworkRuntimeHostStopResult(false, actorGroupReleaseDiagnostic);
+            }
+
             _admission.CompleteStop(succeeded: true);
             _logger?.Info(
                 "FrameworkRuntimeHost controlled stop completed.",
@@ -3928,6 +3941,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("application-quit");
+            ReleaseSessionActorGroups("application-quit");
             _sessionCameraMembershipRuntime?.Dispose();
             _sessionCameraMembershipRuntime = null;
             _sessionCameraAssignmentRuntime?.Dispose();
@@ -3938,6 +3952,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         {
             _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("framework-runtime-host-destroy");
+            ReleaseSessionActorGroups("framework-runtime-host-destroy");
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();
@@ -3963,6 +3978,18 @@ namespace Immersive.Framework.ApplicationLifecycle
                 _logger?.Error(
                     "Persistent Content composition release failed.",
                     LogFields.Field("diagnostic", diagnostic));
+            }
+        }
+
+        private void ReleaseSessionActorGroups(string reason)
+        {
+            if (!TryReleaseSessionActorGroups(out string diagnostic))
+            {
+                _logger?.Error(
+                    "Session-owned Actor Group release failed.",
+                    LogFields.Of(
+                        LogFields.Field("reason", reason),
+                        LogFields.Field("diagnostic", diagnostic)));
             }
         }
 

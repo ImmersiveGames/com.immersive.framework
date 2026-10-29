@@ -10,6 +10,8 @@ namespace Immersive.Framework.ApplicationLifecycle
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindings;
         private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
+        private ActorGroupRuntime _actorGroupRuntime;
+        private bool _sessionActorGroupsReleased;
 
         /// <summary>
         /// IF-ADR-035 RESET-035-B host-owned Resettable registration over the existing ResetRegistry.
@@ -23,6 +25,9 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         internal ActorOccurrenceReferenceRuntime ActorOccurrenceReferences =>
             _actorOccurrenceReferenceRuntime ??= new ActorOccurrenceReferenceRuntime();
+
+        internal ActorGroupRuntime ActorGroups =>
+            _actorGroupRuntime ??= new ActorGroupRuntime();
 
         private void ApplyResettableOwnerRegistration()
         {
@@ -41,6 +46,7 @@ namespace Immersive.Framework.ApplicationLifecycle
                     (IPlayerPreparedActorOccurrenceSource)playerPreparation);
             }
             _gameFlowRuntime?.SetActorOccurrenceReferenceRuntime(ActorOccurrenceReferences);
+            _gameFlowRuntime?.SetActorGroupRuntime(ActorGroups);
         }
 
         private bool TryCommitPersistentActorOccurrencePublications(out string diagnostic)
@@ -57,13 +63,49 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _globalUiSceneRuntime.PersistedRoots,
                     out diagnostic))
                 return false;
+            if (!ActorGroups.TryRegisterOwnerContent(
+                    owner,
+                    _globalUiSceneRuntime.PersistedRoots,
+                    out diagnostic))
+            {
+                ActorOccurrenceReferences.TryRollbackOwner(owner, out _);
+                return false;
+            }
             if (ActorOccurrenceReferences.TryCommitOwner(owner, out diagnostic))
             {
+                if (!ActorGroups.TryCommitOwner(owner, out diagnostic))
+                {
+                    ActorOccurrenceReferences.TryRollbackOwner(owner, out _);
+                    ActorGroups.TryRollbackOwner(owner, out _);
+                    return false;
+                }
+                _sessionActorGroupsReleased = false;
                 ActorOccurrenceReferences.RefreshAll();
                 return true;
             }
             ActorOccurrenceReferences.TryRollbackOwner(owner, out _);
+            ActorGroups.TryRollbackOwner(owner, out _);
             return false;
+        }
+
+        internal bool TryReleaseSessionActorGroups(out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (_sessionActorGroupsReleased || _actorGroupRuntime == null)
+            {
+                _sessionActorGroupsReleased = true;
+                return true;
+            }
+            if (!_runtimeSessionScopeResult.HasOwner)
+            {
+                diagnostic = "Actor Group release requires the exact initialized Session owner.";
+                return false;
+            }
+
+            if (!ActorGroups.TryReleaseOwner(_runtimeSessionScopeResult.Owner, out diagnostic))
+                return false;
+            _sessionActorGroupsReleased = true;
+            return true;
         }
     }
 }

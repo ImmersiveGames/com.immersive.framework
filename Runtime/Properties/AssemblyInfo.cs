@@ -14,3 +14,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Immersive.Framework.Pause.Editor.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.Identity.Editor.Tests")]
 [assembly: InternalsVisibleTo("Immersive.Framework.ActorReferences.Editor.Tests")]
+[assembly: InternalsVisibleTo("Immersive.Framework.Actors.Editor.Tests")]

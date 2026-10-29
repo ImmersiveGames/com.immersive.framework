@@ -18,6 +18,7 @@ namespace Immersive.Framework.RouteLifecycle
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindingRegistry;
         private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
+        private ActorGroupRuntime _actorGroupRuntime;
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
@@ -36,6 +37,12 @@ namespace Immersive.Framework.RouteLifecycle
         {
             _actorOccurrenceReferenceRuntime = runtime;
             _activityFlowRuntime.SetActorOccurrenceReferenceRuntime(runtime);
+        }
+
+        internal void SetActorGroupRuntime(ActorGroupRuntime runtime)
+        {
+            _actorGroupRuntime = runtime;
+            _activityFlowRuntime.SetActorGroupRuntime(runtime);
         }
 
         private bool TryPrepareRouteResettableRegistration(
@@ -89,6 +96,14 @@ namespace Immersive.Framework.RouteLifecycle
                 diagnostic = "Actor occurrence publication admission failed for Route content. " + diagnostic;
                 return false;
             }
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryRegisterOwnerContent(owner, roots, out diagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                diagnostic = "Actor Group access admission failed for Route content. " + diagnostic;
+                return false;
+            }
             return true;
         }
 
@@ -98,10 +113,28 @@ namespace Immersive.Framework.RouteLifecycle
             RuntimeContentOwner owner = CreateRouteOwner(route);
             if (_stableObjectBindingRegistry != null &&
                 !_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry.TryRollbackOwner(owner, out _);
                 throw new System.InvalidOperationException("Stable Object Binding commit failed for Route content. " + diagnostic);
+            }
             if (_actorOccurrenceReferenceRuntime != null &&
                 !_actorOccurrenceReferenceRuntime.TryCommitOwner(owner, out string actorDiagnostic))
+            {
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime?.TryRollbackOwner(owner, out _);
+                _actorOccurrenceReferenceRuntime.TryRollbackOwner(owner, out _);
                 throw new System.InvalidOperationException("Actor occurrence publication commit failed for Route content. " + actorDiagnostic);
+            }
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryCommitOwner(owner, out string groupDiagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime.TryRollbackOwner(owner, out _);
+                throw new System.InvalidOperationException("Actor Group access commit failed for Route content. " + groupDiagnostic);
+            }
         }
 
         private void RollbackRouteResettableRegistration(
@@ -114,6 +147,7 @@ namespace Immersive.Framework.RouteLifecycle
             _resettableOwnerRegistration?.TryRollbackOwner(owner, source, reason, out _);
             _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
             _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+            _actorGroupRuntime?.TryRollbackOwner(owner, out _);
         }
 
         private bool TryReleasePreviousRouteResettableRegistration(
@@ -151,6 +185,12 @@ namespace Immersive.Framework.RouteLifecycle
                 !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
             {
                 diagnostic = "Actor occurrence publication release failed for the exiting Route. " + actorDiagnostic;
+                return false;
+            }
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryReleaseOwner(owner, out string groupDiagnostic))
+            {
+                diagnostic = "Actor Group release failed for the exiting Route. " + groupDiagnostic;
                 return false;
             }
             return true;

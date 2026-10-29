@@ -24,6 +24,10 @@ Accepted architecture implementation route (implementation pending):
 
 - [IF-ADR-045 — Runtime-Safe Scene References v1](IF-PLAN-ADR-045-RUNTIME-SAFE-SCENE-REFERENCES.v1.md)
 
+Approved route for the accepted IF-ADR-051 Actor Groups — **implementation task-gated**; consult the Framework tracker for current gate status:
+
+- [IF-PLAN-ADR-051 — Actor Groups v1](IF-PLAN-ADR-051-ACTOR-GROUPS.v1.md)
+
 Approved convergence route; execution remains task-gated:
 
 - [IF-ADR-046 — Stable Manager-Provisioned Player Join Boundary v3](IF-PLAN-ADR-046-STABLE-MANAGER-PROVISIONED-PLAYER-JOIN.v3.md)

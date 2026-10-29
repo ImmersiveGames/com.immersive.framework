@@ -25,5 +25,10 @@ namespace Immersive.Framework.GameFlow
         {
             _routeLifecycleRuntime.SetActorOccurrenceReferenceRuntime(runtime);
         }
+
+        internal void SetActorGroupRuntime(ActorGroupRuntime runtime)
+        {
+            _routeLifecycleRuntime.SetActorGroupRuntime(runtime);
+        }
     }
 }

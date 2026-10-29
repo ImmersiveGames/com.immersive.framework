@@ -19,6 +19,7 @@ namespace Immersive.Framework.ActivityFlow
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindingRegistry;
         private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
+        private ActorGroupRuntime _actorGroupRuntime;
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
@@ -34,6 +35,11 @@ namespace Immersive.Framework.ActivityFlow
         internal void SetActorOccurrenceReferenceRuntime(ActorOccurrenceReferenceRuntime runtime)
         {
             _actorOccurrenceReferenceRuntime = runtime;
+        }
+
+        internal void SetActorGroupRuntime(ActorGroupRuntime runtime)
+        {
+            _actorGroupRuntime = runtime;
         }
 
         private void PrepareResettableRegistration(
@@ -77,6 +83,14 @@ namespace Immersive.Framework.ActivityFlow
                 _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
                 throw new InvalidOperationException(
                     "Actor occurrence publication admission failed for Activity content. " + actorDiagnostic);
+            }
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryRegisterOwnerContent(owner, roots, out string groupDiagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                throw new InvalidOperationException(
+                    "Actor Group access admission failed for Activity content. " + groupDiagnostic);
             }
         }
 
@@ -127,6 +141,9 @@ namespace Immersive.Framework.ActivityFlow
             if (targetActivity == null) return string.Empty;
             RuntimeContentOwner owner = CreateActivityOwner(targetActivity);
             string diagnostic = string.Empty;
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryRollbackOwner(owner, out diagnostic))
+                return " Actor Group rollback failed. " + diagnostic;
             if (_stableObjectBindingRegistry != null &&
                 !_stableObjectBindingRegistry.TryRollbackOwner(owner, out diagnostic))
                 return " Stable Object Binding rollback failed. " + diagnostic;
@@ -140,10 +157,28 @@ namespace Immersive.Framework.ActivityFlow
         {
             if (_stableObjectBindingRegistry != null &&
                 !_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry.TryRollbackOwner(owner, out _);
                 throw new InvalidOperationException("Stable Object Binding commit failed for Activity content. " + diagnostic);
+            }
             if (_actorOccurrenceReferenceRuntime != null &&
                 !_actorOccurrenceReferenceRuntime.TryCommitOwner(owner, out string actorDiagnostic))
+            {
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime?.TryRollbackOwner(owner, out _);
+                _actorOccurrenceReferenceRuntime.TryRollbackOwner(owner, out _);
                 throw new InvalidOperationException("Actor occurrence publication commit failed for Activity content. " + actorDiagnostic);
+            }
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryCommitOwner(owner, out string groupDiagnostic))
+            {
+                _actorOccurrenceReferenceRuntime?.TryRollbackOwner(owner, out _);
+                _stableObjectBindingRegistry?.TryRollbackOwner(owner, out _);
+                _actorGroupRuntime.TryRollbackOwner(owner, out _);
+                throw new InvalidOperationException("Actor Group access commit failed for Activity content. " + groupDiagnostic);
+            }
         }
 
         private void ReleaseStableObjectBindingsForPreviousActivity(ActivityAsset previousActivity)
@@ -156,6 +191,9 @@ namespace Immersive.Framework.ActivityFlow
             if (_actorOccurrenceReferenceRuntime != null &&
                 !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
                 throw new InvalidOperationException("Actor occurrence publication release failed for the exiting Activity. " + actorDiagnostic);
+            if (_actorGroupRuntime != null &&
+                !_actorGroupRuntime.TryReleaseOwner(owner, out string groupDiagnostic))
+                throw new InvalidOperationException("Actor Group release failed for the exiting Activity. " + groupDiagnostic);
         }
     }
 }
