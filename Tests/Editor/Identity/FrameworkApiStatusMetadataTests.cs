@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Identity;
@@ -172,6 +173,37 @@ namespace Immersive.Framework.Identity.Tests
 
             Assert.That(scannedAssemblyCount, Is.GreaterThan(0), "No Framework production assembly was inventoried.");
             Assert.That(invalidDeclarations, Is.Empty, string.Join(Environment.NewLine, invalidDeclarations));
+        }
+
+        [Test]
+        public void ActorGroupIdentityAndAuthoringContracts_AreExperimentalAndListedInPublicApi()
+        {
+            Type[] contracts =
+            {
+                typeof(GroupId),
+                typeof(GroupProfileId),
+                typeof(GroupDefinitionAsset),
+                typeof(GroupProfile)
+            };
+
+            foreach (Type contract in contracts)
+            {
+                FrameworkApiStatusAttribute metadata = contract.GetCustomAttribute<FrameworkApiStatusAttribute>(false);
+                Assert.That(metadata, Is.Not.Null, contract.FullName + " is missing its maturity attribute.");
+                Assert.That(metadata.Status, Is.EqualTo(FrameworkApiStatus.Experimental), contract.FullName);
+                Assert.That(metadata.Note, Is.Not.Empty, contract.FullName);
+            }
+
+            string packageRoot = PackageInfo.FindForAssembly(typeof(FrameworkIdentityKey).Assembly).resolvedPath;
+            string publicApi = File.ReadAllText(Path.Combine(packageRoot, "Documentation~", "API", "Public-API.md"));
+            foreach (Type contract in contracts)
+            {
+                string apiEntry = publicApi
+                    .Replace("\r", string.Empty)
+                    .Split('\n')
+                    .Single(line => line.Contains("`" + contract.Name + "`"));
+                StringAssert.Contains("Experimental", apiEntry, contract.Name);
+            }
         }
 
         private static void AssertStable(Type contract)

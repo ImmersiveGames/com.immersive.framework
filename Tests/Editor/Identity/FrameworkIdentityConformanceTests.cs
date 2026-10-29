@@ -100,7 +100,9 @@ namespace Immersive.Framework.Identity.Tests
                     nameof(FrameworkIdentityDomain.UnityInput),
                     nameof(FrameworkIdentityDomain.Actor),
                     nameof(FrameworkIdentityDomain.PlayerSlot),
-                    nameof(FrameworkIdentityDomain.ActorProfile)
+                    nameof(FrameworkIdentityDomain.ActorProfile),
+                    nameof(FrameworkIdentityDomain.Group),
+                    nameof(FrameworkIdentityDomain.GroupProfile)
                 },
                 Enum.GetNames(typeof(FrameworkIdentityDomain)));
             CollectionAssert.AreEqual(
@@ -129,14 +131,16 @@ namespace Immersive.Framework.Identity.Tests
                     FrameworkIdentityDomain.UnityInput,
                     FrameworkIdentityDomain.Actor,
                     FrameworkIdentityDomain.PlayerSlot,
-                    FrameworkIdentityDomain.ActorProfile
+                    FrameworkIdentityDomain.ActorProfile,
+                    FrameworkIdentityDomain.Group,
+                    FrameworkIdentityDomain.GroupProfile
                 },
                 (FrameworkIdentityDomain[])Enum.GetValues(typeof(FrameworkIdentityDomain)));
             CollectionAssert.AreEqual(
                 new[]
                 {
                     0, 10, 20, 30, 40, 50, 60, 80, 90, 100, 110, 120,
-                    130, 140, 150, 160, 170, 180, 190, 200, 210, 230, 240, 250
+                    130, 140, 150, 160, 170, 180, 190, 200, 210, 230, 240, 250, 260, 270
                 },
                 Array.ConvertAll(
                     (FrameworkIdentityDomain[])Enum.GetValues(typeof(FrameworkIdentityDomain)),
