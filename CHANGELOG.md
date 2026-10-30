@@ -2,6 +2,10 @@
 
 All notable package changes are documented in this file.
 
+## Unreleased
+
+- Aligns Actor Group authoring with the approved single-asset model: `GroupProfile` now owns the Group's `GroupId` and optional presentation; `GroupDefinitionAsset`, `GroupProfileId`, and `FrameworkIdentityDomain.GroupProfile` are removed. Runtime creation remains explicit through `TryCreateGroup(GroupProfile, ...)` or `TryCreateGroup(GroupId, ...)`; referencing a Profile does not materialize a Group. The old contracts exist only in the untagged source candidate and were not included in a tagged package release. Consumers pinned to that candidate must migrate and recompile.
+
 ## [1.2.0-preview.4] - 2026-10-18 — Actor Profile composition part assets
 
 - Stores each Actor Profile base composition part as a referenced `ActorCompositionPartAsset` ScriptableObject. The Editor migration converts existing inline parts and reports migrated, unchanged, ignored, invalid, conflicting and blocked profiles.

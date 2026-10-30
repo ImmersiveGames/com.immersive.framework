@@ -181,8 +181,6 @@ namespace Immersive.Framework.Identity.Tests
             Type[] contracts =
             {
                 typeof(GroupId),
-                typeof(GroupProfileId),
-                typeof(GroupDefinitionAsset),
                 typeof(GroupProfile)
             };
 

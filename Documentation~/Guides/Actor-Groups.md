@@ -8,14 +8,14 @@ API: [Public API Reference — Player Participation and Actor](../API/Public-API
 
 An Actor Group is an independently identified collective with a mutable set of
 logical Actor memberships. Its `GroupId` is distinct from every `ActorId`,
-`GroupProfileId`, lifecycle owner and physical Actor occurrence. One Actor may
-belong to several Groups, and a Group may have several or no members.
+lifecycle owner and physical Actor occurrence. One Actor may belong to several
+Groups, and a Group may have several or no members.
 
-`GroupDefinitionAsset` authors the Group's explicit identity and an optional
-reusable `GroupProfile`. Loading the asset does not create a live Group. A
-shared Profile does not merge Group identities or runtime membership. The
-Profile currently provides game-neutral display name, description and icon
-defaults.
+`GroupProfile` is the single authoring asset for a Group. It owns the explicit
+`GroupId` and optional game-neutral display name, description and icon.
+Referencing or loading the asset does not create a live Group. The Group is
+created only by an explicit runtime call; presentation does not define gameplay
+behavior or membership.
 
 Membership uses `ActorId`, not `ActorOccurrenceId`. It can be added before an
 Actor is physically materialized and remains attached when a physical
@@ -25,16 +25,12 @@ admission or permanence rules.
 
 ## Author Group data
 
-Create a definition from **Assets > Create > Immersive Framework > Groups >
-Group Definition**. Give it a non-empty, unique `GroupId` for the live Groups
-in a Framework Session. Optionally assign a Group Profile. The definition's
-`GroupId` is the only Group identity; names, hierarchy, Profile identity and
-membership do not generate or replace it.
-
-Create a reusable Profile from **Assets > Create > Immersive Framework > Groups
-> Group Profile**. Give the Profile its own `GroupProfileId`. Definitions may
-share the Profile while their Groups retain independent identities and
-membership. The Profile is optional.
+Create one asset from **Assets > Create > Immersive Framework > Groups > Group
+Profile**. Set its non-empty `GroupId`, unique among live Groups in a Framework
+Session, and fill in any presentation fields that are useful. The `GroupId` is
+the only Group identity; asset name, hierarchy, membership and presentation
+never generate or replace it. Referencing this asset from another component
+does not materialize a live Group.
 
 ## Provide access in an owned scope
 
@@ -59,10 +55,10 @@ permissions and gameplay rules before calling membership operations.
 
 ## Create and find a live Group
 
-After the binding's owner has committed, create a Group from its authored
-definition:
+After the binding's owner has committed, explicitly create a Group from its
+authored Profile:
 
-The snippets are call-site fragments. `groupAccess` and `groupDefinition` are
+The snippets are call-site fragments. `groupAccess` and `groupProfile` are
 references owned by the consumer. Invoke creation from consumer code that runs
 after the owner commits; do not rely on Unity `Awake`/`Start` ordering as a
 commit signal.
@@ -71,22 +67,24 @@ commit signal.
 using Immersive.Framework.Actors;
 
 if (!groupAccess.TryCreateGroup(
-        groupDefinition,
+        groupProfile,
         out ActorGroupSnapshot group,
         out string issue))
 {
-    // Handle the reported invalid definition, unavailable owner or duplicate live GroupId.
+    // Handle the reported invalid Profile, unavailable owner or duplicate live GroupId.
     return;
 }
 
 GroupId groupId = group.GroupId;
 ```
 
-For runtime-created Groups, supply an explicit `GroupId` and optional Profile
-to `TryCreateGroup(GroupId, GroupProfile, ...)`. The same identity checks and
-owner lifecycle apply. A duplicate live `GroupId` in the Session registry is
-rejected. `TryGetGroup` returns the snapshot for a live Group and fails with a
-diagnostic when the ID is invalid or no such live Group exists.
+For a runtime-created Group without authored presentation, supply an explicit
+`GroupId` to `TryCreateGroup(GroupId, ...)`. Creating from a `GroupProfile`
+uses the `GroupId` on that asset; callers do not supply a second identity. Both
+paths require an explicit call and use the same identity checks and owner
+lifecycle. A duplicate live `GroupId` in the Session registry is rejected.
+`TryGetGroup` returns the snapshot for a live Group and fails with a diagnostic
+when the ID is invalid or no such live Group exists.
 
 An `ActorGroupSnapshot` returned by lookup exposes its `GroupId` and optional
 `GroupProfile`. It does not contain membership or provide a live-liveness

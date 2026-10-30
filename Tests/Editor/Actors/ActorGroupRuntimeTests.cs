@@ -44,43 +44,44 @@ namespace Immersive.Framework.Actors.Tests
         }
 
         [Test]
-        public void CreateGroup_FromDefinition_UsesDefinitionGroupIdWithoutInstantiatingOnAssetLoad()
+        public void CreateGroup_FromProfile_UsesItsGroupIdOnlyAfterExplicitRuntimeCall()
         {
             var runtime = new ActorGroupRuntime();
-            RuntimeContentOwner owner = RuntimeContentOwner.Session("session.groups.definition", "Session");
-            GroupDefinitionAsset definition = CreateDefinition("group.definition");
+            RuntimeContentOwner owner = RuntimeContentOwner.Session("session.groups.profile", "Session");
+            GroupProfile profile = CreateProfile("group.profile");
             GameObject root = CreateAccessRoot(out ActorGroupAccessBinding access);
-            GroupId groupId = definition.GroupId;
+            GroupId groupId = profile.GroupId;
 
             Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
-            Assert.That(access.TryCreateGroup(definition, out _, out string unboundIssue), Is.False);
+            Assert.That(access.TryGetGroup(groupId, out _, out _), Is.False);
+            Assert.That(access.TryCreateGroup(profile, out _, out string unboundIssue), Is.False);
             StringAssert.Contains("unavailable", unboundIssue);
             StringAssert.Contains("committed", unboundIssue);
 
             RegisterOwner(runtime, owner, root);
 
-            Assert.That(access.TryCreateGroup(definition, out ActorGroupSnapshot group, out string issue), Is.True, issue);
+            Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
+            Assert.That(access.TryCreateGroup(profile, out ActorGroupSnapshot group, out string issue), Is.True, issue);
             Assert.That(group.IsValid, Is.True);
             Assert.That(group.GroupId, Is.EqualTo(groupId));
-            Assert.That(group.Profile, Is.Null);
+            Assert.That(group.Profile, Is.SameAs(profile));
             Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot registered, out _), Is.True);
             Assert.That(registered.GroupId, Is.EqualTo(groupId));
         }
 
         [Test]
-        public void CreateGroup_FromDynamicIdentity_UsesExplicitIdAndOptionalProfile()
+        public void CreateGroup_FromDynamicIdentity_UsesExplicitIdWithoutProfileIdentity()
         {
             var runtime = new ActorGroupRuntime();
             RuntimeContentOwner owner = RuntimeContentOwner.Session("session.groups.dynamic", "Session");
-            GroupProfile profile = CreateProfile("profile.dynamic");
             GameObject root = CreateAccessRoot(out ActorGroupAccessBinding access);
             RegisterOwner(runtime, owner, root);
 
             GroupId id = GroupId.From("group.dynamic");
-            Assert.That(access.TryCreateGroup(id, profile, out ActorGroupSnapshot group, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(id, out ActorGroupSnapshot group, out string issue), Is.True, issue);
             Assert.That(group.GroupId, Is.EqualTo(id));
-            Assert.That(group.Profile, Is.SameAs(profile));
-            Assert.That(group.HasProfile, Is.True);
+            Assert.That(group.Profile, Is.Null);
+            Assert.That(group.HasProfile, Is.False);
         }
 
         [Test]
@@ -92,9 +93,9 @@ namespace Immersive.Framework.Actors.Tests
             GroupProfile profile = Track(ScriptableObject.CreateInstance<GroupProfile>());
             RegisterOwner(runtime, owner, root);
 
-            Assert.That(access.TryCreateGroup(default, null, out _, out string identityIssue), Is.False);
+            Assert.That(access.TryCreateGroup(default(GroupId), out _, out string identityIssue), Is.False);
             StringAssert.Contains("GroupId", identityIssue);
-            Assert.That(access.TryCreateGroup(GroupId.From("group.invalid-profile"), profile, out _, out string profileIssue), Is.False);
+            Assert.That(access.TryCreateGroup(profile, out _, out string profileIssue), Is.False);
             StringAssert.Contains("Profile", profileIssue);
         }
 
@@ -110,8 +111,8 @@ namespace Immersive.Framework.Actors.Tests
             RegisterOwner(runtime, secondOwner, secondRoot);
             GroupId sharedId = GroupId.From("group.shared");
 
-            Assert.That(firstAccess.TryCreateGroup(sharedId, null, out ActorGroupSnapshot first, out string firstIssue), Is.True, firstIssue);
-            Assert.That(secondAccess.TryCreateGroup(sharedId, null, out _, out string duplicateIssue), Is.False);
+            Assert.That(firstAccess.TryCreateGroup(sharedId, out ActorGroupSnapshot first, out string firstIssue), Is.True, firstIssue);
+            Assert.That(secondAccess.TryCreateGroup(sharedId, out _, out string duplicateIssue), Is.False);
             StringAssert.Contains(sharedId.StableText, duplicateIssue);
             Assert.That(runtime.TryGetGroup(sharedId, out ActorGroupSnapshot current, out _), Is.True);
             Assert.That(current.GroupId, Is.EqualTo(first.GroupId));
@@ -131,8 +132,8 @@ namespace Immersive.Framework.Actors.Tests
             RegisterOwner(runtime, secondOwner, secondRoot);
             GroupId firstId = GroupId.From("group.first");
             GroupId secondId = GroupId.From("group.second");
-            Assert.That(firstAccess.TryCreateGroup(firstId, null, out _, out string firstIssue), Is.True, firstIssue);
-            Assert.That(secondAccess.TryCreateGroup(secondId, null, out _, out string secondIssue), Is.True, secondIssue);
+            Assert.That(firstAccess.TryCreateGroup(firstId, out _, out string firstIssue), Is.True, firstIssue);
+            Assert.That(secondAccess.TryCreateGroup(secondId, out _, out string secondIssue), Is.True, secondIssue);
 
             Assert.That(runtime.TryReleaseOwner(firstOwner, out string releaseIssue), Is.True, releaseIssue);
 
@@ -152,7 +153,7 @@ namespace Immersive.Framework.Actors.Tests
             RegisterOwner(runtime, owner, root);
             GroupId groupId = GroupId.From("group.empty");
 
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
             Assert.That(runtime.TryGetGroup(groupId, out ActorGroupSnapshot group, out _), Is.True);
             Assert.That(group.GroupId, Is.EqualTo(groupId));
 
@@ -170,8 +171,8 @@ namespace Immersive.Framework.Actors.Tests
             GroupId firstId = GroupId.From("group.multiple.first");
             GroupId secondId = GroupId.From("group.multiple.second");
 
-            Assert.That(access.TryCreateGroup(firstId, null, out _, out string firstIssue), Is.True, firstIssue);
-            Assert.That(access.TryCreateGroup(secondId, null, out _, out string secondIssue), Is.True, secondIssue);
+            Assert.That(access.TryCreateGroup(firstId, out _, out string firstIssue), Is.True, firstIssue);
+            Assert.That(access.TryCreateGroup(secondId, out _, out string secondIssue), Is.True, secondIssue);
             Assert.That(access.TryGetGroup(firstId, out ActorGroupSnapshot first, out string lookupIssue), Is.True, lookupIssue);
             Assert.That(first.GroupId, Is.EqualTo(firstId));
             Assert.That(runtime.TryGetGroup(secondId, out ActorGroupSnapshot second, out _), Is.True);
@@ -205,7 +206,7 @@ namespace Immersive.Framework.Actors.Tests
             GameObject root = CreateAccessRoot(out ActorGroupAccessBinding access);
             RegisterOwner(runtime, owner, root);
             GroupId groupId = GroupId.From("group.route-close");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
 
             var routeRuntime = new RouteLifecycleRuntime(new RuntimeContentRuntime());
             routeRuntime.SetActorGroupRuntime(runtime);
@@ -230,7 +231,7 @@ namespace Immersive.Framework.Actors.Tests
             GameObject root = CreateAccessRoot(out ActorGroupAccessBinding access);
             RegisterOwner(runtime, owner, root);
             GroupId groupId = GroupId.From("group.activity-close");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
 
             var activityRuntime = new ActivityFlowRuntime(new RuntimeContentRuntime(), new SceneLifecycleRuntime());
             activityRuntime.SetActorGroupRuntime(runtime);
@@ -264,7 +265,7 @@ namespace Immersive.Framework.Actors.Tests
             GameObject accessRoot = CreateAccessRoot(out ActorGroupAccessBinding access);
             RegisterOwner(runtime, owner, accessRoot);
             GroupId groupId = GroupId.From("group.session-close");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string createIssue), Is.True, createIssue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string createIssue), Is.True, createIssue);
 
             Assert.That(host.TryReleaseSessionActorGroups(out string issue), Is.True, issue);
             Assert.That(host.TryReleaseSessionActorGroups(out issue), Is.True, issue);
@@ -273,17 +274,10 @@ namespace Immersive.Framework.Actors.Tests
             Assert.That(access.IsAccessAvailable, Is.False);
         }
 
-        private GroupDefinitionAsset CreateDefinition(string id)
-        {
-            GroupDefinitionAsset definition = Track(ScriptableObject.CreateInstance<GroupDefinitionAsset>());
-            SetString(definition, "groupId", id);
-            return definition;
-        }
-
         private GroupProfile CreateProfile(string id)
         {
             GroupProfile profile = Track(ScriptableObject.CreateInstance<GroupProfile>());
-            SetString(profile, "groupProfileId", id);
+            SetString(profile, "groupId", id);
             return profile;
         }
 

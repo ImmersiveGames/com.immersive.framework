@@ -6,18 +6,18 @@ using UnityEngine;
 namespace Immersive.Framework.Actors
 {
     /// <summary>
-    /// Optional reusable, game-neutral authoring configuration for Groups.
-    /// A Profile has its own identity and presentation defaults; it does not create or own a Group.
+    /// The single authored definition of a logical Group identity and its optional presentation.
+    /// Referencing or loading this asset does not create a runtime Group.
     /// </summary>
     [CreateAssetMenu(
         fileName = "GroupProfile",
         menuName = "Immersive Framework/Groups/Group Profile",
         order = 20)]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-051 reusable Group Profile authoring surface.")]
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "IF-ADR-051 authored Group identity and presentation.")]
     public sealed class GroupProfile : ScriptableObject
     {
-        [Tooltip("Explicit canonical GroupProfileId. This identity is distinct from every GroupId.")]
-        [SerializeField] private string groupProfileId;
+        [Tooltip("Explicit canonical GroupId. Runtime Group creation remains an explicit operation.")]
+        [SerializeField] private string groupId;
 
         [SerializeField] private string displayName;
 
@@ -26,9 +26,9 @@ namespace Immersive.Framework.Actors
 
         [SerializeField] private Sprite icon;
 
-        public string GroupProfileIdText => groupProfileId.NormalizeText();
+        public string GroupIdText => groupId.NormalizeText();
 
-        public GroupProfileId GroupProfileId => GetRequiredGroupProfileId();
+        public GroupId GroupId => GetRequiredGroupId();
 
         public string DisplayName => displayName.NormalizeText();
 
@@ -36,38 +36,43 @@ namespace Immersive.Framework.Actors
 
         public Sprite Icon => icon;
 
-        public bool TryGetGroupProfileId(out GroupProfileId resolvedGroupProfileId, out string issue)
+        public bool TryGetGroupId(out GroupId resolvedGroupId, out string issue)
         {
-            string normalizedId = GroupProfileIdText;
+            string normalizedId = GroupIdText;
             if (string.IsNullOrEmpty(normalizedId))
             {
-                resolvedGroupProfileId = default;
-                issue = $"GroupProfile '{name}' requires a non-empty GroupProfileId.";
+                resolvedGroupId = default;
+                issue = $"GroupProfile '{name}' requires a non-empty GroupId.";
                 return false;
             }
 
             try
             {
-                resolvedGroupProfileId = GroupProfileId.From(normalizedId);
+                resolvedGroupId = GroupId.From(normalizedId);
                 issue = string.Empty;
                 return true;
             }
             catch (ArgumentException exception)
             {
-                resolvedGroupProfileId = default;
-                issue = $"GroupProfile '{name}' has invalid GroupProfileId '{normalizedId}'. {exception.Message}";
+                resolvedGroupId = default;
+                issue = $"GroupProfile '{name}' has invalid GroupId '{normalizedId}'. {exception.Message}";
                 return false;
             }
         }
 
-        public GroupProfileId GetRequiredGroupProfileId()
+        public GroupId GetRequiredGroupId()
         {
-            if (TryGetGroupProfileId(out GroupProfileId resolvedGroupProfileId, out string issue))
+            if (TryGetGroupId(out GroupId resolvedGroupId, out string issue))
             {
-                return resolvedGroupProfileId;
+                return resolvedGroupId;
             }
 
             throw new InvalidOperationException(issue);
+        }
+
+        public bool TryValidate(out string issue)
+        {
+            return TryGetGroupId(out _, out issue);
         }
     }
 }

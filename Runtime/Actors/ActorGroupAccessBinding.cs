@@ -17,30 +17,34 @@ namespace Immersive.Framework.Actors
         public bool IsAccessAvailable => _runtime != null && _owner.IsValid;
 
         public bool TryCreateGroup(
-            GroupDefinitionAsset definition,
+            GroupProfile profile,
             out ActorGroupSnapshot group,
             out string diagnostic)
         {
-            if (definition == null)
+            if (profile == null)
             {
                 group = default;
-                diagnostic = "A Group Definition is required.";
+                diagnostic = "A Group Profile is required.";
                 return false;
             }
 
-            if (!definition.TryValidate(out diagnostic) ||
-                !definition.TryGetGroupId(out GroupId groupId, out diagnostic))
+            if (!profile.TryGetGroupId(out _, out diagnostic))
             {
                 group = default;
                 return false;
             }
 
-            return TryCreateGroup(groupId, definition.GroupProfile, out group, out diagnostic);
+            if (!TryGetBoundRuntime(out ActorGroupRuntime runtime, out RuntimeContentOwner owner, out diagnostic))
+            {
+                group = default;
+                return false;
+            }
+
+            return runtime.TryCreateGroup(owner, profile, out group, out diagnostic);
         }
 
         public bool TryCreateGroup(
             GroupId groupId,
-            GroupProfile profile,
             out ActorGroupSnapshot group,
             out string diagnostic)
         {
@@ -50,7 +54,7 @@ namespace Immersive.Framework.Actors
                 return false;
             }
 
-            return runtime.TryCreateGroup(owner, groupId, profile, out group, out diagnostic);
+            return runtime.TryCreateGroup(owner, groupId, out group, out diagnostic);
         }
 
         public bool TryGetGroup(

@@ -37,7 +37,6 @@ namespace Immersive.Framework.Identity
         Actor = 230,
         PlayerSlot = 240,
         ActorProfile = 250,
-        Group = 260,
-        GroupProfile = 270
+        Group = 260
     }
 }

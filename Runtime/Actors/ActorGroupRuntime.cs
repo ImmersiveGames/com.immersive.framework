@@ -176,6 +176,38 @@ namespace Immersive.Framework.Actors
 
         internal bool TryCreateGroup(
             RuntimeContentOwner owner,
+            GroupProfile profile,
+            out ActorGroupSnapshot group,
+            out string diagnostic)
+        {
+            if (profile == null)
+            {
+                group = default;
+                diagnostic = "Actor Group creation requires a Group Profile.";
+                return false;
+            }
+
+            if (!profile.TryGetGroupId(out GroupId groupId, out diagnostic))
+            {
+                group = default;
+                diagnostic = "Actor Group Profile is invalid. " + diagnostic;
+                return false;
+            }
+
+            return TryCreateGroup(owner, groupId, profile, out group, out diagnostic);
+        }
+
+        internal bool TryCreateGroup(
+            RuntimeContentOwner owner,
+            GroupId groupId,
+            out ActorGroupSnapshot group,
+            out string diagnostic)
+        {
+            return TryCreateGroup(owner, groupId, null, out group, out diagnostic);
+        }
+
+        private bool TryCreateGroup(
+            RuntimeContentOwner owner,
             GroupId groupId,
             GroupProfile profile,
             out ActorGroupSnapshot group,
@@ -194,9 +226,16 @@ namespace Immersive.Framework.Actors
                 return false;
             }
 
-            if (profile != null && !profile.TryGetGroupProfileId(out _, out diagnostic))
+            GroupId profileGroupId = default;
+            if (profile != null && !profile.TryGetGroupId(out profileGroupId, out diagnostic))
             {
                 diagnostic = "Actor Group Profile is invalid. " + diagnostic;
+                return false;
+            }
+
+            if (profile != null && profileGroupId != groupId)
+            {
+                diagnostic = "Actor Group Profile has a different GroupId than the runtime Group.";
                 return false;
             }
 

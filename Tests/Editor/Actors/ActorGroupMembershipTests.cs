@@ -32,8 +32,8 @@ namespace Immersive.Framework.Actors.Tests
             ActorId firstActor = ActorId.From("actor.membership.first");
             ActorId secondActor = ActorId.From("actor.membership.second");
 
-            Assert.That(access.TryCreateGroup(firstGroup, null, out _, out string issue), Is.True, issue);
-            Assert.That(access.TryCreateGroup(secondGroup, null, out _, out issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(firstGroup, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(secondGroup, out _, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(firstGroup, firstActor, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(firstGroup, firstActor, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(secondGroup, firstActor, out issue), Is.True, issue);
@@ -61,8 +61,8 @@ namespace Immersive.Framework.Actors.Tests
             GroupId firstGroup = GroupId.From("group.leave.first");
             GroupId secondGroup = GroupId.From("group.leave.second");
             ActorId actorId = ActorId.From("actor.leave.shared");
-            Assert.That(access.TryCreateGroup(firstGroup, null, out _, out string issue), Is.True, issue);
-            Assert.That(access.TryCreateGroup(secondGroup, null, out _, out issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(firstGroup, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(secondGroup, out _, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(firstGroup, actorId, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(secondGroup, actorId, out issue), Is.True, issue);
 
@@ -83,7 +83,7 @@ namespace Immersive.Framework.Actors.Tests
             ActorGroupAccessBinding access = CreateAccess(runtime, owner);
             GroupId groupId = GroupId.From("group.last-member");
             ActorId actorId = ActorId.From("actor.last-member");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(groupId, actorId, out issue), Is.True, issue);
 
             Assert.That(access.TryLeaveGroup(groupId, actorId, out issue), Is.True, issue);
@@ -103,7 +103,7 @@ namespace Immersive.Framework.Actors.Tests
             GroupId groupId = GroupId.From("group.logical-identity");
             ActorId preservedActorId = ActorId.From("actor.logical-identity.preserved");
             ActorId newActorId = ActorId.From("actor.logical-identity.new");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(groupId, preservedActorId, out issue), Is.True, issue);
 
             Assert.That(access.TryIsMember(groupId, preservedActorId, out bool preservedMembership, out issue), Is.True, issue);
@@ -126,8 +126,8 @@ namespace Immersive.Framework.Actors.Tests
             GroupId firstGroup = GroupId.From("group.owner.first");
             GroupId secondGroup = GroupId.From("group.owner.second");
             ActorId sharedActor = ActorId.From("actor.owner.shared");
-            Assert.That(firstAccess.TryCreateGroup(firstGroup, null, out _, out string issue), Is.True, issue);
-            Assert.That(secondAccess.TryCreateGroup(secondGroup, null, out _, out issue), Is.True, issue);
+            Assert.That(firstAccess.TryCreateGroup(firstGroup, out _, out string issue), Is.True, issue);
+            Assert.That(secondAccess.TryCreateGroup(secondGroup, out _, out issue), Is.True, issue);
             Assert.That(firstAccess.TryJoinGroup(firstGroup, sharedActor, out issue), Is.True, issue);
             Assert.That(secondAccess.TryJoinGroup(secondGroup, sharedActor, out issue), Is.True, issue);
 
@@ -149,7 +149,7 @@ namespace Immersive.Framework.Actors.Tests
             GroupId groupId = GroupId.From("group.invalid-membership");
             ActorId firstActor = ActorId.From("actor.invalid-membership.first");
             ActorId secondActor = ActorId.From("actor.invalid-membership.second");
-            Assert.That(access.TryCreateGroup(groupId, null, out _, out string issue), Is.True, issue);
+            Assert.That(access.TryCreateGroup(groupId, out _, out string issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(groupId, firstActor, out issue), Is.True, issue);
             Assert.That(access.TryJoinGroup(groupId, secondActor, out issue), Is.True, issue);
 
