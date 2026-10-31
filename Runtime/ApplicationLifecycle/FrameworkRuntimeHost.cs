@@ -3942,6 +3942,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("application-quit");
             ReleaseSessionActorGroups("application-quit");
+            InvalidateActorOccurrenceQueryAccess();
             _sessionCameraMembershipRuntime?.Dispose();
             _sessionCameraMembershipRuntime = null;
             _sessionCameraAssignmentRuntime?.Dispose();
@@ -3953,6 +3954,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             _ = _admission.BeginStopAndWaitForOperationsAsync();
             ReleasePersistentContentScope("framework-runtime-host-destroy");
             ReleaseSessionActorGroups("framework-runtime-host-destroy");
+            InvalidateActorOccurrenceQueryAccess();
             _gameFlowRuntime?.DisposeActivityEntryReadinessOrchestration();
             _gameFlowRuntime = null;
             _activityReadinessBinding?.Dispose();

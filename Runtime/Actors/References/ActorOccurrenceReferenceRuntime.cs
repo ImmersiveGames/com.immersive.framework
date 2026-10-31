@@ -12,13 +12,18 @@ namespace Immersive.Framework.Actors
     {
         private sealed class OwnerRegistration
         {
-            internal OwnerRegistration(RuntimeContentOwner owner, List<ActorOccurrencePublication> publishers)
+            internal OwnerRegistration(
+                RuntimeContentOwner owner,
+                List<ActorOccurrencePublication> publishers,
+                List<ActorOccurrenceQueryBinding> queryBindings)
             {
                 Owner = owner;
                 Publishers = publishers;
+                QueryBindings = queryBindings;
             }
             internal RuntimeContentOwner Owner { get; }
             internal List<ActorOccurrencePublication> Publishers { get; }
+            internal List<ActorOccurrenceQueryBinding> QueryBindings { get; }
         }
 
         private sealed class PublicationRecord
@@ -50,6 +55,8 @@ namespace Immersive.Framework.Actors
         private readonly Dictionary<ActorOccurrencePublicationScope, List<PublicationRecord>> _suspendedScopePublications = new();
         private readonly List<PublicationRecord> _pendingCompositionCleanup = new();
         private readonly List<ActorOccurrenceReferenceBinding> _consumers = new();
+        private readonly Dictionary<ActorOccurrenceQueryBinding, RuntimeContentOwner> _queryBindingOwners = new();
+        private bool _queryAccessInvalidated;
         private readonly ActorOccurrenceIdSequence _occurrenceIds = new();
         private IPlayerPreparedActorOccurrenceSource _playerSource;
         private RuntimeContentOwner _sessionOwner;
@@ -97,6 +104,8 @@ namespace Immersive.Framework.Actors
 
             var publishers = new List<ActorOccurrencePublication>();
             var seen = new HashSet<ActorOccurrencePublication>();
+            var queryBindings = new List<ActorOccurrenceQueryBinding>();
+            var seenQueryBindings = new HashSet<ActorOccurrenceQueryBinding>();
             for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
             {
                 GameObject root = roots[rootIndex];
@@ -122,9 +131,17 @@ namespace Immersive.Framework.Actors
                     }
                     publishers.Add(publisher);
                 }
+
+                if (!TryCollectQueryBindings(owner, root, seenQueryBindings, queryBindings, out diagnostic))
+                    return false;
             }
 
-            _stagedOwners.Add(owner, new OwnerRegistration(owner, publishers));
+            if (queryBindings.Count > 0 && !CanAcceptQueryBindings(owner, out diagnostic))
+                return false;
+
+            _stagedOwners.Add(owner, new OwnerRegistration(owner, publishers, queryBindings));
+            for (int index = 0; index < queryBindings.Count; index++)
+                _queryBindingOwners.Add(queryBindings[index], owner);
             return true;
         }
 
@@ -159,6 +176,12 @@ namespace Immersive.Framework.Actors
                 }
             }
 
+            if (!TryBindQueryBindings(registration, out diagnostic))
+            {
+                RemoveOwnerPublications(owner);
+                return false;
+            }
+
             _stagedOwners.Remove(owner);
             _committedOwners.Add(owner, registration);
             return true;
@@ -172,6 +195,7 @@ namespace Immersive.Framework.Actors
                 diagnostic = "Actor occurrence rollback requires an exact valid owner.";
                 return false;
             }
+            ReleaseQueryBindings(owner);
             _stagedOwners.Remove(owner);
             if (_committedOwners.ContainsKey(owner))
                 return RemoveOwner(owner, out diagnostic);
@@ -186,8 +210,26 @@ namespace Immersive.Framework.Actors
                 diagnostic = "Actor occurrence release requires an exact valid owner.";
                 return false;
             }
+            ReleaseQueryBindings(owner);
             _stagedOwners.Remove(owner);
             return RemoveOwner(owner, out diagnostic);
+        }
+
+        /// <summary>
+        /// Host-teardown invalidation of every query anchor, independent of owner release. Touches no
+        /// publication, consumer, Player source or owner state. Idempotent.
+        /// </summary>
+        internal void InvalidateQueryAccess()
+        {
+            _queryAccessInvalidated = true;
+            var bindings = new List<KeyValuePair<ActorOccurrenceQueryBinding, RuntimeContentOwner>>(_queryBindingOwners);
+            _queryBindingOwners.Clear();
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                ActorOccurrenceQueryBinding binding = bindings[index].Key;
+                if (!ReferenceEquals(binding, null))
+                    binding.UnbindRuntime(this, bindings[index].Value);
+            }
         }
 
         internal bool TryPublishDynamic(
@@ -564,6 +606,84 @@ namespace Immersive.Framework.Actors
                 PublicationRecord record = _pendingCompositionCleanup[index];
                 if (ReferenceEquals(record.PublicationScope, scope))
                     TryCloseCompositionBinding(record, out _);
+            }
+        }
+
+        private bool TryCollectQueryBindings(
+            RuntimeContentOwner owner,
+            GameObject root,
+            HashSet<ActorOccurrenceQueryBinding> seen,
+            List<ActorOccurrenceQueryBinding> queryBindings,
+            out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            ActorOccurrenceQueryBinding[] candidates = root.GetComponentsInChildren<ActorOccurrenceQueryBinding>(true);
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                ActorOccurrenceQueryBinding binding = candidates[index];
+                if (binding == null || !seen.Add(binding)) continue;
+                if (_queryBindingOwners.TryGetValue(binding, out RuntimeContentOwner registeredOwner))
+                {
+                    diagnostic = $"Actor occurrence query binding '{binding.name}' is already staged or committed for owner '{registeredOwner.StableText}'.";
+                    return false;
+                }
+                if (!binding.CanBindRuntime(this, owner, out diagnostic)) return false;
+                queryBindings.Add(binding);
+            }
+            return true;
+        }
+
+        private bool CanAcceptQueryBindings(RuntimeContentOwner owner, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            if (_queryAccessInvalidated)
+            {
+                diagnostic = "Actor occurrence query access was invalidated by Framework host teardown.";
+                return false;
+            }
+            if (owner.Scope != RuntimeContentScope.Session &&
+                owner.Scope != RuntimeContentScope.Route &&
+                owner.Scope != RuntimeContentScope.Activity)
+            {
+                diagnostic = $"Actor occurrence query bindings support Session, Route and Activity owners; scope '{owner.Scope}' is unsupported.";
+                return false;
+            }
+            return true;
+        }
+
+        private bool TryBindQueryBindings(OwnerRegistration registration, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            List<ActorOccurrenceQueryBinding> bindings = registration.QueryBindings;
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                ActorOccurrenceQueryBinding binding = bindings[index];
+                if (binding == null || !binding.TryBindRuntime(this, registration.Owner, out diagnostic))
+                {
+                    if (binding == null)
+                        diagnostic = $"Actor occurrence query binding under owner '{registration.Owner.StableText}' was destroyed before commit.";
+                    for (int boundIndex = 0; boundIndex < index; boundIndex++)
+                    {
+                        ActorOccurrenceQueryBinding bound = bindings[boundIndex];
+                        if (!ReferenceEquals(bound, null)) bound.UnbindRuntime(this, registration.Owner);
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private void ReleaseQueryBindings(RuntimeContentOwner owner)
+        {
+            if (_queryBindingOwners.Count == 0) return;
+            var bindings = new List<ActorOccurrenceQueryBinding>();
+            foreach (KeyValuePair<ActorOccurrenceQueryBinding, RuntimeContentOwner> pair in _queryBindingOwners)
+                if (pair.Value == owner) bindings.Add(pair.Key);
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                ActorOccurrenceQueryBinding binding = bindings[index];
+                _queryBindingOwners.Remove(binding);
+                if (!ReferenceEquals(binding, null)) binding.UnbindRuntime(this, owner);
             }
         }
 

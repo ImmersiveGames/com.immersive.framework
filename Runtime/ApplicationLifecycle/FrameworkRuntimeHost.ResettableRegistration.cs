@@ -88,6 +88,16 @@ namespace Immersive.Framework.ApplicationLifecycle
             return false;
         }
 
+        /// <summary>
+        /// IF-ADR-049 Amendment 001 §8.3: invalidates every Actor occurrence query anchor at host teardown,
+        /// independently of whether Session, Route or Activity owner release ran or succeeded.
+        /// Does not create the occurrence runtime during teardown.
+        /// </summary>
+        private void InvalidateActorOccurrenceQueryAccess()
+        {
+            _actorOccurrenceReferenceRuntime?.InvalidateQueryAccess();
+        }
+
         internal bool TryReleaseSessionActorGroups(out string diagnostic)
         {
             diagnostic = string.Empty;
