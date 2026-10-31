@@ -1,12 +1,13 @@
 # IF-ADR-049 Amendment 001 — Scoped On-Demand Actor Occurrence Query
 
-Status: **Proposed — recommended for acceptance by the Project Owner**
+Status: **Accepted**
 Proposed: **2026-10-31**
+Accepted: **2026-10-31** (Project Owner)
 Amends: [IF-ADR-049 — Public Actor Occurrence Reference and Resolution](IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md) §5 and §9 (clarification and additive consumer role)
 Related decisions: [IF-ADR-040](IF-ADR-040-Scene-Composition-Binding-Model.md), [IF-ADR-050](IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) and its [accepted-target migration contract](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) (M03/M04), [IF-ADR-051](IF-ADR-051-Actor-Groups-Identity-Membership-and-Player-Slot-Associations.md)
 Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 
-This amendment is a proposal. It is not normative until the Project Owner accepts it. It authorizes no Runtime change, API signature, implementation plan, consumer edit, maturity change or release.
+The Project Owner accepted this amendment on 2026-10-31. Acceptance makes the conceptual contract below normative for future work; it authorizes no Runtime change, API signature, implementation plan, consumer edit, maturity change or release. The remaining conditions in §6 still gate implementation.
 
 ## 1. Context
 
@@ -41,7 +42,7 @@ The decision must serve both cases with one generic contract and no HUD- or know
 1. **Continuous observation.** A HUD follows the current Player of one Slot and reacts when its occurrence is replaced or becomes unavailable.
 2. **Point-in-time query.** A knowledge system that already holds a legitimate identity and evidence must, at a moment its own policy authorizes, read the current occurrence once to capture an authorized location.
 
-## 2. Decision (proposed)
+## 2. Decision
 
 ### 2.1 Two consumer roles over one resolver
 
@@ -123,7 +124,7 @@ No accepted decision is superseded. The original IF-ADR-049 text and history rem
 
 ## 6. Conditions before implementation
 
-1. The Project Owner accepts this amendment; IF-ADR-049 and the tracker record the acceptance.
+1. ~~The Project Owner accepts this amendment~~ — satisfied 2026-10-31; IF-ADR-049 and the tracker record the acceptance.
 2. An architecture review using the installed `immersive-framework-architecture-audit` and `immersive-framework-core-architecture` skills confirms this text against the exact source revision. They were not available in the session that drafted this proposal.
 3. A separate implementation plan is approved under the Framework plan process. It defines the smallest public names and signatures, reuses the existing participant and resolver, and adds no storage.
 4. The plan covers at least: query before bind and after release returns `Unavailable`; a query dispatches no `Changed` and mutates no binding; query from inside `Changed` and during `RefreshAll`; Player replacement (`Stale` for exact, new occurrence for Slot); Activity exit preserving a Session-owned Player; ambiguity and owner-exact selection; owner release and scene release compensation; a plain C# holder after scope release; exact owner equality with the composition owner.
