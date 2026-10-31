@@ -138,3 +138,36 @@ No accepted decision is superseded. The original IF-ADR-049 text and history rem
 - The binding keeps a single, clear responsibility.
 - The Framework adds one Experimental access contract and its tests and documentation.
 - Consumers must handle point-in-time semantics and transient `Unavailable` during handoff.
+
+## 8. Clarifications (2026-10-31)
+
+Recorded under [IF-PLAN-ADR-049-A001 v1](../Plans/IF-PLAN-ADR-049-AMENDMENT-001-SCOPED-OCCURRENCE-QUERY.v1.md) gate Q01 from the CLEAR architecture review against `efed6b2`. They make the accepted text match current source. They do not change the decision, its scope, the resolver, the binding or any condition in §6. Sections 1–7 above are unchanged; where they differ from this section, this section states the intended reading.
+
+### 8.1 A1 — Anchor delivery (§2.2.1, §4)
+
+"The existing Actor occurrence composition participant" means the **owner pipeline of `ActorOccurrenceReferenceRuntime`**: `TryRegisterOwnerContent` → `TryCommitOwner` → `TryRollbackOwner` / `TryReleaseOwner`, which Session, Route and Activity content owners already call with the exact `RuntimeContentOwner`. It does **not** mean `ActorOccurrenceReferenceSceneLifecycleParticipant`, which is per scene and carries no owner.
+
+- The query anchor is discovered in the same root pass that already collects `ActorOccurrencePublication`, bound at owner commit and unbound at owner rollback or release, in the `ActorGroupAccessBinding` shape.
+- The scene lifecycle participant does not discover or bind the anchor. There is one binding path.
+- An anchor already registered for another owner, or under a scope other than Session, Route or Activity, is rejected and fails that owner's commit with a diagnostic.
+- The exact-owner equality required by §6.4 is the owner passed through this pipeline.
+- `ActorOccurrenceReferenceBinding` and its `OnSceneAvailable` discovery are unchanged.
+
+### 8.2 A2 — `Stale` and `Unavailable` (§2.3.4, §2.5, §7)
+
+The resolver is unchanged. Its current outcomes are documented as follows:
+
+> For an exact-occurrence selector, `Stale` means the expected occurrence is not physically available **now**. Causes include replacement, release, transient inactivity of a still-committed occurrence (for example during a guarded A→B handoff) and suspension of a dynamic publication scope that may be compensated with the same `ActorOccurrenceId`. `Stale` is not proof of end of life. Non-exact selectors (Slot, ActorId) report the same transient as `Unavailable`. Consumers that need a durable value must record nothing on `Stale` and may query again later.
+
+Accordingly, "`Stale` after replacement or release" in §2.3.4 is a non-exhaustive list of causes. The transient `Unavailable` in §2.5 and §7 applies to non-exact selectors; an exact selector reports that same transient as `Stale`. The §3 knowledge example is unchanged: on `Stale` it records no location. The scene-release-compensation case in §6.4 is verified as `Stale` → `Resolved` with the same `ActorOccurrenceId`. This is not the IF-ADR-050 M04 committed-binding view, which remains deferred.
+
+### 8.3 A3 — Host teardown (§2.3.5)
+
+"A query after release never reaches a released or shut-down host" is guaranteed by two mechanisms, not only by a successful owner release:
+
+- Owner rollback and release unbind that owner's anchors **first and unconditionally**, even when composition cleanup for the owner reports failure.
+- Host teardown (`FrameworkRuntimeHost.OnDestroy` and `OnApplicationQuit`) invalidates every bound anchor **independently** of whether Session, Route or Activity owner release ran or succeeded.
+
+After either mechanism, queries return `Unavailable` with a diagnostic, without throwing and without calling the resolver.
+
+The existing ordering is documented, not changed: for the Session owner, `ReleaseSessionScope` (which releases observation bindings) runs before the Session owner release. During that interval, a Session-owned anchor can still return `Resolved` for content that is being released. That is valid committed state.
