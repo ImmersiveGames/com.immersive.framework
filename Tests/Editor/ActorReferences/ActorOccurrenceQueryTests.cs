@@ -81,10 +81,13 @@ namespace Immersive.Framework.ActorReferences.Tests
             runtime.BindConsumer(observer);
             Register(runtime, owner, publication.gameObject, other.gameObject, anchor.gameObject);
 
-            var changes = new List<ActorOccurrenceReferenceChange>();
-            observer.Changed += changes.Add;
+            // Owner commit does not refresh consumers, so the observer still holds the Unavailable result from
+            // BindConsumer. Reading Current re-resolves and legitimately dispatches Available. Settle the
+            // observer's own state before subscribing so that only query-caused notifications are recorded.
             ActorOccurrenceResolution before = observer.Current;
             Assert.That(before.Status, Is.EqualTo(ActorOccurrenceResolutionStatus.Resolved));
+            var changes = new List<ActorOccurrenceReferenceChange>();
+            observer.Changed += changes.Add;
 
             for (int repeat = 0; repeat < 3; repeat++)
             {
@@ -97,8 +100,11 @@ namespace Immersive.Framework.ActorReferences.Tests
             }
 
             Assert.That(changes, Is.Empty, "A query must not dispatch observation notifications.");
-            Assert.That(observer.Current.Status, Is.EqualTo(before.Status));
-            Assert.That(observer.Current.Occurrence.Id, Is.EqualTo(before.Occurrence.Id));
+            ActorOccurrenceResolution after = observer.Current;
+            Assert.That(changes, Is.Empty,
+                "Re-reading the observer reports no change because the queries mutated no observed state.");
+            Assert.That(after.Status, Is.EqualTo(before.Status));
+            Assert.That(after.Occurrence.Id, Is.EqualTo(before.Occurrence.Id));
             Assert.That(observer.TryGetReference(out ActorOccurrenceReference reference, out issue), Is.True, issue);
             Assert.That(reference.Kind, Is.EqualTo(observedSelector.Kind));
             Assert.That(reference.ActorId, Is.EqualTo(observedSelector.ActorId));
@@ -309,6 +315,13 @@ namespace Immersive.Framework.ActorReferences.Tests
             partPrefab.AddComponent<ActorOccurrenceQueryReleaseProbe>();
             ActorOccurrenceQueryBinding anchor = CreateAnchor("Cleanup Order Query");
             Register(runtime, owner, publication.gameObject, anchor.gameObject);
+            // Static owner-registered publications receive composition access from the Actor occurrence
+            // scene lifecycle participant, as in the official Scene Lifecycle composition path.
+            var participant = new ActorOccurrenceReferenceSceneLifecycleParticipant(runtime);
+            SceneCompositionScope sceneScope = SceneCompositionScope.ForScene(publication.gameObject.scene);
+            Assert.That(participant.OnSceneAvailable(sceneScope, new[] { publication.gameObject }).Succeeded, Is.True);
+            Assert.That(anchor.BoundOwner, Is.EqualTo(owner),
+                "The anchor is bound by owner commit, not by the scene lifecycle participant.");
             var selector = ActorOccurrenceReference.ForActorId(new ActorId("npc.query.cleanup-order"), owner);
 
             Assert.That(publication.TryOpenCompositionContribution(
@@ -340,6 +353,8 @@ namespace Immersive.Framework.ActorReferences.Tests
             foreach (ActorOccurrenceResolution observed in observedDuringCleanup)
                 AssertUnbound(observed);
             AssertUnbound(anchor.Resolve(selector));
+            Assert.That(participant.OnSceneReleasing(
+                sceneScope, new[] { publication.gameObject }, "query-cleanup-order").Succeeded, Is.True);
         }
 
         [Test]
