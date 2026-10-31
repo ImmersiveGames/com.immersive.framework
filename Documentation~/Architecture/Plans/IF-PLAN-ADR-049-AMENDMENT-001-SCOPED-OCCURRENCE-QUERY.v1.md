@@ -1,6 +1,7 @@
 # IF-PLAN-ADR-049-A001 — Scoped On-Demand Actor Occurrence Query
 
-Status: **Proposed — awaiting Project Owner approval; no implementation authorized**  
+Status: **Approved — implementation task-gated; immutable**  
+Approved: **2026-10-31** (Project Owner)  
 Version: **v1**  
 Date: **2026-10-31**  
 Supersedes: **none**  

@@ -28,7 +28,7 @@ Approved route for the accepted IF-ADR-051 Actor Groups — **implementation tas
 
 - [IF-PLAN-ADR-051 — Actor Groups v1](IF-PLAN-ADR-051-ACTOR-GROUPS.v1.md)
 
-Proposed route for the accepted IF-ADR-049 Amendment 001 — **awaiting Project Owner approval; no implementation authorized**:
+Approved route for the accepted IF-ADR-049 Amendment 001 — **implementation task-gated**; consult the Framework tracker for current gate status:
 
 - [IF-PLAN-ADR-049-A001 — Scoped On-Demand Actor Occurrence Query v1](IF-PLAN-ADR-049-AMENDMENT-001-SCOPED-OCCURRENCE-QUERY.v1.md)
 
