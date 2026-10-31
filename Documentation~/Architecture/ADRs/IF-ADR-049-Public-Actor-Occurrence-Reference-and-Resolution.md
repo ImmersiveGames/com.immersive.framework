@@ -6,6 +6,7 @@ Accepted: **2026-10-16**
 Type: architecture / Actor / runtime identity / public API
 Related decisions: [IF-ADR-003](IF-ADR-003-Player-Participation-and-Actor-Lifecycle.md), [IF-ADR-014](IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md), [IF-ADR-038](IF-ADR-038-Session-Player-Camera-Assignments-and-Occurrence-Lifecycle.md), [IF-ADR-040](IF-ADR-040-Scene-Composition-Binding-Model.md)
 Governance: [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
+Proposed amendment: [Amendment 001 — Scoped On-Demand Actor Occurrence Query](IF-ADR-049-AMENDMENT-001-SCOPED-ON-DEMAND-OCCURRENCE-QUERY.md) (**Proposed**; not normative until accepted)
 
 ## 1. Context
 
