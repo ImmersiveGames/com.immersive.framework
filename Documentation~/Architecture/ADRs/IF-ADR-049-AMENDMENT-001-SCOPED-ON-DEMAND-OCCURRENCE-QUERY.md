@@ -12,7 +12,7 @@ This amendment is a proposal. It is not normative until the Project Owner accept
 
 ### 1.1 Current implemented contract
 
-The audited source is `1.2.0-preview.4` at `976abd1` (`main`). The public consumer surface of IF-ADR-049 consists of value types (`ActorOccurrenceReference`, `ActorOccurrenceResolution`, `ActorOccurrence`, `ActorOccurrenceId`) and one access point to the resolver: `ActorOccurrenceReferenceBinding`.
+The audited source is `1.2.0-preview.4` at `976abd1` (`master`). The public consumer surface of IF-ADR-049 consists of value types (`ActorOccurrenceReference`, `ActorOccurrenceResolution`, `ActorOccurrence`, `ActorOccurrenceId`) and one access point to the resolver: `ActorOccurrenceReferenceBinding`.
 
 The resolver itself, `ActorOccurrenceReferenceRuntime`, is `internal`. It is owned by `FrameworkRuntimeHost` and also holds producer authority: owner staging/commit/rollback/release, dynamic publication, the internal Player source (`IPlayerPreparedActorOccurrenceSource`), the Session owner and consumer refresh. Keeping that class internal is correct and remains required by IF-ADR-049 §2, §8 and §10 and by IF-ADR-040.
 
