@@ -57,11 +57,7 @@ Git branch. To use preview `1.2.0-preview.4`, set the dependency to that exact
 version through OpenUPM; the stable value above remains unchanged until the
 project explicitly opts into the preview channel.
 
-The Framework preview release is `1.2.0-preview.4`; it includes Actor Profile
-part assets and migration, Actor Groups, scoped Actor occurrence queries,
-Player Actor composition contributions, and Object Entry occurrence queries.
-It depends on Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging
-`0.2.4`. The preview does not promote Experimental contracts to Stable.
+The Framework preview release is [`1.2.0-preview.4`](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.4), available through [OpenUPM](https://openupm.com/packages/com.immersive.framework/). It includes Actor Profile part assets and migration, Actor Groups, scoped Actor occurrence queries, Player Actor composition contributions, and Object Entry occurrence queries. It depends on Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`. The preview does not promote Experimental contracts to Stable.
 Earlier package releases remain in the [changelog](CHANGELOG.md) as history;
 they are not migration baselines for `1.1.0`.
 
