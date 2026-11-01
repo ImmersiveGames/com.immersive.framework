@@ -7,6 +7,7 @@ using Immersive.Framework.Actors;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Identity;
+using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.PlayerSlots;
 using NUnit.Framework;
 using UnityEditor.PackageManager;
@@ -215,6 +216,41 @@ namespace Immersive.Framework.Identity.Tests
             {
                 typeof(IActorOccurrenceQuery),
                 typeof(ActorOccurrenceQueryBinding)
+            };
+
+            foreach (Type contract in contracts)
+            {
+                FrameworkApiStatusAttribute metadata = contract.GetCustomAttribute<FrameworkApiStatusAttribute>(false);
+                Assert.That(metadata, Is.Not.Null, contract.FullName + " is missing its maturity attribute.");
+                Assert.That(metadata.Status, Is.EqualTo(FrameworkApiStatus.Experimental), contract.FullName);
+                Assert.That(metadata.Note, Is.Not.Empty, contract.FullName);
+            }
+
+            string packageRoot = PackageInfo.FindForAssembly(typeof(FrameworkIdentityKey).Assembly).resolvedPath;
+            string publicApi = File.ReadAllText(Path.Combine(packageRoot, "Documentation~", "API", "Public-API.md"));
+            foreach (Type contract in contracts)
+            {
+                string apiEntry = publicApi
+                    .Replace("\r", string.Empty)
+                    .Split('\n')
+                    .Single(line =>
+                    {
+                        string[] columns = line.Split('|');
+                        return columns.Length > 2 && columns[1].Contains("`" + contract.Name + "`");
+                    });
+                StringAssert.Contains("Experimental", apiEntry, contract.Name);
+            }
+        }
+
+        [Test]
+        public void ObjectEntryOccurrenceQueryContracts_AreExperimentalAndListedInPublicApi()
+        {
+            Type[] contracts =
+            {
+                typeof(IObjectEntryOccurrenceQuery),
+                typeof(ObjectEntryOccurrenceQueryBinding),
+                typeof(ObjectEntryOccurrenceResolution),
+                typeof(ObjectEntryOccurrenceResolutionStatus)
             };
 
             foreach (Type contract in contracts)

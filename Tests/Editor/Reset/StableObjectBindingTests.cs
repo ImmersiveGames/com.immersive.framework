@@ -67,6 +67,157 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
+        public void OccurrenceQuery_ReportsInvalidUnavailableAndResolvedWithoutChangingBindings()
+        {
+            const string id = "qa.stable.public-query";
+            GameObject target = CreateEntry(id, _routeA, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            IObjectEntryOccurrenceQuery query = anchor;
+            StableObjectReference reference = StableObjectReference.ForEntry(Id(id));
+
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.InvalidReference, query.Resolve(default).Status);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(reference).Status);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { target, queryRoot }, out string diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(reference).Status);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+
+            int bindingCount = _bindings.BindingCount;
+            ObjectEntryOccurrenceResolution resolved = query.Resolve(reference);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, resolved.Status);
+            Assert.AreSame(target, resolved.Occurrence);
+            Assert.IsTrue(resolved.Succeeded);
+            Assert.AreEqual(bindingCount, _bindings.BindingCount);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.InvalidReference, query.Resolve(default).Status);
+        }
+
+        [Test]
+        public void OccurrenceQuery_AmbiguityRequiresAnExactOwnerSelector()
+        {
+            const string id = "qa.stable.public-query-ambiguous";
+            GameObject first = CreateEntry(id, _routeA, false);
+            GameObject second = CreateEntry(id, _routeB, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, first, queryRoot);
+            Register(_ownerB, second);
+
+            IObjectEntryOccurrenceQuery query = anchor;
+            ObjectEntryOccurrenceResolution ambiguous =
+                query.Resolve(StableObjectReference.ForEntry(Id(id)));
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Ambiguous, ambiguous.Status);
+            Assert.IsNull(ambiguous.Occurrence);
+            Assert.IsFalse(ambiguous.Succeeded);
+
+            ObjectEntryOccurrenceResolution selected = query.Resolve(StableObjectReference.ForRoute(Id(id), _routeA));
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, selected.Status);
+            Assert.AreSame(first, selected.Occurrence);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OccurrenceQuery_ActivityRollbackOrReleaseMakesRouteScopedQueryUnavailable(bool rollback)
+        {
+            const string id = "qa.stable.public-query-activity";
+            GameObject queryRoot = Create("route-query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+
+            GameObject routeTarget = CreateEntry(id, _routeB, false);
+            Register(_ownerB, routeTarget);
+            ActivityAsset activity = CreateActivity("qa.stable.activity");
+            RuntimeContentOwner activityOwner = RuntimeContentOwner.Activity(
+                activity.ActivityId.StableText,
+                activity.ActivityName,
+                RuntimeDefinitionToken.FromUnityObject(activity));
+            GameObject target = CreateEntry(id, _routeA, false);
+            StableObjectReference activityReference = StableObjectReference.ForActivity(Id(id), activity);
+            StableObjectReference unscopedReference = StableObjectReference.ForEntry(Id(id));
+            IObjectEntryOccurrenceQuery query = anchor;
+
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, query.Resolve(unscopedReference).Status);
+            Assert.AreSame(routeTarget, query.Resolve(unscopedReference).Occurrence);
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(activityOwner, new[] { target }, out string diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(activityReference).Status);
+            Assert.IsTrue(_bindings.TryCommitOwner(activityOwner, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, query.Resolve(activityReference).Status);
+            Assert.AreSame(target, query.Resolve(activityReference).Occurrence);
+            ObjectEntryOccurrenceResolution ambiguous = query.Resolve(unscopedReference);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Ambiguous, ambiguous.Status);
+            Assert.IsNull(ambiguous.Occurrence);
+
+            bool activityOwnerClosed = rollback
+                ? _bindings.TryRollbackOwner(activityOwner, out diagnostic)
+                : _bindings.TryReleaseOwner(activityOwner, out diagnostic);
+            Assert.IsTrue(activityOwnerClosed, diagnostic);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(activityReference).Status);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, query.Resolve(unscopedReference).Status);
+            Assert.AreSame(routeTarget, query.Resolve(unscopedReference).Occurrence);
+
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out diagnostic), diagnostic);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OccurrenceQuery_QueryOwnerRollbackOrReleaseUnbindsWhileTargetRemains(bool rollback)
+        {
+            const string id = "qa.stable.public-query-owner-close";
+            GameObject target = CreateEntry(id, _routeB, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerB, target);
+            Register(_ownerA, queryRoot);
+            IObjectEntryOccurrenceQuery query = anchor;
+            StableObjectReference reference = StableObjectReference.ForEntry(Id(id));
+
+            Assert.AreSame(target, query.Resolve(reference).Occurrence);
+
+            bool queryOwnerClosed = rollback
+                ? _bindings.TryRollbackOwner(_ownerA, out string diagnostic)
+                : _bindings.TryReleaseOwner(_ownerA, out diagnostic);
+            Assert.IsTrue(queryOwnerClosed, diagnostic);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(reference).Status);
+            Assert.IsTrue(_bindings.TryResolve(Id(id), null, null, out StableObjectBinding remaining, out _, out diagnostic), diagnostic);
+            Assert.AreSame(target, remaining.PhysicalObject);
+        }
+
+        [Test]
+        public void OccurrenceQuery_DestroyedObjectIsUnavailableWithoutPruningTheBinding()
+        {
+            const string id = "qa.stable.public-query-destroyed";
+            GameObject target = CreateEntry(id, _routeA, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, target, queryRoot);
+
+            int bindingCount = _bindings.BindingCount;
+            Object.DestroyImmediate(target);
+            ObjectEntryOccurrenceResolution resolution = ((IObjectEntryOccurrenceQuery)anchor)
+                .Resolve(StableObjectReference.ForEntry(Id(id)));
+
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, resolution.Status);
+            Assert.AreEqual(bindingCount, _bindings.BindingCount);
+        }
+
+        [Test]
+        public void OccurrenceQuery_DestroyedAnchorBeforeCommitDoesNotBlockOwnerContent()
+        {
+            const string id = "qa.stable.public-query-destroyed-anchor";
+            GameObject target = CreateEntry(id, _routeA, false);
+            GameObject queryRoot = Create("query-anchor");
+            queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { target, queryRoot }, out string diagnostic), diagnostic);
+            Object.DestroyImmediate(queryRoot);
+
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryResolve(Id(id), null, null, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+            Assert.AreSame(target, binding.PhysicalObject);
+        }
+
+        [Test]
         public void PreparedBinding_IsNotResolvableUntilOwnerCommit()
         {
             const string id = "qa.stable.prepared";
@@ -149,22 +300,28 @@ namespace Immersive.Framework.Reset.Tests
         {
             const string id = "qa.stable.reload";
             StableObjectReference reference = StableObjectReference.ForEntry(Id(id));
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding queryAnchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            IObjectEntryOccurrenceQuery query = queryAnchor;
             GameObject first = CreateEntry(id, _routeA, true);
-            Register(_ownerA, first);
+            Register(_ownerA, first, queryRoot);
+            Assert.AreSame(first, query.Resolve(reference).Occurrence);
             Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, new[] { first }, "test", "first", out string resetDiagnostic), resetDiagnostic);
             Assert.IsTrue(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out ResetSubject before, out string beforeDiagnostic), beforeDiagnostic);
 
             Assert.IsTrue(_resetRegistration.TryReleaseOwner(_ownerA, "test", "unload", out string resetReleaseDiagnostic), resetReleaseDiagnostic);
             Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out string bindingReleaseDiagnostic), bindingReleaseDiagnostic);
             Assert.IsFalse(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out _, out _));
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Unavailable, query.Resolve(reference).Status);
 
             GameObject second = CreateEntry(id, _routeA, true);
-            Register(_ownerA, second);
+            Register(_ownerA, second, queryRoot);
             Assert.IsTrue(_resetRegistration.TryRegisterOwnerContent(_ownerA, new[] { second }, "test", "reload", out resetDiagnostic), resetDiagnostic);
             Assert.IsTrue(ResetTargetResolver.TryResolveStableObjectSubject(_bindings, _resets, reference, out ResetSubject after, out string afterDiagnostic), afterDiagnostic);
             Assert.AreNotEqual(before.SubjectId, after.SubjectId);
             Assert.IsTrue(_bindings.TryResolve(ObjectEntryId.From(id), null, null, out StableObjectBinding reloadedBinding, out _, out string bindingDiagnostic), bindingDiagnostic);
             Assert.AreSame(second, reloadedBinding.PhysicalObject);
+            Assert.AreSame(second, query.Resolve(reference).Occurrence);
             Assert.AreEqual(_ownerA, after.Owner);
         }
 
@@ -391,6 +548,16 @@ namespace Immersive.Framework.Reset.Tests
             serialized.FindProperty("routeId").stringValue = routeId;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return route;
+        }
+
+        private ActivityAsset CreateActivity(string activityId)
+        {
+            ActivityAsset activity = ScriptableObject.CreateInstance<ActivityAsset>();
+            _assets.Add(activity);
+            var serialized = new SerializedObject(activity);
+            serialized.FindProperty("activityId").stringValue = activityId;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return activity;
         }
 
         private static ObjectEntryId Id(string id) => ObjectEntryId.From(id);

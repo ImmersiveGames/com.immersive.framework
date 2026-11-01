@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
+using Immersive.Framework.Identity;
 using UnityEngine;
 
 namespace Immersive.Framework.RuntimeContent
@@ -31,16 +31,34 @@ namespace Immersive.Framework.RuntimeContent
     /// <summary>Host-owned runtime projection from stable Object Entry identity to admitted physical occurrences.</summary>
     internal sealed class StableObjectBindingRegistry
     {
-        private readonly Dictionary<RuntimeContentOwner, List<StableObjectBinding>> _bindingsByOwner =
-            new Dictionary<RuntimeContentOwner, List<StableObjectBinding>>();
-        private readonly HashSet<RuntimeContentOwner> _committedOwners = new HashSet<RuntimeContentOwner>();
+        private sealed class OwnerBindings
+        {
+            internal OwnerBindings(
+                RuntimeContentOwner owner,
+                List<StableObjectBinding> bindings,
+                List<ObjectEntryOccurrenceQueryBinding> queryBindings)
+            {
+                Owner = owner;
+                Bindings = bindings;
+                QueryBindings = queryBindings;
+            }
+
+            internal RuntimeContentOwner Owner { get; }
+            internal List<StableObjectBinding> Bindings { get; }
+            internal List<ObjectEntryOccurrenceQueryBinding> QueryBindings { get; }
+            internal bool IsCommitted { get; set; }
+        }
+
+        private readonly Dictionary<RuntimeContentOwner, OwnerBindings> _owners =
+            new Dictionary<RuntimeContentOwner, OwnerBindings>();
+        private bool _queryAccessInvalidated;
 
         internal int BindingCount
         {
             get
             {
                 int count = 0;
-                foreach (List<StableObjectBinding> bindings in _bindingsByOwner.Values) count += bindings.Count;
+                foreach (OwnerBindings owner in _owners.Values) count += owner.Bindings.Count;
                 return count;
             }
         }
@@ -55,15 +73,17 @@ namespace Immersive.Framework.RuntimeContent
                 diagnostic = "stable-object-binding-invalid-owner: registration requires a valid Route or Activity RuntimeContentOwner.";
                 return false;
             }
-            if (_bindingsByOwner.ContainsKey(owner))
+            if (_owners.ContainsKey(owner))
             {
                 diagnostic = $"stable-object-binding-owner-already-registered: owner='{owner.StableText}' must be released before another admission.";
                 return false;
             }
 
             var bindings = new List<StableObjectBinding>();
+            var queryBindings = new List<ObjectEntryOccurrenceQueryBinding>();
             var seenRoots = new HashSet<GameObject>();
             var seenDeclarations = new HashSet<ObjectEntryDeclaration>();
+            var seenQueryBindings = new HashSet<ObjectEntryOccurrenceQueryBinding>();
             if (roots != null)
             {
                 for (int rootIndex = 0; rootIndex < roots.Count; rootIndex++)
@@ -82,10 +102,36 @@ namespace Immersive.Framework.RuntimeContent
                         }
                         bindings.Add(new StableObjectBinding(objectEntryId, owner, declaration.gameObject));
                     }
+
+                    ObjectEntryOccurrenceQueryBinding[] ownerQueryBindings =
+                        root.GetComponentsInChildren<ObjectEntryOccurrenceQueryBinding>(true);
+                    for (int bindingIndex = 0; bindingIndex < ownerQueryBindings.Length; bindingIndex++)
+                    {
+                        ObjectEntryOccurrenceQueryBinding queryBinding = ownerQueryBindings[bindingIndex];
+                        if (queryBinding == null || !seenQueryBindings.Add(queryBinding)) continue;
+                        if (_queryAccessInvalidated)
+                        {
+                            diagnostic = "stable-object-binding-query-access-invalidated: Framework host teardown has invalidated query anchors.";
+                            return false;
+                        }
+                        if (TryGetQueryBindingOwner(queryBinding, out RuntimeContentOwner existingOwner))
+                        {
+                            diagnostic = $"stable-object-binding-query-anchor-already-owned: anchor='{queryBinding.name}' owner='{existingOwner.StableText}'.";
+                            return false;
+                        }
+                        if (!queryBinding.CanBindRuntime(this, owner, out diagnostic))
+                        {
+                            diagnostic = "stable-object-binding-query-anchor-invalid: " + diagnostic;
+                            return false;
+                        }
+
+                        queryBindings.Add(queryBinding);
+                    }
                 }
             }
 
-            _bindingsByOwner.Add(owner, bindings);
+            _owners.Add(owner, new OwnerBindings(owner, bindings, queryBindings));
+
             diagnostic = $"stable-object-bindings-registered: owner='{owner.StableText}' bindings='{bindings.Count}'.";
             return true;
         }
@@ -98,15 +144,45 @@ namespace Immersive.Framework.RuntimeContent
 
         internal bool TryCommitOwner(RuntimeContentOwner owner, out string diagnostic)
         {
-            if (!owner.IsValid || !_bindingsByOwner.ContainsKey(owner))
+            if (!owner.IsValid || !_owners.TryGetValue(owner, out OwnerBindings registration))
             {
                 diagnostic = $"stable-object-binding-commit-owner-missing: owner='{owner.StableText}' has no prepared binding transaction.";
                 return false;
             }
 
-            _committedOwners.Add(owner);
+            if (registration.IsCommitted)
+            {
+                diagnostic = $"stable-object-binding-owner-committed: owner='{owner.StableText}'.";
+                return true;
+            }
+            if (_queryAccessInvalidated && registration.QueryBindings.Count > 0)
+            {
+                diagnostic = "stable-object-binding-query-access-invalidated: Framework host teardown has invalidated query anchors.";
+                return false;
+            }
+            if (!TryBindQueryBindings(registration, out diagnostic)) return false;
+
+            registration.IsCommitted = true;
             diagnostic = $"stable-object-binding-owner-committed: owner='{owner.StableText}'.";
             return true;
+        }
+
+        internal void InvalidateQueryAccess()
+        {
+            if (_queryAccessInvalidated) return;
+            _queryAccessInvalidated = true;
+
+            foreach (OwnerBindings registration in _owners.Values)
+            {
+                List<ObjectEntryOccurrenceQueryBinding> queryBindings = registration.QueryBindings;
+                for (int index = 0; index < queryBindings.Count; index++)
+                {
+                    ObjectEntryOccurrenceQueryBinding binding = queryBindings[index];
+                    if (!ReferenceEquals(binding, null))
+                        binding.UnbindRuntime(this, registration.Owner);
+                }
+                queryBindings.Clear();
+            }
         }
 
         internal bool TryResolve(
@@ -128,29 +204,17 @@ namespace Immersive.Framework.RuntimeContent
             }
 
             var matches = new List<StableObjectBinding>();
-            var ownersToPrune = new List<RuntimeContentOwner>();
-            foreach (KeyValuePair<RuntimeContentOwner, List<StableObjectBinding>> pair in _bindingsByOwner)
+            foreach (OwnerBindings registration in _owners.Values)
             {
-                if (!_committedOwners.Contains(pair.Key)) continue;
-                if (ownerSelector.HasValue && !pair.Key.OwnerIdentity.Equals(ownerSelector.Value)) continue;
-                if (ownerDefinitionSelector.HasValue && !pair.Key.DefinitionToken.Equals(ownerDefinitionSelector.Value)) continue;
-                List<StableObjectBinding> ownerBindings = pair.Value;
-                for (int index = ownerBindings.Count - 1; index >= 0; index--)
+                if (!registration.IsCommitted) continue;
+                if (ownerSelector.HasValue && !registration.Owner.OwnerIdentity.Equals(ownerSelector.Value)) continue;
+                if (ownerDefinitionSelector.HasValue && !registration.Owner.DefinitionToken.Equals(ownerDefinitionSelector.Value)) continue;
+                for (int index = 0; index < registration.Bindings.Count; index++)
                 {
-                    StableObjectBinding candidate = ownerBindings[index];
-                    if (candidate.PhysicalObject == null)
-                    {
-                        ownerBindings.RemoveAt(index);
-                        continue;
-                    }
+                    StableObjectBinding candidate = registration.Bindings[index];
+                    if (candidate.PhysicalObject == null) continue;
                     if (candidate.ObjectEntryId == objectEntryId) matches.Add(candidate);
                 }
-                if (ownerBindings.Count == 0) ownersToPrune.Add(pair.Key);
-            }
-            for (int index = 0; index < ownersToPrune.Count; index++)
-            {
-                _bindingsByOwner.Remove(ownersToPrune[index]);
-                _committedOwners.Remove(ownersToPrune[index]);
             }
 
             if (matches.Count == 0)
@@ -179,11 +243,72 @@ namespace Immersive.Framework.RuntimeContent
                 diagnostic = $"stable-object-binding-{operation}-invalid-owner: owner is invalid.";
                 return false;
             }
-            int removed = _bindingsByOwner.TryGetValue(owner, out List<StableObjectBinding> bindings) ? bindings.Count : 0;
-            bool applied = _bindingsByOwner.Remove(owner);
-            _committedOwners.Remove(owner);
+            bool applied = _owners.TryGetValue(owner, out OwnerBindings registration);
+            int removed = applied ? registration.Bindings.Count : 0;
+            if (applied)
+            {
+                ReleaseQueryBindings(registration);
+                _owners.Remove(owner);
+            }
             diagnostic = $"stable-object-binding-{operation}-completed: owner='{owner.StableText}' bindings='{removed}' applied='{applied}'.";
             return true;
+        }
+
+        private bool TryBindQueryBindings(OwnerBindings registration, out string diagnostic)
+        {
+            diagnostic = string.Empty;
+            List<ObjectEntryOccurrenceQueryBinding> queryBindings = registration.QueryBindings;
+            for (int index = 0; index < queryBindings.Count;)
+            {
+                ObjectEntryOccurrenceQueryBinding binding = queryBindings[index];
+                if (binding == null)
+                {
+                    queryBindings.RemoveAt(index);
+                    continue;
+                }
+                if (!binding.TryBindRuntime(this, registration.Owner, out diagnostic))
+                {
+                    for (int boundIndex = 0; boundIndex < index; boundIndex++)
+                    {
+                        ObjectEntryOccurrenceQueryBinding bound = queryBindings[boundIndex];
+                        if (!ReferenceEquals(bound, null)) bound.UnbindRuntime(this, registration.Owner);
+                    }
+                    return false;
+                }
+                index++;
+            }
+
+            return true;
+        }
+
+        private void ReleaseQueryBindings(OwnerBindings registration)
+        {
+            List<ObjectEntryOccurrenceQueryBinding> queryBindings = registration.QueryBindings;
+            for (int index = 0; index < queryBindings.Count; index++)
+            {
+                ObjectEntryOccurrenceQueryBinding binding = queryBindings[index];
+                if (!ReferenceEquals(binding, null)) binding.UnbindRuntime(this, registration.Owner);
+            }
+            queryBindings.Clear();
+        }
+
+        private bool TryGetQueryBindingOwner(
+            ObjectEntryOccurrenceQueryBinding queryBinding,
+            out RuntimeContentOwner owner)
+        {
+            foreach (OwnerBindings registration in _owners.Values)
+            {
+                List<ObjectEntryOccurrenceQueryBinding> queryBindings = registration.QueryBindings;
+                for (int index = 0; index < queryBindings.Count; index++)
+                {
+                    if (!ReferenceEquals(queryBindings[index], queryBinding)) continue;
+                    owner = registration.Owner;
+                    return true;
+                }
+            }
+
+            owner = default;
+            return false;
         }
 
     }

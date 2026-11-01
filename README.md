@@ -24,10 +24,10 @@ reimplementing their primitives.
 - Stable Framework `1.1.0` uses Unity `6000.5.0f1` or newer in the supported
   `6000.5` line, Foundation `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7`,
   and Input System `1.19.0`.
-- The current `master` source candidate, Framework `1.2.0-preview.4`, declares
+- Framework preview `1.2.0-preview.4` declares
   Composition `0.1.0-preview.3`, Foundation `0.2.3`, Logging `0.2.4`,
-  Cinemachine `3.1.7`, and Input System `1.19.0`. It has not been tagged or
-  released.
+  Cinemachine `3.1.7`, and Input System `1.19.0`. Preview APIs remain
+  Experimental unless explicitly classified otherwise.
 
 There is no support or validation matrix for earlier Unity versions.
 
@@ -53,17 +53,17 @@ scope, then declare the Framework package:
 
 This manifest value deliberately keeps Framework on Stable `1.1.0`. Package
 Manager will not replace it automatically with a preview release or a newer
-Git branch. To use the current `.4` source candidate before publication, use the
-Git development setup below and refresh the package resolution.
+Git branch. To use preview `1.2.0-preview.4`, set the dependency to that exact
+version through OpenUPM; the stable value above remains unchanged until the
+project explicitly opts into the preview channel.
 
-The Stable `1.1.0` baseline remains the released OpenUPM installation example
-above. The current source candidate is Framework `1.2.0-preview.4` on `master`;
-its `package.json` declares Composition `0.1.0-preview.3`, Foundation `0.2.3`
-and Logging `0.2.4`. Composition `.3` has a signed [GitHub Release](https://github.com/ImmersiveGames/com.immersive.composition/releases/tag/v0.1.0-preview.3),
-but its OpenUPM listing/installability and a Framework `.4` registry release
-have not been confirmed. The preview does not promote Experimental contracts
-to Stable. Earlier package releases remain in the [changelog](CHANGELOG.md)
-as history; they are not migration baselines for `1.1.0`.
+The Framework preview release is `1.2.0-preview.4`; it includes Actor Profile
+part assets and migration, Actor Groups, scoped Actor occurrence queries,
+Player Actor composition contributions, and Object Entry occurrence queries.
+It depends on Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging
+`0.2.4`. The preview does not promote Experimental contracts to Stable.
+Earlier package releases remain in the [changelog](CHANGELOG.md) as history;
+they are not migration baselines for `1.1.0`.
 
 For Framework development from Git, Unity cannot resolve custom-package SemVer
 dependencies to Git packages. Add Framework and each custom package it
@@ -86,10 +86,9 @@ specified. `Packages/packages-lock.json` still pins the resolved commit hashes;
 Unity does not continuously follow branch updates. Refresh a package through
 Package Manager to resolve a newer commit. Do not hand-edit the lockfile.
 
-When Framework `.4` and Composition `.3` are confirmed available from OpenUPM,
-the registry installation path can declare Framework only and resolve
+For a registry installation, declare Framework only and let it resolve
 Composition transitively. The Framework package declares Composition's minimum
-SemVer, so do not add a second Composition source in that registry-based setup:
+SemVer, so do not add a second Composition source in that setup:
 
 ```json
 {

@@ -98,6 +98,15 @@ namespace Immersive.Framework.ApplicationLifecycle
             _actorOccurrenceReferenceRuntime?.InvalidateQueryAccess();
         }
 
+        /// <summary>
+        /// Unbinds Object Entry query anchors at host teardown independently of owner release success.
+        /// Does not create the existing binding registry during teardown.
+        /// </summary>
+        private void InvalidateObjectEntryOccurrenceQueryAccess()
+        {
+            _stableObjectBindings?.InvalidateQueryAccess();
+        }
+
         internal bool TryReleaseSessionActorGroups(out string diagnostic)
         {
             diagnostic = string.Empty;

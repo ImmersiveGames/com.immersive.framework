@@ -1,7 +1,7 @@
 # IF-ADR-014 — Authored Definition and Stable Identity Authority
 
 Status: **Accepted**  
-Last updated: 2026-10-12
+Last updated: 2026-11-01
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015, IF-ADR-035
 Closed execution record: [IF-ID Identity Authority](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
 
@@ -250,3 +250,32 @@ Object Entry identities being silently merged, release authority crossing
 definition tokens, wrong-occurrence correlation, Object Entry metadata acquiring
 lifecycle authority, implicit stable-ID mutation or a concrete external-resolution
 requirement.
+
+## Public read-only Object Entry occurrence query — 2026-11-01
+
+The concrete external-resolution requirement is satisfied by an Experimental,
+owner-scoped consumer query over the existing `StableObjectBinding` authority.
+`IObjectEntryOccurrenceQuery.Resolve(StableObjectReference)` accepts the existing
+logical ID and optional exact typed Route/Activity selector. Its public
+`ObjectEntryOccurrenceQueryBinding` anchor is discovered from the same explicit
+materialized roots and bound by the same Route/Activity owner transaction that
+stages and commits Object Entry bindings. The anchor owner defines the query's
+access lifetime only; it does not filter matching occurrences. Rollback and
+release unbind the anchor, and Framework host teardown invalidates all anchors
+without depending on owner cleanup succeeding.
+
+Resolution reads only committed live bindings and reports `Resolved`,
+`Unavailable`, `InvalidReference` or `Ambiguous`. It never chooses one of
+multiple matches. A destroyed Unity reference is ignored without pruning or
+otherwise mutating the binding table during resolution; the existing owner
+rollback/release path removes its records. The result's `GameObject` is
+point-in-time physical evidence, never a serialized or persistent identity.
+Availability grants no gameplay, perception or Knowledge authorization.
+
+This is a scoped consumer access surface, not an application-wide resolver.
+Object Entry retains logical identity, RuntimeContent retains physical binding
+and lifetime, Route/Activity retain admission and release authority, and Reset
+remains a domain consumer. Actor occurrence APIs were consulted as behavioral
+precedent only; no Actor identity, publication or lifecycle contract is shared.
+All added public types remain Experimental. Runtime behavior and Unity
+compile/import remain pending package and consumer validation.

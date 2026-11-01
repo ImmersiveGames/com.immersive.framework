@@ -58,6 +58,20 @@ they are not interchangeable across domains. Authored identity and stable
 addressing rules are owned by [IF-ADR-014](../Architecture/ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
 and the feature ADRs that consume them.
 
+## Object Entry Occurrence Queries
+
+| Surface | Category / maturity | Purpose |
+|---|---|---|
+| `ObjectEntryId`, `ObjectEntryDeclaration`, `StableObjectReference` | Logical Object Entry addressing · Experimental | Identifies authored Object Entries and optionally selects one exact Route or Activity definition. The reference carries logical identity, not a retained physical object. |
+| `IObjectEntryOccurrenceQuery`, `ObjectEntryOccurrenceQueryBinding`, `ObjectEntryOccurrenceResolution`, `ObjectEntryOccurrenceResolutionStatus` | Scoped occurrence query · Experimental | `ObjectEntryOccurrenceQueryBinding` is bound when its containing Route/Activity owner commits its materialized roots and unbound on rollback/release or Framework host teardown. Hand its interface to plain C# consumers explicitly. `Resolve(StableObjectReference)` reads the existing committed binding authority and returns `Resolved`, `Unavailable`, `InvalidReference` or `Ambiguous`. It does not create objects, register bindings, mutate query state or grant gameplay authorization. Results are point-in-time evidence; use them when needed instead of retaining the GameObject as identity. See [Object Entry Occurrence Queries](../Guides/Object-Entry-Occurrence-Queries.md). |
+
+The query anchor owner defines access lifetime only; the `StableObjectReference`
+selector decides which committed occurrence is addressed. An unscoped reference
+is ambiguous when multiple live occurrences match. A destroyed Unity object is
+unavailable even while its content owner remains committed.
+
+Guide: [Object Entry Occurrence Queries](../Guides/Object-Entry-Occurrence-Queries.md).
+
 ## Application Frame Rate
 
 | Surface | Category / maturity | Purpose |
@@ -106,7 +120,7 @@ Guide: [Game Flow](../Guides/Game-Flow.md), [Activity Readiness](../Guides/Activ
 | `SceneProvidedLocalPlayerAuthoring` | Authoring component · Stable | Declares a scene-authored Local Player candidate, Slot/Profile references and admission timing. Its required `ActorProfile` and admission timing type have separate Experimental maturity. |
 | `LocalPlayerHostAuthoring` | Authoring component · Stable | Explicit technical Host boundary for PlayerInput, ActorMount and Actor Runtime Host configuration. Manager provisioning remains Experimental. |
 | `PlayerSlotProfile` | Profile · Stable for Scene-Provided use | Owns a stable Slot ID and presentation metadata; optional default Actor intent is separate from runtime allocation. |
-| `ActorProfile` | Profile · Experimental | Reusable Actor identity/classification and ordered references to Base content part assets. The `visual` key uses the Actor root's existing `VisualContentMount`; the profile does not own an Actor occurrence or its spatial state. Existing inline or legacy serialized data requires the explicit part-asset migration before materialization; no Runtime fallback is used. This serialization follow-up is present in the current Framework `master` source candidate `1.2.0-preview.4` and is absent from the published `1.2.0-preview.3`; `.4` is not tagged or released. |
+| `ActorProfile` | Profile · Experimental | Reusable Actor identity/classification and ordered references to Base content part assets. The `visual` key uses the Actor root's existing `VisualContentMount`; the profile does not own an Actor occurrence or its spatial state. Existing inline or legacy serialized data requires the explicit part-asset migration before materialization; no Runtime fallback is used. |
 | `GroupId` | Identity value · Experimental | Typed identity of one logical Group, independent of `ActorId`, membership and physical occurrences. |
 | `GroupProfile` | Group authoring asset · Experimental | The sole asset that authors a Group's `GroupId` and optional game-neutral presentation. Referencing or loading it does not create runtime state. |
 | `ActorGroupSnapshot` | Runtime Group view · Experimental | Read-only value exposing a live Group's `GroupId` and optional `GroupProfile` reference. It does not expose membership or own Group lifecycle. |

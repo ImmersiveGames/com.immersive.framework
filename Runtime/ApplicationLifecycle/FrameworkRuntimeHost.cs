@@ -3940,6 +3940,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private void OnApplicationQuit()
         {
             _ = _admission.BeginStopAndWaitForOperationsAsync();
+            InvalidateObjectEntryOccurrenceQueryAccess();
             ReleasePersistentContentScope("application-quit");
             ReleaseSessionActorGroups("application-quit");
             InvalidateActorOccurrenceQueryAccess();
@@ -3952,6 +3953,7 @@ namespace Immersive.Framework.ApplicationLifecycle
         private void OnDestroy()
         {
             _ = _admission.BeginStopAndWaitForOperationsAsync();
+            InvalidateObjectEntryOccurrenceQueryAccess();
             ReleasePersistentContentScope("framework-runtime-host-destroy");
             ReleaseSessionActorGroups("framework-runtime-host-destroy");
             InvalidateActorOccurrenceQueryAccess();

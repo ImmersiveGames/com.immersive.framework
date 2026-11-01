@@ -2,16 +2,16 @@
 
 All notable package changes are documented in this file.
 
-## Unreleased
+## [1.2.0-preview.4] - 2026-11-01 — Actor composition and scoped occurrence queries
 
-- Adds the Experimental IF-ADR-049 Amendment 001 on-demand Actor occurrence query: `IActorOccurrenceQuery` and `ActorOccurrenceQueryBinding`. The anchor is bound by its Session, Route or Activity content owner's commit, unbound on that owner's rollback/release, and invalidated at Framework host teardown independently of owner release. Queries reuse the existing resolver. They are read-only, never throw, dispatch no notification and return `Unavailable` while unbound. `ActorOccurrenceReferenceBinding` and the resolver are unchanged. The Project Owner reports Unity EditMode 481/481 passed, including the ActorReferences suite and the query metadata coverage, and manual Play Mode confirmation of the Session, Route/Activity and host-teardown behavior. PEGA consumer validation against a resolved candidate package remains a separate step.
-- Aligns Actor Group authoring with the approved single-asset model: `GroupProfile` now owns the Group's `GroupId` and optional presentation; `GroupDefinitionAsset`, `GroupProfileId`, and `FrameworkIdentityDomain.GroupProfile` are removed. Runtime creation remains explicit through `TryCreateGroup(GroupProfile, ...)` or `TryCreateGroup(GroupId, ...)`; referencing a Profile does not materialize a Group. The old contracts exist only in the untagged source candidate and were not included in a tagged package release. Consumers pinned to that candidate must migrate and recompile.
-
-## [1.2.0-preview.4] - 2026-10-18 — Actor Profile composition part assets
-
-- Stores each Actor Profile base composition part as a referenced `ActorCompositionPartAsset` ScriptableObject. The Editor migration converts existing inline parts and reports migrated, unchanged, ignored, invalid, conflicting and blocked profiles.
+- Stores Actor Profile base composition parts as referenced `ActorCompositionPartAsset` ScriptableObjects. The Editor migration converts existing inline parts and reports migrated, unchanged, ignored, invalid, conflicting and blocked profiles.
+- Adds Experimental Actor Groups with explicit `GroupProfile`/`GroupId` creation, owner-scoped lifetime and logical Actor membership. `GroupProfile` is the single authoring asset for Group identity and optional presentation; referencing it does not create runtime state.
+- Adds the Experimental IF-ADR-049 Amendment 001 on-demand Actor occurrence query. `IActorOccurrenceQuery` reuses the existing resolver and is bound by committed Session, Route or Activity content owners, then unbound on rollback/release or Framework host teardown. Existing Actor occurrence reference bindings and resolver behavior remain unchanged.
+- Adds Experimental Player Actor keyed composition contribution access through the existing Composer for the exact current Player/Actor occurrence.
+- Adds Experimental `IObjectEntryOccurrenceQuery` and `ObjectEntryOccurrenceQueryBinding` for read-only, point-in-time `StableObjectReference` resolution through existing Route/Activity owner transactions and `StableObjectBindingRegistry`. Invalid, unavailable and ambiguous results are explicit; queries do not create/register objects, mutate bindings or authorize gameplay access.
 - Updates minimum package dependencies to Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`.
-- The Project Owner reports the QAFramework EditMode suite passed with 441/441 tests after the migration implementation. This evidence is not bound to the versioned source commit; confirm Unity import and tests against the tagged release candidate before publication.
+- The Project Owner reports QAFramework passed **491/491 EditMode tests with zero failures in Unity `6000.5.0f1`**, including `StableObjectBindingHostTeardownTests.OccurrenceQuery_FrameworkHostDestroyUnbindsPreviouslyHandedOffInterface`. The QAFramework package dependency resolves this worktree through its local `file:` path and locks Composition `0.1.0-preview.3`. This is owner-reported evidence; no NUnit XML or execution-time source SHA was supplied, and Codex did not run Unity.
+- No Stable API is promoted. The Actor Profile serialization migration remains explicit; PEGA consumer integration is not part of this release.
 
 ## [1.2.0-preview.3] - 2026-10-18 — IF-ADR-050 Actor lifecycle and composition preview
 
