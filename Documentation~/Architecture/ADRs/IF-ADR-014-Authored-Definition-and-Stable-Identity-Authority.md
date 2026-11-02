@@ -279,3 +279,41 @@ remains a domain consumer. Actor occurrence APIs were consulted as behavioral
 precedent only; no Actor identity, publication or lifecycle contract is shared.
 All added public types remain Experimental. Runtime behavior and Unity
 compile/import remain pending package and consumer validation.
+
+## Inspector authoring of Object Entries — 2026-11-02
+
+The Unity Editor may select existing logical Object Entries from a shared
+authoring surface. `ObjectEntryId` remains the sole identity authority. Since it
+is a readonly runtime value and is not Unity-serializable, the identity-only
+Inspector field uses the additive `ObjectEntryIdReference` serialization
+transport. That type stores only the canonical ID payload; it does not
+implement identity, generate IDs, define metadata, select an owner or resolve a
+physical occurrence. Consumers read the typed value as `ObjectEntryId`.
+
+`ObjectEntryIdReference` and `StableObjectReference` use the same Editor
+identity field, which supports direct text entry, clipboard paste and an
+optional picker. The picker derives suggestions from a transient in-memory
+index of `ObjectEntryDeclaration` components in configured Route primary/additional
+scenes, Activity content-profile scenes and prefab assets. Unloaded scenes are
+inspected in Editor preview scenes and prefab declarations are presented as
+templates. Candidate labels include ID and authored source/context. Missing,
+invalid or unindexed serialized values remain visible and are not remapped.
+The index is a discovery aid, not an authoring allowlist; any valid
+`ObjectEntryId` can be entered or pasted even when no candidate is indexed.
+
+Entering, pasting or choosing an identity changes only the ID payload. The
+optional exact typed Route/Activity selector on `StableObjectReference` remains
+independent and is never inferred from the selected declaration. The query anchor continues to
+define query capability lifetime; neither authoring selection nor discovery
+changes committed-binding resolution, lifecycle, access or authorization.
+
+This is an Editor authoring surface over existing declarations, not an Object
+Entry catalog/profile, persistent index, runtime registry or additional
+identity authority. Prefab-only selection identifies authored metadata; it
+does not claim a physical occurrence is committed or resolvable.
+
+**Current implementation coverage:** the public serialization transport and
+shared Editor identity field with manual entry, paste and picker are implemented
+in the package source. Static checks do not establish Unity import/compile,
+Inspector interaction, selection from an unloaded scene or post-reload
+persistence; those remain manual Unity validation.

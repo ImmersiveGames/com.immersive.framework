@@ -5,6 +5,57 @@ the current physical GameObject associated with it under admitted Route or
 Activity content. The query reuses the Framework's owner-aware Runtime Content
 binding. It does not create another identity or object registry.
 
+## Select the logical identity in the Inspector
+
+Use `ObjectEntryIdReference` when a serialized field needs only the logical
+identity. Read its typed value with `TryGetObjectEntryId`; `ObjectEntryId`
+remains the canonical runtime identity type. Unity does not serialize the
+existing `readonly ObjectEntryId` directly, so the reference type is only a
+serialized transport for its value. The Inspector field accepts a valid ID by
+typing or pasting and also offers indexed declarations in a picker.
+
+```csharp
+[SerializeField] private ObjectEntryIdReference targetEntry;
+
+if (targetEntry.TryGetObjectEntryId(out ObjectEntryId targetId))
+{
+    // Pass targetId to the domain API that owns the operation.
+}
+```
+
+`StableObjectReference` uses the same Inspector field and stores the same
+identity. You can type/paste a valid ID or choose one of the picker suggestions.
+Its optional **Resolution Owner** is edited separately as an exact `RouteAsset`
+or `ActivityAsset`; editing the Object Entry identity never fills or changes
+that owner automatically.
+
+The Editor derives candidates from `ObjectEntryDeclaration` components in
+Route primary/additional scenes and Activity content-profile scenes, including
+scenes that are not currently loaded. It inspects unloaded scenes in Unity
+preview scenes and closes those previews after discovery. Prefab assets are
+inspected separately; a declaration that exists only in a prefab is labeled
+**Prefab template** and does not promise a committed or resolvable physical
+occurrence. These candidates are suggestions only: valid IDs outside the index
+can still be entered or pasted. No discovery catalog is serialized or used by
+runtime resolution.
+
+Picker results include the official ID, GameObject name, hierarchy, scene or
+prefab path, and Route/Activity context. Equal names with different IDs remain
+separate choices. Repeated declarations with one ID are grouped as that same
+logical identity, with their authored contexts shown. The optional owner field
+remains the explicit way to select a resolution context.
+
+Empty, invalid, and currently unindexed values remain visible and are flagged;
+the picker does not replace them unless the designer explicitly selects a
+candidate. Direct entry and paste accept any valid Object Entry ID, including
+IDs outside the indexed sources. Discovery covers configured Route/Activity
+content and prefab templates. A valid ID may remain unindexed if its declaration
+is outside those authoring sources or an asset could not be inspected;
+discovery issues are reported in the Framework Editor log. The transient index
+is built synchronously when the Inspector field is first drawn and refreshed when the
+picker opens; refresh currently inspects all project prefab assets. The cost
+in large projects needs practical evaluation.
+
 ## Compose the query anchor
 
 Add **Immersive Framework → Object Entry → Occurrence Query** beneath a root
@@ -74,19 +125,29 @@ policies belong to the consumer.
 
 After package import and compile, validate in a Unity consumer project:
 
-1. Put an anchor in Route-owned content and an Object Entry in Activity-owned
+1. Add fields of type `ObjectEntryIdReference` and `StableObjectReference` to
+   an authoring component. Close the declaration's configured scene, select the
+   same logical Object Entry in both fields, and save/reopen the asset. Confirm
+   the typed ID is unchanged and selecting the identity did not populate or
+   alter `StableObjectReference`'s optional owner. Enter and paste a valid ID
+   not present in the picker and confirm both remain valid.
+2. Add same-named declarations with different IDs in separate configured
+   contexts. Confirm the picker distinguishes them by ID and source. Select a
+   declaration that exists only in a prefab and confirm it is labeled as a
+   template, without implying a physical occurrence.
+3. Put an anchor in Route-owned content and an Object Entry in Activity-owned
    content. Confirm a valid query is unavailable before Activity commit and
    resolves the declared GameObject after commit.
-2. Admit another occurrence with the same `ObjectEntryId`. Confirm an unscoped
+4. Admit another occurrence with the same `ObjectEntryId`. Confirm an unscoped
    reference reports `Ambiguous` and exact Route/Activity selectors resolve
    only their matching owner.
-3. Release the Activity while retaining the Route-owned query interface.
+5. Release the Activity while retaining the Route-owned query interface.
    Confirm the target becomes `Unavailable` and the interface remains usable.
-4. Roll back a Route/Activity admission and tear down the Framework host while
+6. Roll back a Route/Activity admission and tear down the Framework host while
    retaining a query interface. Confirm each returns `Unavailable`.
-5. Destroy an admitted target while its owner remains committed. Confirm the
+7. Destroy an admitted target while its owner remains committed. Confirm the
    query reports `Unavailable` and does not modify the binding table.
-6. Confirm existing Reset `StableObjectReference` targeting still resolves
+8. Confirm existing Reset `StableObjectReference` targeting still resolves
    Resettable/ResetComposition through its existing consumer path.
 
 The query API and metadata are Experimental. The Project Owner reports the

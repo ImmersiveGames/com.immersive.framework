@@ -1,6 +1,4 @@
-using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.Reset;
-using Immersive.Framework.RuntimeContent;
 using UnityEditor;
 using UnityEngine;
 
@@ -119,83 +117,6 @@ namespace Immersive.Framework.Editor.Authoring
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             ResetTargetDrawerFields.DrawReferenceMode(position, property, label, "directComposition");
-        }
-    }
-
-    [CustomPropertyDrawer(typeof(StableObjectReference))]
-    internal sealed class StableObjectReferencePropertyDrawer : PropertyDrawer
-    {
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            int rows = 2;
-            SerializedProperty kind = property.FindPropertyRelative("ownerSelectorKind");
-            if ((StableObjectOwnerSelectorKind)kind.intValue != StableObjectOwnerSelectorKind.Unspecified) rows++;
-            if (!IsValidObjectEntryId(property.FindPropertyRelative("objectEntryIdText").stringValue)) rows++;
-            return rows * EditorGUIUtility.singleLineHeight + (rows - 1) * 2f;
-        }
-
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-        {
-            EditorGUI.BeginProperty(position, label, property);
-            SerializedProperty objectEntryId = property.FindPropertyRelative("objectEntryIdText");
-            SerializedProperty kind = property.FindPropertyRelative("ownerSelectorKind");
-            Rect row = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
-            const float buttonWidth = 78f;
-            Rect idRect = new Rect(row.x, row.y, row.width - buttonWidth - 4f, row.height);
-            using (new EditorGUI.DisabledScope(true))
-                EditorGUI.TextField(idRect, new GUIContent("Object Entry ID"), objectEntryId.stringValue);
-            Rect pasteRect = new Rect(idRect.xMax + 4f, row.y, buttonWidth, row.height);
-            using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(EditorGUIUtility.systemCopyBuffer)))
-                if (GUI.Button(pasteRect, "Paste ID")) objectEntryId.stringValue = EditorGUIUtility.systemCopyBuffer.Trim();
-
-            row.y += EditorGUIUtility.singleLineHeight + 2f;
-            EditorGUI.BeginChangeCheck();
-            EditorGUI.PropertyField(row, kind, new GUIContent("Owner"));
-            bool selectorChanged = EditorGUI.EndChangeCheck();
-            if (selectorChanged)
-                ClearInactiveOwnerPayload(property, (StableObjectOwnerSelectorKind)kind.intValue);
-
-            bool hasOwnerPayload = (StableObjectOwnerSelectorKind)kind.intValue != StableObjectOwnerSelectorKind.Unspecified;
-            if (hasOwnerPayload)
-            {
-                row.y += EditorGUIUtility.singleLineHeight + 2f;
-                if ((StableObjectOwnerSelectorKind)kind.intValue == StableObjectOwnerSelectorKind.Route)
-                    EditorGUI.PropertyField(row, property.FindPropertyRelative("routeOwner"), new GUIContent("Route"));
-                else if ((StableObjectOwnerSelectorKind)kind.intValue == StableObjectOwnerSelectorKind.Activity)
-                    EditorGUI.PropertyField(row, property.FindPropertyRelative("activityOwner"), new GUIContent("Activity"));
-            }
-
-            row.y += EditorGUIUtility.singleLineHeight + 2f;
-            if (!IsValidObjectEntryId(objectEntryId.stringValue))
-                EditorGUI.HelpBox(row, "Paste a valid Object Entry ID copied from its declaration.", MessageType.Error);
-            EditorGUI.EndProperty();
-        }
-
-        private static bool IsValidObjectEntryId(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return false;
-            try { return ObjectEntryId.From(value.Trim()).IsValid; }
-            catch (System.ArgumentException) { return false; }
-        }
-
-        private static void ClearInactiveOwnerPayload(
-            SerializedProperty property,
-            StableObjectOwnerSelectorKind nextKind)
-        {
-            switch (nextKind)
-            {
-                case StableObjectOwnerSelectorKind.Route:
-                    property.FindPropertyRelative("activityOwner").objectReferenceValue = null;
-                    break;
-                case StableObjectOwnerSelectorKind.Activity:
-                    property.FindPropertyRelative("routeOwner").objectReferenceValue = null;
-                    break;
-                case StableObjectOwnerSelectorKind.Unspecified:
-                default:
-                    property.FindPropertyRelative("routeOwner").objectReferenceValue = null;
-                    property.FindPropertyRelative("activityOwner").objectReferenceValue = null;
-                    break;
-            }
         }
     }
 

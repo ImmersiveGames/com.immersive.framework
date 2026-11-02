@@ -126,6 +126,7 @@ to find the canonical guide for each domain.
 | Input and Pause | `PlayerPauseInput`, pause triggers and presentation adapters | transactional input state, pause ownership and resident/activity presentation |
 | Transition | transition policies and explicit effect adapters | transition planning, gating, effects and continuity |
 | Reset | reset subjects/participants, Object Reset, Cycle Reset and Activity Restart triggers | scoped reset registration and explicit execution |
+| Object Entries | `ObjectEntryDeclaration`, `ObjectEntryIdReference` and `StableObjectReference` Inspector authoring | logical identity entry and picker suggestions stay separate from optional owner selection and current physical occurrence queries |
 | Progression Save | `ProgressionSaveProfile` and backend adapter contract | save orchestration with built-in JSON or a game/third-party backend |
 | Audio | Route/Activity BGM authoring and `FrameworkBgmDirector` | optional integration with `com.immersive.audio` |
 | Scene integration | Scene Lifecycle Events and explicit Unity adapters | scoped load/unload callbacks without a parallel lifecycle authority |

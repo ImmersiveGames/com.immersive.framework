@@ -120,7 +120,7 @@ ObjectEntryId + optional typed RouteAsset/ActivityAsset selector
   -> Resettable or ResetComposition on that same GameObject
 ```
 
-Generate the declaration's `ObjectEntryId` explicitly, then use Copy ID / Paste ID in the stable reference. The optional typed owner selector disambiguates the exact Route or Activity definition. Missing bindings fail as unavailable; multiple matches fail as ambiguous. Reload resolves the fresh physical occurrence. Reset does not serialize runtime subject identity.
+Generate the declaration's `ObjectEntryId` explicitly, then enter or paste it in the stable reference's Inspector field, or choose a discovered declaration from the picker. The picker discovers declarations in configured Route/Activity scenes even when their scene is not loaded. The optional **Resolution Owner** field remains independent and selects an exact Route or Activity definition only when that is the intended resolution context. Missing or invalid stored IDs are flagged and preserved until the designer explicitly changes them. Missing runtime bindings still resolve as unavailable; multiple matches remain ambiguous. Reload resolves the fresh physical occurrence. Reset does not serialize runtime subject identity.
 
 ## CurrentActivity and CurrentRoute
 

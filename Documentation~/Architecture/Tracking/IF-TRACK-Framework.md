@@ -2,7 +2,7 @@
 
 Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-10-31**
+Last updated: **2026-11-02**
 
 ## 1.1.0 first Stable release readiness
 
@@ -2484,3 +2484,35 @@ Player coverage is authored in `PlayerActorCompositionAccessTests.PlayerComposit
 **OpenUPM verification:** The Release is `prerelease=true`, `draft=false`. The publish job reported `OPENUPM_SIGNED=true`, published `com.immersive.framework@1.2.0-preview.4`, and passed its registry tarball checksum comparison. An independent download from `https://package.openupm.com/com.immersive.framework/-/com.immersive.framework-1.2.0-preview.4.tgz` returned the same SHA-256 `3b40e39da56379d2849e04a52e983daec4ead36f156cb19f6df7c47b9486f775`. OpenUPM metadata selects `trackingMode: githubRelease` and the `com.immersive.framework-` asset prefix.
 
 **Attestation limit and post-tag record:** The workflow required a non-empty `.attestation.p7m`, and OpenUPM reports the package as signed; the workflow does not independently cryptographically verify that attestation, so no such verification is claimed. This publication record is a mutable `master` update made after the release tag and is not part of the immutable preview.4 archive. PEGA and other consumer projects were not changed for this publication.
+
+## Object Entry Inspector authoring — 2026-11-02
+
+**Source implementation:** Added the identity-only `ObjectEntryIdReference`
+serialization transport and one shared Editor identity field for it and
+`StableObjectReference`. The field accepts text entry/paste and provides a
+picker whose transient authoring index derives suggestions from
+Route primary/additional scenes, Activity content-profile scenes and prefab
+templates. The selector persists only `ObjectEntryId.Value.Value`; the optional
+Route/Activity resolution owner remains unchanged when identity is entered,
+pasted or selected. The index does not restrict authoring: valid IDs outside
+its discovered candidates remain manually enterable.
+The architecture decision and authoring guidance are recorded in
+[IF-ADR-014](../ADRs/IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md),
+[Object Entry Occurrence Queries](../../Guides/Object-Entry-Occurrence-Queries.md)
+and [Reset Usage](../../Guides/Reset-Usage.md).
+
+**Static evidence:** Source inspection confirms unloaded configured scenes are
+opened through Editor preview scenes and closed after inspection; prefab
+contents are unloaded after inspection; IDs are read from existing
+`ObjectEntryDeclaration` components; owner fields are not modified by identity
+entry, paste or selection; and missing/invalid/unindexed values are reported
+without automatic replacement. No persistent catalog, runtime identity
+authority, lifecycle or occurrence-resolution change was added.
+
+**Validation pending:** Unity package import/compile, manual entry/paste of a
+valid ID that is not indexed, picker selection from a scene that is closed in
+the Hierarchy, owner-preservation interaction, prefab-template labeling, and
+serialized persistence after saving/reopening remain manual checks. Measure
+the synchronous full-prefab discovery refresh in a representative large
+project before treating its authoring cost as known.
+No Unity build, Editor test, Play Mode or batchmode was run in this cut.
