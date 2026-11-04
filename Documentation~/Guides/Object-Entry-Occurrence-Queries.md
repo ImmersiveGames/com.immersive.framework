@@ -93,6 +93,51 @@ StableObjectReference.ForActivity(objectEntryId, activityAsset);
 Those selectors preserve exact authored definition identity. Their stable IDs
 alone do not grant owner or release authority.
 
+## Recognize a supplied Collider
+
+Use the optional `IObjectEntryRecognitionQuery` on the same
+`ObjectEntryOccurrenceQueryBinding` when a caller already has a physical
+`Collider` and needs to identify its admitted Object Entry. This operation
+does not search space or create a second anchor:
+
+```csharp
+IObjectEntryRecognitionQuery recognition = queryBinding;
+ObjectEntryRecognitionResult result = recognition.Recognize(hitCollider);
+
+if (result.Status == ObjectEntryRecognitionStatus.Resolved)
+{
+    ObjectEntryId objectEntryId = result.ObjectEntryId;
+    GameObject occurrenceRoot = result.Occurrence;
+}
+```
+
+The nearest `ObjectEntryDeclaration` on the Collider GameObject or its ancestor
+chain defines the identity boundary. An invalid nearest declaration is reported
+as `Invalid`; recognition never skips it to use an outer declaration. The
+binding must be committed and its physical GameObject must be exactly the
+declaration's GameObject. A descendant Collider therefore resolves to the
+declared root, not to `Transform.root`, a Rigidbody, its name or its path.
+
+| Status | Meaning |
+|---|---|
+| `Unrecognized` | No Object Entry declaration exists in the candidate's ancestor chain. |
+| `Invalid` | The supplied Collider is null or the nearest declaration has an invalid ObjectEntryId. |
+| `Resolved` | Exactly one committed binding under one exact owner matches the ID and declaration GameObject. The result contains the ID and root. |
+| `Unavailable` | The candidate was destroyed, the query anchor is unbound, or no live committed binding matches the exact declaration GameObject. |
+| `Ambiguous` | The same ID and root are bound under multiple owners, or multiple live records for the ID exist under the matching owner. |
+
+An ObjectEntryId on another root under a different owner does not make the
+supplied root ambiguous. Duplicate live records for the same ID under the same
+owner remain ambiguous, including records on different roots. The anchor owner
+controls access lifetime only; recognition may resolve a target admitted by a
+different owner. Releasing either the anchor or target invalidates the relevant
+access without changing the other owner's lifecycle.
+
+Recognition is read-only point-in-time evidence. It does not confirm that the
+Collider was hit, is enabled, is active, is eligible for interaction, or is
+authorized for gameplay. It does not publish Knowledge or retain the physical
+object as identity. Those policies remain with the caller and game.
+
 ## Resolution outcomes
 
 | Status | Meaning |
@@ -149,6 +194,14 @@ After package import and compile, validate in a Unity consumer project:
    query reports `Unavailable` and does not modify the binding table.
 8. Confirm existing Reset `StableObjectReference` targeting still resolves
    Resettable/ResetComposition through its existing consumer path.
+9. Call recognition with multiple descendant Colliders under one declaration
+   and confirm they return the same ID and declaration root; confirm an ordinary
+   Collider is `Unrecognized` and an invalid nearest declaration is `Invalid`
+   even when an outer declaration is valid.
+10. Confirm recognition across different owners, before commit, after
+    rollback/release, with duplicate same-owner records, with the same root
+    under two owners, and after destroying the candidate. Existing identity-based
+    `Resolve(StableObjectReference)` must retain its current ambiguity behavior.
 
 The query API and metadata are Experimental. The Project Owner reports the
 QAFramework EditMode suite passed 491/491 with zero failures in Unity

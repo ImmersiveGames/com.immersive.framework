@@ -2,7 +2,7 @@
 
 Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-11-02**
+Last updated: **2026-11-03**
 
 ## 1.1.0 first Stable release readiness
 
@@ -918,7 +918,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 011 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness/progress certified | consumer proof PASS |
 | 012 | ACCEPTED / RECONCILED / IMPLEMENTED | historical Player aggregate 27/27; QA-001 coverage in current recertification report | architecture accepted; current full Player certification open |
 | 013 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED / VALIDATED | QA-NEW-005 12/12 PASS post-IF-ADR-040; historical 44/44 retained | consumer gate PASS; maturity remains Experimental |
-| 014 | ACCEPTED / IMPLEMENTED; Experimental scoped Object Entry occurrence query added | Project Owner reports QAFramework EditMode 491/491 with zero failures, including the Object Entry host-teardown regression; no raw NUnit XML or execution SHA supplied | User-reported Unity `6000.5.0f1` evidence; Codex did not execute Unity and PEGA consumer integration is outside this release |
+| 014 | ACCEPTED / IMPLEMENTED; Amendment 001 accepted and Experimental physical recognition implemented | Pre-amendment Project Owner report: QAFramework EditMode 491/491 with zero failures, including the Object Entry host-teardown regression; no raw NUnit XML or execution SHA supplied. Amendment 001 focused EditMode tests are authored but not run. | Amendment implementation's Unity import/compile and EditMode validation are pending; batchmode could not connect to Licensing and UPM resolution failed with `packages.unity.com` ENOTFOUND. No amendment PASS is claimed. PEGA consumer integration remains separate. |
 | 015 | ACCEPTED / RECONCILED / IMPLEMENTED | public surface aggregate + Manager functional 14/14 are dated evidence; QA-001 Slices bounded | Observer/commands implemented; Player recertification open |
 | 016 | ACCEPTED / IMPLEMENTED | historical Player aggregate 27/27; Slice 1 default-selection path user-reported | policies remain Experimental/current recertification open |
 | 017 | ACCEPTED / RECONCILED / IMPLEMENTED | frame-rate matrices certified | current |
@@ -2516,3 +2516,41 @@ serialized persistence after saving/reopening remain manual checks. Measure
 the synchronous full-prefab discovery refresh in a representative large
 project before treating its authoring cost as known.
 No Unity build, Editor test, Play Mode or batchmode was run in this cut.
+
+## IF-ADR-014 Amendment 001 — Physical Object Entry recognition — 2026-11-03
+
+**Acceptance and API review:** The Project Owner accepted Amendment 001 on
+2026-11-03 before functional implementation. The API review resolved the
+optional Experimental `IObjectEntryRecognitionQuery.Recognize(Collider)`
+contract on the existing `ObjectEntryOccurrenceQueryBinding`, with
+`ObjectEntryRecognitionResult` and `ObjectEntryRecognitionStatus`. The existing
+`IObjectEntryOccurrenceQuery.Resolve(StableObjectReference)` contract and
+owner/transaction lifecycle remain unchanged. See the [amendment](../ADRs/IF-ADR-014-AMENDMENT-001-PHYSICAL-OBJECT-ENTRY-RECOGNITION.md).
+
+**Source and focused coverage:** Recognition uses the nearest declaration in
+the supplied Collider's ancestor chain and checks the existing committed
+registry for its exact declaration GameObject. Duplicate records under the
+same owner and the same ID/root under multiple owners are ambiguous; a same-ID
+binding on another root under another owner does not interfere with the exact
+candidate. Tests cover no/invalid declaration, descendant colliders, differing
+roots and owners, duplicate bindings, commit/rollback/release, independent
+anchor/target lifetimes, destroyed/null candidates, no query-side mutation,
+existing `Resolve` ambiguity and Experimental metadata.
+
+**Post-implementation contract review:** An independent static review of the
+full diff returned **CLEAR** for API/authority fit, exact-root selection,
+commit/lifetime behavior, ambiguity rules and preservation of the existing
+query. It is architecture/source evidence only, not compilation or runtime QA.
+
+**Validation status:** The focused Unity EditMode test run could not start:
+Unity `6000.5.0f1` batchmode reported a Licensing IPC connection refusal, and
+UPM could not resolve required packages because `packages.unity.com` returned
+`ENOTFOUND`; no NUnit XML was produced. No Unity import, compile, EditMode PASS,
+Play Mode result, package version bump or publication is claimed. Manual Unity
+validation remains:
+import and compile the package; run the focused tests and applicable suite;
+recognize a Collider under committed content; then confirm `Unavailable` after
+releasing the query anchor and independently after releasing the target owner.
+A separate Roslyn attempt using the available generated response file was
+inconclusive: it omitted current Runtime source files and did not include the
+resolved Composition/Audio assemblies, so it is not counted as compile evidence.

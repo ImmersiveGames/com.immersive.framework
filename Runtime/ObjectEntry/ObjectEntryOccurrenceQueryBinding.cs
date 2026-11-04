@@ -6,17 +6,20 @@ using UnityEngine;
 namespace Immersive.Framework.ObjectEntry
 {
     /// <summary>
-    /// Owner-bound access point for read-only Object Entry occurrence queries. Framework Runtime Content
-    /// binds it when the containing Route or Activity commits and unbinds it on rollback, release or host
-    /// teardown. The owner defines access lifetime only; the supplied reference selects the occurrence.
+    /// Owner-bound access point for read-only Object Entry occurrence queries and physical recognition.
+    /// Framework Runtime Content binds it when the containing Route or Activity commits and unbinds it on
+    /// rollback, release or host teardown. The owner defines access lifetime only; each query input selects
+    /// or identifies the candidate occurrence without transferring owner authority.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("Immersive Framework/Object Entry/Occurrence Query")]
-    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Owner-bound Object Entry occurrence query anchor.")]
-    public sealed class ObjectEntryOccurrenceQueryBinding : MonoBehaviour, IObjectEntryOccurrenceQuery
+    [FrameworkApiStatus(FrameworkApiStatus.Experimental, "Owner-bound Object Entry occurrence and physical recognition query anchor.")]
+    public sealed class ObjectEntryOccurrenceQueryBinding : MonoBehaviour, IObjectEntryOccurrenceQuery, IObjectEntryRecognitionQuery
     {
         private const string UnboundDiagnostic =
             "Object Entry occurrence query is not bound to a committed Route or Activity owner.";
+        private const string RecognitionUnboundDiagnostic =
+            "Object Entry recognition query is not bound to a committed Route or Activity owner.";
 
         private StableObjectBindingRegistry _registry;
         private RuntimeContentOwner _owner;
@@ -71,6 +74,73 @@ namespace Immersive.Framework.ObjectEntry
                     ObjectEntryOccurrenceResolutionStatus.Resolved,
                     occurrence,
                     diagnostic);
+        }
+
+        /// <inheritdoc />
+        public ObjectEntryRecognitionResult Recognize(Collider candidate)
+        {
+            if (ReferenceEquals(candidate, null))
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Invalid,
+                    "Object Entry recognition requires a live Collider candidate.");
+            }
+
+            if (candidate == null)
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Unavailable,
+                    "The supplied Collider candidate has been destroyed and is no longer physically available.");
+            }
+
+            ObjectEntryDeclaration declaration = candidate.GetComponentInParent<ObjectEntryDeclaration>(true);
+            if (declaration == null)
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Unrecognized,
+                    "No Object Entry declaration exists in the Collider candidate's ancestor chain.");
+            }
+
+            if (!declaration.TryGetObjectEntryId(out ObjectEntryId objectEntryId))
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Invalid,
+                    "The nearest Object Entry declaration has an invalid ObjectEntryId.");
+            }
+
+            GameObject declarationRoot = declaration.gameObject;
+            if (declarationRoot == null)
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Unavailable,
+                    "The nearest Object Entry declaration is no longer physically available.");
+            }
+
+            StableObjectBindingRegistry registry = _registry;
+            if (registry == null)
+            {
+                return new ObjectEntryRecognitionResult(
+                    ObjectEntryRecognitionStatus.Unavailable,
+                    RecognitionUnboundDiagnostic);
+            }
+
+            if (!registry.TryRecognizeOccurrence(
+                    objectEntryId,
+                    declarationRoot,
+                    out StableObjectBinding binding,
+                    out StableObjectBindingResolutionStatus status,
+                    out string diagnostic))
+            {
+                ObjectEntryRecognitionStatus publicStatus = status == StableObjectBindingResolutionStatus.Ambiguous
+                    ? ObjectEntryRecognitionStatus.Ambiguous
+                    : ObjectEntryRecognitionStatus.Unavailable;
+                return new ObjectEntryRecognitionResult(publicStatus, diagnostic);
+            }
+
+            return new ObjectEntryRecognitionResult(
+                objectEntryId,
+                binding.PhysicalObject,
+                diagnostic);
         }
 
         internal bool CanBindRuntime(

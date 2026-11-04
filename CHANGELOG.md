@@ -2,6 +2,11 @@
 
 All notable package changes are documented in this file.
 
+## [Unreleased] — Physical Object Entry recognition
+
+- Adds the Experimental `IObjectEntryRecognitionQuery.Recognize(Collider)` capability to the existing owner-bound Object Entry query anchor. It recognizes the nearest declaration only when its exact GameObject is supported by one non-ambiguous committed owner binding; recognition is read-only and grants no gameplay authorization.
+- Adds focused EditMode coverage and documents IF-ADR-014 Amendment 001. Unity import, compile and test execution remain pending; no package version bump or publication is included.
+
 ## [1.2.0-preview.4] - 2026-11-01 — Actor composition and scoped occurrence queries
 
 - Stores Actor Profile base composition parts as referenced `ActorCompositionPartAsset` ScriptableObjects. The Editor migration converts existing inline parts and reports migrated, unchanged, ignored, invalid, conflicting and blocked profiles.

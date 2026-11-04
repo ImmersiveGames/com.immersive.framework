@@ -236,6 +236,75 @@ namespace Immersive.Framework.RuntimeContent
             return true;
         }
 
+        internal bool TryRecognizeOccurrence(
+            ObjectEntryId objectEntryId,
+            GameObject candidateRoot,
+            out StableObjectBinding binding,
+            out StableObjectBindingResolutionStatus status,
+            out string diagnostic)
+        {
+            binding = null;
+            if (!objectEntryId.IsValid || candidateRoot == null)
+            {
+                status = StableObjectBindingResolutionStatus.InvalidRequest;
+                diagnostic = "stable-object-binding-invalid-recognition: a valid ObjectEntryId and physical root are required.";
+                return false;
+            }
+
+            int matchingOwnerCount = 0;
+            bool duplicateRecordsUnderMatchingOwner = false;
+            StableObjectBinding selected = null;
+
+            foreach (OwnerBindings registration in _owners.Values)
+            {
+                if (!registration.IsCommitted) continue;
+
+                int liveRecordsForId = 0;
+                int candidateRootMatches = 0;
+                StableObjectBinding ownerMatch = null;
+
+                for (int index = 0; index < registration.Bindings.Count; index++)
+                {
+                    StableObjectBinding candidate = registration.Bindings[index];
+                    if (candidate.ObjectEntryId != objectEntryId) continue;
+
+                    GameObject physicalObject = candidate.PhysicalObject;
+                    if (physicalObject == null) continue;
+                    liveRecordsForId++;
+
+                    if (physicalObject != candidateRoot) continue;
+                    candidateRootMatches++;
+                    ownerMatch = candidate;
+                }
+
+                if (candidateRootMatches == 0) continue;
+
+                matchingOwnerCount++;
+                selected = ownerMatch;
+                if (liveRecordsForId > 1 || candidateRootMatches > 1)
+                    duplicateRecordsUnderMatchingOwner = true;
+            }
+
+            if (matchingOwnerCount == 0)
+            {
+                status = StableObjectBindingResolutionStatus.NotFound;
+                diagnostic = $"stable-object-binding-recognition-unavailable: no committed binding for ObjectEntryId='{objectEntryId.StableText}' matches the exact declaration GameObject.";
+                return false;
+            }
+
+            if (duplicateRecordsUnderMatchingOwner || matchingOwnerCount > 1)
+            {
+                status = StableObjectBindingResolutionStatus.Ambiguous;
+                diagnostic = $"stable-object-binding-recognition-ambiguous: ObjectEntryId='{objectEntryId.StableText}' has duplicate records under an exact owner or matches multiple owners for the supplied GameObject.";
+                return false;
+            }
+
+            binding = selected;
+            status = StableObjectBindingResolutionStatus.Resolved;
+            diagnostic = $"stable-object-binding-recognized: ObjectEntryId='{objectEntryId.StableText}' matches the exact committed declaration GameObject.";
+            return true;
+        }
+
         private bool TryRemoveOwner(RuntimeContentOwner owner, string operation, out string diagnostic)
         {
             if (!owner.IsValid)
