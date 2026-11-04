@@ -67,6 +67,192 @@ namespace Immersive.Framework.Reset.Tests
         }
 
         [Test]
+        public void RecognitionQuery_NoDeclarationIsUnrecognizedWithoutMutation()
+        {
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+            GameObject candidateRoot = Create("ordinary-object");
+            BoxCollider collider = candidateRoot.AddComponent<BoxCollider>();
+            int bindingCount = _bindings.BindingCount;
+            int componentCount = candidateRoot.GetComponents<Component>().Length;
+
+            ObjectEntryRecognitionResult result = InvokeRecognition(anchor, collider);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unrecognized, RecognitionStatus(result));
+            Assert.IsFalse(result.ObjectEntryId.IsValid);
+            Assert.IsNull(result.Occurrence);
+            Assert.AreEqual(bindingCount, _bindings.BindingCount);
+            Assert.AreEqual(componentCount, candidateRoot.GetComponents<Component>().Length);
+        }
+
+        [Test]
+        public void RecognitionQuery_InvalidNearestDeclarationDoesNotFallBackToCommittedAncestor()
+        {
+            const string outerId = "qa.stable.recognition-outer";
+            GameObject outerRoot = CreateEntry(outerId, _routeB, false);
+            Register(_ownerB, outerRoot);
+            GameObject innerRoot = Create("invalid-inner");
+            innerRoot.transform.SetParent(outerRoot.transform, false);
+            ObjectEntryDeclaration invalidNearest = innerRoot.AddComponent<ObjectEntryDeclaration>();
+            invalidNearest.ConfigureForQa(default, ObjectEntryRequiredness.Required);
+            BoxCollider collider = innerRoot.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+
+            ObjectEntryRecognitionResult result = InvokeRecognition(anchor, collider);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Invalid, RecognitionStatus(result));
+            Assert.IsFalse(result.ObjectEntryId.IsValid);
+            Assert.IsNull(result.Occurrence);
+        }
+
+        [Test]
+        public void RecognitionQuery_DescendantCollidersResolveToTheExactDeclarationRoot()
+        {
+            const string id = "qa.stable.recognition-descendants";
+            GameObject targetRoot = CreateEntry(id, _routeA, false);
+            GameObject firstChild = Create("first-collider");
+            firstChild.transform.SetParent(targetRoot.transform, false);
+            BoxCollider firstCollider = firstChild.AddComponent<BoxCollider>();
+            GameObject secondChild = Create("second-collider");
+            secondChild.transform.SetParent(targetRoot.transform, false);
+            BoxCollider secondCollider = secondChild.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, targetRoot, queryRoot);
+            int bindingCount = _bindings.BindingCount;
+
+            ObjectEntryRecognitionResult firstResult = InvokeRecognition(anchor, firstCollider);
+            ObjectEntryRecognitionResult secondResult = InvokeRecognition(anchor, secondCollider);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(firstResult));
+            Assert.IsTrue(firstResult.Succeeded);
+            Assert.AreEqual(Id(id), firstResult.ObjectEntryId);
+            Assert.AreSame(targetRoot, firstResult.Occurrence);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(secondResult));
+            Assert.AreEqual(firstResult.ObjectEntryId, secondResult.ObjectEntryId);
+            Assert.AreSame(firstResult.Occurrence, secondResult.Occurrence);
+            Assert.AreEqual(bindingCount, _bindings.BindingCount);
+        }
+
+        [Test]
+        public void RecognitionQuery_DifferentRootUnderAnotherOwnerDoesNotMakeCandidateAmbiguous()
+        {
+            const string id = "qa.stable.recognition-distinct-roots";
+            GameObject firstRoot = CreateEntry(id, _routeA, false);
+            BoxCollider firstCollider = firstRoot.AddComponent<BoxCollider>();
+            GameObject secondRoot = CreateEntry(id, _routeB, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, firstRoot, queryRoot);
+            Register(_ownerB, secondRoot);
+
+            ObjectEntryRecognitionResult recognition = InvokeRecognition(anchor, firstCollider);
+            ObjectEntryOccurrenceResolution identityResolution =
+                ((IObjectEntryOccurrenceQuery)anchor).Resolve(StableObjectReference.ForEntry(Id(id)));
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(recognition));
+            Assert.AreSame(firstRoot, recognition.Occurrence);
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Ambiguous, identityResolution.Status);
+        }
+
+        [Test]
+        public void RecognitionQuery_DuplicateIdWithinSameOwnerIsAmbiguousBeforeRootSelection()
+        {
+            const string id = "qa.stable.recognition-same-owner-duplicates";
+            GameObject firstRoot = CreateEntry(id, _routeA, false);
+            BoxCollider collider = firstRoot.AddComponent<BoxCollider>();
+            GameObject secondRoot = CreateEntry(id, _routeA, false);
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, firstRoot, secondRoot, queryRoot);
+
+            ObjectEntryRecognitionResult result = InvokeRecognition(anchor, collider);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Ambiguous, RecognitionStatus(result));
+            Assert.IsFalse(result.Succeeded);
+            Assert.IsFalse(result.ObjectEntryId.IsValid);
+            Assert.IsNull(result.Occurrence);
+        }
+
+        [Test]
+        public void RecognitionQuery_SameIdAndRootUnderTwoOwnersIsAmbiguous()
+        {
+            const string id = "qa.stable.recognition-same-root-two-owners";
+            GameObject targetRoot = CreateEntry(id, _routeA, false);
+            BoxCollider collider = targetRoot.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, targetRoot, queryRoot);
+            Register(_ownerB, targetRoot);
+
+            ObjectEntryRecognitionResult result = InvokeRecognition(anchor, collider);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Ambiguous, RecognitionStatus(result));
+            Assert.IsNull(result.Occurrence);
+        }
+
+        [Test]
+        public void RecognitionQuery_RequiresCommittedTargetAndRespectsTargetRelease()
+        {
+            const string id = "qa.stable.recognition-target-lifetime";
+            GameObject targetRoot = CreateEntry(id, _routeB, false);
+            BoxCollider collider = targetRoot.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerB, new[] { targetRoot }, out string diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unavailable, RecognitionStatus(InvokeRecognition(anchor, collider)));
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(InvokeRecognition(anchor, collider)));
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unavailable, RecognitionStatus(InvokeRecognition(anchor, collider)));
+        }
+
+        [Test]
+        public void RecognitionQuery_RollbackAndAnchorReleaseInvalidateAccessIndependently()
+        {
+            const string id = "qa.stable.recognition-anchor-lifetime";
+            GameObject targetRoot = CreateEntry(id, _routeB, false);
+            BoxCollider collider = targetRoot.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerB, new[] { targetRoot }, out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(InvokeRecognition(anchor, collider)));
+
+            Assert.IsTrue(_bindings.TryRollbackOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unavailable, RecognitionStatus(InvokeRecognition(anchor, collider)));
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerB, new[] { targetRoot }, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerB, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Resolved, RecognitionStatus(InvokeRecognition(anchor, collider)));
+
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unavailable, RecognitionStatus(InvokeRecognition(anchor, collider)));
+            Assert.IsTrue(_bindings.TryResolve(Id(id), null, null, out _, out _, out diagnostic), diagnostic);
+        }
+
+        [Test]
+        public void RecognitionQuery_DestroyedCandidateIsUnavailableAndNullInputIsInvalid()
+        {
+            const string id = "qa.stable.recognition-destroyed-candidate";
+            GameObject targetRoot = CreateEntry(id, _routeB, false);
+            BoxCollider collider = targetRoot.AddComponent<BoxCollider>();
+            GameObject queryRoot = Create("query-anchor");
+            ObjectEntryOccurrenceQueryBinding anchor = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, queryRoot);
+            Register(_ownerB, targetRoot);
+
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Invalid, RecognitionStatus(InvokeRecognition(anchor, null)));
+            Object.DestroyImmediate(collider);
+            Assert.AreEqual(ObjectEntryRecognitionStatus.Unavailable, RecognitionStatus(InvokeRecognition(anchor, collider)));
+        }
+
+        [Test]
         public void OccurrenceQuery_ReportsInvalidUnavailableAndResolvedWithoutChangingBindings()
         {
             const string id = "qa.stable.public-query";
@@ -493,6 +679,13 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(_bindings.TryRegisterOwnerContent(owner, roots, out string diagnostic), diagnostic);
             Assert.IsTrue(_bindings.TryCommitOwner(owner, out string commitDiagnostic), commitDiagnostic);
         }
+
+        private static ObjectEntryRecognitionResult InvokeRecognition(
+            ObjectEntryOccurrenceQueryBinding anchor,
+            Collider candidate) =>
+            ((IObjectEntryRecognitionQuery)anchor).Recognize(candidate);
+
+        private static ObjectEntryRecognitionStatus RecognitionStatus(ObjectEntryRecognitionResult result) => result.Status;
 
         private void RegisterStableCompositionOccurrence(GameObject root, string reason)
         {
