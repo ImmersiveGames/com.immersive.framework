@@ -5,7 +5,7 @@ Amends: [IF-ADR-014 — Authored Definition and Stable Identity Authority](IF-AD
 Related: [IF-ADR-014 Amendment 001 — Physical Recognition](IF-ADR-014-AMENDMENT-001-PHYSICAL-OBJECT-ENTRY-RECOGNITION.md); IF-ADR-001 (lifecycle); IF-ADR-050 (Actor composition precedent); IF-GOV-001 (API governance)  
 Owner: **com.immersive.framework** (Runtime Content / Object Entry integration)
 
-> **Decision boundary:** This is an architecture proposal, not an approved runtime change. It does not select final public API signatures or authorize implementation before acceptance and API review. No implementation, Unity validation or certification is claimed here.
+> **Decision boundary:** The Project Owner accepted the architecture on 2026-11-05, not an implementation or final public API shape. Public contracts remain subject to API review. Acceptance does not certify Unity behavior or implementation. B1 authoring implementation and its pending QA are tracked separately.
 
 ## 1. Context
 

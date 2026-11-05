@@ -28,7 +28,7 @@ The first authored part descriptor is **prefab-backed**. It represents a subordi
 
 ## Validation status
 
-**B1:** authored/editor validation implemented; static review required; Unity Editor compilation and Inspector checks **not executed**.  
+**B1:** authoring and Editor validation implemented; 10 Edit Mode regression tests authored in `Tests/Editor/CameraAuthoring/ObjectEntryCompositionAuthoringTests.cs` for explicit opt-in, valid/invalid parts, dependency validation and forbidden identity components. **Tests have not been executed**; Unity Editor compilation and Inspector checks **not executed**.  
 **B2:** runtime materialization/commit/rollback/release **not implemented**.  
 **C:** live contribution access and full lifecycle guards **not implemented**.  
 **D:** QAFramework tests, integration and technical certification **not executed**.
