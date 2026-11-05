@@ -1,6 +1,6 @@
 # IF-ADR-014 Amendment 002 — Optional Physical Composition of Object Entries
 
-Status: **Proposed** — 2026-11-05 (pending Project Owner acceptance)  
+Status: **Accepted** — 2026-11-05 (Project Owner; architecture only, subject to API review and validation)  
 Amends: [IF-ADR-014 — Authored Definition and Stable Identity Authority](IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)  
 Related: [IF-ADR-014 Amendment 001 — Physical Recognition](IF-ADR-014-AMENDMENT-001-PHYSICAL-OBJECT-ENTRY-RECOGNITION.md); IF-ADR-001 (lifecycle); IF-ADR-050 (Actor composition precedent); IF-GOV-001 (API governance)  
 Owner: **com.immersive.framework** (Runtime Content / Object Entry integration)
