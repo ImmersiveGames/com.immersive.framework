@@ -28,8 +28,8 @@ The first authored part descriptor is **prefab-backed**. It represents a subordi
 
 ## Validation status
 
-**B1:** authoring and Editor validation implemented; 10 Edit Mode regression tests authored in `Tests/Editor/CameraAuthoring/ObjectEntryCompositionAuthoringTests.cs` for explicit opt-in, valid/invalid parts, dependency validation and forbidden identity components. **Tests have not been executed**; Unity Editor compilation and Inspector checks **not executed**.  
-**B2:** runtime materialization/commit/rollback/release **not implemented**.  
+**B1:** authoring and Editor validation implemented. The Project Owner's QAFramework Test Runner screenshot (2026-11-05) reports **511/511 Edit Mode PASS** and **10/10 PASS** in `ObjectEntryCompositionAuthoringTests`; no failures. This is owner-reported visual evidence, without an NUnit XML report or source-commit fingerprint. Unity assembly discovery/compilation is supported by the screenshot, but Inspector UI and Play Mode tests are **not confirmed**.  
+**B2:** runtime materialization/commit/rollback/release **not implemented**; see [B2 runtime integration preflight](../Architecture/Plans/IF-PLAN-014-OBJECT-ENTRY-COMPOSITION-B2-RUNTIME-INTEGRATION.md).  
 **C:** live contribution access and full lifecycle guards **not implemented**.  
 **D:** QAFramework tests, integration and technical certification **not executed**.
 
