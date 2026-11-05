@@ -285,7 +285,10 @@ namespace Immersive.Framework.GameFlow
                             "Game Flow Startup committed the Startup Route " +
                             "but Startup Activity entry readiness did not " +
                             "complete. " +
-                            readinessExecution.ToDiagnosticString(),
+                            readinessExecution.ToDiagnosticString() +
+                            (routeLifecycleResult.HasPostCommitCompositionFailure
+                                ? " " + routeLifecycleResult.Message
+                                : string.Empty),
                             startupRoute,
                             routeLifecycleResult,
                             readinessExecution.Status);
@@ -293,6 +296,15 @@ namespace Immersive.Framework.GameFlow
 
                 ReleaseActivityEntryReadinessRecoveryGate();
                 SetCurrentFlowContext(routeLifecycleResult);
+                if (routeLifecycleResult.HasPostCommitCompositionFailure)
+                {
+                    return FrameworkGameFlowStartResult.FailedCommittedDestination(
+                        "Startup Route committed, but its Object Entry composition lifecycle did not complete. " +
+                        routeLifecycleResult.Message,
+                        startupRoute,
+                        routeLifecycleResult,
+                        readinessExecution.Status);
+                }
                 return FrameworkGameFlowStartResult.StartedWith(
                     startupRoute,
                     routeLifecycleResult);

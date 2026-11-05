@@ -11,6 +11,7 @@ using Immersive.Framework.CameraAuthoring;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.ContentFlow;
 using Immersive.Framework.GameFlow;
+using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.Performance;
 using Immersive.Framework.Pause;
 using Immersive.Framework.PlayerParticipation;
@@ -300,6 +301,64 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Scene primaryScene = SceneManager.GetSceneByPath(_scenePaths[0]);
             Assert.That(primaryScene.IsValid() && primaryScene.isLoaded, Is.True);
             Assert.That(SceneManager.GetActiveScene().handle, Is.EqualTo(primaryScene.handle));
+            ObjectEntryDeclaration composedDeclaration =
+                FindComponent<ObjectEntryDeclaration>(primaryScene);
+            Assert.That(composedDeclaration, Is.Not.Null,
+                "The Route scene must admit its composed Object Entry during startup.");
+            Assert.That(composedDeclaration.TryGetObjectEntryId(out ObjectEntryId composedIdentity), Is.True);
+            GameObject composedRoot = composedDeclaration.gameObject;
+            ObjectEntryCompositionAuthoring compositionAuthoring =
+                composedRoot.GetComponent<ObjectEntryCompositionAuthoring>();
+            ObjectEntryCompositionProfile compositionProfile =
+                compositionAuthoring != null ? compositionAuthoring.Profile : null;
+            string profileValidationIssue = compositionProfile == null
+                ? "composition profile is missing."
+                : string.Empty;
+            bool profileValid = compositionProfile != null &&
+                compositionProfile.TryValidate(out profileValidationIssue);
+            bool compositionBindingResolved = _host.StableObjectBindings.TryResolve(
+                composedIdentity,
+                null,
+                null,
+                out var compositionBinding,
+                out var compositionBindingStatus,
+                out string compositionBindingDiagnostic);
+            bool compositionRootMatchesBinding = compositionBindingResolved &&
+                ReferenceEquals(composedRoot, compositionBinding.PhysicalObject);
+            bool compositionTargetCurrent = compositionBindingResolved &&
+                _host.StableObjectBindings.IsCompositionTargetCurrent(compositionBinding);
+            var compositionRuntime = compositionBinding?.CompositionRuntime;
+            string composedPartName = compositionProfile != null &&
+                compositionProfile.Parts.Count > 0 &&
+                compositionProfile.Parts[0] != null &&
+                compositionProfile.Parts[0].Prefab != null
+                    ? compositionProfile.Parts[0].Prefab.name
+                    : "<missing-part-prefab>";
+            var composedChildNames = new List<string>();
+            for (int childIndex = 0; childIndex < composedRoot.transform.childCount; childIndex++)
+            {
+                composedChildNames.Add(composedRoot.transform.GetChild(childIndex).name);
+            }
+            string compositionStateDiagnostic =
+                $"authoringPresent={compositionAuthoring != null}, profilePresent={compositionProfile != null}, " +
+                $"profileValid={profileValid}, profileIssue='{profileValidationIssue}', " +
+                $"bindingResolved={compositionBindingResolved} status='{compositionBindingStatus}' diagnostic='{compositionBindingDiagnostic}', " +
+                $"rootMatchesBinding={compositionRootMatchesBinding}, targetCurrent={compositionTargetCurrent}, " +
+                $"runtimeCreated={compositionRuntime != null}, runtimeActive={compositionRuntime?.IsActive == true}, " +
+                $"expectedPrefabName='{composedPartName}', directChildren=[{string.Join(", ", composedChildNames)}].";
+            Assert.That(compositionAuthoring, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(compositionProfile, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(profileValid, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionBindingResolved, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionRootMatchesBinding, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionTargetCurrent, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionRuntime, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(compositionRuntime.IsActive, Is.True, compositionStateDiagnostic);
+            Assert.That(
+                composedRoot.transform.Find(composedPartName),
+                Is.Not.Null,
+                "The Route Object Entry capability must be materialized before controlled stop. " +
+                compositionStateDiagnostic);
 
             const float runningTimeScale = 0.625f;
             Time.timeScale = runningTimeScale;
@@ -346,6 +405,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(owner != null, Is.True, "A failed aggregate release must retain its Host owner.");
             Assert.That(owner.LifecyclePhase, Is.EqualTo(FrameworkRuntimeHostPhase.Stopping));
             Assert.That(exactRoot != null, Is.True, "The composed root remains alive while its release receipt is unresolved.");
+            Assert.That(composedRoot != null, Is.True,
+                "Controlled stop must preserve the exact Object Entry root while the Session release is pending.");
+            Assert.That(composedDeclaration.ObjectEntryId, Is.EqualTo(composedIdentity),
+                "Controlled stop must not replace or reidentify the Object Entry occurrence.");
+            Assert.That(composedRoot.transform.Find(composedPartName), Is.Null,
+                "Route-controlled stop must close Object Entry composition before retaining the loaded Route scene for retry.");
             Assert.That(CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Session), Has.Count.EqualTo(SessionParticipantCount));
             IReadOnlyList<HostSessionLifecycleTestProbe.Call> routeSceneReleases =
                 CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Scene);
@@ -1297,6 +1362,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             {
                 ConfigureRoutePlayerSessionConsumer(routeScenePath, importedRoute);
             }
+            ConfigureControlledStopObjectEntry(routeScenePath);
 
             GameApplicationAsset application = CreateAsset<GameApplicationAsset>("GameApplication.asset");
             var serializedApplication = new SerializedObject(application);
@@ -1600,6 +1666,48 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
             Assert.That(EditorSceneManager.SaveScene(scene), Is.True,
                 "Route Join and Observer fixture must be saved before Play Mode.");
+        }
+
+        private void ConfigureControlledStopObjectEntry(string routeScenePath)
+        {
+            Scene scene = SceneManager.GetSceneByPath(routeScenePath);
+            Assert.That(scene.IsValid() && scene.isLoaded, Is.True,
+                "Route scene must remain loaded while the controlled-stop Object Entry fixture is authored.");
+
+            GameObject root = new("QA_HostStop_ObjectEntry");
+            SceneManager.MoveGameObjectToScene(root, scene);
+            ObjectEntryDeclaration declaration = root.AddComponent<ObjectEntryDeclaration>();
+            declaration.ConfigureForQa(
+                ObjectEntryId.From("qa.host-stop.object-entry"),
+                ObjectEntryRequiredness.Required);
+
+            GameObject prefabSource = new("QA_HostStop_ComposedCapability");
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(
+                prefabSource,
+                _assetFolder + "/ComposedCapability.prefab");
+            UnityEngine.Object.DestroyImmediate(prefabSource);
+            Assert.That(prefab, Is.Not.Null,
+                "The controlled-stop Object Entry capability prefab must be persisted.");
+
+            ObjectEntryCompositionProfile profile =
+                CreateAsset<ObjectEntryCompositionProfile>("ObjectEntryCompositionProfile.asset");
+            SerializedObject serializedProfile = new(profile);
+            SerializedProperty parts = serializedProfile.FindProperty("parts");
+            Assert.That(parts, Is.Not.Null,
+                "Object Entry composition profile must expose its serialized parts.");
+            parts.arraySize = 1;
+            SerializedProperty part = parts.GetArrayElementAtIndex(0);
+            part.FindPropertyRelative("key").stringValue = "qa.host-stop.capability";
+            part.FindPropertyRelative("prefab").objectReferenceValue = prefab;
+            part.FindPropertyRelative("dependencies").arraySize = 0;
+            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
+            Assert.That(profile.TryValidate(out string validationIssue), Is.True, validationIssue);
+
+            ObjectEntryCompositionAuthoring authoring =
+                root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetObjectReference(authoring, "profile", profile);
+            Assert.That(EditorSceneManager.SaveScene(scene), Is.True,
+                "Route scene must save its composed Object Entry before entering Play Mode.");
         }
 
         private static void ConfigurePlayerProvisioning(GameObject root)

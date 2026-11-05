@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
@@ -8,6 +9,13 @@ using UnityEngine;
 
 namespace Immersive.Framework.ActivityFlow
 {
+    internal sealed class StableObjectCompositionCleanupException : InvalidOperationException
+    {
+        internal StableObjectCompositionCleanupException(string message) : base(message)
+        {
+        }
+    }
+
     /// <summary>
     /// IF-ADR-035 RESET-035-B: owner-aware Resettable registration inside the official Activity
     /// transaction. Target registrations use the target Activity owner and the materialized Activity
@@ -16,10 +24,35 @@ namespace Immersive.Framework.ActivityFlow
     /// </summary>
     internal sealed partial class ActivityFlowRuntime
     {
+        private sealed class DeferredCompositionSceneRelease
+        {
+            internal DeferredCompositionSceneRelease(
+                ActivityAsset activity,
+                RuntimeContentOwner owner,
+                string routeInstanceId,
+                string source,
+                string reason)
+            {
+                Activity = activity;
+                Owner = owner;
+                RouteInstanceId = routeInstanceId ?? string.Empty;
+                Source = source ?? string.Empty;
+                Reason = reason ?? string.Empty;
+            }
+
+            internal ActivityAsset Activity { get; }
+            internal RuntimeContentOwner Owner { get; }
+            internal string RouteInstanceId { get; }
+            internal string Source { get; }
+            internal string Reason { get; }
+        }
+
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindingRegistry;
         private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
         private ActorGroupRuntime _actorGroupRuntime;
+        private readonly List<DeferredCompositionSceneRelease> _deferredCompositionSceneReleases =
+            new List<DeferredCompositionSceneRelease>();
 
         internal void SetResettableOwnerRegistration(
             ResettableOwnerRegistrationRuntime registration)
@@ -181,19 +214,135 @@ namespace Immersive.Framework.ActivityFlow
             }
         }
 
-        private void ReleaseStableObjectBindingsForPreviousActivity(ActivityAsset previousActivity)
+        private Task<string> ActivateStableObjectCompositionsAsync(RuntimeContentOwner owner)
+        {
+            return _stableObjectBindingRegistry != null
+                ? _stableObjectBindingRegistry.ActivateOwnerCompositionsAsync(owner)
+                : Task.FromResult(string.Empty);
+        }
+
+        private async Task ReleaseStableObjectBindingsForPreviousActivityAsync(
+            ActivityAsset previousActivity,
+            string source,
+            string reason)
         {
             if (previousActivity == null) return;
             RuntimeContentOwner owner = CreateActivityOwner(previousActivity);
-            if (_stableObjectBindingRegistry != null &&
-                !_stableObjectBindingRegistry.TryReleaseOwner(owner, out string diagnostic))
-                throw new InvalidOperationException("Stable Object Binding release failed for the exiting Activity. " + diagnostic);
+            string bindingDiagnostic = _stableObjectBindingRegistry != null
+                ? await _stableObjectBindingRegistry.ReleaseOwnerAsync(owner)
+                : string.Empty;
+            if (!string.IsNullOrEmpty(bindingDiagnostic))
+            {
+                RememberDeferredCompositionSceneRelease(previousActivity, owner, source, reason);
+                throw new StableObjectCompositionCleanupException(
+                    "Stable Object Binding composition release remains pending. " + bindingDiagnostic);
+            }
+
             if (_actorOccurrenceReferenceRuntime != null &&
                 !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
-                throw new InvalidOperationException("Actor occurrence publication release failed for the exiting Activity. " + actorDiagnostic);
+            {
+                throw new InvalidOperationException(
+                    "Actor occurrence publication release failed. " + actorDiagnostic);
+            }
+
             if (_actorGroupRuntime != null &&
                 !_actorGroupRuntime.TryReleaseOwner(owner, out string groupDiagnostic))
-                throw new InvalidOperationException("Actor Group release failed for the exiting Activity. " + groupDiagnostic);
+            {
+                throw new InvalidOperationException("Actor Group release failed. " + groupDiagnostic);
+            }
+        }
+
+        internal async Task<string> ReleaseNonCurrentActivityObjectEntryBindingsAsync(
+            ActivityAsset retainedActivity)
+        {
+            RuntimeContentOwner? retainedOwner = retainedActivity != null
+                ? CreateActivityOwner(retainedActivity)
+                : (RuntimeContentOwner?)null;
+
+            for (int index = _deferredCompositionSceneReleases.Count - 1; index >= 0; index--)
+            {
+                DeferredCompositionSceneRelease receipt = _deferredCompositionSceneReleases[index];
+                if (!string.Equals(receipt.RouteInstanceId, _currentRouteInstanceId, StringComparison.Ordinal))
+                {
+                    return "Deferred Object Entry composition cleanup belongs to a different Route instance; " +
+                        "release is blocked to avoid unloading a scene from a newer occurrence by its reused path. " +
+                        $"owner='{receipt.Owner.StableText}' receiptRouteInstance='{receipt.RouteInstanceId}' " +
+                        $"currentRouteInstance='{_currentRouteInstanceId}'.";
+                }
+
+                if (retainedOwner.HasValue && receipt.Owner.Equals(retainedOwner.Value))
+                {
+                    return "Deferred Object Entry composition owner is still the retained current Activity. " +
+                        $"owner='{receipt.Owner.StableText}' routeInstance='{receipt.RouteInstanceId}'.";
+                }
+            }
+
+            string bindingIssue = _stableObjectBindingRegistry != null
+                ? await _stableObjectBindingRegistry.ReleaseNonCurrentOwnerBindingsAsync(
+                    RuntimeContentScope.Activity,
+                    retainedOwner)
+                : string.Empty;
+            if (!string.IsNullOrEmpty(bindingIssue)) return bindingIssue;
+
+            for (int index = _deferredCompositionSceneReleases.Count - 1; index >= 0; index--)
+            {
+                DeferredCompositionSceneRelease receipt = _deferredCompositionSceneReleases[index];
+                if (_actorOccurrenceReferenceRuntime != null &&
+                    !_actorOccurrenceReferenceRuntime.TryReleaseOwner(
+                        receipt.Owner,
+                        out string actorDiagnostic))
+                {
+                    return "Deferred Actor occurrence publication release failed. " + actorDiagnostic;
+                }
+
+                if (_actorGroupRuntime != null &&
+                    !_actorGroupRuntime.TryReleaseOwner(
+                        receipt.Owner,
+                        out string groupDiagnostic))
+                {
+                    return "Deferred Actor Group release failed. " + groupDiagnostic;
+                }
+
+                ActivitySceneReleaseResult releaseResult =
+                    await _activitySceneCompositionRuntime.ReleaseOnActivityChangeAsync(
+                        receipt.Activity,
+                        receipt.RouteInstanceId,
+                        receipt.Source,
+                        receipt.Reason);
+                if (releaseResult.HasBlockingIssues)
+                {
+                    return "Deferred Activity scene release remains blocked until Object Entry composition cleanup completes. " +
+                        releaseResult.ToDiagnosticString();
+                }
+
+                _deferredCompositionSceneReleases.RemoveAt(index);
+            }
+
+            return string.Empty;
+        }
+
+        private void RememberDeferredCompositionSceneRelease(
+            ActivityAsset activity,
+            RuntimeContentOwner owner,
+            string source,
+            string reason)
+        {
+            for (int index = 0; index < _deferredCompositionSceneReleases.Count; index++)
+            {
+                DeferredCompositionSceneRelease existing = _deferredCompositionSceneReleases[index];
+                if (existing.Owner.Equals(owner) &&
+                    string.Equals(existing.RouteInstanceId, _currentRouteInstanceId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            _deferredCompositionSceneReleases.Add(new DeferredCompositionSceneRelease(
+                activity,
+                owner,
+                _currentRouteInstanceId,
+                source,
+                reason));
         }
     }
 }

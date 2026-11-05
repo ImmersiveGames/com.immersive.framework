@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Immersive.Framework.ActivityFlow;
 using Immersive.Framework.ApiStatus;
 using Immersive.Framework.ApplicationLifecycle;
@@ -198,7 +199,7 @@ namespace Immersive.Framework.Actors.Tests
         }
 
         [Test]
-        public void RouteClosePath_ReleasesGroupsForTheExactRouteOwner()
+        public async Task RouteClosePath_ReleasesGroupsForTheExactRouteOwner()
         {
             var runtime = new ActorGroupRuntime();
             RouteAsset route = CreateRoute("route.close");
@@ -211,19 +212,20 @@ namespace Immersive.Framework.Actors.Tests
             var routeRuntime = new RouteLifecycleRuntime(new RuntimeContentRuntime());
             routeRuntime.SetActorGroupRuntime(runtime);
             MethodInfo release = typeof(RouteLifecycleRuntime).GetMethod(
-                "TryReleasePreviousRouteResettableRegistration",
+                "ReleasePreviousRouteResettableRegistrationAsync",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(release, Is.Not.Null);
-            object[] arguments = { route, "test", "route-exit", null };
 
-            bool released = (bool)release.Invoke(routeRuntime, arguments);
+            string releaseIssue = await (Task<string>)release.Invoke(
+                routeRuntime,
+                new object[] { route, "test", "route-exit" });
 
-            Assert.That(released, Is.True, arguments[3] as string);
+            Assert.That(releaseIssue, Is.Empty);
             Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }
 
         [Test]
-        public void ActivityClosePath_ReleasesGroupsForTheExactActivityOwner()
+        public async Task ActivityClosePath_ReleasesGroupsForTheExactActivityOwner()
         {
             var runtime = new ActorGroupRuntime();
             ActivityAsset activity = CreateActivity("activity.close");
@@ -236,11 +238,11 @@ namespace Immersive.Framework.Actors.Tests
             var activityRuntime = new ActivityFlowRuntime(new RuntimeContentRuntime(), new SceneLifecycleRuntime());
             activityRuntime.SetActorGroupRuntime(runtime);
             MethodInfo release = typeof(ActivityFlowRuntime).GetMethod(
-                "ReleaseStableObjectBindingsForPreviousActivity",
+                "ReleaseStableObjectBindingsForPreviousActivityAsync",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(release, Is.Not.Null);
 
-            release.Invoke(activityRuntime, new object[] { activity });
+            await (Task)release.Invoke(activityRuntime, new object[] { activity, "test", "activity-close" });
 
             Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }

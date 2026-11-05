@@ -128,7 +128,9 @@ namespace Immersive.Framework.GameFlow
             return FrameworkRouteRequestResult.FailedCommittedTargetReveal(
                 BuildCommittedTargetRevealFailureMessage(
                     "Route Request",
-                    phaseIssue,
+                    routeLifecycleResult.HasPostCommitCompositionFailure
+                        ? phaseIssue + " " + routeLifecycleResult.Message
+                        : phaseIssue,
                     transitionAfter),
                 targetRoute,
                 source,
@@ -225,7 +227,9 @@ namespace Immersive.Framework.GameFlow
             return FrameworkGameFlowStartResult.FailedCommittedTargetReveal(
                 BuildCommittedTargetRevealFailureMessage(
                     "Game Flow Startup",
-                    phaseIssue,
+                    routeLifecycleResult.HasPostCommitCompositionFailure
+                        ? phaseIssue + " " + routeLifecycleResult.Message
+                        : phaseIssue,
                     transitionAfter),
                 startupRoute,
                 routeLifecycleResult,

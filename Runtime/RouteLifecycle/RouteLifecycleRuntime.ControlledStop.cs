@@ -127,11 +127,25 @@ namespace Immersive.Framework.RouteLifecycle
 
             if (!ledger.ResettableOwnersReleased)
             {
-                if (!TryReleasePreviousRouteResettableRegistration(
+                string pendingActivityCompositionIssue =
+                    await _activityFlowRuntime.ReleaseNonCurrentActivityObjectEntryBindingsAsync(null);
+                if (!string.IsNullOrEmpty(pendingActivityCompositionIssue))
+                {
+                    return RouteExitResult.Failed(
+                        routeState,
+                        null,
+                        resolvedSource,
+                        resolvedReason,
+                        "Activity Object Entry composition cleanup remains unresolved; Route content is retained. " +
+                        pendingActivityCompositionIssue);
+                }
+
+                string registrationIssue =
+                    await ReleasePreviousRouteResettableRegistrationAsync(
                         route,
                         resolvedSource,
-                        "controlled-stop-route-exit",
-                        out string registrationIssue))
+                        "controlled-stop-route-exit");
+                if (!string.IsNullOrEmpty(registrationIssue))
                 {
                     return RouteExitResult.Failed(
                         routeState,

@@ -408,12 +408,24 @@ namespace Immersive.Framework.ActivityFlow
             return _activitySceneCompositionRuntime.PreviewReleaseForActivityChangeCount(activity);
         }
 
-        internal Task<ActivitySceneReleaseResult> ReleaseActivityScenesForRouteChangeAsync(
+        internal async Task<ActivitySceneReleaseResult> ReleaseActivityScenesForRouteChangeAsync(
             string source,
             string reason,
             IFrameworkLoadingProgressReporter progressReporter)
         {
-            return _activitySceneCompositionRuntime.ReleaseForRouteChangeAsync(source, reason, progressReporter);
+            string compositionReleaseIssue =
+                await ReleaseNonCurrentActivityObjectEntryBindingsAsync(null);
+            if (!string.IsNullOrEmpty(compositionReleaseIssue))
+            {
+                throw new InvalidOperationException(
+                    "Activity-owned Object Entry composition cleanup must complete before Route scene release. " +
+                    compositionReleaseIssue);
+            }
+
+            return await _activitySceneCompositionRuntime.ReleaseForRouteChangeAsync(
+                source,
+                reason,
+                progressReporter);
         }
 
         internal bool IsActivityActive(ActivityAsset activity)

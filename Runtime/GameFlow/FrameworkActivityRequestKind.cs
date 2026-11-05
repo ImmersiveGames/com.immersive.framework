@@ -22,6 +22,7 @@ namespace Immersive.Framework.GameFlow
         /// <summary>
         /// Destination Activity already committed, but Transition After / reveal did not complete.
         /// </summary>
-        FailedCommittedTargetReveal = 12
+        FailedCommittedTargetReveal = 12,
+        FailedCommittedCleanup = 13
     }
 }

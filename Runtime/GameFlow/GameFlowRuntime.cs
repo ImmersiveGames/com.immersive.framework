@@ -244,6 +244,16 @@ namespace Immersive.Framework.GameFlow
 
                 SetCurrentFlowContext(observedRouteLifecycleResult);
                 ReleaseActivityEntryReadinessRecoveryGate();
+                if (observedRouteLifecycleResult.HasPostCommitCompositionFailure ||
+                    observedRouteLifecycleResult.ActivityFlowResult.HasPostCommitCompositionFailure)
+                {
+                    return FrameworkGameFlowStartResult.FailedCommittedDestination(
+                        "Startup Route committed, but its Object Entry composition lifecycle did not complete. " +
+                        observedRouteLifecycleResult.Message,
+                        startupRoute,
+                        observedRouteLifecycleResult,
+                        ActivityEntryReadinessExecutionStatus.Unknown);
+                }
                 return FrameworkGameFlowStartResult.StartedWith(
                     startupRoute,
                     observedRouteLifecycleResult);
@@ -433,7 +443,10 @@ namespace Immersive.Framework.GameFlow
                         "startup");
                     return FrameworkGameFlowStartResult.FailedCommittedDestination(
                         "Game Flow Startup committed the Startup Route but Startup Activity entry readiness did not complete. " +
-                        readinessExecution.ToDiagnosticString(),
+                        readinessExecution.ToDiagnosticString() +
+                        (routeLifecycleResult.HasPostCommitCompositionFailure
+                            ? " " + routeLifecycleResult.Message
+                            : string.Empty),
                         startupRoute,
                         routeLifecycleResult,
                         readinessExecution.Status);
@@ -441,6 +454,15 @@ namespace Immersive.Framework.GameFlow
 
                 ReleaseActivityEntryReadinessRecoveryGate();
                 SetCurrentFlowContext(routeLifecycleResult);
+                if (routeLifecycleResult.HasPostCommitCompositionFailure)
+                {
+                    return FrameworkGameFlowStartResult.FailedCommittedDestination(
+                        "Startup Route committed, but its Object Entry composition lifecycle did not complete. " +
+                        routeLifecycleResult.Message,
+                        startupRoute,
+                        routeLifecycleResult,
+                        readinessExecution.Status);
+                }
                 return FrameworkGameFlowStartResult.StartedWith(startupRoute, routeLifecycleResult);
             }
             finally
@@ -939,6 +961,17 @@ namespace Immersive.Framework.GameFlow
                 }
 
                 SetCurrentFlowContext(routeLifecycleResult);
+                if (routeLifecycleResult.HasPostCommitCompositionFailure)
+                {
+                    return FrameworkRouteRequestResult.FailedCommittedComposition(
+                        routeLifecycleResult.Message,
+                        targetRoute,
+                        resolvedSource,
+                        resolvedReason,
+                        routeLifecycleResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics);
+                }
                 return FrameworkRouteRequestResult.SucceededWith(
                     targetRoute,
                     resolvedSource,
@@ -1720,6 +1753,21 @@ namespace Immersive.Framework.GameFlow
                         activityTransitionMode);
                 }
 
+                if (activityFlowResult.HasPostCommitCompositionFailure)
+                {
+                    ReleaseActivityEntryReadinessRecoveryGate();
+                    RefreshCurrentFlowContext();
+                    return FrameworkActivityRequestResult.FailedCommittedCleanup(
+                        "Activity Clear committed, but owner-scoped cleanup did not complete. " +
+                        activityFlowResult.Message,
+                        resolvedSource,
+                        resolvedReason,
+                        activityFlowResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                }
+
                 ReleaseActivityEntryReadinessRecoveryGate();
                 RefreshCurrentFlowContext();
                 return FrameworkActivityRequestResult.SucceededWith(
@@ -2054,6 +2102,51 @@ namespace Immersive.Framework.GameFlow
                         "Activity Restart failed. Activity Clear did not complete.");
                 }
 
+                if (clearFlowResult.HasPostCommitCompositionFailure)
+                {
+                    var clearTransitionAfter = await ExecuteActivityTransitionAsync(
+                        TransitionRequest.After(
+                            operationId,
+                            TransitionScope.Activity,
+                            resolvedSource,
+                            resolvedReason,
+                            currentRoute,
+                            currentRoute,
+                            previousActivity,
+                            clearFlowResult.Activity),
+                        activityTransitionMode);
+                    var clearTransitionDiagnostics = FrameworkTransitionDiagnostics.Completed(
+                        TransitionScope.Activity,
+                        transitionBefore,
+                        clearTransitionAfter);
+                    transitionGateDiagnostics = ReleaseTransitionGate(
+                        transitionGateMode,
+                        transitionGateSnapshot);
+                    RefreshCurrentFlowContext();
+
+                    var clearCompositionFailed = FrameworkActivityRequestResult.FailedCommittedCleanup(
+                        "Activity Restart clear committed, but Object Entry composition lifecycle cleanup remains pending. " +
+                        clearFlowResult.Message + " " + clearTransitionAfter.Message,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "clear"),
+                        clearFlowResult,
+                        clearTransitionDiagnostics,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                    var reenterSkippedForCleanup = FrameworkActivityRequestResult.FailedInvalidConfig(
+                        "Activity Restart re-enter was not requested because Object Entry composition lifecycle cleanup remains pending.",
+                        targetActivity,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "reenter"),
+                        activityTransitionMode,
+                        GameFlowRequestOperationKind.Activity,
+                        transitionGateDiagnostics);
+                    return FrameworkActivityRestartFlowResult.FailedClear(
+                        clearCompositionFailed,
+                        reenterSkippedForCleanup,
+                        "Activity Restart stopped after its committed clear because Object Entry composition lifecycle cleanup remains pending.");
+                }
+
                 var reenterFlowResult = await _routeLifecycleRuntime.StartActivityAsync(
                     targetActivity,
                     resolvedSource,
@@ -2099,6 +2192,25 @@ namespace Immersive.Framework.GameFlow
                         clearSucceededResult,
                         reenterFailedResult,
                         "Activity Restart failed. Activity re-enter did not complete.");
+                }
+
+                if (reenterFlowResult.HasPostCommitCompositionFailure)
+                {
+                    RefreshCurrentFlowContext();
+                    var reenterCompositionFailed = FrameworkActivityRequestResult.FailedCommittedTargetNotReady(
+                        "Activity Restart re-enter committed, but Object Entry composition lifecycle did not complete. " +
+                        reenterFlowResult.Message + " " + transitionAfter.Message,
+                        targetActivity,
+                        resolvedSource,
+                        BuildRestartStageReason(resolvedReason, "reenter"),
+                        reenterFlowResult,
+                        transitionDiagnostics,
+                        transitionGateDiagnostics,
+                        activityTransitionMode);
+                    return FrameworkActivityRestartFlowResult.FailedReenter(
+                        clearSucceededResult,
+                        reenterCompositionFailed,
+                        "Activity Restart re-enter committed with an Object Entry composition lifecycle failure.");
                 }
 
                 if (!TryAcceptTransitionPhase(
