@@ -4,6 +4,7 @@ Status: **Accepted**
 Last updated: 2026-11-01
 Related decisions: IF-ADR-001, IF-ADR-002, IF-ADR-003, IF-ADR-005, IF-ADR-006, IF-ADR-009, IF-ADR-010, IF-ADR-013, IF-ADR-015, IF-ADR-035
 Amendments: [Amendment 001 — Physical Recognition of Object Entry Occurrences](IF-ADR-014-AMENDMENT-001-PHYSICAL-OBJECT-ENTRY-RECOGNITION.md) (**Accepted** 2026-11-03; implementation and validation status in the Framework tracker)
+Proposed amendment: [Amendment 002 — Optional Physical Composition of Object Entries](IF-ADR-014-AMENDMENT-002-OBJECT-ENTRY-PHYSICAL-COMPOSITION.md) (**Proposed** 2026-11-05; pending Project Owner acceptance)
 Closed execution record: [IF-ID Identity Authority](../Archive/Plans/IF-ID-IDENTITY-AUTHORITY-EXECUTION-PLAN-2026-08-06.md)
 
 > Current implementation, QA and FIRSTGAME integration status is tracked in
