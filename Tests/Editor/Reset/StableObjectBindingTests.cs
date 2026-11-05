@@ -153,6 +153,31 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(_bindings.TryRecognizeOccurrence(
                 Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
 
+            Object.DestroyImmediate(adopted);
+            var destroyedAdoptionMaterializer = new ObjectEntryCompositionPartMaterializer(
+                candidate => _bindings.IsCompositionTargetCurrent(candidate));
+            var destroyedAdoption = new ObjectEntryCompositionPartMaterializer.PartBinding(
+                binding,
+                profile.Parts[0],
+                adopted);
+            var destroyedAdoptionComposer = new CompositionComposer();
+            CompositionContribution destroyedAdoptionContribution = destroyedAdoptionComposer.CreateContribution(
+                CompositionOwnerId.Create("qa-stable-destroyed-adopted-composition"),
+                0);
+            CompositionResult destroyedAdoptionResult = await destroyedAdoptionContribution.SetPartWhileCurrentAsync(
+                new PartDefinition(ContentKey.Create("adopted"), destroyedAdoption, destroyedAdoptionMaterializer),
+                () => _bindings.IsCompositionTargetCurrent(binding));
+
+            Assert.AreNotEqual(CompositionResultStatus.Committed, destroyedAdoptionResult.Status);
+            Assert.IsNotEmpty(destroyedAdoptionResult.Issues,
+                "A destroyed adopted instance must fail explicitly instead of falling back to its prefab.");
+            Assert.AreEqual(0, root.transform.childCount,
+                "A destroyed adopted instance must not cause a prefab-backed part to be instantiated.");
+            await destroyedAdoptionComposer.CloseAsync();
+
+            adopted = Create("qa-adopted-instance-replacement");
+            adopted.transform.SetParent(root.transform, false);
+            adopted.SetActive(false);
             var materializer = new ObjectEntryCompositionPartMaterializer(
                 candidate => _bindings.IsCompositionTargetCurrent(candidate));
             var part = new ObjectEntryCompositionPartMaterializer.PartBinding(
@@ -163,10 +188,7 @@ namespace Immersive.Framework.Reset.Tests
             CompositionContribution contribution = composer.CreateContribution(
                 CompositionOwnerId.Create("qa-stable-adopted-composition"),
                 0);
-            var definition = new PartDefinition(
-                ContentKey.Create("adopted"),
-                part,
-                materializer);
+            var definition = new PartDefinition(ContentKey.Create("adopted"), part, materializer);
 
             CompositionResult setResult = await contribution.SetPartWhileCurrentAsync(
                 definition,
@@ -197,8 +219,16 @@ namespace Immersive.Framework.Reset.Tests
                 Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
 
             bool destructionPending = true;
+            bool rootWasPassedToDestroy = false;
             Func<GameObject, Task<bool>> destroyAndConfirm = instance =>
             {
+                if (object.ReferenceEquals(instance, root) ||
+                    (instance != null && root != null && root.transform.IsChildOf(instance.transform)))
+                {
+                    rootWasPassedToDestroy = true;
+                    return Task.FromResult(false);
+                }
+
                 if (destructionPending && instance.name == "qa-pending-prefab")
                 {
                     return Task.FromResult(false);
@@ -216,15 +246,35 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsEmpty(await composition.ActivateAsync());
             Assert.IsTrue(_bindings.IsCompositionTargetCurrent(binding));
 
+            GameObject acquiredPart = root.transform.Find("qa-pending-prefab").gameObject;
+            Transform originalRootParent = root.transform.parent;
+            acquiredPart.transform.SetParent(null, true);
+            root.transform.SetParent(acquiredPart.transform, false);
+
             string pendingIssue = await _bindings.ReleaseOwnerAsync(_ownerA);
 
             StringAssert.Contains("pending", pendingIssue.ToLowerInvariant());
             Assert.AreEqual(1, _bindings.BindingCount, "The physical owner record must remain available for cleanup retry.");
             Assert.AreEqual(1, _bindings.UnresolvedCompositionCleanupCount);
             Assert.IsFalse(_bindings.IsCompositionTargetCurrent(binding), "Writes are invalidated before cleanup begins.");
+            Assert.IsTrue(root != null, "A part that contains the Object Entry root must not be destroyed.");
+            Assert.AreSame(root, binding.PhysicalObject);
+            Assert.AreEqual(Id(id), root.GetComponent<ObjectEntryDeclaration>().ObjectEntryId);
+            Assert.IsTrue(root.transform.IsChildOf(acquiredPart.transform));
+            Assert.IsFalse(rootWasPassedToDestroy,
+                "Cleanup must refuse to pass an acquired part containing its protected root to Unity destruction.");
+
+            root.transform.SetParent(originalRootParent, false);
+            StringAssert.Contains(
+                "pending",
+                (await _bindings.ReleaseOwnerAsync(_ownerA)).ToLowerInvariant());
+            Assert.IsTrue(root != null, "A pending part cleanup must preserve the original physical root.");
+            Assert.IsFalse(rootWasPassedToDestroy);
 
             destructionPending = false;
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.IsTrue(root != null, "Retrying acquired-part cleanup must not destroy the declaration root.");
+            Assert.IsTrue(acquiredPart == null, "The acquired part must be destroyed after cleanup can safely retry.");
             Assert.AreEqual(0, _bindings.BindingCount);
             Assert.AreEqual(0, _bindings.UnresolvedCompositionCleanupCount);
         }

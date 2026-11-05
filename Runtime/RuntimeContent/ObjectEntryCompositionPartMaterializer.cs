@@ -25,24 +25,39 @@ namespace Immersive.Framework.RuntimeContent
             internal StableObjectBinding Target { get; }
             internal ObjectEntryCompositionPart Definition { get; }
             internal GameObject AdoptedInstance { get; }
-            internal bool IsAdopted => AdoptedInstance != null;
+            internal bool IsAdopted => !object.ReferenceEquals(AdoptedInstance, null);
+        }
+
+        private sealed class AcquiredInstance
+        {
+            internal AcquiredInstance(GameObject instance, GameObject protectedRoot)
+            {
+                Instance = instance;
+                ProtectedRoot = protectedRoot;
+            }
+
+            internal GameObject Instance { get; }
+            internal GameObject ProtectedRoot { get; }
         }
 
         private sealed class PartProvenance
         {
             internal PartProvenance(
                 PartBinding binding,
+                GameObject root,
                 GameObject instance,
                 Transform originalParent,
                 bool originalActive)
             {
                 Binding = binding;
+                Root = root;
                 Instance = instance;
                 OriginalParent = originalParent;
                 OriginalActive = originalActive;
             }
 
             internal PartBinding Binding { get; }
+            internal GameObject Root { get; }
             internal GameObject Instance { get; }
             internal Transform OriginalParent { get; }
             internal bool OriginalActive { get; }
@@ -50,7 +65,7 @@ namespace Immersive.Framework.RuntimeContent
 
         private readonly Func<StableObjectBinding, bool> _isTargetCurrent;
         private readonly Func<GameObject, Task<bool>> _destroyAndConfirmAsync;
-        private readonly List<GameObject> _acquiredInstances = new List<GameObject>();
+        private readonly List<AcquiredInstance> _acquiredInstances = new List<AcquiredInstance>();
 
         internal ObjectEntryCompositionPartMaterializer(
             Func<StableObjectBinding, bool> isTargetCurrent,
@@ -94,6 +109,7 @@ namespace Immersive.Framework.RuntimeContent
 
                 var adoptedProvenance = new PartProvenance(
                     binding,
+                    root,
                     adopted,
                     adopted.transform.parent,
                     adopted.activeSelf);
@@ -119,9 +135,9 @@ namespace Immersive.Framework.RuntimeContent
             try
             {
                 stagingRoot = new GameObject("Object Entry Composition Preparation");
+                TrackAcquired(stagingRoot, root);
                 stagingRoot.SetActive(false);
                 stagingRoot.transform.SetParent(root.transform, false);
-                TrackAcquired(stagingRoot);
                 instance = UnityEngine.Object.Instantiate(
                     binding.Definition.Prefab,
                     stagingRoot.transform,
@@ -134,12 +150,12 @@ namespace Immersive.Framework.RuntimeContent
                         $"Object Entry composition prefab for key '{definition.Key.Value}' returned null.");
                 }
 
-                TrackAcquired(instance);
+                TrackAcquired(instance, root);
                 instance.SetActive(false);
                 instance.transform.SetParent(root.transform, false);
                 instance.name = binding.Definition.Prefab.name;
 
-                if (!await DestroyAndConfirmAsync(stagingRoot))
+                if (!await DestroyAndConfirmAsync(stagingRoot, root))
                 {
                     return PartPreparationResult.Failed(
                         $"Temporary staging root for Object Entry part '{definition.Key.Value}' could not be confirmed destroyed.");
@@ -156,7 +172,7 @@ namespace Immersive.Framework.RuntimeContent
                         $"Object Entry binding became stale while preparing part '{definition.Key.Value}'.");
                 }
 
-                var provenance = new PartProvenance(binding, instance, null, authoredActiveSelf);
+                var provenance = new PartProvenance(binding, root, instance, null, authoredActiveSelf);
                 return PartPreparationResult.Prepared(
                     new PartMaterialization(instance, PartOwnership.Acquired, provenance));
             }
@@ -189,9 +205,9 @@ namespace Immersive.Framework.RuntimeContent
             PartMaterializationContext context)
         {
             if (!TryGetProvenance(candidate, out PartProvenance provenance) ||
-                provenance.Binding.Target.PhysicalObject == null ||
+                provenance.Root == null ||
                 !_isTargetCurrent(provenance.Binding.Target) ||
-                !IsExactSubordinate(provenance.Binding.Target.PhysicalObject, provenance.Instance))
+                !IsExactSubordinate(provenance.Root, provenance.Instance))
             {
                 return PartEffectResult.Failed(
                     "Object Entry composition Apply requires the exact prepared subordinate while its binding is current.",
@@ -205,9 +221,9 @@ namespace Immersive.Framework.RuntimeContent
                     provenance.Instance.SetActive(provenance.OriginalActive);
                 }
 
-                if (provenance.Binding.Target.PhysicalObject == null ||
+                if (provenance.Root == null ||
                     !_isTargetCurrent(provenance.Binding.Target) ||
-                    !IsExactSubordinate(provenance.Binding.Target.PhysicalObject, provenance.Instance))
+                    !IsExactSubordinate(provenance.Root, provenance.Instance))
                 {
                     return PartEffectResult.Failed(
                         "Object Entry composition Apply changed or lost the exact subordinate after activation callbacks.",
@@ -228,10 +244,17 @@ namespace Immersive.Framework.RuntimeContent
             PartMaterializationContext context)
         {
             if (!TryGetProvenance(current, out PartProvenance provenance) ||
-                provenance.Instance == provenance.Binding.Target.PhysicalObject)
+                object.ReferenceEquals(provenance.Instance, provenance.Root))
             {
                 return PartEffectResult.Failed(
                     "Object Entry composition Detach requires the exact subordinate materialization.",
+                    false);
+            }
+
+            if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
+            {
+                return PartEffectResult.Failed(
+                    "Object Entry composition Detach refused because the acquired part contains its protected declaration root.",
                     false);
             }
 
@@ -250,9 +273,22 @@ namespace Immersive.Framework.RuntimeContent
                 else
                 {
                     provenance.Instance.SetActive(false);
+                    if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
+                    {
+                        return PartEffectResult.Failed(
+                            "Object Entry composition Detach activation callbacks placed the declaration root under its acquired part.",
+                            true);
+                    }
+
                     if (provenance.Instance.transform.parent != null)
                     {
                         provenance.Instance.transform.SetParent(null, true);
+                        if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
+                        {
+                            return PartEffectResult.Failed(
+                                "Object Entry composition Detach callbacks placed the declaration root under its acquired part.",
+                                true);
+                        }
                     }
                 }
 
@@ -272,10 +308,16 @@ namespace Immersive.Framework.RuntimeContent
             CancellationToken cancellationToken)
         {
             if (!TryGetProvenance(materialization, out PartProvenance provenance) ||
-                provenance.Instance == provenance.Binding.Target.PhysicalObject)
+                object.ReferenceEquals(provenance.Instance, provenance.Root))
             {
                 return PartReleaseResult.Failed(
                     "Object Entry composition Release requires the exact subordinate materialization.");
+            }
+
+            if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
+            {
+                return PartReleaseResult.Failed(
+                    "Object Entry composition Release preserved an acquired part that contains its declaration root.");
             }
 
             if (materialization.Ownership == PartOwnership.Adopted)
@@ -301,19 +343,28 @@ namespace Immersive.Framework.RuntimeContent
         {
             RemoveDestroyedInstances();
             string issue = string.Empty;
-            GameObject[] pending = _acquiredInstances.ToArray();
+            AcquiredInstance[] pending = _acquiredInstances.ToArray();
             for (int index = 0; index < pending.Length; index++)
             {
-                GameObject instance = pending[index];
+                AcquiredInstance acquired = pending[index];
+                GameObject instance = acquired.Instance;
                 if (instance == null)
                 {
                     RemoveAcquired(instance);
                     continue;
                 }
 
+                if (ContainsProtectedRoot(instance, acquired.ProtectedRoot))
+                {
+                    issue = AppendIssue(
+                        issue,
+                        $"Acquired part '{instance.name}' contains its Object Entry root; cleanup was retained without destroying either object.");
+                    continue;
+                }
+
                 try
                 {
-                    if (!await DestroyAndConfirmAsync(instance))
+                    if (!await DestroyAndConfirmAsync(instance, acquired.ProtectedRoot))
                     {
                         issue = AppendIssue(
                             issue,
@@ -345,19 +396,37 @@ namespace Immersive.Framework.RuntimeContent
                 return true;
             }
 
-            if (!ReferenceEquals(instance, null) &&
-                _acquiredInstances.Count > 0 &&
-                !ContainsAcquired(instance))
+            AcquiredInstance acquired = FindAcquired(instance);
+            if (acquired == null)
             {
                 return false;
+            }
+
+            GameObject protectedRoot = acquired?.ProtectedRoot;
+            if (ContainsProtectedRoot(instance, protectedRoot))
+            {
+                return false;
+            }
+
+            if (instance.activeSelf)
+            {
+                instance.SetActive(false);
+                if (ContainsProtectedRoot(instance, protectedRoot))
+                {
+                    return false;
+                }
             }
 
             if (instance.transform.parent != null)
             {
                 instance.transform.SetParent(null, true);
+                if (ContainsProtectedRoot(instance, protectedRoot))
+                {
+                    return false;
+                }
             }
 
-            if (!await DestroyAndConfirmAsync(instance))
+            if (!await DestroyAndConfirmAsync(instance, protectedRoot))
             {
                 return false;
             }
@@ -381,11 +450,11 @@ namespace Immersive.Framework.RuntimeContent
                 instance.transform.IsChildOf(root.transform);
         }
 
-        private void TrackAcquired(GameObject instance)
+        private void TrackAcquired(GameObject instance, GameObject protectedRoot)
         {
             if (!ContainsAcquired(instance))
             {
-                _acquiredInstances.Add(instance);
+                _acquiredInstances.Add(new AcquiredInstance(instance, protectedRoot));
             }
         }
 
@@ -393,16 +462,27 @@ namespace Immersive.Framework.RuntimeContent
         {
             for (int index = 0; index < _acquiredInstances.Count; index++)
             {
-                if (ReferenceEquals(_acquiredInstances[index], instance)) return true;
+                if (ReferenceEquals(_acquiredInstances[index].Instance, instance)) return true;
             }
             return false;
+        }
+
+        private AcquiredInstance FindAcquired(GameObject instance)
+        {
+            for (int index = 0; index < _acquiredInstances.Count; index++)
+            {
+                AcquiredInstance acquired = _acquiredInstances[index];
+                if (ReferenceEquals(acquired.Instance, instance)) return acquired;
+            }
+
+            return null;
         }
 
         private void RemoveAcquired(GameObject instance)
         {
             for (int index = _acquiredInstances.Count - 1; index >= 0; index--)
             {
-                if (ReferenceEquals(_acquiredInstances[index], instance))
+                if (ReferenceEquals(_acquiredInstances[index].Instance, instance))
                 {
                     _acquiredInstances.RemoveAt(index);
                     return;
@@ -414,16 +494,28 @@ namespace Immersive.Framework.RuntimeContent
         {
             for (int index = _acquiredInstances.Count - 1; index >= 0; index--)
             {
-                if (_acquiredInstances[index] == null)
+                if (_acquiredInstances[index].Instance == null)
                 {
                     _acquiredInstances.RemoveAt(index);
                 }
             }
         }
 
-        private Task<bool> DestroyAndConfirmAsync(GameObject instance)
+        private Task<bool> DestroyAndConfirmAsync(GameObject instance, GameObject protectedRoot)
         {
+            if (ContainsProtectedRoot(instance, protectedRoot))
+            {
+                return Task.FromResult(false);
+            }
+
             return _destroyAndConfirmAsync(instance);
+        }
+
+        private static bool ContainsProtectedRoot(GameObject instance, GameObject protectedRoot)
+        {
+            return instance != null && protectedRoot != null &&
+                (object.ReferenceEquals(instance, protectedRoot) ||
+                 protectedRoot.transform.IsChildOf(instance.transform));
         }
 
         private static async Task<bool> DestroyAndConfirmWithUnityAsync(GameObject instance)
