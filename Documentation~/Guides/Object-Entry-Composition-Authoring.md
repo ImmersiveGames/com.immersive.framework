@@ -1,6 +1,6 @@
 # Object Entry composition authoring and runtime
 
-Status: **Experimental**. B1 authoring and B2 internal runtime integration are authored; Unity compile/import and QAFramework Play Mode validation remain pending. Decision: [IF-ADR-014 Amendment 002](../Architecture/ADRs/IF-ADR-014-AMENDMENT-002-OBJECT-ENTRY-PHYSICAL-COMPOSITION.md).
+Status: **Experimental**. B1 authoring and B2 runtime integration are merged. The Project Owner reports the QAFramework scenario passed 10/10 in Unity 6; the full post-fix Framework Edit Mode suite remains pending. A reviewed post-merge cleanup guard is not yet integrated into `origin/master`. Decision: [IF-ADR-014 Amendment 002](../Architecture/ADRs/IF-ADR-014-AMENDMENT-002-OBJECT-ENTRY-PHYSICAL-COMPOSITION.md).
 
 ## Purpose
 
@@ -33,6 +33,6 @@ When the owner releases or replaces the occurrence, Framework invalidates furthe
 
 **B1:** authoring and Editor validation are implemented. The Project Owner's QAFramework Test Runner screenshot (2026-11-05) reports **511/511 Edit Mode PASS** and **10/10 PASS** in `ObjectEntryCompositionAuthoringTests`; no failures. This is owner-reported visual evidence, without an NUnit XML report or source-commit fingerprint. It does not validate the B2 runtime path.
 
-**B2:** Framework runtime binding, Unity prefab materializer, exact-record guard, async close/reconcile barrier, deferred Activity scene retry, and isolated Edit Mode test cases are authored. The QAFramework scenario covers Activity Restart/readmission to a new physical root, Activity release during Route replacement and Route release while preserving each physical root. The existing Host controlled-stop fixture includes a composed Route Object Entry and checks cleanup before same-Host release retry. Neither package tests nor the QAFramework scenario have been executed in Unity in this session. Compilation, import, Play Mode integration and certification remain **unconfirmed**. See the [Framework tracker](../Architecture/Tracking/IF-TRACK-Framework.md#object-entry-composition-b2-implementation-2026-11-05) for the evidence boundary and manual validation steps.
+**B2:** Framework PR #21 and QAFramework PR #1 are merged. The Project Owner reports `[IF-ADR-014-DEMO] status='Passed' cases='10/10'` from Unity 6. This is owner-reported Play Mode evidence without a raw log or execution source SHA. The previous full Edit Mode result was 514/517; the three reported regressions were corrected, but no post-fix full-suite result is available. A post-merge root-preservation guard and regression assertions have independent static review and are not yet integrated into `origin/master`. Therefore the final code has not been confirmed by Unity compile/import or Edit Mode, and B2 is not technically closed. See the [Framework tracker](../Architecture/Tracking/IF-TRACK-Framework.md#object-entry-composition-b2-implementation-2026-11-05) for the evidence boundary and manual validation steps.
 
 **C:** public live contribution access for add/replace/remove while retaining the active occurrence is not part of B2 and remains pending API review. Session admission and dynamic spawning/transfers are also excluded.
