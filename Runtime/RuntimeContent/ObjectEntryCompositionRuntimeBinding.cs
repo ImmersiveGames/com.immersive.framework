@@ -49,6 +49,23 @@ namespace Immersive.Framework.RuntimeContent
         internal bool HasOutstandingAcquiredInstances =>
             _materializer.HasOutstandingAcquiredInstances;
 
+        internal static bool IsRecoverableCloseFailure(
+            CompositionResult result,
+            CompositionContextId expectedContextId,
+            bool materializerConfirmedProtectedRootFailure)
+        {
+            return materializerConfirmedProtectedRootFailure &&
+                result != null &&
+                expectedContextId.IsValid &&
+                result.ContextId == expectedContextId &&
+                result.OperationId.IsValid &&
+                result.Status == CompositionResultStatus.Faulted &&
+                !result.EffectsMayHaveApplied &&
+                result.Issues.Count == 1 &&
+                result.Issues[0].Code == CompositionIssueCode.DetachFailed &&
+                result.Issues[0].Key.IsValid;
+        }
+
         internal void InvalidateWriteAccess()
         {
             _writeAccessInvalidated = true;
@@ -127,12 +144,36 @@ namespace Immersive.Framework.RuntimeContent
                 {
                     _closeResult = await _closeTask;
                     _closeContextConfirmed = _closeResult != null &&
+                        _closeResult.ContextId == _composer.ContextId &&
                         _closeResult.Status is CompositionResultStatus.Committed or
                             CompositionResultStatus.NoChange or
                             CompositionResultStatus.Degraded;
                     if (!_closeContextConfirmed)
                     {
-                        _closeIssue = BuildIssue("Composition Composer close did not confirm a closed context.", _closeResult);
+                        bool materializerConfirmedProtectedRootFailure =
+                            _materializer.ConfirmsProtectedRootCloseFailure(_closeResult);
+                        if (IsRecoverableCloseFailure(
+                            _closeResult,
+                            _composer.ContextId,
+                            materializerConfirmedProtectedRootFailure))
+                        {
+                            CompositionResult closeConfirmation = await _composer.CloseAsync();
+                            _closeContextConfirmed = closeConfirmation != null &&
+                                closeConfirmation.ContextId == _composer.ContextId &&
+                                closeConfirmation.Status == CompositionResultStatus.NoChange;
+                            if (!_closeContextConfirmed)
+                            {
+                                _closeIssue = BuildIssue(
+                                    "Composition Composer did not confirm its previously faulted context as closed.",
+                                    closeConfirmation);
+                            }
+                        }
+                        else
+                        {
+                            _closeIssue = BuildIssue(
+                                "Composition Composer close did not confirm a closed context.",
+                                _closeResult);
+                        }
                     }
                 }
                 catch (Exception exception)
@@ -160,12 +201,30 @@ namespace Immersive.Framework.RuntimeContent
                     $"Acquired Object Entry composition resource reconciliation faulted '{exception.GetType().Name}': {exception.Message}";
             }
 
-            if (string.IsNullOrEmpty(reconciliationIssue))
+            bool noPendingAcquiredInstances;
+            try
+            {
+                noPendingAcquiredInstances = !_materializer.HasOutstandingAcquiredInstances;
+            }
+            catch (Exception exception)
+            {
+                reconciliationIssue = AppendIssue(
+                    reconciliationIssue,
+                    $"Acquired Object Entry composition reconciliation state could not be confirmed '{exception.GetType().Name}': {exception.Message}");
+                noPendingAcquiredInstances = false;
+            }
+
+            if (string.IsNullOrEmpty(reconciliationIssue) && noPendingAcquiredInstances)
             {
                 _active = false;
                 _closeIssue = string.Empty;
                 _cleanupComplete = true;
                 return string.Empty;
+            }
+
+            if (string.IsNullOrEmpty(reconciliationIssue))
+            {
+                reconciliationIssue = "Acquired Object Entry composition cleanup is incomplete because physical resources remain pending.";
             }
 
             _closeIssue = AppendIssue(_closeIssue, reconciliationIssue);
