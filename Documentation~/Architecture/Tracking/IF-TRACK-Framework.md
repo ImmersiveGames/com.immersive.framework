@@ -2554,3 +2554,11 @@ releasing the query anchor and independently after releasing the target owner.
 A separate Roslyn attempt using the available generated response file was
 inconclusive: it omitted current Runtime source files and did not include the
 resolved Composition/Audio assemblies, so it is not counted as compile evidence.
+
+## IF-ADR-014 Amendment 002 — Object Entry Composition B1 QA / B2 preflight — 2026-11-05
+
+**B1:** `ObjectEntryCompositionProfile`, `ObjectEntryCompositionAuthoring`, Inspectors, and 10 focused Edit Mode tests merged through [Framework PR #19](https://github.com/ImmersiveGames/com.immersive.framework/pull/19). The Project Owner supplied a QAFramework Unity Test Runner screenshot reporting **511/511 Edit Mode tests passed, 0 failed**, including **10/10** in `ObjectEntryCompositionAuthoringTests`. This is visual, owner-reported QA evidence, not a source-fingerprinted test artifact. It supports package compilation/test assembly discovery and the listed Edit Mode tests, but **not** Inspector visual certification, Play Mode lifecycle or physical materialization.
+
+**B2 status:** runtime not yet implemented, integrated or validated. Preflight of `StableObjectBindingRegistry`, Route/Activity transaction seams and Composition `CloseAsync` found that initial composition failure can occur **after Route/Activity authority commit**; it must not be classified as an ordinary precommit rollback. Release must await owned-composition close and Unity physical cleanup before the existing scene release, without treating scheduled `Destroy` as completed destruction. Host teardown is a distinct nonawaitable fallback. The accepted architectural authority remains [IF-ADR-014 Amendment 002](../ADRs/IF-ADR-014-AMENDMENT-002-OBJECT-ENTRY-PHYSICAL-COMPOSITION.md); the focused implementation gate is [IF-PLAN-014 B2](../Plans/IF-PLAN-014-OBJECT-ENTRY-COMPOSITION-B2-RUNTIME-INTEGRATION.md).
+
+**Evidence classification:** B1 authoring implemented and 10 focused Edit Mode tests owner-observed PASS; B2 source implementation **NO**, Play Mode **NO**, integrated **NO**, technically validated **NO**.
