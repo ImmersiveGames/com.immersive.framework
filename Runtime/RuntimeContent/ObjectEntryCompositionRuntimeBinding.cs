@@ -82,7 +82,7 @@ namespace Immersive.Framework.RuntimeContent
 
                 CompositionResult result = await _baseContribution.SetPartsWhileCurrentAsync(
                     definitions,
-                    IsTargetCurrent);
+                    () => IsTargetCurrent(_target));
                 if (IsSuccessful(result))
                 {
                     _active = true;

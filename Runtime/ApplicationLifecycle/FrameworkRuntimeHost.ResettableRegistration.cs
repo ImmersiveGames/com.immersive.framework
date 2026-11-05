@@ -2,6 +2,7 @@ using Immersive.Framework.Reset.Unity;
 using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.Actors;
 using Immersive.Framework.PlayerParticipation;
+using Immersive.Logging.Records;
 
 namespace Immersive.Framework.ApplicationLifecycle
 {
@@ -111,8 +112,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             {
                 _logger?.Warning(
                     "Framework Host teardown invalidated Object Entry composition writes, but synchronous teardown cannot await the owner-scoped composition cleanup barrier. Cleanup is best-effort until canonical StopAsync completes.",
-                    Immersive.Logging.LogFields.Of(
-                        Immersive.Logging.LogFields.Field("unresolvedCompositionBindings", unresolvedCompositionCount)));
+                    LogFields.Of(new LogField("unresolvedCompositionBindings", unresolvedCompositionCount)));
             }
         }
 
