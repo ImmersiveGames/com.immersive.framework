@@ -40,6 +40,23 @@ namespace Immersive.Framework.RuntimeContent
             internal GameObject ProtectedRoot { get; }
         }
 
+        private sealed class ProtectedRootCloseFailureEvidence
+        {
+            internal ProtectedRootCloseFailureEvidence(
+                CompositionContextId contextId,
+                CompositionOperationId operationId,
+                ContentKey key)
+            {
+                ContextId = contextId;
+                OperationId = operationId;
+                Key = key;
+            }
+
+            internal CompositionContextId ContextId { get; }
+            internal CompositionOperationId OperationId { get; }
+            internal ContentKey Key { get; }
+        }
+
         private sealed class PartProvenance
         {
             internal PartProvenance(
@@ -66,6 +83,7 @@ namespace Immersive.Framework.RuntimeContent
         private readonly Func<StableObjectBinding, bool> _isTargetCurrent;
         private readonly Func<GameObject, Task<bool>> _destroyAndConfirmAsync;
         private readonly List<AcquiredInstance> _acquiredInstances = new List<AcquiredInstance>();
+        private ProtectedRootCloseFailureEvidence _protectedRootCloseFailure;
 
         internal ObjectEntryCompositionPartMaterializer(
             Func<StableObjectBinding, bool> isTargetCurrent,
@@ -253,6 +271,14 @@ namespace Immersive.Framework.RuntimeContent
 
             if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
             {
+                if (context.IsClosingContext && current.Ownership == PartOwnership.Acquired)
+                {
+                    _protectedRootCloseFailure = new ProtectedRootCloseFailureEvidence(
+                        context.ContextId,
+                        context.OperationId,
+                        context.Key);
+                }
+
                 return PartEffectResult.Failed(
                     "Object Entry composition Detach refused because the acquired part contains its protected declaration root.",
                     false);
@@ -339,12 +365,34 @@ namespace Immersive.Framework.RuntimeContent
             }
         }
 
+        internal bool ConfirmsProtectedRootCloseFailure(CompositionResult result)
+        {
+            ProtectedRootCloseFailureEvidence evidence = _protectedRootCloseFailure;
+            return evidence != null &&
+                ObjectEntryCompositionRuntimeBinding.IsRecoverableCloseFailure(
+                    result,
+                    evidence.ContextId,
+                    true) &&
+                result.OperationId == evidence.OperationId &&
+                result.Issues[0].Key == evidence.Key;
+        }
+
         internal async Task<string> ReconcileOutstandingAcquiredInstancesAsync()
         {
             RemoveDestroyedInstances();
-            string issue = string.Empty;
             AcquiredInstance[] pending = _acquiredInstances.ToArray();
             for (int index = 0; index < pending.Length; index++)
+            {
+                AcquiredInstance acquired = pending[index];
+                GameObject instance = acquired.Instance;
+                if (instance != null && ContainsProtectedRoot(instance, acquired.ProtectedRoot))
+                {
+                    return $"Acquired part '{instance.name}' contains its Object Entry root; cleanup was retained without destroying any acquired part.";
+                }
+            }
+
+            string issue = string.Empty;
+            for (int index = pending.Length - 1; index >= 0; index--)
             {
                 AcquiredInstance acquired = pending[index];
                 GameObject instance = acquired.Instance;
@@ -354,25 +402,14 @@ namespace Immersive.Framework.RuntimeContent
                     continue;
                 }
 
-                if (ContainsProtectedRoot(instance, acquired.ProtectedRoot))
-                {
-                    issue = AppendIssue(
-                        issue,
-                        $"Acquired part '{instance.name}' contains its Object Entry root; cleanup was retained without destroying either object.");
-                    continue;
-                }
-
                 try
                 {
-                    if (!await DestroyAndConfirmAsync(instance, acquired.ProtectedRoot))
+                    if (!await ReleaseAcquiredAsync(instance))
                     {
                         issue = AppendIssue(
                             issue,
-                            $"Acquired part '{instance.name}' remains live after Unity destruction was requested.");
-                    }
-                    else
-                    {
-                        RemoveAcquired(instance);
+                            $"Acquired part '{instance.name}' could not be safely released or its Unity destruction was not confirmed.");
+                        break;
                     }
                 }
                 catch (Exception exception)
@@ -380,6 +417,7 @@ namespace Immersive.Framework.RuntimeContent
                     issue = AppendIssue(
                         issue,
                         $"Acquired part cleanup threw '{exception.GetType().Name}': {exception.Message}");
+                    break;
                 }
             }
 
