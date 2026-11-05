@@ -86,6 +86,29 @@ namespace Immersive.Framework.GameFlow
                 return true;
             }
 
+            ActivityEntryReadinessPolicy policy = activity.EntryReadinessPolicy;
+            if (activityFlowResult.HasPostCommitCompositionFailure)
+            {
+                ActivityReadinessOccurrence compositionOccurrence =
+                    _routeLifecycleRuntime.CurrentOccurrence;
+                string compositionIssue =
+                    "Activity committed, but its Object Entry composition lifecycle did not complete. " +
+                    activityFlowResult.Message;
+                result = new ActivityEntryReadinessExecutionResult(
+                    policy,
+                    ActivityEntryReadinessExecutionStatus.Failed,
+                    ActivityEntryReadinessWaitResult.Failure(
+                        compositionOccurrence,
+                        activityFlowResult.ActivityReadinessState,
+                        compositionIssue,
+                        1),
+                    activityFlowResult,
+                    compositionIssue,
+                    true,
+                    occurrence: compositionOccurrence);
+                return true;
+            }
+
             if (!TryValidateActivityEntryReadinessConfiguration(
                     activity,
                     enclosingGateMode,
@@ -97,7 +120,6 @@ namespace Immersive.Framework.GameFlow
                 return false;
             }
 
-            ActivityEntryReadinessPolicy policy = activity.EntryReadinessPolicy;
             if (policy == ActivityEntryReadinessPolicy.ObserveOnly)
             {
                 result = new ActivityEntryReadinessExecutionResult(
@@ -531,6 +553,18 @@ namespace Immersive.Framework.GameFlow
                         routeLifecycleResult,
                         transitionDiagnostics,
                         transitionGateDiagnostics);
+            }
+
+            if (routeLifecycleResult.HasPostCommitCompositionFailure)
+            {
+                return FrameworkRouteRequestResult.FailedCommittedComposition(
+                    routeLifecycleResult.Message + " " + execution.ToDiagnosticString(),
+                    targetRoute,
+                    source,
+                    reason,
+                    routeLifecycleResult,
+                    transitionDiagnostics,
+                    transitionGateDiagnostics);
             }
 
             string message = "Route Request committed the target Route but Startup Activity entry readiness did not complete. " +

@@ -193,7 +193,22 @@ namespace Immersive.Framework.ActivityFlow
             string reason,
             IFrameworkLoadingProgressReporter progressReporter)
         {
-            return ReleaseTrackedScenesAsync(activity, forceReleaseAll: false, source, reason, progressReporter);
+            return ReleaseTrackedScenesAsync(activity, _currentRouteInstanceId, forceReleaseAll: false, source, reason, progressReporter);
+        }
+
+        internal Task<ActivitySceneReleaseResult> ReleaseOnActivityChangeAsync(
+            ActivityAsset activity,
+            string routeInstanceId,
+            string source,
+            string reason)
+        {
+            return ReleaseTrackedScenesAsync(
+                activity,
+                routeInstanceId,
+                forceReleaseAll: false,
+                source,
+                reason,
+                NoOpFrameworkLoadingProgressReporter.Instance);
         }
 
         internal Task<ActivitySceneReleaseResult> ReleaseForRouteChangeAsync(
@@ -208,11 +223,18 @@ namespace Immersive.Framework.ActivityFlow
             string reason,
             IFrameworkLoadingProgressReporter progressReporter)
         {
-            return ReleaseTrackedScenesAsync(activity: null, forceReleaseAll: true, source, reason, progressReporter);
+            return ReleaseTrackedScenesAsync(
+                activity: null,
+                _currentRouteInstanceId,
+                forceReleaseAll: true,
+                source,
+                reason,
+                progressReporter);
         }
 
         private async Task<ActivitySceneReleaseResult> ReleaseTrackedScenesAsync(
             ActivityAsset activity,
+            string routeInstanceId,
             bool forceReleaseAll,
             string source,
             string reason,
@@ -228,8 +250,8 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             List<ActivitySceneLedgerEntry> records = forceReleaseAll && activity == null
-                ? _ledger.CollectLoadedForRouteInstance(_currentRouteInstanceId)
-                : _ledger.CollectLoadedForActivityRouteInstance(activity, _currentRouteInstanceId);
+                ? _ledger.CollectLoadedForRouteInstance(routeInstanceId)
+                : _ledger.CollectLoadedForActivityRouteInstance(activity, routeInstanceId);
             if (records.Count == 0)
             {
                 return ActivitySceneReleaseResult.NotRequested(

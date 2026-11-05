@@ -2,6 +2,7 @@
     "name": "Immersive.Framework.Reset.Editor.Tests",
     "rootNamespace": "Immersive.Framework.Reset.Tests",
     "references": [
+        "Immersive.Composition.Runtime",
         "Immersive.Framework.Runtime",
         "Immersive.Framework.Reset.TestComponents",
         "UnityEngine.TestRunner",

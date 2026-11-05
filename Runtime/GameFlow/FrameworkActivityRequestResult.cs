@@ -80,7 +80,8 @@ namespace Immersive.Framework.GameFlow
                 .FailedCommittedTargetReadinessCancelled ||
             Kind ==
             FrameworkActivityRequestKind
-                .FailedCommittedTargetReveal;
+                .FailedCommittedTargetReveal ||
+            Kind == FrameworkActivityRequestKind.FailedCommittedCleanup;
 
         public bool DestinationAuthoritative =>
             Succeeded || CommitBoundaryReached;
@@ -270,6 +271,29 @@ namespace Immersive.Framework.GameFlow
                 FrameworkActivityRequestKind.FailedCommittedTargetReveal,
                 message,
                 targetActivity,
+                source,
+                reason,
+                activityFlowResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics,
+                activityTransitionMode,
+                operationKind);
+        }
+
+        internal static FrameworkActivityRequestResult FailedCommittedCleanup(
+            string message,
+            string source,
+            string reason,
+            ActivityFlowStartResult activityFlowResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default,
+            ActivityVisualTransitionMode activityTransitionMode = ActivityVisualTransitionMode.Seamless,
+            GameFlowRequestOperationKind operationKind = GameFlowRequestOperationKind.ActivityClear)
+        {
+            return new FrameworkActivityRequestResult(
+                FrameworkActivityRequestKind.FailedCommittedCleanup,
+                message,
+                null,
                 source,
                 reason,
                 activityFlowResult,

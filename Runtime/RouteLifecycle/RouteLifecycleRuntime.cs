@@ -313,6 +313,26 @@ namespace Immersive.Framework.RouteLifecycle
             }
             else
             {
+                activitySceneRouteReleaseResult = default;
+            }
+
+            string pendingActivityCompositionIssue =
+                await _activityFlowRuntime.ReleaseNonCurrentActivityObjectEntryBindingsAsync(null);
+            if (!string.IsNullOrEmpty(pendingActivityCompositionIssue))
+            {
+                return RouteLifecycleStartResult.Failed(
+                    "Activity Object Entry composition cleanup remains unresolved; Route content is retained. " +
+                    pendingActivityCompositionIssue);
+            }
+
+            if (previousActivity != null && activityRouteExitResult.HasPostCommitCompositionFailure)
+            {
+                // The clear result records the first pending cleanup attempt. The retry above
+                // must complete before Route release can proceed, so do not reuse that stale blocker.
+                activitySceneRouteReleaseResult = default;
+            }
+            else if (previousActivity == null)
+            {
                 activitySceneRouteReleaseResult = await _activityFlowRuntime.ReleaseActivityScenesForRouteChangeAsync(
                     source,
                     reason,
@@ -331,11 +351,12 @@ namespace Immersive.Framework.RouteLifecycle
             ExitCurrentPlayerSpatialEntry();
             _currentRouteContentDiscoveryScope = default;
             _activityFlowRuntime.SetRouteContentDiscoveryScope(default);
-            if (!TryReleasePreviousRouteResettableRegistration(
+            string previousRouteResettableReleaseIssue =
+                await ReleasePreviousRouteResettableRegistrationAsync(
                     previousRoute,
                     source,
-                    "route-exit",
-                    out string previousRouteResettableReleaseIssue))
+                    "route-exit");
+            if (!string.IsNullOrEmpty(previousRouteResettableReleaseIssue))
             {
                 return RouteLifecycleStartResult.Failed(previousRouteResettableReleaseIssue);
             }
@@ -532,7 +553,12 @@ namespace Immersive.Framework.RouteLifecycle
             _routeOccurrenceSequence = playerSpatialEntryContext.OccurrenceSequence;
             _currentRouteResult = result;
             _hasCurrentRouteContext = true;
-            CommitRouteStableObjectBindings(route);
+            string compositionIssue = await CommitRouteStableObjectBindingsAsync(route);
+            if (!string.IsNullOrEmpty(compositionIssue))
+            {
+                result = result.WithPostCommitCompositionFailure(compositionIssue);
+                _currentRouteResult = result;
+            }
             PublishRouteTransition(previousRoute, route, source, reason);
             _actorOccurrenceReferenceRuntime?.RefreshAll();
             return result;

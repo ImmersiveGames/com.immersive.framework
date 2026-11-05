@@ -92,8 +92,28 @@ namespace Immersive.Framework.ActivityFlow
                 return ActivityFlowStartResult.Failed("Activity is missing.");
             }
 
+            string pendingCompositionReleaseIssue =
+                await ReleaseNonCurrentActivityObjectEntryBindingsAsync(previousActivity);
+            if (!string.IsNullOrEmpty(pendingCompositionReleaseIssue))
+            {
+                return ActivityFlowStartResult.Failed(
+                    "Activity transition is blocked by unresolved Object Entry composition cleanup. " +
+                    pendingCompositionReleaseIssue);
+            }
+
             if (ReferenceEquals(previousActivity, nextActivity))
             {
+                string compositionRetryIssue = _stableObjectBindingRegistry != null
+                    ? await _stableObjectBindingRegistry.ActivateOwnerCompositionsAsync(
+                        CreateActivityOwner(nextActivity))
+                    : string.Empty;
+                if (!string.IsNullOrEmpty(compositionRetryIssue))
+                {
+                    return ActivityFlowStartResult.Failed(
+                        "The current Activity remains committed, but its Object Entry composition could not be reconciled. " +
+                        compositionRetryIssue);
+                }
+
                 if (!_currentActivityState.IsActive)
                 {
                     _currentActivityState = ActivityRuntimeState.ActiveWith(
@@ -119,6 +139,8 @@ namespace Immersive.Framework.ActivityFlow
             }
 
             RuntimeScopeLifecycleResult runtimeEnterResult = default;
+            string targetCompositionIssue = string.Empty;
+            string previousCompositionCleanupIssue = string.Empty;
             ActivitySceneCompositionResult sceneCompositionResult = default;
             ActivityContentApplyResult contentResult = default;
             ActivityContentExecutionLifecycleResult executionResult = default;
@@ -287,6 +309,8 @@ namespace Immersive.Framework.ActivityFlow
                 transaction.Commit(
                     "Target Activity became the current Activity authority.");
                 CommitStableObjectBindings(runtimeEnterResult.Owner);
+                targetCompositionIssue = await ActivateStableObjectCompositionsAsync(
+                    runtimeEnterResult.Owner);
 
                 participantTransition = PrepareActivityParticipantTransition(
                     previousActivity,
@@ -311,7 +335,17 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     "activity-exit");
-                ReleaseStableObjectBindingsForPreviousActivity(previousActivity);
+                try
+                {
+                    await ReleaseStableObjectBindingsForPreviousActivityAsync(
+                        previousActivity,
+                        resolvedSource,
+                        "activity-exit");
+                }
+                catch (StableObjectCompositionCleanupException exception)
+                {
+                    previousCompositionCleanupIssue = exception.Message;
+                }
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "All previous Activity participants completed Exit before target Enter.");
@@ -393,12 +427,13 @@ namespace Immersive.Framework.ActivityFlow
                         previousActivity,
                         activityScopeResult);
                 bool previousFinalizationSucceeded =
-                    previousExitSucceeded && scopeFinalizationSucceeded;
+                    previousExitSucceeded && scopeFinalizationSucceeded &&
+                    string.IsNullOrEmpty(previousCompositionCleanupIssue);
                 transaction.MarkPreviousFinalized(
                     previousFinalizationSucceeded,
                     previousFinalizationSucceeded
                         ? "Previous Activity exit, bindings and runtime scope finalized."
-                        : "Previous Activity exit, bindings or runtime scope remain unresolved.");
+                        : "Previous Activity exit, bindings or runtime scope remain unresolved. " + previousCompositionCleanupIssue);
 
                 IFrameworkLoadingProgressReporter releaseProgressReporter =
                     FrameworkLoadingProgressReporterUtility.CreateWeightedRangeReporter(
@@ -408,11 +443,18 @@ namespace Immersive.Framework.ActivityFlow
                         totalProgressCount,
                         "ActivityTransition",
                         "Activity transition loading progress.");
-                sceneReleaseResult = await ReleasePreviousActivityScenesAsync(
-                    previousActivity,
-                    resolvedSource,
-                    resolvedReason,
-                    releaseProgressReporter);
+                sceneReleaseResult = !string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                    ? ActivitySceneReleaseResult.DeferredByCompositionCleanup(
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        "Physical Activity scene release is deferred until Object Entry composition cleanup completes. " +
+                        previousCompositionCleanupIssue)
+                    : await ReleasePreviousActivityScenesAsync(
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        releaseProgressReporter);
                 bool sceneReleaseSucceeded =
                     !sceneReleaseResult.HasBlockingIssues;
                 transaction.MarkPreviousScenesReleased(
@@ -431,7 +473,7 @@ namespace Immersive.Framework.ActivityFlow
                     _currentActivityState,
                     contentResult,
                     executionResult,
-                    targetReadinessBlocked: false,
+                    targetReadinessBlocked: !string.IsNullOrEmpty(targetCompositionIssue),
                     resolvedSource,
                     resolvedReason);
                 ActivityReadinessState aggregateReadiness =
@@ -445,7 +487,10 @@ namespace Immersive.Framework.ActivityFlow
                     aggregateReadiness,
                     previousFinalizationSucceeded,
                     sceneReleaseSucceeded,
-                    "Activity transition reached a terminal committed result.");
+                    string.IsNullOrEmpty(targetCompositionIssue) && string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                        ? "Activity transition reached a terminal committed result."
+                        : "Activity authority committed with an Object Entry composition lifecycle issue. " +
+                          targetCompositionIssue + " " + previousCompositionCleanupIssue);
                 FinishActivityTransition(transaction);
 
                 ActivityFlowStartResult result = ActivityFlowStartResult.StartedWith(
@@ -460,6 +505,11 @@ namespace Immersive.Framework.ActivityFlow
                         CreateActivitySceneLedgerSnapshot())
                     .WithActivityReadinessState(aggregateReadiness)
                     .WithActivityTransition(snapshot);
+                if (!string.IsNullOrEmpty(targetCompositionIssue) ||
+                    !string.IsNullOrEmpty(previousCompositionCleanupIssue))
+                {
+                    result = result.WithPostCommitCompositionFailure();
+                }
                 TraceReadinessOccurrence(
                     "Publish",
                     _currentReadinessOccurrence,
@@ -497,7 +547,9 @@ namespace Immersive.Framework.ActivityFlow
                     sceneCompositionResult,
                     sceneReleaseResult,
                     activityOperationResult,
-                    resolvedProgressReporter);
+                    resolvedProgressReporter,
+                    targetCompositionIssue,
+                    previousCompositionCleanupIssue);
             }
         }
 
@@ -535,6 +587,7 @@ namespace Immersive.Framework.ActivityFlow
             ActivityContentApplyResult contentResult = default;
             ActivityContentExecutionLifecycleResult executionResult = default;
             ActivitySceneReleaseResult sceneReleaseResult = default;
+            string previousCompositionCleanupIssue = string.Empty;
             IFrameworkLoadingProgressReporter resolvedProgressReporter =
                 progressReporter ?? NoOpFrameworkLoadingProgressReporter.Instance;
 
@@ -601,7 +654,17 @@ namespace Immersive.Framework.ActivityFlow
                     previousActivity,
                     resolvedSource,
                     "activity-clear");
-                ReleaseStableObjectBindingsForPreviousActivity(previousActivity);
+                try
+                {
+                    await ReleaseStableObjectBindingsForPreviousActivityAsync(
+                        previousActivity,
+                        resolvedSource,
+                        "activity-clear");
+                }
+                catch (StableObjectCompositionCleanupException exception)
+                {
+                    previousCompositionCleanupIssue = exception.Message;
+                }
                 ExecuteActivityParticipantExit(participantTransition);
                 transaction.MarkPreviousParticipantsExited(
                     "Previous Activity participants completed release.");
@@ -671,12 +734,13 @@ namespace Immersive.Framework.ActivityFlow
                             scopeLifecycleResult);
                 }
                 bool previousFinalizationSucceeded =
-                    previousExitSucceeded && scopeFinalizationSucceeded;
+                    previousExitSucceeded && scopeFinalizationSucceeded &&
+                    string.IsNullOrEmpty(previousCompositionCleanupIssue);
                 transaction.MarkPreviousFinalized(
                     previousFinalizationSucceeded,
                     previousFinalizationSucceeded
                         ? "Previous Activity clear exit and scope finalized."
-                        : "Previous Activity clear exit or scope finalization failed.");
+                        : "Previous Activity clear exit or scope finalization failed. " + previousCompositionCleanupIssue);
 
                 bool sceneReleaseSucceeded;
                 if (previousActivity == null)
@@ -697,11 +761,18 @@ namespace Immersive.Framework.ActivityFlow
                             releaseCount,
                             "ActivityTransition",
                             "Activity transition loading progress.");
-                    sceneReleaseResult = await ReleasePreviousActivityScenesAsync(
-                        previousActivity,
-                        resolvedSource,
-                        resolvedReason,
-                        releaseProgressReporter);
+                    sceneReleaseResult = !string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                        ? ActivitySceneReleaseResult.DeferredByCompositionCleanup(
+                            previousActivity,
+                            resolvedSource,
+                            resolvedReason,
+                            "Physical Activity scene release is deferred until Object Entry composition cleanup completes. " +
+                            previousCompositionCleanupIssue)
+                        : await ReleasePreviousActivityScenesAsync(
+                            previousActivity,
+                            resolvedSource,
+                            resolvedReason,
+                            releaseProgressReporter);
                     sceneReleaseSucceeded =
                         !sceneReleaseResult.HasBlockingIssues;
                 }
@@ -728,9 +799,11 @@ namespace Immersive.Framework.ActivityFlow
                     readiness,
                     previousFinalizationSucceeded,
                     sceneReleaseSucceeded,
-                    skippedNoStartupActivity
-                        ? "Route has no Startup Activity; no-active-Activity state committed."
-                        : "Activity clear transition completed.");
+                    !string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                        ? "Activity authority committed; Object Entry composition cleanup remains pending. " + previousCompositionCleanupIssue
+                        : skippedNoStartupActivity
+                            ? "Route has no Startup Activity; no-active-Activity state committed."
+                            : "Activity clear transition completed.");
                 FinishActivityTransition(transaction);
 
                 ActivitySceneCompositionResult sceneCompositionResult =
@@ -759,10 +832,16 @@ namespace Immersive.Framework.ActivityFlow
                         sceneReleaseResult,
                         activityOperationResult,
                         CreateActivitySceneLedgerSnapshot());
-                return result.WithActivityTransition(snapshot);
+                result = result.WithActivityTransition(snapshot);
+                return !string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                    ? result.WithPostCommitCompositionFailure()
+                    : result;
             }
             catch (Exception exception)
             {
+                bool hasPostCommitCompositionFailure =
+                    exception is StableObjectCompositionCleanupException ||
+                    !string.IsNullOrEmpty(previousCompositionCleanupIssue);
                 ActivityReadinessState readiness = BuildTransitionReadiness(
                     _currentActivityState,
                     ActivityContentApplyResult.Empty(null),
@@ -770,25 +849,66 @@ namespace Immersive.Framework.ActivityFlow
                     targetReadinessBlocked: false,
                     resolvedSource,
                     resolvedReason);
-                ActivityTransitionSnapshot snapshot = transaction.CommitReached
-                    ? transaction.FailCommittedException(
-                        readiness,
-                        $"Activity clear transition threw '{exception.GetType().Name}': {exception.Message}")
-                    : transaction.FailBeforeCommit(
-                        $"Activity clear transition threw before commit '{exception.GetType().Name}': {exception.Message}");
+                string compositionDiagnostic = !string.IsNullOrEmpty(previousCompositionCleanupIssue)
+                    ? " Object Entry composition cleanup remains pending. " + previousCompositionCleanupIssue
+                    : string.Empty;
+                string exceptionDiagnostic =
+                    $"Activity clear transition threw '{exception.GetType().Name}': {exception.Message}" +
+                    compositionDiagnostic;
+                ActivityTransitionSnapshot currentSnapshot = transaction.Snapshot;
+                ActivityTransitionSnapshot snapshot = !transaction.CommitReached
+                    ? transaction.FailBeforeCommit(
+                        $"Activity clear transition threw before commit '{exception.GetType().Name}': {exception.Message}")
+                    : currentSnapshot.IsTerminal && hasPostCommitCompositionFailure
+                        ? currentSnapshot.WithPostCommitFinalizationFailure(exceptionDiagnostic)
+                        : transaction.FailCommittedException(readiness, exceptionDiagnostic);
                 FinishActivityTransition(transaction);
-                await FrameworkLoadingProgressReporterUtility
-                    .ReportCompletedIfAnyAsync(
-                        resolvedProgressReporter,
-                        "ActivityTransition",
-                        "Activity transition ended after an exception.");
+                _lastActivityTransitionSnapshot = snapshot;
 
                 if (!transaction.CommitReached)
                 {
+                    await FrameworkLoadingProgressReporterUtility
+                        .ReportCompletedIfAnyAsync(
+                            resolvedProgressReporter,
+                            "ActivityTransition",
+                            "Activity transition ended after an exception.");
                     return ActivityFlowStartResult.Failed(
                             "Activity clear transition failed before commit. " +
                             snapshot.ToDiagnosticString())
                         .WithActivityTransition(snapshot);
+                }
+
+                if (hasPostCommitCompositionFailure &&
+                    !string.IsNullOrEmpty(previousCompositionCleanupIssue) &&
+                    !sceneReleaseResult.Executed)
+                {
+                    sceneReleaseResult = ActivitySceneReleaseResult.DeferredByCompositionCleanup(
+                        previousActivity,
+                        resolvedSource,
+                        resolvedReason,
+                        "Physical Activity scene release is deferred until Object Entry composition cleanup completes. " +
+                        previousCompositionCleanupIssue);
+                }
+
+                try
+                {
+                    await FrameworkLoadingProgressReporterUtility
+                        .ReportCompletedIfAnyAsync(
+                            resolvedProgressReporter,
+                            "ActivityTransition",
+                            "Activity transition ended after an exception.");
+                }
+                catch (Exception reporterException)
+                {
+                    if (!hasPostCommitCompositionFailure)
+                    {
+                        throw;
+                    }
+
+                    exceptionDiagnostic +=
+                        $" Progress completion reporting also threw '{reporterException.GetType().Name}': {reporterException.Message}";
+                    snapshot = snapshot.WithPostCommitFinalizationFailure(exceptionDiagnostic);
+                    _lastActivityTransitionSnapshot = snapshot;
                 }
 
                 ActivityFlowStartResult committedResult =
@@ -796,12 +916,29 @@ namespace Immersive.Framework.ActivityFlow
                         ? ActivityFlowStartResult.SkippedNoStartupActivity(
                             _currentActivityState,
                             previousActivity,
-                            ActivityContentApplyResult.Empty(null))
+                            ActivityContentApplyResult.Empty(null),
+                            activitySceneCompositionResult: CreateActivitySceneCompositionResult(
+                                null,
+                                resolvedSource,
+                                resolvedReason),
+                            activitySceneReleaseResult: sceneReleaseResult,
+                            activityOperationResult: activityOperationResult,
+                            activitySceneLedgerSnapshot: CreateActivitySceneLedgerSnapshot())
                         : ActivityFlowStartResult.ClearedByRequest(
                             _currentActivityState,
                             previousActivity,
-                            ActivityContentApplyResult.Empty(null));
-                return committedResult.WithActivityTransition(snapshot);
+                            ActivityContentApplyResult.Empty(null),
+                            activitySceneCompositionResult: CreateActivitySceneCompositionResult(
+                                null,
+                                resolvedSource,
+                                resolvedReason),
+                            activitySceneReleaseResult: sceneReleaseResult,
+                            activityOperationResult: activityOperationResult,
+                            activitySceneLedgerSnapshot: CreateActivitySceneLedgerSnapshot());
+                committedResult = committedResult.WithActivityTransition(snapshot);
+                return hasPostCommitCompositionFailure
+                    ? committedResult.WithPostCommitCompositionFailure()
+                    : committedResult;
             }
         }
 
@@ -949,10 +1086,24 @@ namespace Immersive.Framework.ActivityFlow
                 ActivitySceneCompositionResult sceneCompositionResult,
                 ActivitySceneReleaseResult sceneReleaseResult,
                 ActivityOperationResult activityOperationResult,
-                IFrameworkLoadingProgressReporter progressReporter)
+                IFrameworkLoadingProgressReporter progressReporter,
+                string targetCompositionIssue,
+                string previousCompositionCleanupIssue)
         {
             string diagnostic =
                 $"Activity transition threw '{exception.GetType().Name}': {exception.Message}";
+            if (!string.IsNullOrEmpty(targetCompositionIssue))
+            {
+                diagnostic += " Target Object Entry composition activation remains incomplete. " +
+                    targetCompositionIssue;
+            }
+
+            if (!string.IsNullOrEmpty(previousCompositionCleanupIssue))
+            {
+                diagnostic += " Previous Activity Object Entry composition cleanup remains pending. " +
+                    previousCompositionCleanupIssue;
+            }
+
             if (!transaction.CommitReached)
             {
                 return await FailBeforeCommitAsync(
@@ -990,6 +1141,10 @@ namespace Immersive.Framework.ActivityFlow
                     : ActivityContentApplyResult.Empty(targetActivity);
             ActivityContentExecutionLifecycleResult executionResult =
                 CompleteActivityParticipantTransition(participantTransition);
+            bool hasPostCommitCompositionFailure =
+                exception is StableObjectCompositionCleanupException ||
+                !string.IsNullOrEmpty(targetCompositionIssue) ||
+                !string.IsNullOrEmpty(previousCompositionCleanupIssue);
             ActivityTransitionSnapshot currentSnapshot = transaction.Snapshot;
             bool targetReadinessBlocked = targetActivity != null &&
                 (!currentSnapshot.TargetParticipantsEntered ||
@@ -1001,14 +1156,45 @@ namespace Immersive.Framework.ActivityFlow
                 targetReadinessBlocked,
                 source,
                 reason);
-            ActivityTransitionSnapshot snapshot =
-                transaction.FailCommittedException(readiness, diagnostic);
+            ActivityTransitionSnapshot snapshot = currentSnapshot.IsTerminal &&
+                hasPostCommitCompositionFailure
+                    ? currentSnapshot.WithPostCommitFinalizationFailure(diagnostic)
+                    : transaction.FailCommittedException(readiness, diagnostic);
             FinishActivityTransition(transaction);
-            await FrameworkLoadingProgressReporterUtility
-                .ReportCompletedIfAnyAsync(
-                    progressReporter,
-                    "ActivityTransition",
-                    "Activity transition ended after a committed exception.");
+            _lastActivityTransitionSnapshot = snapshot;
+
+            if (hasPostCommitCompositionFailure &&
+                !string.IsNullOrEmpty(previousCompositionCleanupIssue) &&
+                !sceneReleaseResult.Executed)
+            {
+                sceneReleaseResult = ActivitySceneReleaseResult.DeferredByCompositionCleanup(
+                    previousActivity,
+                    source,
+                    reason,
+                    "Physical Activity scene release is deferred until Object Entry composition cleanup completes. " +
+                    previousCompositionCleanupIssue);
+            }
+
+            try
+            {
+                await FrameworkLoadingProgressReporterUtility
+                    .ReportCompletedIfAnyAsync(
+                        progressReporter,
+                        "ActivityTransition",
+                        "Activity transition ended after a committed exception.");
+            }
+            catch (Exception reporterException)
+            {
+                if (!hasPostCommitCompositionFailure)
+                {
+                    throw;
+                }
+
+                diagnostic +=
+                    $" Progress completion reporting also threw '{reporterException.GetType().Name}': {reporterException.Message}";
+                snapshot = snapshot.WithPostCommitFinalizationFailure(diagnostic);
+                _lastActivityTransitionSnapshot = snapshot;
+            }
 
             ActivityFlowStartResult result = ActivityFlowStartResult.StartedWith(
                     _currentActivityState,
@@ -1021,6 +1207,10 @@ namespace Immersive.Framework.ActivityFlow
                     activityOperationResult,
                     CreateActivitySceneLedgerSnapshot())
                 .WithActivityTransition(snapshot);
+            if (hasPostCommitCompositionFailure)
+            {
+                result = result.WithPostCommitCompositionFailure();
+            }
             SetCurrentActivityContext(result);
             return result;
         }

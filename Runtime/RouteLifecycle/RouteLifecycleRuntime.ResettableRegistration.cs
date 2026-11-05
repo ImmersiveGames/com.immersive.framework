@@ -107,9 +107,9 @@ namespace Immersive.Framework.RouteLifecycle
             return true;
         }
 
-        private void CommitRouteStableObjectBindings(RouteAsset route)
+        private async System.Threading.Tasks.Task<string> CommitRouteStableObjectBindingsAsync(RouteAsset route)
         {
-            if (route == null) return;
+            if (route == null) return string.Empty;
             RuntimeContentOwner owner = CreateRouteOwner(route);
             if (_stableObjectBindingRegistry != null &&
                 !_stableObjectBindingRegistry.TryCommitOwner(owner, out string diagnostic))
@@ -135,6 +135,10 @@ namespace Immersive.Framework.RouteLifecycle
                 _actorGroupRuntime.TryRollbackOwner(owner, out _);
                 throw new System.InvalidOperationException("Actor Group access commit failed for Route content. " + groupDiagnostic);
             }
+
+            return _stableObjectBindingRegistry != null
+                ? await _stableObjectBindingRegistry.ActivateOwnerCompositionsAsync(owner)
+                : string.Empty;
         }
 
         private void RollbackRouteResettableRegistration(
@@ -150,50 +154,47 @@ namespace Immersive.Framework.RouteLifecycle
             _actorGroupRuntime?.TryRollbackOwner(owner, out _);
         }
 
-        private bool TryReleasePreviousRouteResettableRegistration(
+        private async System.Threading.Tasks.Task<string> ReleasePreviousRouteResettableRegistrationAsync(
             RouteAsset previousRoute,
             string source,
-            string reason,
-            out string diagnostic)
+            string reason)
         {
-            diagnostic = string.Empty;
             if (previousRoute == null)
             {
-                return true;
-            }
-
-            string releaseDiagnostic = string.Empty;
-            bool resettableReleased = _resettableOwnerRegistration == null || _resettableOwnerRegistration.TryReleaseOwner(
-                    CreateRouteOwner(previousRoute),
-                    source,
-                    reason,
-                    out releaseDiagnostic);
-            if (!resettableReleased)
-            {
-                diagnostic = "Resettable registration release failed for the exiting Route. " + releaseDiagnostic;
-                return false;
+                return string.Empty;
             }
 
             RuntimeContentOwner owner = CreateRouteOwner(previousRoute);
-            if (_stableObjectBindingRegistry != null &&
-                !_stableObjectBindingRegistry.TryReleaseOwner(owner, out string bindingDiagnostic))
+            if (_resettableOwnerRegistration != null &&
+                !_resettableOwnerRegistration.TryReleaseOwner(
+                    owner,
+                    source,
+                    reason,
+                    out string resettableDiagnostic))
             {
-                diagnostic = "Stable Object Binding release failed for the exiting Route. " + bindingDiagnostic;
-                return false;
+                return "Resettable registration release failed. " + resettableDiagnostic;
             }
+
+            string bindingDiagnostic = _stableObjectBindingRegistry != null
+                ? await _stableObjectBindingRegistry.ReleaseOwnerAsync(owner)
+                : string.Empty;
+            if (!string.IsNullOrEmpty(bindingDiagnostic))
+            {
+                return "Stable Object Binding composition release remains pending. " + bindingDiagnostic;
+            }
+
             if (_actorOccurrenceReferenceRuntime != null &&
                 !_actorOccurrenceReferenceRuntime.TryReleaseOwner(owner, out string actorDiagnostic))
             {
-                diagnostic = "Actor occurrence publication release failed for the exiting Route. " + actorDiagnostic;
-                return false;
+                return "Actor occurrence publication release failed. " + actorDiagnostic;
             }
             if (_actorGroupRuntime != null &&
                 !_actorGroupRuntime.TryReleaseOwner(owner, out string groupDiagnostic))
             {
-                diagnostic = "Actor Group release failed for the exiting Route. " + groupDiagnostic;
-                return false;
+                return "Actor Group release failed. " + groupDiagnostic;
             }
-            return true;
+
+            return string.Empty;
         }
     }
 }

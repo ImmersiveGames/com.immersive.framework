@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Immersive.Composition;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
@@ -8,6 +11,7 @@ using Immersive.Framework.RuntimeContent;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Reset.Tests
 {
@@ -57,6 +61,236 @@ namespace Immersive.Framework.Reset.Tests
             Assert.AreEqual(StableObjectBindingResolutionStatus.Resolved, status);
             Assert.AreSame(target, binding.PhysicalObject);
             Assert.AreEqual(_ownerA, binding.Owner);
+        }
+
+        [Test]
+        public async Task ObjectEntryWithoutComposition_DoesNotAllocateComposerOrChangeIdentity()
+        {
+            const string id = "qa.stable.no-composition";
+            GameObject root = CreateEntry(id, _routeA, false);
+            ObjectEntryId identity = root.GetComponent<ObjectEntryDeclaration>().ObjectEntryId;
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string prepareDiagnostic), prepareDiagnostic);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out string commitDiagnostic), commitDiagnostic);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.AreEqual(identity, root.GetComponent<ObjectEntryDeclaration>().ObjectEntryId);
+
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public void InvalidExplicitComposition_FailsBeforeOwnerCommit()
+        {
+            GameObject root = CreateEntry("qa.stable.invalid-composition", _routeA, false);
+            ObjectEntryCompositionProfile profile = ScriptableObject.CreateInstance<ObjectEntryCompositionProfile>();
+            _assets.Add(profile);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+
+            Assert.IsFalse(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic));
+            StringAssert.Contains("composition", diagnostic.ToLowerInvariant());
+            Assert.AreEqual(0, _bindings.BindingCount);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+        }
+
+        [Test]
+        public async Task ValidComposition_MaterializesOnlyAfterCommitAndReleasePreservesRootAcrossReadmission()
+        {
+            const string id = "qa.stable.composition";
+            GameObject root = CreateEntry(id, _routeA, false);
+            ObjectEntryDeclaration declaration = root.GetComponent<ObjectEntryDeclaration>();
+            ObjectEntryId identity = declaration.ObjectEntryId;
+            GameObject prefab = Create("qa-capability-prefab");
+            ObjectEntryCompositionProfile profile = ScriptableObject.CreateInstance<ObjectEntryCompositionProfile>();
+            _assets.Add(profile);
+            AddCompositionPart(profile, "capability", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string prepareDiagnostic), prepareDiagnostic);
+            Assert.AreEqual(0, root.transform.childCount);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out string commitDiagnostic), commitDiagnostic);
+            Assert.AreEqual(0, root.transform.childCount, "Commit publishes the binding but does not materialize before the composition activation stage.");
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+
+            Assert.AreSame(root, declaration.gameObject);
+            Assert.AreEqual(identity, declaration.ObjectEntryId);
+            Assert.NotNull(root.transform.Find("qa-capability-prefab"));
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(identity, root, out StableObjectBinding admittedBinding, out _, out string recognizeDiagnostic), recognizeDiagnostic);
+            Assert.IsTrue(_bindings.IsCompositionTargetCurrent(admittedBinding));
+
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.AreEqual(0, root.transform.childCount);
+            Assert.IsFalse(_bindings.IsCompositionTargetCurrent(admittedBinding));
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out prepareDiagnostic), prepareDiagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out commitDiagnostic), commitDiagnostic);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(identity, root, out StableObjectBinding readmittedBinding, out _, out recognizeDiagnostic), recognizeDiagnostic);
+            Assert.AreNotSame(admittedBinding, readmittedBinding);
+            Assert.IsFalse(_bindings.IsCompositionTargetCurrent(admittedBinding));
+            Assert.IsTrue(_bindings.IsCompositionTargetCurrent(readmittedBinding));
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task AdoptedCompositionResource_RemainsOwnedByTheObjectEntryAfterComposerClose()
+        {
+            const string id = "qa.stable.adopted-composition";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-adopted-prefab");
+            GameObject adopted = Create("qa-adopted-instance");
+            adopted.transform.SetParent(root.transform, false);
+            adopted.SetActive(false);
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("adopted", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+
+            var materializer = new ObjectEntryCompositionPartMaterializer(
+                candidate => _bindings.IsCompositionTargetCurrent(candidate));
+            var part = new ObjectEntryCompositionPartMaterializer.PartBinding(
+                binding,
+                profile.Parts[0],
+                adopted);
+            var composer = new CompositionComposer();
+            CompositionContribution contribution = composer.CreateContribution(
+                CompositionOwnerId.Create("qa-stable-adopted-composition"),
+                0);
+            var definition = new PartDefinition(
+                ContentKey.Create("adopted"),
+                part,
+                materializer);
+
+            CompositionResult setResult = await contribution.SetPartWhileCurrentAsync(
+                definition,
+                () => _bindings.IsCompositionTargetCurrent(binding));
+            Assert.AreEqual(CompositionResultStatus.Committed, setResult.Status);
+
+            CompositionResult closeResult = await composer.CloseAsync();
+
+            Assert.AreEqual(CompositionResultStatus.Committed, closeResult.Status);
+            Assert.IsNotNull(adopted);
+            Assert.AreSame(root.transform, adopted.transform.parent);
+            Assert.IsFalse(adopted.activeSelf);
+            Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out diagnostic), diagnostic);
+        }
+
+        [Test]
+        public async Task PendingAcquiredPartCleanup_RetainsOwnerUntilRetryConfirmsDestruction()
+        {
+            const string id = "qa.stable.pending-composition-cleanup";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-pending-prefab");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("pending", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+
+            bool destructionPending = true;
+            Func<GameObject, Task<bool>> destroyAndConfirm = instance =>
+            {
+                if (destructionPending && instance.name == "qa-pending-prefab")
+                {
+                    return Task.FromResult(false);
+                }
+
+                Object.DestroyImmediate(instance);
+                return Task.FromResult(instance == null);
+            };
+            var composition = new ObjectEntryCompositionRuntimeBinding(
+                binding,
+                profile,
+                candidate => _bindings.IsCompositionTargetCurrent(candidate),
+                destroyAndConfirm);
+            binding.CompositionRuntime = composition;
+            Assert.IsEmpty(await composition.ActivateAsync());
+            Assert.IsTrue(_bindings.IsCompositionTargetCurrent(binding));
+
+            string pendingIssue = await _bindings.ReleaseOwnerAsync(_ownerA);
+
+            StringAssert.Contains("pending", pendingIssue.ToLowerInvariant());
+            Assert.AreEqual(1, _bindings.BindingCount, "The physical owner record must remain available for cleanup retry.");
+            Assert.AreEqual(1, _bindings.UnresolvedCompositionCleanupCount);
+            Assert.IsFalse(_bindings.IsCompositionTargetCurrent(binding), "Writes are invalidated before cleanup begins.");
+
+            destructionPending = false;
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.AreEqual(0, _bindings.BindingCount);
+            Assert.AreEqual(0, _bindings.UnresolvedCompositionCleanupCount);
+        }
+
+        [Test]
+        public async Task OwnerActivationRetry_ReconcilesPendingRootBeforeActivatingRemainingRoots()
+        {
+            const string firstId = "qa.stable.pending-activation-first";
+            const string secondId = "qa.stable.pending-activation-second";
+            GameObject firstRoot = CreateEntry(firstId, _routeA, false);
+            GameObject secondRoot = CreateEntry(secondId, _routeA, false);
+            ObjectEntryCompositionProfile firstProfile = CreateCompositionProfile(
+                "pending-first",
+                Create("qa-pending-first-prefab"));
+            ObjectEntryCompositionProfile secondProfile = CreateCompositionProfile(
+                "pending-second",
+                Create("qa-pending-second-prefab"));
+            SetAuthoringProfile(
+                firstRoot.AddComponent<ObjectEntryCompositionAuthoring>(),
+                firstProfile);
+            SetAuthoringProfile(
+                secondRoot.AddComponent<ObjectEntryCompositionAuthoring>(),
+                secondProfile);
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(
+                _ownerA,
+                new[] { firstRoot, secondRoot },
+                out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(firstId),
+                firstRoot,
+                out StableObjectBinding firstBinding,
+                out _,
+                out diagnostic), diagnostic);
+
+            bool destructionPending = true;
+            Func<GameObject, Task<bool>> destroyAndConfirm = instance =>
+            {
+                if (destructionPending && instance.name == "qa-pending-first-prefab")
+                    return Task.FromResult(false);
+
+                Object.DestroyImmediate(instance);
+                return Task.FromResult(instance == null);
+            };
+            var firstRuntime = new ObjectEntryCompositionRuntimeBinding(
+                firstBinding,
+                firstProfile,
+                candidate => _bindings.IsCompositionTargetCurrent(candidate),
+                destroyAndConfirm);
+            firstBinding.CompositionRuntime = firstRuntime;
+            Assert.IsEmpty(await firstRuntime.ActivateAsync());
+            Assert.IsNotEmpty(await firstRuntime.CloseAndReconcileAsync());
+            Assert.IsFalse(firstRuntime.IsActive);
+            Assert.IsFalse(firstRuntime.CleanupComplete);
+
+            string pendingIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
+
+            StringAssert.Contains("recovery remains pending", pendingIssue);
+            Assert.AreEqual(0, secondRoot.transform.childCount,
+                "The next root must not activate while the previous root has unresolved acquired resources.");
+
+            destructionPending = false;
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.NotNull(firstRoot.transform.Find("qa-pending-first-prefab"));
+            Assert.NotNull(secondRoot.transform.Find("qa-pending-second-prefab"));
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
         }
 
         [Test]
@@ -703,6 +937,45 @@ namespace Immersive.Framework.Reset.Tests
             list.arraySize = members.Length;
             for (int index = 0; index < members.Length; index++)
                 list.GetArrayElementAtIndex(index).objectReferenceValue = members[index];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void AddCompositionPart(
+            ObjectEntryCompositionProfile profile,
+            string key,
+            GameObject prefab,
+            params string[] dependencies)
+        {
+            var serialized = new SerializedObject(profile);
+            SerializedProperty entries = serialized.FindProperty("parts");
+            int index = entries.arraySize;
+            entries.InsertArrayElementAtIndex(index);
+            SerializedProperty element = entries.GetArrayElementAtIndex(index);
+            element.FindPropertyRelative("key").stringValue = key;
+            element.FindPropertyRelative("prefab").objectReferenceValue = prefab;
+            SerializedProperty dependencyList = element.FindPropertyRelative("dependencies");
+            dependencyList.arraySize = dependencies.Length;
+            for (int dependencyIndex = 0; dependencyIndex < dependencies.Length; dependencyIndex++)
+                dependencyList.GetArrayElementAtIndex(dependencyIndex).stringValue = dependencies[dependencyIndex];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private ObjectEntryCompositionProfile CreateCompositionProfile(
+            string key,
+            GameObject prefab)
+        {
+            ObjectEntryCompositionProfile profile = ScriptableObject.CreateInstance<ObjectEntryCompositionProfile>();
+            _assets.Add(profile);
+            AddCompositionPart(profile, key, prefab);
+            return profile;
+        }
+
+        private static void SetAuthoringProfile(
+            ObjectEntryCompositionAuthoring authoring,
+            ObjectEntryCompositionProfile profile)
+        {
+            var serialized = new SerializedObject(authoring);
+            serialized.FindProperty("profile").objectReferenceValue = profile;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

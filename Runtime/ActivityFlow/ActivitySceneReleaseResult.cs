@@ -14,6 +14,7 @@ namespace Immersive.Framework.ActivityFlow
     internal readonly struct ActivitySceneReleaseResult
     {
         private readonly ActivitySceneReleaseResultEntry[] _entries;
+        private readonly int _additionalBlockingIssueCount;
 
         public ActivitySceneReleaseResult(
             ActivityAsset activity,
@@ -22,7 +23,8 @@ namespace Immersive.Framework.ActivityFlow
             bool sideEffectsExecuted,
             string source,
             string reason,
-            string message)
+            string message,
+            int additionalBlockingIssueCount = 0)
         {
             Activity = activity;
             Status = status;
@@ -30,6 +32,7 @@ namespace Immersive.Framework.ActivityFlow
             Source = source.NormalizeText();
             Reason = reason.NormalizeText();
             Message = message.NormalizeText();
+            _additionalBlockingIssueCount = Math.Max(0, additionalBlockingIssueCount);
 
             if (entries == null || entries.Count == 0)
             {
@@ -70,7 +73,7 @@ namespace Immersive.Framework.ActivityFlow
 
         public int FailedSceneCount => CountByStatus(ActivitySceneReleaseEntryStatus.Failed);
 
-        public int BlockingIssueCount => CountBlockingIssues();
+        public int BlockingIssueCount => CountBlockingIssues() + _additionalBlockingIssueCount;
 
         public bool HasBlockingIssues => BlockingIssueCount > 0;
 
@@ -92,6 +95,23 @@ namespace Immersive.Framework.ActivityFlow
                 source,
                 reason,
                 message);
+        }
+
+        public static ActivitySceneReleaseResult DeferredByCompositionCleanup(
+            ActivityAsset activity,
+            string source,
+            string reason,
+            string message)
+        {
+            return new ActivitySceneReleaseResult(
+                activity,
+                Array.Empty<ActivitySceneReleaseResultEntry>(),
+                ActivitySceneReleaseStatus.Failed,
+                false,
+                source,
+                reason,
+                message,
+                additionalBlockingIssueCount: 1);
         }
 
         public static ActivitySceneReleaseResult FromEntries(

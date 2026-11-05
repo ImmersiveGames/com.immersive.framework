@@ -29,7 +29,8 @@ namespace Immersive.Framework.RouteLifecycle
             ContentReleaseResult contentReleaseResult,
             ActivityFlowStartResult activityFlowResult,
             RuntimeScopeLifecycleResult runtimeRouteScopeResult = default(RuntimeScopeLifecycleResult),
-            ActivitySceneReleaseResult activitySceneRouteReleaseResult = default(ActivitySceneReleaseResult))
+            ActivitySceneReleaseResult activitySceneRouteReleaseResult = default(ActivitySceneReleaseResult),
+            bool hasPostCommitCompositionFailure = false)
         {
             Started = started;
             Message = message ?? string.Empty;
@@ -46,6 +47,9 @@ namespace Immersive.Framework.RouteLifecycle
             ActivityFlowResult = activityFlowResult;
             ActivitySceneRouteReleaseResult = activitySceneRouteReleaseResult;
             RuntimeRouteScopeResult = runtimeRouteScopeResult;
+            HasPostCommitCompositionFailure =
+                hasPostCommitCompositionFailure ||
+                activityFlowResult.HasPostCommitCompositionFailure;
         }
 
         public bool Started { get; }
@@ -82,7 +86,31 @@ namespace Immersive.Framework.RouteLifecycle
 
         public RuntimeScopeLifecycleResult RuntimeRouteScopeResult { get; }
 
+        public bool HasPostCommitCompositionFailure { get; }
+
         public bool HasRuntimeRouteScope => RuntimeRouteScopeResult.Executed;
+
+        internal RouteLifecycleStartResult WithPostCommitCompositionFailure(string diagnostic)
+        {
+            if (!Started || string.IsNullOrWhiteSpace(diagnostic)) return this;
+            return new RouteLifecycleStartResult(
+                true,
+                Message + " Object Entry composition initialization failed after Route commit. " + diagnostic,
+                Route,
+                PreviousRoute,
+                RouteExitResult,
+                RouteState,
+                SceneLifecycleResult,
+                RouteSceneCompositionResult,
+                RouteContentSet,
+                RouteContentEnterResult,
+                RouteContentExitResult,
+                ContentReleaseResult,
+                ActivityFlowResult,
+                RuntimeRouteScopeResult,
+                ActivitySceneRouteReleaseResult,
+                true);
+        }
 
         public static RouteLifecycleStartResult Failed(string message)
         {
@@ -166,7 +194,7 @@ namespace Immersive.Framework.RouteLifecycle
                 SceneLifecycleResult, RouteSceneCompositionResult, RouteContentSet,
                 RouteContentEnterResult, RouteContentExitResult,
                 ContentReleaseResult, activityFlowResult, RuntimeRouteScopeResult,
-                ActivitySceneRouteReleaseResult);
+                ActivitySceneRouteReleaseResult, HasPostCommitCompositionFailure);
         }
     }
 }

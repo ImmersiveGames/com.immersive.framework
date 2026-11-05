@@ -58,7 +58,8 @@ namespace Immersive.Framework.GameFlow
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetNotReady ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessInvalidated ||
             Kind == FrameworkRouteRequestKind.FailedCommittedTargetReadinessCancelled ||
-            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReveal;
+            Kind == FrameworkRouteRequestKind.FailedCommittedTargetReveal ||
+            Kind == FrameworkRouteRequestKind.FailedCommittedComposition;
 
         public static FrameworkRouteRequestResult FailedInvalidConfig(
             string message,
@@ -243,6 +244,26 @@ namespace Immersive.Framework.GameFlow
         {
             return new FrameworkRouteRequestResult(
                 FrameworkRouteRequestKind.FailedCommittedTargetReveal,
+                message,
+                targetRoute,
+                source,
+                reason,
+                routeLifecycleResult,
+                transitionDiagnostics,
+                transitionGateDiagnostics);
+        }
+
+        internal static FrameworkRouteRequestResult FailedCommittedComposition(
+            string message,
+            RouteAsset targetRoute,
+            string source,
+            string reason,
+            RouteLifecycleStartResult routeLifecycleResult,
+            FrameworkTransitionDiagnostics transitionDiagnostics = default,
+            TransitionGateDiagnostics transitionGateDiagnostics = default)
+        {
+            return new FrameworkRouteRequestResult(
+                FrameworkRouteRequestKind.FailedCommittedComposition,
                 message,
                 targetRoute,
                 source,

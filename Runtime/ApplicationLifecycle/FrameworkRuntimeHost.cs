@@ -1881,13 +1881,17 @@ namespace Immersive.Framework.ApplicationLifecycle
             InvalidateObjectEntryRuntimeContextSnapshot($"activity-restart:{NormalizeLifecycleSource(source)}");
             var result = await _gameFlowRuntime.RestartActivityAsync(targetActivity, source, reason, beforeRestartLifecycle);
 
-            if (result.ClearSucceeded)
+            if (result.ClearSucceeded ||
+                (result.ClearResult.DestinationAuthoritative &&
+                 result.ClearResult.ActivityFlowResult.HasPostCommitCompositionFailure))
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ClearResult);
                 PublishCurrentActivityReadinessPresentation();
             }
 
-            if (result.ReenterSucceeded)
+            if (result.ReenterSucceeded ||
+                (result.ReenterResult.DestinationAuthoritative &&
+                 result.ReenterResult.ActivityFlowResult.HasPostCommitCompositionFailure))
             {
                 _state = FrameworkRuntimeState.FromActivityRequestResult(_state, result.ReenterResult);
                 PublishCurrentActivityReadinessPresentation();

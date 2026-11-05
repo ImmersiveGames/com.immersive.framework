@@ -29,7 +29,8 @@ namespace Immersive.Framework.ActivityFlow
             ActivitySceneReleaseResult activitySceneReleaseResult = default(ActivitySceneReleaseResult),
             ActivityOperationResult activityOperationResult = default(ActivityOperationResult),
             ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot = default(ActivitySceneLedgerSnapshot),
-            ActivityTransitionSnapshot activityTransitionSnapshot = default(ActivityTransitionSnapshot))
+            ActivityTransitionSnapshot activityTransitionSnapshot = default(ActivityTransitionSnapshot),
+            bool hasPostCommitCompositionFailure = false)
         {
             _data = new ResultData(
                 started,
@@ -47,7 +48,8 @@ namespace Immersive.Framework.ActivityFlow
                 activitySceneReleaseResult,
                 activityOperationResult,
                 activitySceneLedgerSnapshot,
-                activityTransitionSnapshot);
+                activityTransitionSnapshot,
+                hasPostCommitCompositionFailure);
         }
 
         public bool Started => _data != null && _data.Started;
@@ -99,6 +101,8 @@ namespace Immersive.Framework.ActivityFlow
             _data != null
                 ? _data.ActivityTransitionSnapshot
                 : default(ActivityTransitionSnapshot);
+        internal bool HasPostCommitCompositionFailure =>
+            _data != null && _data.HasPostCommitCompositionFailure;
         public bool ActivityAuthorityCommitReached => ActivityTransitionSnapshot.CommitReached;
         public bool ActivityTransitionFailedBeforeCommit => ActivityTransitionSnapshot.FailedBeforeCommit;
         public bool ActivityTransitionCommittedNotReady => ActivityTransitionSnapshot.CommittedNotReady;
@@ -134,7 +138,8 @@ namespace Immersive.Framework.ActivityFlow
                 ActivitySceneReleaseResult activitySceneReleaseResult,
                 ActivityOperationResult activityOperationResult,
                 ActivitySceneLedgerSnapshot activitySceneLedgerSnapshot,
-                ActivityTransitionSnapshot activityTransitionSnapshot)
+                ActivityTransitionSnapshot activityTransitionSnapshot,
+                bool hasPostCommitCompositionFailure)
             {
                 Started = started;
                 Skipped = skipped;
@@ -152,6 +157,7 @@ namespace Immersive.Framework.ActivityFlow
                 ActivityOperationResult = activityOperationResult;
                 ActivitySceneLedgerSnapshot = activitySceneLedgerSnapshot;
                 ActivityTransitionSnapshot = activityTransitionSnapshot;
+                HasPostCommitCompositionFailure = hasPostCommitCompositionFailure;
             }
 
             internal bool Started { get; }
@@ -172,6 +178,7 @@ namespace Immersive.Framework.ActivityFlow
             internal ActivityOperationResult ActivityOperationResult { get; }
             internal ActivitySceneLedgerSnapshot ActivitySceneLedgerSnapshot { get; }
             internal ActivityTransitionSnapshot ActivityTransitionSnapshot { get; }
+            internal bool HasPostCommitCompositionFailure { get; }
         }
 
         internal ActivityFlowStartResult WithActivityTransition(
@@ -224,7 +231,8 @@ namespace Immersive.Framework.ActivityFlow
                 ActivitySceneReleaseResult,
                 ActivityOperationResult,
                 ActivitySceneLedgerSnapshot,
-                activityTransitionSnapshot);
+                activityTransitionSnapshot,
+                HasPostCommitCompositionFailure);
         }
 
         internal ActivityFlowStartResult WithActivityReadinessState(ActivityReadinessState activityReadinessState)
@@ -246,7 +254,31 @@ namespace Immersive.Framework.ActivityFlow
                 ActivitySceneReleaseResult,
                 ActivityOperationResult,
                 ActivitySceneLedgerSnapshot,
-                ActivityTransitionSnapshot);
+                ActivityTransitionSnapshot,
+                HasPostCommitCompositionFailure);
+        }
+
+        internal ActivityFlowStartResult WithPostCommitCompositionFailure()
+        {
+            if (_data == null || HasPostCommitCompositionFailure) return this;
+            return new ActivityFlowStartResult(
+                Started,
+                Skipped,
+                KeptActive,
+                Cleared,
+                Message,
+                ActivityState,
+                PreviousActivity,
+                ActivityContentResult,
+                ActivityReadinessState,
+                RuntimeActivityScopeResult,
+                ActivityContentExecutionResult,
+                ActivitySceneCompositionResult,
+                ActivitySceneReleaseResult,
+                ActivityOperationResult,
+                ActivitySceneLedgerSnapshot,
+                ActivityTransitionSnapshot,
+                true);
         }
 
         public static ActivityFlowStartResult Failed(
