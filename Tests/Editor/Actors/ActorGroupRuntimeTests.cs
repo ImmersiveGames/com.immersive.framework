@@ -242,7 +242,7 @@ namespace Immersive.Framework.Actors.Tests
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(release, Is.Not.Null);
 
-            await (Task)release.Invoke(activityRuntime, new object[] { activity });
+            await (Task)release.Invoke(activityRuntime, new object[] { activity, "test", "activity-close" });
 
             Assert.That(runtime.TryGetGroup(groupId, out _, out _), Is.False);
         }

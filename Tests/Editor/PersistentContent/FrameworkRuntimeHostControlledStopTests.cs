@@ -307,9 +307,58 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "The Route scene must admit its composed Object Entry during startup.");
             Assert.That(composedDeclaration.TryGetObjectEntryId(out ObjectEntryId composedIdentity), Is.True);
             GameObject composedRoot = composedDeclaration.gameObject;
-            string composedPartName = "QA_HostStop_ComposedCapability";
-            Assert.That(composedRoot.transform.Find(composedPartName), Is.Not.Null,
-                "The Route Object Entry capability must be materialized before controlled stop.");
+            ObjectEntryCompositionAuthoring compositionAuthoring =
+                composedRoot.GetComponent<ObjectEntryCompositionAuthoring>();
+            ObjectEntryCompositionProfile compositionProfile =
+                compositionAuthoring != null ? compositionAuthoring.Profile : null;
+            string profileValidationIssue = compositionProfile == null
+                ? "composition profile is missing."
+                : string.Empty;
+            bool profileValid = compositionProfile != null &&
+                compositionProfile.TryValidate(out profileValidationIssue);
+            bool compositionBindingResolved = _host.StableObjectBindings.TryResolve(
+                composedIdentity,
+                null,
+                null,
+                out var compositionBinding,
+                out var compositionBindingStatus,
+                out string compositionBindingDiagnostic);
+            bool compositionRootMatchesBinding = compositionBindingResolved &&
+                ReferenceEquals(composedRoot, compositionBinding.PhysicalObject);
+            bool compositionTargetCurrent = compositionBindingResolved &&
+                _host.StableObjectBindings.IsCompositionTargetCurrent(compositionBinding);
+            var compositionRuntime = compositionBinding?.CompositionRuntime;
+            string composedPartName = compositionProfile != null &&
+                compositionProfile.Parts.Count > 0 &&
+                compositionProfile.Parts[0] != null &&
+                compositionProfile.Parts[0].Prefab != null
+                    ? compositionProfile.Parts[0].Prefab.name
+                    : "<missing-part-prefab>";
+            var composedChildNames = new List<string>();
+            for (int childIndex = 0; childIndex < composedRoot.transform.childCount; childIndex++)
+            {
+                composedChildNames.Add(composedRoot.transform.GetChild(childIndex).name);
+            }
+            string compositionStateDiagnostic =
+                $"authoringPresent={compositionAuthoring != null}, profilePresent={compositionProfile != null}, " +
+                $"profileValid={profileValid}, profileIssue='{profileValidationIssue}', " +
+                $"bindingResolved={compositionBindingResolved} status='{compositionBindingStatus}' diagnostic='{compositionBindingDiagnostic}', " +
+                $"rootMatchesBinding={compositionRootMatchesBinding}, targetCurrent={compositionTargetCurrent}, " +
+                $"runtimeCreated={compositionRuntime != null}, runtimeActive={compositionRuntime?.IsActive == true}, " +
+                $"expectedPrefabName='{composedPartName}', directChildren=[{string.Join(", ", composedChildNames)}].";
+            Assert.That(compositionAuthoring, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(compositionProfile, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(profileValid, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionBindingResolved, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionRootMatchesBinding, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionTargetCurrent, Is.True, compositionStateDiagnostic);
+            Assert.That(compositionRuntime, Is.Not.Null, compositionStateDiagnostic);
+            Assert.That(compositionRuntime.IsActive, Is.True, compositionStateDiagnostic);
+            Assert.That(
+                composedRoot.transform.Find(composedPartName),
+                Is.Not.Null,
+                "The Route Object Entry capability must be materialized before controlled stop. " +
+                compositionStateDiagnostic);
 
             const float runningTimeScale = 0.625f;
             Time.timeScale = runningTimeScale;

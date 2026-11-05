@@ -280,8 +280,6 @@ namespace Immersive.Framework.RuntimeContent
 
             foreach (OwnerBindings registration in _owners.Values)
             {
-                registration.IsCommitted = false;
-                registration.IsReleasing = true;
                 for (int bindingIndex = 0; bindingIndex < registration.Bindings.Count; bindingIndex++)
                 {
                     registration.Bindings[bindingIndex].CompositionRuntime?.InvalidateWriteAccess();
