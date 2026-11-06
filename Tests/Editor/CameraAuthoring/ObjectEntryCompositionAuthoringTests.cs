@@ -143,6 +143,46 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.IsTrue(authoring.TryValidateConfiguration(out string validIssue), validIssue);
         }
 
+        [Test]
+        public void Authoring_DynamicOptInDefaultsOffAndProfilelessConfigurationIsRejected()
+        {
+            GameObject root = MakeObject("Entry");
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDeclarationId(root.GetComponent<ObjectEntryDeclaration>(), "qa.composition.default-off");
+
+            var serialized = new SerializedObject(authoring);
+            SerializedProperty optIn = serialized.FindProperty("allowDynamicContributions");
+            Assert.NotNull(optIn, "Dynamic composition must be an explicit serialized authoring choice.");
+            Assert.IsFalse(optIn.boolValue, "Existing authoring and serialized scenes must retain the B2 default.");
+            Assert.IsFalse(authoring.TryValidateConfiguration(out string issue));
+            StringAssert.Contains("profile", issue.ToLowerInvariant());
+        }
+
+        [Test]
+        public void Authoring_DynamicOptInAllowsProfilelessConfiguration()
+        {
+            GameObject root = MakeObject("Entry");
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDeclarationId(root.GetComponent<ObjectEntryDeclaration>(), "qa.composition.dynamic-only");
+            SetDynamicOptIn(authoring, true);
+
+            Assert.IsTrue(authoring.TryValidateConfiguration(out string issue), issue);
+            Assert.IsEmpty(issue);
+        }
+
+        [Test]
+        public void Authoring_DynamicOptInStillValidatesAnAssignedProfile()
+        {
+            GameObject root = MakeObject("Entry");
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDeclarationId(root.GetComponent<ObjectEntryDeclaration>(), "qa.composition.dynamic-with-invalid-profile");
+            SetDynamicOptIn(authoring, true);
+            SetAuthoringProfile(authoring, MakeProfile());
+
+            Assert.IsFalse(authoring.TryValidateConfiguration(out string issue));
+            StringAssert.Contains("at least one", issue);
+        }
+
         private ObjectEntryCompositionProfile MakeProfile()
         {
             ObjectEntryCompositionProfile profile = ScriptableObject.CreateInstance<ObjectEntryCompositionProfile>();
@@ -192,6 +232,15 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             var serialized = new SerializedObject(authoring);
             serialized.FindProperty("profile").objectReferenceValue = profile;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetDynamicOptIn(ObjectEntryCompositionAuthoring authoring, bool value)
+        {
+            var serialized = new SerializedObject(authoring);
+            SerializedProperty property = serialized.FindProperty("allowDynamicContributions");
+            Assert.NotNull(property, "Dynamic composition must be an explicit serialized authoring choice.");
+            property.boolValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
     }

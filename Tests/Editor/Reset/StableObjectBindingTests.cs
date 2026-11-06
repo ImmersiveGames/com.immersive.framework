@@ -139,8 +139,11 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string prepareDiagnostic), prepareDiagnostic);
             Assert.AreEqual(0, root.transform.childCount);
             Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out string commitDiagnostic), commitDiagnostic);
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _),
+                "Profile-only B2 authoring must not receive dynamic contribution access by default.");
             Assert.AreEqual(0, root.transform.childCount, "Commit publishes the binding but does not materialize before the composition activation stage.");
             Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
 
             Assert.AreSame(root, declaration.gameObject);
             Assert.AreEqual(identity, declaration.ObjectEntryId);
@@ -162,6 +165,539 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
         }
 
+        [Test]
+        public async Task DynamicOnlyComposition_GrantsAfterCommitAndOpensIndependentContributionsLazily()
+        {
+            const string id = "qa.stable.dynamic-only";
+            GameObject root = CreateEntry(id, _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out string uncommittedIssue));
+            StringAssert.Contains("commit", uncommittedIssue.ToLowerInvariant());
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount,
+                "A profileless opt-in must not create a Composer during registration or commit.");
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _),
+                "The owner activation seam has not published the committed occurrence grant yet.");
+
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out diagnostic), diagnostic);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount,
+                "Publishing a profileless grant must not allocate a Composer.");
+
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution first, out diagnostic), diagnostic);
+            Assert.AreEqual(1, _bindings.CompositionBindingCount);
+            Assert.AreEqual(0, root.transform.childCount, "Opening an empty contribution does not materialize content.");
+            Assert.IsTrue(grant.TryOpenContribution(10, out ObjectEntryCompositionContribution second, out diagnostic), diagnostic);
+
+            Assert.AreNotSame(first, second, "Each consumer receives an independent Framework contribution handle.");
+            Assert.AreEqual(0, first.Priority);
+            Assert.AreEqual(10, second.Priority);
+            Assert.AreEqual(1, _bindings.CompositionBindingCount,
+                "Subsequent opens must reuse the exact occurrence Composer.");
+            Assert.AreEqual(0, root.transform.childCount);
+
+            ObjectEntryCompositionContributionCloseResult firstClose = await first.CloseAsync();
+            Assert.IsTrue(firstClose.IsSuccessful, firstClose.Issue);
+            Assert.IsTrue((await second.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DynamicOnlyComposition_RejectsReservedBasePriorityWithoutAllocatingComposer()
+        {
+            GameObject root = CreateEntry("qa.stable.dynamic-reserved-priority", _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out string diagnostic), diagnostic);
+
+            Assert.IsFalse(grant.TryOpenContribution(int.MinValue, out _, out string issue));
+            StringAssert.Contains("priority", issue.ToLowerInvariant());
+            Assert.AreEqual(0, _bindings.CompositionBindingCount,
+                "A rejected open must not leave an empty Composer context attached to the occurrence.");
+            Assert.AreEqual(0, root.transform.childCount);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task ReadOnlyOccurrenceQuery_DoesNotHandOutCompositionAccessOrCreateComposer()
+        {
+            const string id = "qa.stable.dynamic-readonly-query";
+            GameObject target = CreateEntry(id, _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = target.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            GameObject queryRoot = Create("qa-stable-dynamic-readonly-query-anchor");
+            ObjectEntryOccurrenceQueryBinding query = queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, target, queryRoot);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+
+            ObjectEntryOccurrenceResolution resolution = query.Resolve(StableObjectReference.ForEntry(Id(id)));
+
+            Assert.AreEqual(ObjectEntryOccurrenceResolutionStatus.Resolved, resolution.Status);
+            Assert.AreSame(target, resolution.Occurrence);
+            Assert.IsNull(typeof(ObjectEntryOccurrenceQueryBinding).GetMethod(
+                nameof(ObjectEntryCompositionAuthoring.TryGetCompositionAccessGrant)));
+            Assert.AreEqual(0, _bindings.CompositionBindingCount,
+                "Resolving a physical occurrence must not open a Composer or grant write authority.");
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out string diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution contribution, out diagnostic), diagnostic);
+            Assert.AreEqual(0, target.transform.childCount);
+            Assert.IsTrue((await contribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DynamicCompositionWithProfile_GrantWaitsForSuccessfulBaseActivation()
+        {
+            GameObject root = CreateEntry("qa.stable.dynamic-with-profile", _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-base-prefab");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _),
+                "Owner commit alone is not proof that the authored Base is active.");
+            Assert.AreEqual(0, root.transform.childCount);
+
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out diagnostic), diagnostic);
+            Assert.AreEqual(1, root.transform.childCount, "The B2 Base must be active before the grant is published.");
+            Assert.IsTrue(grant.TryOpenContribution(5, out ObjectEntryCompositionContribution contribution, out diagnostic), diagnostic);
+            Assert.AreEqual(1, root.transform.childCount, "Opening a dynamic contribution must not materialize a part.");
+            Assert.IsTrue((await contribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.AreEqual(0, root.transform.childCount);
+        }
+
+        [Test]
+        public async Task DynamicCompositionWithProfile_BaseActivationFailureDoesNotGrantAccess()
+        {
+            GameObject root = CreateEntry("qa.stable.dynamic-base-failure", _routeA, false);
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile(
+                "base",
+                Create("qa-stable-dynamic-invalidated-base-prefab"));
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            SetProfilePartPrefab(profile, 0, null);
+
+            string activationIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
+
+            StringAssert.Contains("activation failed", activationIssue.ToLowerInvariant());
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.AreEqual(0, root.transform.childCount);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task ProfilelessDynamicGrant_RemainsEligibleWhenSiblingBaseActivationFails()
+        {
+            GameObject dynamicRoot = CreateEntry("qa.stable.dynamic-sibling", _routeA, false);
+            ObjectEntryCompositionAuthoring dynamicAuthoring = dynamicRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(dynamicAuthoring, true);
+            GameObject profileRoot = CreateEntry("qa.stable.dynamic-sibling-base", _routeA, false);
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile(
+                "base",
+                Create("qa-stable-sibling-base-prefab"));
+            SetAuthoringProfile(profileRoot.AddComponent<ObjectEntryCompositionAuthoring>(), profile);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(
+                _ownerA,
+                new[] { dynamicRoot, profileRoot },
+                out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            SetProfilePartPrefab(profile, 0, null);
+
+            Assert.IsNotEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(dynamicAuthoring.TryGetCompositionAccessGrant(
+                out ObjectEntryCompositionAccessGrant grant,
+                out diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution contribution, out diagnostic), diagnostic);
+            Assert.AreEqual(0, dynamicRoot.transform.childCount);
+            Assert.IsTrue((await contribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task ProfilelessDynamicGrant_RemainsEligibleWhenSiblingProfileWasDestroyed()
+        {
+            GameObject dynamicRoot = CreateEntry("qa.stable.dynamic-destroyed-sibling", _routeA, false);
+            ObjectEntryCompositionAuthoring dynamicAuthoring = dynamicRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(dynamicAuthoring, true);
+            GameObject profileRoot = CreateEntry("qa.stable.dynamic-destroyed-sibling-base", _routeA, false);
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile(
+                "base",
+                Create("qa-stable-destroyed-sibling-base-prefab"));
+            SetAuthoringProfile(profileRoot.AddComponent<ObjectEntryCompositionAuthoring>(), profile);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(
+                _ownerA,
+                new[] { dynamicRoot, profileRoot },
+                out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Object.DestroyImmediate(profile);
+
+            string activationIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
+
+            StringAssert.Contains("profile", activationIssue.ToLowerInvariant());
+            Assert.IsTrue(dynamicAuthoring.TryGetCompositionAccessGrant(
+                out ObjectEntryCompositionAccessGrant grant,
+                out diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution contribution, out diagnostic), diagnostic);
+            Assert.AreEqual(0, dynamicRoot.transform.childCount);
+            Assert.IsTrue((await contribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DisabledProfilelessGrant_DoesNotStopSiblingBaseOrGrantPublication()
+        {
+            GameObject disabledRoot = CreateEntry("qa.stable.dynamic-disabled-sibling", _routeA, false);
+            ObjectEntryCompositionAuthoring disabledAuthoring = disabledRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(disabledAuthoring, true);
+            GameObject dynamicRoot = CreateEntry("qa.stable.dynamic-enabled-sibling", _routeA, false);
+            ObjectEntryCompositionAuthoring dynamicAuthoring = dynamicRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(dynamicAuthoring, true);
+            GameObject profileRoot = CreateEntry("qa.stable.dynamic-enabled-sibling-base", _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-enabled-sibling-base");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            SetAuthoringProfile(profileRoot.AddComponent<ObjectEntryCompositionAuthoring>(), profile);
+
+            Assert.IsTrue(_bindings.TryRegisterOwnerContent(
+                _ownerA,
+                new[] { disabledRoot, dynamicRoot, profileRoot },
+                out string diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            SetDynamicOptIn(disabledAuthoring, false);
+
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+
+            Assert.IsFalse(disabledAuthoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.IsTrue(dynamicAuthoring.TryGetCompositionAccessGrant(
+                out ObjectEntryCompositionAccessGrant grant,
+                out diagnostic), diagnostic);
+            Assert.IsTrue(dynamicRoot.transform.childCount == 0);
+            Assert.IsTrue(profileRoot.transform.Find(prefab.name) != null,
+                "An opted-out profileless sibling must not abort a valid B2 Base activation.");
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution contribution, out diagnostic), diagnostic);
+            Assert.IsTrue((await contribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+        [Test]
+        public async Task DynamicComposition_GrantAndHandleStayStaleAfterExactRootReadmission()
+        {
+            const string id = "qa.stable.dynamic-readmission";
+            GameObject root = CreateEntry(id, _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant oldGrant, out string diagnostic), diagnostic);
+            Assert.IsTrue(oldGrant.TryOpenContribution(0, out ObjectEntryCompositionContribution oldContribution, out diagnostic), diagnostic);
+
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.IsFalse(oldGrant.TryOpenContribution(0, out _, out string staleOpenIssue));
+            StringAssert.Contains("stale", staleOpenIssue.ToLowerInvariant());
+            Assert.AreEqual(
+                ObjectEntryCompositionContributionCloseStatus.Stale,
+                (await oldContribution.CloseAsync()).Status);
+
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant newGrant, out diagnostic), diagnostic);
+            Assert.AreNotSame(oldGrant, newGrant);
+            Assert.IsFalse(oldGrant.TryOpenContribution(10, out _, out _));
+            Assert.AreEqual(
+                ObjectEntryCompositionContributionCloseStatus.Stale,
+                (await oldContribution.CloseAsync()).Status);
+            Assert.IsTrue(newGrant.TryOpenContribution(10, out ObjectEntryCompositionContribution newContribution, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldContribution.CloseAsync()).Status);
+            Assert.AreEqual(0, root.transform.childCount);
+            Assert.IsTrue((await newContribution.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DynamicComposition_HostInvalidationAndDestroyedRootRejectAccess()
+        {
+            GameObject destroyedRoot = CreateEntry("qa.stable.dynamic-destroyed-root", _routeB, false);
+            ObjectEntryCompositionAuthoring destroyedAuthoring = destroyedRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(destroyedAuthoring, true);
+            Register(_ownerB, destroyedRoot);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerB));
+            Assert.IsTrue(destroyedAuthoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant destroyedGrant, out string diagnostic), diagnostic);
+            Object.DestroyImmediate(destroyedRoot);
+
+            Assert.IsFalse(destroyedGrant.TryOpenContribution(0, out _, out string destroyedIssue));
+            StringAssert.Contains("current", destroyedIssue.ToLowerInvariant());
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerB));
+
+            GameObject hostRoot = CreateEntry("qa.stable.dynamic-host-invalidation", _routeA, false);
+            ObjectEntryCompositionAuthoring hostAuthoring = hostRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(hostAuthoring, true);
+            Register(_ownerA, hostRoot);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(hostAuthoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant hostGrant, out diagnostic), diagnostic);
+            Assert.IsTrue(hostGrant.TryOpenContribution(0, out ObjectEntryCompositionContribution hostHandle, out diagnostic), diagnostic);
+
+            _bindings.InvalidateQueryAccess();
+
+            Assert.IsFalse(hostAuthoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.IsFalse(hostGrant.TryOpenContribution(0, out _, out string hostIssue));
+            StringAssert.Contains("invalid", hostIssue.ToLowerInvariant());
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await hostHandle.CloseAsync()).Status);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public void DynamicComposition_AmbiguousRegistrationNeverPublishesGrant()
+        {
+            const string id = "qa.stable.dynamic-ambiguous";
+            GameObject firstRoot = CreateEntry(id, _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = firstRoot.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            GameObject duplicateRoot = CreateEntry(id, _routeA, false);
+
+            Assert.IsFalse(_bindings.TryRegisterOwnerContent(
+                _ownerA,
+                new[] { firstRoot, duplicateRoot },
+                out string diagnostic));
+            StringAssert.Contains("ambiguous", diagnostic.ToLowerInvariant());
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.AreEqual(0, _bindings.BindingCount);
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+        }
+
+        [Test]
+        public async Task DynamicGrant_OptInMismatchInvalidatesGrantWithoutInvalidatingBaseComposition()
+        {
+            const string id = "qa.stable.dynamic-opt-in-latch";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-opt-in-base");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant oldGrant, out string diagnostic), diagnostic);
+            Assert.IsTrue(oldGrant.TryOpenContribution(0, out ObjectEntryCompositionContribution oldHandle, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+
+            SetDynamicOptIn(authoring, false);
+            bool staleGrantWasCleared = !authoring.TryGetCompositionAccessGrant(out _, out _);
+            bool oldGrantWasRejected = !oldGrant.TryOpenContribution(10, out _, out _);
+            bool baseOccurrenceRemainsCurrent = _bindings.IsCompositionTargetCurrent(binding);
+            bool basePartRemainsMaterialized = root.transform.Find(prefab.name) != null;
+            bool baseRuntimeRemainsActive = binding.CompositionRuntime.IsActive;
+            bool baseActivationRemainsSuccessful = string.IsNullOrEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+
+            SetDynamicOptIn(authoring, true);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant newGrant, out diagnostic), diagnostic);
+
+            Assert.IsTrue(staleGrantWasCleared);
+            Assert.IsTrue(oldGrantWasRejected, "A transient opt-in mismatch must permanently stale the previous grant.");
+            Assert.IsTrue(baseOccurrenceRemainsCurrent, "Dynamic access configuration must not alter the shared B2 target guard.");
+            Assert.IsTrue(basePartRemainsMaterialized);
+            Assert.IsTrue(baseRuntimeRemainsActive);
+            Assert.IsTrue(baseActivationRemainsSuccessful, "The B2 Base remains successful while dynamic access is disabled.");
+            Assert.AreNotSame(oldGrant, newGrant, "Restoring opt-in must publish a grant on a fresh context slot.");
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status);
+            Assert.IsTrue(newGrant.TryOpenContribution(5, out ObjectEntryCompositionContribution newHandle, out diagnostic), diagnostic);
+            Assert.IsTrue((await newHandle.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DestroyedAuthoredProfile_DoesNotBecomeProfilelessDynamicComposition()
+        {
+            GameObject root = CreateEntry("qa.stable.dynamic-destroyed-profile", _routeA, false);
+            GameObject prefab = Create("qa-stable-destroyed-profile-prefab");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Object.DestroyImmediate(profile);
+
+            string activationIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
+
+            StringAssert.Contains("profile", activationIssue.ToLowerInvariant());
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _),
+                "A destroyed authored Base must not be treated as profileless opt-in.");
+            Assert.AreEqual(0, _bindings.CompositionBindingCount);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task DynamicGrant_IsUnavailableWhileBaseActivationIsInFlight()
+        {
+            const string id = "qa.stable.dynamic-base-activation-pending";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-base-activation-pending");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out string diagnostic), diagnostic);
+
+            var allowStagingCleanup = new TaskCompletionSource<bool>();
+            async Task<bool> DestroyAfterGate(GameObject instance)
+            {
+                await allowStagingCleanup.Task;
+                if (instance != null) Object.DestroyImmediate(instance);
+                return instance == null;
+            }
+
+            var runtime = new ObjectEntryCompositionRuntimeBinding(
+                binding,
+                profile,
+                candidate => _bindings.IsCompositionTargetCurrent(candidate),
+                DestroyAfterGate,
+                allowDynamicContributions: true);
+            binding.CompositionRuntime = runtime;
+
+            Task<string> activation = runtime.ActivateAsync();
+            bool activationWasInFlight = !activation.IsCompleted;
+            bool grantWasUnavailable = !authoring.TryGetCompositionAccessGrant(out _, out _);
+            allowStagingCleanup.TrySetResult(true);
+            string activationIssue = await activation;
+
+            Assert.IsTrue(activationWasInFlight,
+                "The controlled materializer gate must hold Base activation at an observable in-flight boundary.");
+            Assert.IsTrue(grantWasUnavailable, "No grant exists while the exact Base runtime is still activating.");
+            Assert.IsEmpty(activationIssue);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution handle, out diagnostic), diagnostic);
+            Assert.IsTrue((await handle.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+        [Test]
+        public async Task DynamicGrantAndHandle_AreStaleDuringPendingOwnerRelease()
+        {
+            const string id = "qa.stable.dynamic-pending-release";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-pending-release-part");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out string diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution handle, out diagnostic), diagnostic);
+
+            GameObject acquiredPart = root.transform.Find(prefab.name).gameObject;
+            Transform originalRootParent = root.transform.parent;
+            acquiredPart.transform.SetParent(null, true);
+            root.transform.SetParent(acquiredPart.transform, false);
+
+            string pendingIssue = await _bindings.ReleaseOwnerAsync(_ownerA);
+
+            StringAssert.Contains("pending", pendingIssue.ToLowerInvariant());
+            Assert.AreSame(root, acquiredPart.transform.GetChild(0).gameObject);
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
+            Assert.IsFalse(grant.TryOpenContribution(10, out _, out string staleOpenIssue));
+            StringAssert.Contains("release", staleOpenIssue.ToLowerInvariant());
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await handle.CloseAsync()).Status);
+            Assert.AreEqual(1, _bindings.BindingCount, "The physical record remains until the owner release barrier completes.");
+            Assert.IsTrue(root != null, "Pending cleanup must preserve the exact Object Entry root.");
+
+            root.transform.SetParent(originalRootParent, false);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            Assert.IsTrue(root != null);
+            Assert.IsTrue(acquiredPart == null);
+        }
+
+        [Test]
+        public async Task DynamicGrantAndHandle_StayStaleWhenContextIsReplacedOnSameBinding()
+        {
+            const string id = "qa.stable.dynamic-context-replacement";
+            GameObject root = CreateEntry(id, _routeA, false);
+            GameObject prefab = Create("qa-stable-dynamic-context-replacement-base");
+            ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prefab);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetAuthoringProfile(authoring, profile);
+            SetDynamicOptIn(authoring, true);
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant oldGrant, out string diagnostic), diagnostic);
+            Assert.IsTrue(oldGrant.TryOpenContribution(0, out ObjectEntryCompositionContribution oldHandle, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+            ObjectEntryCompositionRuntimeBinding oldRuntime = binding.CompositionRuntime;
+            ObjectEntryDeclaration declaration = root.GetComponent<ObjectEntryDeclaration>();
+
+            declaration.ConfigureForQa(Id("qa.stable.dynamic-context-replacement-stale"), ObjectEntryRequiredness.Required);
+            string staleActivationIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
+            StringAssert.Contains("stale", staleActivationIssue.ToLowerInvariant());
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status);
+
+            declaration.ConfigureForQa(Id(id), ObjectEntryRequiredness.Required);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding reactivatedBinding, out _, out diagnostic), diagnostic);
+            Assert.AreSame(binding, reactivatedBinding);
+            Assert.AreNotSame(oldRuntime, binding.CompositionRuntime,
+                "Reactivation after the stale binding is restored must replace the closed Composition context.");
+            Assert.IsFalse(oldGrant.TryOpenContribution(10, out _, out _));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant newGrant, out diagnostic), diagnostic);
+            Assert.AreNotSame(oldGrant, newGrant);
+            Assert.IsTrue(newGrant.TryOpenContribution(10, out ObjectEntryCompositionContribution newHandle, out diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status,
+                "A handle from the replaced context must remain stale after a new contribution opens.");
+            Assert.IsTrue((await newHandle.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task SynchronousOwnerRemoval_RejectionPreservesQueriesAndCompositionGrant()
+        {
+            const string id = "qa.stable.dynamic-sync-release-barrier";
+            GameObject root = CreateEntry(id, _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            ObjectEntryOccurrenceQueryBinding query = root.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            Register(_ownerA, root);
+            Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant grant, out string diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution handle, out diagnostic), diagnostic);
+
+            bool removed = _bindings.TryReleaseOwner(_ownerA, out string releaseDiagnostic);
+
+            Assert.IsFalse(removed);
+            StringAssert.Contains("async", releaseDiagnostic.ToLowerInvariant());
+            Assert.IsTrue(_bindings.TryRecognizeOccurrence(
+                Id(id), root, out StableObjectBinding binding, out _, out diagnostic), diagnostic);
+            Assert.IsTrue(_bindings.IsCompositionTargetCurrent(binding));
+            Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant retainedGrant, out diagnostic), diagnostic);
+            Assert.AreSame(grant, retainedGrant);
+            Assert.AreSame(root, query.Resolve(StableObjectReference.ForEntry(Id(id))).Occurrence,
+                "A rejected synchronous removal must not unbind read-only occurrence queries.");
+
+            Assert.IsTrue(grant.TryOpenContribution(10, out ObjectEntryCompositionContribution secondHandle, out diagnostic), diagnostic);
+            Assert.IsTrue((await handle.CloseAsync()).IsSuccessful);
+            Assert.IsTrue((await secondHandle.CloseAsync()).IsSuccessful);
+            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
         [Test]
         public async Task AdoptedCompositionResource_RemainsOwnedByTheObjectEntryAfterComposerClose()
         {
@@ -1109,6 +1645,26 @@ namespace Immersive.Framework.Reset.Tests
         {
             var serialized = new SerializedObject(authoring);
             serialized.FindProperty("profile").objectReferenceValue = profile;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetDynamicOptIn(ObjectEntryCompositionAuthoring authoring, bool value)
+        {
+            var serialized = new SerializedObject(authoring);
+            serialized.FindProperty("allowDynamicContributions").boolValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetProfilePartPrefab(
+            ObjectEntryCompositionProfile profile,
+            int partIndex,
+            GameObject prefab)
+        {
+            var serialized = new SerializedObject(profile);
+            serialized.FindProperty("parts")
+                .GetArrayElementAtIndex(partIndex)
+                .FindPropertyRelative("prefab")
+                .objectReferenceValue = prefab;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

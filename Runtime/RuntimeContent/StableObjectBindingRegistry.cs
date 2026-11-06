@@ -8,6 +8,32 @@ using UnityEngine;
 
 namespace Immersive.Framework.RuntimeContent
 {
+    internal sealed class ObjectEntryCompositionRuntimeSlot
+    {
+        private ObjectEntryCompositionRuntimeBinding _runtime;
+        private bool _invalidated;
+
+        internal ObjectEntryCompositionRuntimeBinding Runtime => _runtime;
+        internal bool IsInvalidated => _invalidated;
+
+        internal bool TryBind(ObjectEntryCompositionRuntimeBinding runtime)
+        {
+            if (_invalidated || runtime == null) return false;
+            if (_runtime == null)
+            {
+                _runtime = runtime;
+                return true;
+            }
+
+            return ReferenceEquals(_runtime, runtime);
+        }
+
+        internal bool IsBoundTo(ObjectEntryCompositionRuntimeBinding runtime) =>
+            !_invalidated && ReferenceEquals(_runtime, runtime);
+
+        internal void Invalidate() => _invalidated = true;
+    }
+
     internal enum StableObjectBindingResolutionStatus
     {
         Resolved = 10,
@@ -31,6 +57,9 @@ namespace Immersive.Framework.RuntimeContent
             Declaration = declaration;
             CompositionAuthoring = compositionAuthoring;
             CompositionProfile = compositionAuthoring != null ? compositionAuthoring.Profile : null;
+            HasAuthoredProfile = !ReferenceEquals(CompositionProfile, null);
+            AllowsDynamicComposition = compositionAuthoring != null && compositionAuthoring.AllowsDynamicContributions;
+            CompositionRuntimeSlot = compositionAuthoring != null ? new ObjectEntryCompositionRuntimeSlot() : null;
         }
 
         internal ObjectEntryId ObjectEntryId { get; }
@@ -39,6 +68,10 @@ namespace Immersive.Framework.RuntimeContent
         internal ObjectEntryDeclaration Declaration { get; }
         internal ObjectEntryCompositionAuthoring CompositionAuthoring { get; }
         internal ObjectEntryCompositionProfile CompositionProfile { get; }
+        internal bool HasAuthoredProfile { get; }
+        internal bool AllowsDynamicComposition { get; }
+        internal ObjectEntryCompositionRuntimeSlot CompositionRuntimeSlot { get; set; }
+        internal ObjectEntryCompositionAccessGrant CompositionAccessGrant { get; set; }
         internal ObjectEntryCompositionRuntimeBinding CompositionRuntime { get; set; }
     }
 
@@ -280,6 +313,7 @@ namespace Immersive.Framework.RuntimeContent
 
             foreach (OwnerBindings registration in _owners.Values)
             {
+                InvalidateCompositionAccessGrants(registration);
                 for (int bindingIndex = 0; bindingIndex < registration.Bindings.Count; bindingIndex++)
                 {
                     registration.Bindings[bindingIndex].CompositionRuntime?.InvalidateWriteAccess();
@@ -307,16 +341,42 @@ namespace Immersive.Framework.RuntimeContent
                 return $"stable-object-composition-activation-before-commit-or-after-invalidation: owner='{owner.StableText}' is not a committed writable occurrence.";
             }
 
+            for (int index = 0; index < registration.Bindings.Count; index++)
+            {
+                StableObjectBinding binding = registration.Bindings[index];
+                if (!binding.HasAuthoredProfile && binding.AllowsDynamicComposition &&
+                    binding.CompositionRuntime != null && binding.CompositionRuntime.CleanupComplete &&
+                    IsCompositionTargetCurrent(registration, binding))
+                {
+                    ResetCompositionContext(binding);
+                    binding.CompositionRuntime = null;
+                }
+            }
+
+            string profilelessGrantIssue = PublishProfilelessCompositionAccessGrants(registration);
+            if (!string.IsNullOrEmpty(profilelessGrantIssue))
+            {
+                return profilelessGrantIssue;
+            }
+
             var activated = new List<StableObjectBinding>();
             for (int index = 0; index < registration.Bindings.Count; index++)
             {
                 StableObjectBinding binding = registration.Bindings[index];
-                ObjectEntryCompositionAuthoring authoring = binding.CompositionAuthoring;
-                if (authoring == null) continue;
+                if (binding.CompositionAuthoring == null) continue;
+                if (binding.HasAuthoredProfile && binding.CompositionProfile == null)
+                {
+                    InvalidateCompositionAccessForBinding(binding);
+                    string destroyedProfileIssue =
+                        $"Object Entry Base Profile was destroyed after owner admission. owner='{owner.StableText}' ObjectEntryId='{binding.ObjectEntryId.StableText}'.";
+                    return AppendDiagnostic(destroyedProfileIssue, await CloseActivatedCompositionsAsync(activated));
+                }
+
                 if (!IsCompositionTargetCurrent(registration, binding))
                 {
                     string staleDiagnostic =
                         $"stable-object-composition-target-stale: ObjectEntryId='{binding.ObjectEntryId.StableText}' owner='{owner.StableText}' is no longer the exact committed occurrence.";
+                    InvalidateCompositionAccessForBinding(binding);
                     binding.CompositionRuntime?.InvalidateWriteAccess();
                     string bindingCleanupIssue = binding.CompositionRuntime != null
                         ? await binding.CompositionRuntime.CloseAndReconcileAsync()
@@ -327,11 +387,16 @@ namespace Immersive.Framework.RuntimeContent
                         otherCleanupIssue);
                 }
 
+                if (!binding.HasAuthoredProfile && binding.AllowsDynamicComposition)
+                {
+                    continue;
+                }
                 if (binding.CompositionRuntime?.IsActive == true) continue;
 
                 if (binding.CompositionRuntime != null &&
                     !binding.CompositionRuntime.CleanupComplete)
                 {
+                    InvalidateCompositionAccessForBinding(binding);
                     string pendingCleanupIssue =
                         await binding.CompositionRuntime.CloseAndReconcileAsync();
                     if (!string.IsNullOrEmpty(pendingCleanupIssue))
@@ -346,12 +411,19 @@ namespace Immersive.Framework.RuntimeContent
 
                 try
                 {
-                    if (binding.CompositionRuntime == null || binding.CompositionRuntime.CleanupComplete)
+                    if (binding.CompositionRuntime != null && binding.CompositionRuntime.CleanupComplete)
                     {
+                        ResetCompositionContext(binding);
+                        binding.CompositionRuntime = null;
+                    }
+                    if (binding.CompositionRuntime == null)
+                    {
+                        EnsureCompositionContextSlot(binding);
                         binding.CompositionRuntime = new ObjectEntryCompositionRuntimeBinding(
                             binding,
                             binding.CompositionProfile,
-                            candidate => IsCompositionTargetCurrent(registration, candidate));
+                            candidate => IsCompositionTargetCurrent(registration, candidate),
+                            allowDynamicContributions: binding.AllowsDynamicComposition);
                     }
 
                     string activationIssue = await binding.CompositionRuntime.ActivateAsync();
@@ -361,6 +433,7 @@ namespace Immersive.Framework.RuntimeContent
                         continue;
                     }
 
+                    InvalidateCompositionAccessForBinding(binding);
                     string cleanupIssue = await binding.CompositionRuntime.CloseAndReconcileAsync();
                     string diagnostic =
                         $"Object Entry composition activation failed after owner commit. owner='{owner.StableText}' ObjectEntryId='{binding.ObjectEntryId.StableText}'. {activationIssue}";
@@ -369,21 +442,12 @@ namespace Immersive.Framework.RuntimeContent
                         diagnostic += " Cleanup remains unresolved. " + cleanupIssue;
                     }
 
-                    for (int activatedIndex = activated.Count - 1; activatedIndex >= 0; activatedIndex--)
-                    {
-                        StableObjectBinding previouslyActivated = activated[activatedIndex];
-                        string previousCleanupIssue =
-                            await previouslyActivated.CompositionRuntime.CloseAndReconcileAsync();
-                        if (!string.IsNullOrEmpty(previousCleanupIssue))
-                        {
-                            diagnostic +=
-                                $" Cleanup of previously activated ObjectEntryId='{previouslyActivated.ObjectEntryId.StableText}' remains unresolved. {previousCleanupIssue}";
-                        }
-                    }
-                    return diagnostic;
+                    string previousCleanupIssue = await CloseActivatedCompositionsAsync(activated);
+                    return AppendDiagnostic(diagnostic, previousCleanupIssue);
                 }
                 catch (Exception exception)
                 {
+                    InvalidateCompositionAccessForBinding(binding);
                     binding.CompositionRuntime?.InvalidateWriteAccess();
                     string cleanupIssue = binding.CompositionRuntime != null
                         ? await binding.CompositionRuntime.CloseAndReconcileAsync()
@@ -395,15 +459,185 @@ namespace Immersive.Framework.RuntimeContent
                 }
             }
 
+            for (int index = 0; index < registration.Bindings.Count; index++)
+            {
+                StableObjectBinding binding = registration.Bindings[index];
+                if (!binding.HasAuthoredProfile || !binding.AllowsDynamicComposition) continue;
+                if (!binding.CompositionAuthoring.AllowsDynamicContributions)
+                {
+                    InvalidateCompositionAccessForBinding(binding);
+                    continue;
+                }
+                if (!TryPublishCompositionAccessGrant(registration, binding, out string grantIssue))
+                {
+                    string cleanupIssue = await CloseActivatedCompositionsAsync(activated);
+                    return AppendDiagnostic(grantIssue, cleanupIssue);
+                }
+            }
+
             return string.Empty;
         }
-
         internal bool IsCompositionTargetCurrent(StableObjectBinding binding)
         {
             return binding != null && _owners.TryGetValue(binding.Owner, out OwnerBindings registration) &&
                 IsCompositionTargetCurrent(registration, binding);
         }
 
+        internal bool TryOpenDynamicContribution(
+            ObjectEntryCompositionAccessGrant grant,
+            int priority,
+            out ObjectEntryCompositionContribution contribution,
+            out string diagnostic)
+        {
+            contribution = null;
+            if (priority == int.MinValue)
+            {
+                diagnostic = "Dynamic Object Entry composition priority cannot use the reserved B2 Base priority.";
+                return false;
+            }
+            if (!TryGetCurrentCompositionAccessGrant(
+                    grant,
+                    out OwnerBindings registration,
+                    out StableObjectBinding binding,
+                    out diagnostic))
+            {
+                return false;
+            }
+            if (!grant.TryGetBinding(out _, out _, out ObjectEntryCompositionRuntimeSlot contextSlot))
+            {
+                diagnostic = "Object Entry composition access grant has no exact context slot.";
+                return false;
+            }
+
+            ObjectEntryCompositionRuntimeBinding runtime = binding.CompositionRuntime;
+            bool createdRuntime = false;
+            if (runtime == null)
+            {
+                if (binding.HasAuthoredProfile)
+                {
+                    diagnostic = "Dynamic Object Entry composition access is unavailable until the Base Profile activates.";
+                    return false;
+                }
+
+                runtime = new ObjectEntryCompositionRuntimeBinding(
+                    binding,
+                    null,
+                    candidate => IsCompositionTargetCurrent(registration, candidate),
+                    allowDynamicContributions: true);
+                createdRuntime = true;
+            }
+
+            if (contextSlot.Runtime != null && !contextSlot.IsBoundTo(runtime))
+            {
+                InvalidateCompositionAccessForBinding(binding);
+                diagnostic = "Dynamic Object Entry composition context changed after this grant was issued.";
+                return false;
+            }
+
+            if (!runtime.TryCreateDynamicContribution(
+                    priority,
+                    out Immersive.Composition.CompositionContribution composerContribution,
+                    out diagnostic))
+            {
+                return false;
+            }
+
+            if (contextSlot.Runtime == null && !contextSlot.TryBind(runtime))
+            {
+                diagnostic = "Dynamic Object Entry composition context was invalidated while opening a contribution.";
+                return false;
+            }
+
+            if (createdRuntime)
+            {
+                binding.CompositionRuntime = runtime;
+            }
+
+            contribution = new ObjectEntryCompositionContribution(
+                grant,
+                runtime,
+                composerContribution,
+                priority);
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        internal async Task<ObjectEntryCompositionContributionCloseResult> CloseDynamicContributionAsync(
+            ObjectEntryCompositionAccessGrant grant,
+            ObjectEntryCompositionContribution contribution,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentCompositionAccessGrant(
+                    grant,
+                    out _,
+                    out StableObjectBinding binding,
+                    out string diagnostic))
+            {
+                return new ObjectEntryCompositionContributionCloseResult(
+                    ObjectEntryCompositionContributionCloseStatus.Stale,
+                    diagnostic);
+            }
+
+            if (contribution == null || !contribution.IsFrom(grant) ||
+                contribution.ComposerContribution == null)
+            {
+                return new ObjectEntryCompositionContributionCloseResult(
+                    ObjectEntryCompositionContributionCloseStatus.Faulted,
+                    "The contribution handle does not belong to this exact Object Entry access grant.");
+            }
+
+            if (!grant.TryGetBinding(out _, out _, out ObjectEntryCompositionRuntimeSlot contextSlot) ||
+                binding.CompositionRuntime == null ||
+                !contextSlot.IsBoundTo(binding.CompositionRuntime) ||
+                (grant.ContextAtIssue != null && !ReferenceEquals(grant.ContextAtIssue, binding.CompositionRuntime)) ||
+                !contribution.IsFromRuntime(binding.CompositionRuntime))
+            {
+                return new ObjectEntryCompositionContributionCloseResult(
+                    ObjectEntryCompositionContributionCloseStatus.Stale,
+                    "The contribution handle belongs to a previous Object Entry composition context.");
+            }
+
+            try
+            {
+                Immersive.Composition.CompositionResult result =
+                    await contribution.ComposerContribution.CloseAsync(cancellationToken);
+                if (result == null)
+                {
+                    return new ObjectEntryCompositionContributionCloseResult(
+                        ObjectEntryCompositionContributionCloseStatus.Faulted,
+                        "The Composition kernel returned no close result.");
+                }
+
+                ObjectEntryCompositionContributionCloseStatus status = result.Status switch
+                {
+                    Immersive.Composition.CompositionResultStatus.Committed =>
+                        ObjectEntryCompositionContributionCloseStatus.Closed,
+                    Immersive.Composition.CompositionResultStatus.NoChange =>
+                        ObjectEntryCompositionContributionCloseStatus.NoChange,
+                    Immersive.Composition.CompositionResultStatus.Stale =>
+                        ObjectEntryCompositionContributionCloseStatus.Stale,
+                    Immersive.Composition.CompositionResultStatus.Cancelled =>
+                        ObjectEntryCompositionContributionCloseStatus.Cancelled,
+                    _ => ObjectEntryCompositionContributionCloseStatus.Faulted
+                };
+                string issue = result.Issues.Count == 0
+                    ? string.Empty
+                    : string.Join(" | ", result.Issues.Select(value => value.ToString()));
+                return new ObjectEntryCompositionContributionCloseResult(status, issue);
+            }
+            catch (OperationCanceledException)
+            {
+                return new ObjectEntryCompositionContributionCloseResult(
+                    ObjectEntryCompositionContributionCloseStatus.Cancelled,
+                    "Object Entry composition contribution close was cancelled.");
+            }
+            catch (Exception exception)
+            {
+                return new ObjectEntryCompositionContributionCloseResult(
+                    ObjectEntryCompositionContributionCloseStatus.Faulted,
+                    $"Object Entry composition contribution close failed. {exception.GetType().Name}: {exception.Message}");
+            }
+        }
         internal async Task<string> ReleaseOwnerAsync(RuntimeContentOwner owner)
         {
             if (!owner.IsValid)
@@ -417,6 +651,7 @@ namespace Immersive.Framework.RuntimeContent
 
             registration.IsReleasing = true;
             registration.IsCommitted = false;
+            InvalidateCompositionAccessGrants(registration);
             for (int index = 0; index < registration.Bindings.Count; index++)
             {
                 registration.Bindings[index].CompositionRuntime?.InvalidateWriteAccess();
@@ -471,7 +706,7 @@ namespace Immersive.Framework.RuntimeContent
                 : $"stable-object-binding-pending-owner-release: scope='{scope}' owners='{pendingOwners.Length}'. {string.Join(" | ", issues)}";
         }
 
-        private static async Task<string> CloseActivatedCompositionsAsync(
+        private async Task<string> CloseActivatedCompositionsAsync(
             IReadOnlyList<StableObjectBinding> activated)
         {
             var issues = new List<string>();
@@ -480,6 +715,7 @@ namespace Immersive.Framework.RuntimeContent
                 StableObjectBinding binding = activated[index];
                 try
                 {
+                    InvalidateCompositionAccessForBinding(binding);
                     string issue = await binding.CompositionRuntime.CloseAndReconcileAsync();
                     if (!string.IsNullOrEmpty(issue))
                     {
@@ -633,6 +869,7 @@ namespace Immersive.Framework.RuntimeContent
                 diagnostic = $"stable-object-binding-{operation}-invalid-owner: owner is invalid.";
                 return false;
             }
+
             bool applied = _owners.TryGetValue(owner, out OwnerBindings registration);
             if (applied)
             {
@@ -647,17 +884,25 @@ namespace Immersive.Framework.RuntimeContent
                         return false;
                     }
                 }
+
+                registration.IsReleasing = true;
+                registration.IsCommitted = false;
+                InvalidateCompositionAccessGrants(registration);
+                for (int index = 0; index < registration.Bindings.Count; index++)
+                {
+                    registration.Bindings[index].CompositionRuntime?.InvalidateWriteAccess();
+                }
+                ReleaseQueryBindings(registration);
             }
+
             int removed = applied ? registration.Bindings.Count : 0;
             if (applied)
             {
-                ReleaseQueryBindings(registration);
                 _owners.Remove(owner);
             }
             diagnostic = $"stable-object-binding-{operation}-completed: owner='{owner.StableText}' bindings='{removed}' applied='{applied}'.";
             return true;
         }
-
         private bool IsCompositionTargetCurrent(
             OwnerBindings registration,
             StableObjectBinding binding)
@@ -681,7 +926,8 @@ namespace Immersive.Framework.RuntimeContent
                 if (candidate.ObjectEntryId == binding.ObjectEntryId) sameIdCount++;
             }
 
-            if (exactRecordCount != 1 || sameIdCount != 1 || binding.CompositionAuthoring == null)
+            if (exactRecordCount != 1 || sameIdCount != 1 || binding.CompositionAuthoring == null ||
+                binding.CompositionRuntimeSlot == null)
             {
                 return false;
             }
@@ -710,11 +956,270 @@ namespace Immersive.Framework.RuntimeContent
                 binding.PhysicalObject.GetComponent<ObjectEntryCompositionAuthoring>();
             return declaration != null && ReferenceEquals(declaration, binding.Declaration) &&
                 ReferenceEquals(authoring, binding.CompositionAuthoring) &&
-                authoring.Profile == binding.CompositionProfile &&
+                ReferenceEquals(authoring.Profile, binding.CompositionProfile) &&
                 declaration.TryGetObjectEntryId(out ObjectEntryId currentId) &&
                 currentId == binding.ObjectEntryId;
         }
 
+        private string PublishProfilelessCompositionAccessGrants(OwnerBindings registration)
+        {
+            for (int index = 0; index < registration.Bindings.Count; index++)
+            {
+                StableObjectBinding binding = registration.Bindings[index];
+                if (binding.HasAuthoredProfile || !binding.AllowsDynamicComposition) continue;
+                if (!IsCompositionTargetCurrent(registration, binding)) continue;
+                if (!binding.CompositionAuthoring.AllowsDynamicContributions)
+                {
+                    InvalidateCompositionAccessForBinding(binding);
+                    continue;
+                }
+                if (!TryPublishCompositionAccessGrant(registration, binding, out string issue))
+                {
+                    return issue;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private bool TryPublishCompositionAccessGrant(
+            OwnerBindings registration,
+            StableObjectBinding binding,
+            out string diagnostic)
+        {
+            if (!binding.AllowsDynamicComposition || binding.CompositionAuthoring == null)
+            {
+                diagnostic = "Object Entry composition access requires explicit dynamic-contribution opt-in.";
+                return false;
+            }
+            if (!binding.CompositionAuthoring.AllowsDynamicContributions)
+            {
+                InvalidateCompositionAccessForBinding(binding);
+                diagnostic = "Object Entry composition access was revoked because dynamic contributions were disabled after admission.";
+                return false;
+            }
+            if (binding.HasAuthoredProfile && binding.CompositionProfile == null)
+            {
+                InvalidateCompositionAccessForBinding(binding);
+                diagnostic = "Object Entry composition access cannot be published because its authored Base Profile was destroyed.";
+                return false;
+            }
+            if (binding.HasAuthoredProfile && binding.CompositionRuntime?.IsActive != true)
+            {
+                diagnostic = "Object Entry composition access cannot be published before the Base Profile activates.";
+                return false;
+            }
+            if (!IsCompositionTargetCurrent(registration, binding))
+            {
+                InvalidateCompositionAccessForBinding(binding);
+                diagnostic = $"Object Entry composition access target is stale for ObjectEntryId='{binding.ObjectEntryId.StableText}'.";
+                return false;
+            }
+
+            EnsureCompositionContextSlot(binding);
+            ObjectEntryCompositionRuntimeSlot contextSlot = binding.CompositionRuntimeSlot;
+            if (binding.CompositionRuntime != null)
+            {
+                if (binding.CompositionRuntime.CleanupComplete)
+                {
+                    diagnostic = "Object Entry composition access cannot be published for a closed context.";
+                    return false;
+                }
+                if (!contextSlot.TryBind(binding.CompositionRuntime))
+                {
+                    diagnostic = "Object Entry composition access context slot is already bound to another runtime context.";
+                    return false;
+                }
+            }
+
+            ObjectEntryCompositionAccessGrant grant = binding.CompositionAccessGrant;
+            if (grant != null &&
+                grant.IsBoundTo(this, binding, contextSlot) &&
+                (grant.ContextAtIssue == null || ReferenceEquals(grant.ContextAtIssue, contextSlot.Runtime)) &&
+                binding.CompositionAuthoring.IsBoundToCompositionAccessGrant(grant))
+            {
+                diagnostic = string.Empty;
+                return true;
+            }
+
+            InvalidateCompositionAccessForBinding(binding);
+            EnsureCompositionContextSlot(binding);
+            contextSlot = binding.CompositionRuntimeSlot;
+            if (binding.CompositionRuntime != null &&
+                !contextSlot.TryBind(binding.CompositionRuntime))
+            {
+                diagnostic = "Object Entry composition access context slot could not bind to the current runtime context.";
+                return false;
+            }
+
+            grant = new ObjectEntryCompositionAccessGrant(
+                this,
+                binding,
+                contextSlot,
+                contextSlot.Runtime);
+            if (!binding.CompositionAuthoring.TryBindCompositionAccessGrant(grant, out diagnostic))
+            {
+                grant.Invalidate();
+                diagnostic = "Object Entry composition access handoff failed. " + diagnostic;
+                return false;
+            }
+
+            binding.CompositionAccessGrant = grant;
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        internal bool ValidateCompositionAccessGrant(
+            ObjectEntryCompositionAccessGrant grant,
+            out string diagnostic)
+        {
+            return TryGetCurrentCompositionAccessGrant(
+                grant,
+                out _,
+                out _,
+                out diagnostic);
+        }
+
+        private bool TryGetCurrentCompositionAccessGrant(
+            ObjectEntryCompositionAccessGrant grant,
+            out OwnerBindings registration,
+            out StableObjectBinding binding,
+            out string diagnostic)
+        {
+            registration = null;
+            binding = null;
+            if (grant == null || !grant.TryGetBinding(
+                    out StableObjectBindingRegistry grantRegistry,
+                    out StableObjectBinding grantBinding,
+                    out ObjectEntryCompositionRuntimeSlot contextSlot) ||
+                !ReferenceEquals(grantRegistry, this))
+            {
+                diagnostic = "Object Entry composition access grant is invalid or belongs to another Runtime Content registry.";
+                return false;
+            }
+
+            if (!_owners.TryGetValue(grantBinding.Owner, out registration))
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access grant is stale because its exact owner binding record is no longer registered.";
+                return false;
+            }
+            if (!registration.IsCommitted || registration.IsReleasing)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access grant was invalidated when its owner began release or rollback.";
+                registration = null;
+                return false;
+            }
+            if (_queryAccessInvalidated)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access grant was invalidated by Framework host teardown.";
+                registration = null;
+                return false;
+            }
+
+            bool bindingCurrent = IsCompositionTargetCurrent(registration, grantBinding);
+            if (!bindingCurrent)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access grant is stale because its exact committed occurrence is no longer current.";
+                registration = null;
+                return false;
+            }
+
+            bool optInCurrent = grantBinding.CompositionAuthoring != null &&
+                grantBinding.AllowsDynamicComposition &&
+                grantBinding.CompositionAuthoring.AllowsDynamicContributions;
+            bool contextCurrent =
+                grant.IsBoundTo(this, grantBinding, contextSlot) &&
+                ReferenceEquals(grantBinding.CompositionRuntimeSlot, contextSlot) &&
+                !contextSlot.IsInvalidated &&
+                (grant.ContextAtIssue == null || ReferenceEquals(grant.ContextAtIssue, contextSlot.Runtime)) &&
+                (contextSlot.Runtime == null
+                    ? grantBinding.CompositionRuntime == null
+                    : contextSlot.IsBoundTo(grantBinding.CompositionRuntime));
+            bool authoringHandoffCurrent =
+                grantBinding.CompositionAuthoring != null &&
+                ReferenceEquals(grantBinding.CompositionAccessGrant, grant) &&
+                grantBinding.CompositionAuthoring.IsBoundToCompositionAccessGrant(grant);
+
+            if (!optInCurrent || !contextCurrent || !authoringHandoffCurrent)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = !optInCurrent
+                    ? "Object Entry composition access grant was revoked because dynamic contributions are no longer enabled."
+                    : "Object Entry composition access grant is stale because its exact committed occurrence or context slot is no longer current.";
+                registration = null;
+                return false;
+            }
+
+            if (grantBinding.HasAuthoredProfile && grantBinding.CompositionProfile == null)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access is unavailable because its authored Base Profile was destroyed.";
+                registration = null;
+                return false;
+            }
+            if (grantBinding.HasAuthoredProfile && grantBinding.CompositionRuntime?.IsActive != true)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access is unavailable until the Base Profile activates.";
+                registration = null;
+                return false;
+            }
+
+            binding = grantBinding;
+            diagnostic = string.Empty;
+            return true;
+        }
+
+        private static void InvalidateCompositionAccessGrant(
+            StableObjectBinding binding,
+            ObjectEntryCompositionAccessGrant grant)
+        {
+            if (grant == null) return;
+            grant.Invalidate();
+            if (binding == null || !ReferenceEquals(binding.CompositionAccessGrant, grant)) return;
+
+            binding.CompositionRuntimeSlot?.Invalidate();
+            binding.CompositionAuthoring?.UnbindCompositionAccessGrant(grant);
+            binding.CompositionAccessGrant = null;
+        }
+        private void InvalidateCompositionAccessGrants(OwnerBindings registration)
+        {
+            for (int index = 0; index < registration.Bindings.Count; index++)
+            {
+                InvalidateCompositionAccessForBinding(registration.Bindings[index]);
+            }
+        }
+
+        private static void InvalidateCompositionAccessForBinding(StableObjectBinding binding)
+        {
+            if (binding == null) return;
+            ObjectEntryCompositionAccessGrant grant = binding.CompositionAccessGrant;
+            grant?.Invalidate();
+            binding.CompositionRuntimeSlot?.Invalidate();
+            if (grant != null)
+            {
+                binding.CompositionAuthoring?.UnbindCompositionAccessGrant(grant);
+                binding.CompositionAccessGrant = null;
+            }
+        }
+
+        private static void ResetCompositionContext(StableObjectBinding binding)
+        {
+            InvalidateCompositionAccessForBinding(binding);
+            binding.CompositionRuntimeSlot = new ObjectEntryCompositionRuntimeSlot();
+        }
+
+        private static void EnsureCompositionContextSlot(StableObjectBinding binding)
+        {
+            if (binding.CompositionRuntimeSlot == null || binding.CompositionRuntimeSlot.IsInvalidated)
+            {
+                binding.CompositionRuntimeSlot = new ObjectEntryCompositionRuntimeSlot();
+            }
+        }
         private bool TryBindQueryBindings(OwnerBindings registration, out string diagnostic)
         {
             diagnostic = string.Empty;

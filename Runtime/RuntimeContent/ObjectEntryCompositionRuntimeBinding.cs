@@ -11,6 +11,7 @@ namespace Immersive.Framework.RuntimeContent
     {
         private readonly StableObjectBinding _target;
         private readonly ObjectEntryCompositionProfile _profile;
+        private readonly bool _allowsDynamicContributions;
         private readonly Func<StableObjectBinding, bool> _isTargetCurrent;
         private readonly CompositionComposer _composer;
         private readonly CompositionContribution _baseContribution;
@@ -28,15 +29,26 @@ namespace Immersive.Framework.RuntimeContent
             StableObjectBinding target,
             ObjectEntryCompositionProfile profile,
             Func<StableObjectBinding, bool> isTargetCurrent,
-            Func<UnityEngine.GameObject, Task<bool>> destroyAndConfirmAsync = null)
+            Func<UnityEngine.GameObject, Task<bool>> destroyAndConfirmAsync = null,
+            bool allowDynamicContributions = false)
         {
             _target = target ?? throw new ArgumentNullException(nameof(target));
-            _profile = profile ?? throw new ArgumentNullException(nameof(profile));
+            if (_target.HasAuthoredProfile && profile == null)
+                throw new ArgumentException("The authored Object Entry Base Profile was destroyed before its runtime context could be created.", nameof(profile));
+            if (!_target.HasAuthoredProfile && !allowDynamicContributions)
+                throw new ArgumentException("A profileless Object Entry composition runtime requires explicit dynamic opt-in.", nameof(profile));
+            if (_target.HasAuthoredProfile != !ReferenceEquals(profile, null))
+                throw new ArgumentException("The Object Entry runtime profile does not match the exact authored configuration.", nameof(profile));
+
+            _profile = profile;
+            _allowsDynamicContributions = allowDynamicContributions;
             _isTargetCurrent = isTargetCurrent ?? throw new ArgumentNullException(nameof(isTargetCurrent));
             _composer = new CompositionComposer();
-            _baseContribution = _composer.CreateContribution(
-                CompositionOwnerId.Create("framework-object-entry-base:" + Guid.NewGuid().ToString("N")),
-                int.MinValue);
+            _baseContribution = profile != null
+                ? _composer.CreateContribution(
+                    CompositionOwnerId.Create("framework-object-entry-base:" + Guid.NewGuid().ToString("N")),
+                    int.MinValue)
+                : null;
             _materializer = new ObjectEntryCompositionPartMaterializer(
                 IsTargetCurrent,
                 destroyAndConfirmAsync);
@@ -48,6 +60,44 @@ namespace Immersive.Framework.RuntimeContent
 
         internal bool HasOutstandingAcquiredInstances =>
             _materializer.HasOutstandingAcquiredInstances;
+
+        internal bool TryCreateDynamicContribution(
+            int priority,
+            out CompositionContribution contribution,
+            out string issue)
+        {
+            contribution = null;
+            if (!_allowsDynamicContributions)
+            {
+                issue = "Dynamic Object Entry composition was not explicitly enabled for this exact occurrence.";
+                return false;
+            }
+            if (priority == int.MinValue)
+            {
+                issue = "Dynamic Object Entry composition priority cannot use the reserved B2 Base priority.";
+                return false;
+            }
+            if (_writeAccessInvalidated || _closeTask != null || _closeContextConfirmed || _cleanupComplete ||
+                !_isTargetCurrent(_target))
+            {
+                issue = "Dynamic Object Entry composition cannot open a contribution after its exact occurrence or context was invalidated.";
+                return false;
+            }
+
+            try
+            {
+                contribution = _composer.CreateContribution(
+                    CompositionOwnerId.Create("framework-object-entry-contribution:" + Guid.NewGuid().ToString("N")),
+                    priority);
+                issue = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                issue = $"Dynamic Object Entry composition contribution could not open. {exception.GetType().Name}: {exception.Message}";
+                return false;
+            }
+        }
 
         internal static bool IsRecoverableCloseFailure(
             CompositionResult result,
@@ -73,6 +123,15 @@ namespace Immersive.Framework.RuntimeContent
 
         internal async Task<string> ActivateAsync()
         {
+            if (_target.HasAuthoredProfile && _profile == null)
+            {
+                return "Object Entry composition Base activation failed because its authored Profile was destroyed.";
+            }
+
+            if (!_target.HasAuthoredProfile)
+            {
+                return "A profileless Object Entry composition context is opened lazily and has no Base activation.";
+            }
             if (_writeAccessInvalidated || !_isTargetCurrent(_target))
             {
                 return "Object Entry composition could not activate because the exact admitted binding is no longer current.";
