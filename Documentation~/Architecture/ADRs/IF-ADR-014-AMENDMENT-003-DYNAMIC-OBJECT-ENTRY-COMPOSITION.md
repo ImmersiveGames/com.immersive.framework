@@ -1,11 +1,11 @@
 # IF-ADR-014 Amendment 003 — Dynamic Object Entry Composition
 
-Status: **Proposed — Pending Project Owner Approval**
+Status: **Accepted — 2026-11-05 (Project Owner)**
 Amends: [IF-ADR-014 — Authored Definition and Stable Identity Authority](IF-ADR-014-Authored-Definition-and-Stable-Identity-Authority.md)
 Related: [Amendment 001](IF-ADR-014-AMENDMENT-001-PHYSICAL-OBJECT-ENTRY-RECOGNITION.md); [Amendment 002](IF-ADR-014-AMENDMENT-002-OBJECT-ENTRY-PHYSICAL-COMPOSITION.md); [IF-ADR-050](IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md); [IF-GOV-001](../Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 Owner: **com.immersive.framework** (Runtime Content / Object Entry integration)
 
-> **Decision boundary:** This proposal authorizes no implementation. It does not approve public API signatures, change accepted B2 behavior, alter Actor Composition or the Composition kernel, or certify Unity behavior. A future public surface remains Experimental until separately reviewed under IF-GOV-001.
+> **Decision boundary:** The Project Owner approved the five architectural decisions in §5 on 2026-11-05 and authorized staged C1 implementation. This acceptance does not approve concrete public C# signatures, change accepted B2 behavior, alter Actor Composition or the Composition kernel, waive C3 lifecycle/teardown guarantees, or certify Unity behavior. New public contracts remain Experimental, subject to API review under IF-GOV-001.
 
 ## 1. Context
 
@@ -15,7 +15,7 @@ Corte C would let authorized consumers add, replace and remove keyed parts while
 
 The QAFramework resolves com.immersive.composition 0.1.0-preview.3 at commit ef577765d0b565a020f3e98f6e5eaae681333c29. The checked local Composition repository head is newer and is not the QA-resolved source. This proposal relies on the QA-resolved contract and requires no Composition package change.
 
-## 2. Proposed decision
+## 2. Accepted architectural direction
 
 ### 2.1 Ownership and identity
 
@@ -117,9 +117,9 @@ Future implementation must demonstrate:
 9. Actor Composition and read-only Object Entry queries/recognition retain their contracts.
 10. Edit Mode and Play Mode QA cover races, ties, readmission and physical cleanup.
 
-## 5. Project Owner decisions required
+## 5. Project Owner decisions — approved 2026-11-05
 
-Recommendations are not approvals.
+The Project Owner explicitly approved all five recommended architectural directions on 2026-11-05. This is acceptance of the direction, not automatic approval of specific public API signatures, runtime changes or weaker teardown guarantees.
 
 | # | Decision | Recommendation |
 |---|---|---|
@@ -131,4 +131,4 @@ Recommendations are not approvals.
 
 ## 6. Status
 
-This amendment remains **Proposed — Pending Project Owner Approval**. Approval of the five decisions is required before C1 implementation. API review, C3 teardown/cancellation gates (including explicit approval if teardown guarantees must be limited) and C4 evidence remain separate. Corte C is not implemented, integrated or validated.
+**Accepted — 2026-11-05 (Project Owner).** The five decisions in §5 are approved and C1 implementation is authorized subject to its scoped API and regression review. C2–C4 remain planned cuts with their own evidence gates. C3 must prove stop/cancellation ordering and teardown behavior against the accepted B2 contract; any proposal to weaken teardown guarantees requires **separate explicit Project Owner approval**, not granted here. Corte C runtime is **not yet implemented, integrated or validated**; the B2 518/518 Edit Mode and 10/10 Play Mode evidence does not certify C.

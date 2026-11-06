@@ -1,11 +1,11 @@
 # IF-PLAN-014-C — Dynamic Object Entry Composition
 
-Status: **Proposed — Pending Project Owner Approval**
-Authority: proposed [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
-Implementation: **not authorized by this plan**
+Status: **Approved for staged execution — C1 authorized 2026-11-05**
+Authority: accepted [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
+Implementation: **C1 authorized; no C runtime code implemented or validated by this documentation update**
 Boundary: Framework Object Entry / Runtime Content integration; Composition kernel unchanged
 
-This is a reviewable route, not an active execution plan. Start C1 only after explicit Project Owner approval of the five Amendment 003 decisions. Each cut needs its own API review and evidence gate.
+The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. Start with a scoped public API review and exact-occurrence access work; preserve the C2–C4 cut boundaries and their independent test/evidence gates. The new dynamic mutation API must not be advertised as consumer-ready before C3 release/stop/teardown guarantees are validated.
 
 ## C1 — Access and exact occurrence identity
 
@@ -153,4 +153,4 @@ Record Unity version, checkout, package hash, test counts/results and Play Mode 
 
 ## Approval and execution gate
 
-The five Project Owner decisions remain in Amendment 003. Any separate proposal to limit the accepted teardown guarantee also requires explicit Project Owner approval. This plan authorizes no C1-C4 work. After approval, execute the cuts in order and do not advertise mutation before C3 is complete. Package release, API maturity promotion and merge remain separate decisions.
+The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. C1 implementation is authorized, with its public API design and regression checks required before completion. C2–C4 remain planned and require their own gate reviews and evidence. Any proposal to limit the accepted teardown guarantee requires **separate explicit Project Owner approval**; no such limit has been approved. Do not advertise dynamic mutation before C3 validation. Package release, API maturity promotion and runtime merge remain separate decisions.
