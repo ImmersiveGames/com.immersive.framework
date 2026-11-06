@@ -16,14 +16,20 @@ namespace Immersive.Framework.Reset.Tests
     {
         private string _dynamicPrefabFolder;
 
-        [TearDown]
-        public void TearDownDynamicCompositionPrefabs()
+        private void ClearDynamicCompositionFixture()
         {
-            if (!string.IsNullOrEmpty(_dynamicPrefabFolder))
-                AssetDatabase.DeleteAsset(_dynamicPrefabFolder);
-            _dynamicPrefabFolder = null;
             ObjectEntryCompositionDisableProbe.Enabled = null;
             ObjectEntryCompositionDisableProbe.Disabled = null;
+
+            try
+            {
+                if (!string.IsNullOrEmpty(_dynamicPrefabFolder))
+                    AssetDatabase.DeleteAsset(_dynamicPrefabFolder);
+            }
+            finally
+            {
+                _dynamicPrefabFolder = null;
+            }
         }
 
         [Test]

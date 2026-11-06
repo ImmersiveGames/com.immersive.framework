@@ -69,12 +69,38 @@ namespace Immersive.Framework.Reset.Tests
         [TearDown]
         public void TearDown()
         {
-            foreach (GameObject value in _objects)
-                if (value != null) Object.DestroyImmediate(value);
-            foreach (ScriptableObject value in _assets)
-                if (value != null) Object.DestroyImmediate(value);
-            _objects.Clear();
-            _assets.Clear();
+            try
+            {
+                ClearDynamicCompositionFixture();
+            }
+            finally
+            {
+                try
+                {
+                    foreach (GameObject value in _objects)
+                        if (value != null) Object.DestroyImmediate(value);
+                }
+                finally
+                {
+                    try
+                    {
+                        foreach (ScriptableObject value in _assets)
+                            if (value != null) Object.DestroyImmediate(value);
+                    }
+                    finally
+                    {
+                        _objects.Clear();
+                        _assets.Clear();
+                        _bindings = null;
+                        _resets = null;
+                        _resetRegistration = null;
+                        _routeA = null;
+                        _routeB = null;
+                        _ownerA = null;
+                        _ownerB = null;
+                    }
+                }
+            }
         }
 
         [Test]
