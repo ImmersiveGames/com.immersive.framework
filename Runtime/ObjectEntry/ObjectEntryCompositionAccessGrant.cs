@@ -26,8 +26,8 @@ namespace Immersive.Framework.ObjectEntry
             _contextAtIssue = contextAtIssue;
         }
 
-        /// <summary>Opens an independent empty contribution on the exact occurrence captured by this grant.</summary>
-        /// <remarks>Call on Unity's main thread. C1 does not expose dynamic part mutation or materialization.</remarks>
+        /// <summary>Opens an independent contribution on the exact occurrence captured by this grant.</summary>
+        /// <remarks>Call on Unity's main thread. The handle may set, remove and close only its own contribution intent.</remarks>
         public bool TryOpenContribution(
             int priority,
             out ObjectEntryCompositionContribution contribution,
@@ -63,7 +63,23 @@ namespace Immersive.Framework.ObjectEntry
 
         internal void Invalidate() => _contextSlot?.Invalidate();
 
-        internal Task<ObjectEntryCompositionContributionCloseResult> CloseContributionAsync(
+        internal Task<ObjectEntryCompositionOperationResult> SetContributionPartAsync(
+            ObjectEntryCompositionContribution contribution,
+            ObjectEntryCompositionPartDefinition part,
+            CancellationToken cancellationToken)
+        {
+            return _registry.SetDynamicContributionPartAsync(this, contribution, part, cancellationToken);
+        }
+
+        internal Task<ObjectEntryCompositionOperationResult> RemoveContributionPartAsync(
+            ObjectEntryCompositionContribution contribution,
+            string key,
+            CancellationToken cancellationToken)
+        {
+            return _registry.RemoveDynamicContributionPartAsync(this, contribution, key, cancellationToken);
+        }
+
+        internal Task<ObjectEntryCompositionOperationResult> CloseContributionAsync(
             ObjectEntryCompositionContribution contribution,
             CancellationToken cancellationToken)
         {

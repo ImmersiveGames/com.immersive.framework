@@ -56,6 +56,8 @@ namespace Immersive.Framework.RuntimeContent
 
         internal bool IsActive => _active;
 
+        internal long Revision => _composer.Revision;
+
         internal bool CleanupComplete => _cleanupComplete;
 
         internal bool HasOutstandingAcquiredInstances =>
@@ -97,6 +99,70 @@ namespace Immersive.Framework.RuntimeContent
                 issue = $"Dynamic Object Entry composition contribution could not open. {exception.GetType().Name}: {exception.Message}";
                 return false;
             }
+        }
+
+        internal bool TryCreateDynamicPartDefinition(
+            ObjectEntryCompositionPartDefinition part,
+            out PartDefinition definition,
+            out string issue)
+        {
+            definition = null;
+            issue = string.Empty;
+            if (part == null || !ObjectEntryCompositionPartValidation.TryValidate(
+                    part.Key,
+                    part.Prefab,
+                    part.Dependencies,
+                    requirePrefabAsset: true,
+                    out ContentKey key,
+                    out ContentKey[] dependencies,
+                    out issue))
+            {
+                if (string.IsNullOrEmpty(issue))
+                    issue = "A dynamic Object Entry composition part definition is required.";
+                return false;
+            }
+
+            var descriptor = new ObjectEntryCompositionPartMaterializer.PartBinding(
+                _target,
+                part.Prefab);
+            definition = new PartDefinition(key, descriptor, _materializer, dependencies);
+            issue = string.Empty;
+            return true;
+        }
+
+        internal Task<CompositionResult> SetDynamicPartAsync(
+            CompositionContribution contribution,
+            PartDefinition definition,
+            Func<bool> isConsumerCurrent,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            return _materializer.ExecuteConsumerOperationAsync(
+                _target,
+                isConsumerCurrent,
+                () => contribution.SetPartWhileCurrentAsync(definition, isConsumerCurrent, cancellationToken));
+        }
+
+        internal Task<CompositionResult> RemoveDynamicPartAsync(
+            CompositionContribution contribution,
+            ContentKey key,
+            Func<bool> isConsumerCurrent,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            return _materializer.ExecuteConsumerOperationAsync(
+                _target,
+                isConsumerCurrent,
+                () => contribution.RemovePartWhileCurrentAsync(key, isConsumerCurrent, cancellationToken));
+        }
+
+        internal Task<CompositionResult> CloseDynamicContributionAsync(
+            CompositionContribution contribution,
+            Func<bool> isConsumerCurrent,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            return _materializer.ExecuteConsumerOperationAsync(
+                _target,
+                isConsumerCurrent,
+                () => contribution.CloseAsync(cancellationToken));
         }
 
         internal static bool IsRecoverableCloseFailure(
@@ -152,7 +218,7 @@ namespace Immersive.Framework.RuntimeContent
                     ContentKey[] dependencies = part.Dependencies.Select(ContentKey.Create).ToArray();
                     var descriptor = new ObjectEntryCompositionPartMaterializer.PartBinding(
                         _target,
-                        part);
+                        part.Prefab);
                     definitions.Add(new PartDefinition(key, descriptor, _materializer, dependencies));
                 }
 

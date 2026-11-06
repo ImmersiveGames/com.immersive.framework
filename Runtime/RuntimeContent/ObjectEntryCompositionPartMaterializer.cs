@@ -14,16 +14,16 @@ namespace Immersive.Framework.RuntimeContent
         {
             internal PartBinding(
                 StableObjectBinding target,
-                ObjectEntryCompositionPart definition,
+                GameObject prefab,
                 GameObject adoptedInstance = null)
             {
                 Target = target ?? throw new ArgumentNullException(nameof(target));
-                Definition = definition ?? throw new ArgumentNullException(nameof(definition));
+                Prefab = prefab;
                 AdoptedInstance = adoptedInstance;
             }
 
             internal StableObjectBinding Target { get; }
-            internal ObjectEntryCompositionPart Definition { get; }
+            internal GameObject Prefab { get; }
             internal GameObject AdoptedInstance { get; }
             internal bool IsAdopted => !object.ReferenceEquals(AdoptedInstance, null);
         }
@@ -80,9 +80,26 @@ namespace Immersive.Framework.RuntimeContent
             internal bool OriginalActive { get; }
         }
 
+        private sealed class ConsumerOperationScope
+        {
+            private int _isActive = 1;
+
+            internal ConsumerOperationScope(StableObjectBinding target, Func<bool> isCurrent)
+            {
+                Target = target;
+                IsCurrent = isCurrent;
+            }
+
+            internal StableObjectBinding Target { get; }
+            internal Func<bool> IsCurrent { get; }
+            internal bool IsActive => Volatile.Read(ref _isActive) != 0;
+            internal void Complete() => Interlocked.Exchange(ref _isActive, 0);
+        }
+
         private readonly Func<StableObjectBinding, bool> _isTargetCurrent;
         private readonly Func<GameObject, Task<bool>> _destroyAndConfirmAsync;
         private readonly List<AcquiredInstance> _acquiredInstances = new List<AcquiredInstance>();
+        private readonly AsyncLocal<ConsumerOperationScope> _consumerOperation = new AsyncLocal<ConsumerOperationScope>();
         private ProtectedRootCloseFailureEvidence _protectedRootCloseFailure;
 
         internal ObjectEntryCompositionPartMaterializer(
@@ -91,6 +108,31 @@ namespace Immersive.Framework.RuntimeContent
         {
             _isTargetCurrent = isTargetCurrent ?? throw new ArgumentNullException(nameof(isTargetCurrent));
             _destroyAndConfirmAsync = destroyAndConfirmAsync ?? DestroyAndConfirmWithUnityAsync;
+        }
+
+        internal async Task<CompositionResult> ExecuteConsumerOperationAsync(
+            StableObjectBinding target,
+            Func<bool> isCurrent,
+            Func<Task<CompositionResult>> operation)
+        {
+            if (target == null || isCurrent == null || operation == null)
+                return null;
+
+            ConsumerOperationScope previous = _consumerOperation.Value;
+            var scope = new ConsumerOperationScope(target, isCurrent);
+            if (!IsConsumerScopeCurrent(scope))
+                return null;
+
+            _consumerOperation.Value = scope;
+            try
+            {
+                return await operation();
+            }
+            finally
+            {
+                scope.Complete();
+                _consumerOperation.Value = previous;
+            }
         }
 
         internal bool HasOutstandingAcquiredInstances
@@ -109,7 +151,7 @@ namespace Immersive.Framework.RuntimeContent
         {
             if (definition?.Descriptor is not PartBinding binding ||
                 binding.Target.PhysicalObject == null ||
-                !_isTargetCurrent(binding.Target))
+                !IsTargetCurrent(binding.Target, context))
             {
                 return PartPreparationResult.Failed(
                     "Object Entry composition preparation requires the exact current admitted binding and its declared part.");
@@ -135,7 +177,7 @@ namespace Immersive.Framework.RuntimeContent
                     new PartMaterialization(adopted, PartOwnership.Adopted, adoptedProvenance));
             }
 
-            if (binding.Definition.Prefab == null)
+            if (binding.Prefab == null)
             {
                 return PartPreparationResult.Failed(
                     $"Object Entry composition prefab for key '{definition.Key.Value}' is missing.");
@@ -143,21 +185,31 @@ namespace Immersive.Framework.RuntimeContent
 
             if (cancellationToken.IsCancellationRequested)
             {
-                return PartPreparationResult.Failed(
-                    $"Object Entry composition preparation for key '{definition.Key.Value}' was cancelled before materialization.");
+                throw new OperationCanceledException(cancellationToken);
             }
 
             GameObject stagingRoot = null;
             GameObject instance = null;
-            bool authoredActiveSelf = binding.Definition.Prefab.activeSelf;
+            bool authoredActiveSelf = binding.Prefab.activeSelf;
             try
             {
                 stagingRoot = new GameObject("Object Entry Composition Preparation");
                 TrackAcquired(stagingRoot, root);
                 stagingRoot.SetActive(false);
+                if (!IsTargetCurrent(binding.Target, context))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed("Object Entry binding became stale during staging-root preparation.");
+                }
                 stagingRoot.transform.SetParent(root.transform, false);
+                if (!IsTargetCurrent(binding.Target, context) ||
+                    !IsSafePreparationHierarchy(root, stagingRoot, null, null))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed("Object Entry binding or protected-root hierarchy changed while parenting the staging root.");
+                }
                 instance = UnityEngine.Object.Instantiate(
-                    binding.Definition.Prefab,
+                    binding.Prefab,
                     stagingRoot.transform,
                     false);
                 if (instance == null)
@@ -169,21 +221,48 @@ namespace Immersive.Framework.RuntimeContent
                 }
 
                 TrackAcquired(instance, root);
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException(cancellationToken);
+                if (!IsTargetCurrent(binding.Target, context) ||
+                    !IsSafePreparationHierarchy(root, stagingRoot, instance, stagingRoot.transform))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed($"Object Entry binding or protected-root hierarchy changed while instantiating part '{definition.Key.Value}'.");
+                }
                 instance.SetActive(false);
+                if (!IsTargetCurrent(binding.Target, context) ||
+                    !IsSafePreparationHierarchy(root, stagingRoot, instance, stagingRoot.transform))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed($"Object Entry binding or protected-root hierarchy changed while disabling part '{definition.Key.Value}'.");
+                }
                 instance.transform.SetParent(root.transform, false);
-                instance.name = binding.Definition.Prefab.name;
+                if (!IsTargetCurrent(binding.Target, context) ||
+                    !IsSafePreparationHierarchy(root, stagingRoot, instance, root.transform))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed($"Object Entry binding or protected-root hierarchy changed while parenting part '{definition.Key.Value}'.");
+                }
+                instance.name = binding.Prefab.name;
 
+                if (!IsSafePreparationHierarchy(root, stagingRoot, instance, root.transform))
+                {
+                    await CleanupPreparationAsync(stagingRoot, instance);
+                    return PartPreparationResult.Failed($"The protected-root hierarchy changed before staging cleanup for part '{definition.Key.Value}'.");
+                }
                 if (!await DestroyAndConfirmAsync(stagingRoot, root))
                 {
+                    await CleanupPreparationAsync(stagingRoot, instance);
                     return PartPreparationResult.Failed(
                         $"Temporary staging root for Object Entry part '{definition.Key.Value}' could not be confirmed destroyed.");
                 }
 
                 RemoveAcquired(stagingRoot);
                 stagingRoot = null;
-                if (cancellationToken.IsCancellationRequested ||
-                    !_isTargetCurrent(binding.Target) ||
-                    !IsExactSubordinate(root, instance))
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException(cancellationToken);
+                if (!IsTargetCurrent(binding.Target, context) ||
+                    !IsExactSubordinate(root, instance) || ContainsProtectedRoot(instance, root))
                 {
                     await ReleaseAcquiredAsync(instance);
                     return PartPreparationResult.Failed(
@@ -193,6 +272,24 @@ namespace Immersive.Framework.RuntimeContent
                 var provenance = new PartProvenance(binding, root, instance, null, authoredActiveSelf);
                 return PartPreparationResult.Prepared(
                     new PartMaterialization(instance, PartOwnership.Acquired, provenance));
+            }
+            catch (OperationCanceledException)
+            {
+                if (instance != null)
+                    await ReleaseAcquiredAsync(instance);
+                if (stagingRoot != null)
+                {
+                    try
+                    {
+                        await ReleaseAcquiredAsync(stagingRoot);
+                    }
+                    catch
+                    {
+                        // Keep the cancellation outcome; Framework owner cleanup retains unresolved acquisitions.
+                    }
+                }
+
+                throw;
             }
             catch (Exception exception)
             {
@@ -224,7 +321,7 @@ namespace Immersive.Framework.RuntimeContent
         {
             if (!TryGetProvenance(candidate, out PartProvenance provenance) ||
                 provenance.Root == null ||
-                !_isTargetCurrent(provenance.Binding.Target) ||
+                !IsTargetCurrent(provenance.Binding.Target, context) ||
                 !IsExactSubordinate(provenance.Root, provenance.Instance))
             {
                 return PartEffectResult.Failed(
@@ -240,7 +337,7 @@ namespace Immersive.Framework.RuntimeContent
                 }
 
                 if (provenance.Root == null ||
-                    !_isTargetCurrent(provenance.Binding.Target) ||
+                    !IsTargetCurrent(provenance.Binding.Target, context) ||
                     !IsExactSubordinate(provenance.Root, provenance.Instance))
                 {
                     return PartEffectResult.Failed(
@@ -284,6 +381,9 @@ namespace Immersive.Framework.RuntimeContent
                     false);
             }
 
+            if (!IsTargetCurrent(provenance.Binding.Target, context))
+                return PartEffectResult.Failed("Object Entry composition Detach requires the exact current consumer grant.", false);
+
             if (current.Ownership == PartOwnership.Adopted && context.IsClosingContext)
             {
                 return PartEffectResult.Applied();
@@ -294,11 +394,17 @@ namespace Immersive.Framework.RuntimeContent
                 if (current.Ownership == PartOwnership.Adopted)
                 {
                     provenance.Instance.transform.SetParent(provenance.OriginalParent, false);
+                    if (!IsTargetCurrent(provenance.Binding.Target, context))
+                        return PartEffectResult.Failed("Object Entry composition Detach was invalidated by a parent-change callback.", true);
                     provenance.Instance.SetActive(provenance.OriginalActive);
+                    if (!IsTargetCurrent(provenance.Binding.Target, context))
+                        return PartEffectResult.Failed("Object Entry composition Detach was invalidated by an activation callback.", true);
                 }
                 else
                 {
                     provenance.Instance.SetActive(false);
+                    if (!IsTargetCurrent(provenance.Binding.Target, context))
+                        return PartEffectResult.Failed("Object Entry composition Detach was invalidated by an activation callback.", true);
                     if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
                     {
                         return PartEffectResult.Failed(
@@ -309,6 +415,8 @@ namespace Immersive.Framework.RuntimeContent
                     if (provenance.Instance.transform.parent != null)
                     {
                         provenance.Instance.transform.SetParent(null, true);
+                        if (!IsTargetCurrent(provenance.Binding.Target, context))
+                            return PartEffectResult.Failed("Object Entry composition Detach was invalidated by a parent-change callback.", true);
                         if (ContainsProtectedRoot(provenance.Instance, provenance.Root))
                         {
                             return PartEffectResult.Failed(
@@ -473,6 +581,38 @@ namespace Immersive.Framework.RuntimeContent
             return true;
         }
 
+        private async Task CleanupPreparationAsync(GameObject stagingRoot, GameObject instance)
+        {
+            if (instance != null)
+                await ReleaseAcquiredAsync(instance);
+            if (stagingRoot != null)
+                await ReleaseAcquiredAsync(stagingRoot);
+        }
+
+        private bool IsTargetCurrent(StableObjectBinding target, PartMaterializationContext context)
+        {
+            if (context != null && context.IsClosingContext)
+                return true;
+            if (!_isTargetCurrent(target))
+                return false;
+
+            ConsumerOperationScope scope = _consumerOperation.Value;
+            return scope == null || !scope.IsActive ||
+                (ReferenceEquals(scope.Target, target) && IsConsumerScopeCurrent(scope));
+        }
+
+        private static bool IsConsumerScopeCurrent(ConsumerOperationScope scope)
+        {
+            try
+            {
+                return scope != null && scope.IsActive && scope.IsCurrent != null && scope.IsCurrent();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool TryGetProvenance(
             PartMaterialization materialization,
             out PartProvenance provenance)
@@ -486,6 +626,21 @@ namespace Immersive.Framework.RuntimeContent
         {
             return root != null && instance != null && !ReferenceEquals(root, instance) &&
                 instance.transform.IsChildOf(root.transform);
+        }
+
+        private static bool IsSafePreparationHierarchy(
+            GameObject root,
+            GameObject stagingRoot,
+            GameObject instance,
+            Transform expectedInstanceParent)
+        {
+            return root != null && stagingRoot != null && !stagingRoot.activeSelf &&
+                ReferenceEquals(stagingRoot.transform.parent, root.transform) &&
+                !ContainsProtectedRoot(stagingRoot, root) &&
+                (instance == null ||
+                 (!ReferenceEquals(instance, root) &&
+                  !ContainsProtectedRoot(instance, root) &&
+                  ReferenceEquals(instance.transform.parent, expectedInstanceParent)));
         }
 
         private void TrackAcquired(GameObject instance, GameObject protectedRoot)

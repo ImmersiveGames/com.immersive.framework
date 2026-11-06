@@ -1,11 +1,15 @@
 # IF-PLAN-014-C — Dynamic Object Entry Composition
 
-Status: **Approved for staged execution — C1 authorized 2026-11-05**
+Status: **Approved for staged execution — C1 authorized 2026-11-05; C2 source implemented, validation pending**
 Authority: accepted [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
 Implementation: C1 implemented on the authorized branch; validation evidence and remaining gaps are recorded in the Framework tracker
 Boundary: Framework Object Entry / Runtime Content integration; Composition kernel unchanged
 
 The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. Start with a scoped public API review and exact-occurrence access work; preserve the C2–C4 cut boundaries and their independent test/evidence gates. The new dynamic mutation API must not be advertised as consumer-ready before C3 release/stop/teardown guarantees are validated.
+
+### C2 execution state — 2026-11-06
+
+The C2 source implementation and 19 focused Edit Mode tests are authored on `codex/if-adr-014-c2-dynamic-part-mutation`. `git diff --check` passed and the independent post-implementation review returned **CLEAR**. Unity import/compile/test execution, integration and validation are **not complete**. The pending Composer resource-release race is recorded as a **production BLOCKER** for C3; C2 must not be advertised as production-ready.
 
 ## C1 — Access and exact occurrence identity
 
