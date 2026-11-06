@@ -96,8 +96,8 @@ namespace Immersive.Framework.Reset.Tests
                         _resetRegistration = null;
                         _routeA = null;
                         _routeB = null;
-                        _ownerA = null;
-                        _ownerB = null;
+                        _ownerA = default(RuntimeContentOwner);
+                        _ownerB = default(RuntimeContentOwner);
                     }
                 }
             }
