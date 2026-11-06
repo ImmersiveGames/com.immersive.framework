@@ -16,6 +16,15 @@ namespace Immersive.Framework.Reset.Tests
     {
         private string _dynamicPrefabFolder;
 
+        private static async Task AssertSignalBeforeCompletionAsync(
+            Task signal,
+            Task operation,
+            string diagnostic)
+        {
+            Task first = await Task.WhenAny(signal, operation);
+            Assert.AreSame(signal, first, diagnostic);
+        }
+
         private void ClearDynamicCompositionFixture()
         {
             ObjectEntryCompositionDisableProbe.Enabled = null;
@@ -375,20 +384,477 @@ namespace Immersive.Framework.Reset.Tests
                 return instance == null;
             });
             Assert.IsTrue(grant.TryOpenContribution(0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
-            var cancellation = new CancellationTokenSource();
+            using var cancellation = new CancellationTokenSource();
+            Task<ObjectEntryCompositionOperationResult> operation = null;
+            try
+            {
+                operation = contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("cancelled", CreatePrefab("qa-dynamic-cancelled-part")),
+                    cancellation.Token);
+                await AssertSignalBeforeCompletionAsync(
+                    preparationStarted.Task,
+                    operation,
+                    "Preparation must remain pending until the controlled destruction callback is reached.");
+                cancellation.Cancel();
+                continuePreparation.TrySetResult(true);
+
+                ObjectEntryCompositionOperationResult result = await operation;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, result.Status, result.Diagnostic);
+                Assert.IsFalse(result.EffectsMayHaveApplied);
+                Assert.AreEqual(0, GetGrantRoot(grant).transform.childCount);
+                Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+            }
+            finally
+            {
+                continuePreparation.TrySetResult(true);
+                if (!cancellation.IsCancellationRequested) cancellation.Cancel();
+                if (operation != null) await operation;
+                await _bindings.ReleaseOwnerAsync(_ownerA);
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_OwnerReleaseCancelsAndDrainsPreparationCleanup()
+        {
+            const string id = "qa.stable.dynamic-owner-release-during-preparation";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            var preparationCleanupStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowPreparationCleanup = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            InstallDynamicRuntime(grant, async instance =>
+            {
+                if (instance != null && instance.name == "Object Entry Composition Preparation")
+                {
+                    preparationCleanupStarted.TrySetResult(true);
+                    bool destroy = await allowPreparationCleanup.Task;
+                    if (destroy && instance != null) Object.DestroyImmediate(instance);
+                    return destroy && instance == null;
+                }
+
+                if (instance != null) Object.DestroyImmediate(instance);
+                return instance == null;
+            });
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+
             Task<ObjectEntryCompositionOperationResult> operation = contribution.SetPartAsync(
-                new ObjectEntryCompositionPartDefinition("cancelled", CreatePrefab("qa-dynamic-cancelled-part")),
-                cancellation.Token);
-            await preparationStarted.Task;
-            cancellation.Cancel();
-            continuePreparation.TrySetResult(true);
+                new ObjectEntryCompositionPartDefinition(
+                    "cancelled-by-owner-release",
+                    CreatePrefab("qa-dynamic-owner-release-preparation")));
+            Task<string> release = null;
+            try
+            {
+                await AssertSignalBeforeCompletionAsync(
+                    preparationCleanupStarted.Task,
+                    operation,
+                    "Preparation cleanup must reach its asynchronous release gate before the operation completes.");
+                release = _bindings.ReleaseOwnerAsync(_ownerA);
 
-            ObjectEntryCompositionOperationResult result = await operation;
+                Assert.IsFalse(operation.IsCompleted,
+                    "Owner release must keep the dynamic operation registered while asynchronous preparation cleanup is pending.");
+                Assert.IsFalse(release.IsCompleted,
+                    "Owner release must not remove the exact binding before preparation cleanup completes.");
+                Assert.AreEqual(1, _bindings.BindingCount);
+                Assert.IsFalse(grant.TryOpenContribution(1, out _, out _),
+                    "Invalidation must revoke new contribution opens before the drain waits.");
 
-            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, result.Status, result.Diagnostic);
-            Assert.IsFalse(result.EffectsMayHaveApplied);
-            Assert.AreEqual(0, GetGrantRoot(grant).transform.childCount);
-            Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+                allowPreparationCleanup.TrySetResult(true);
+                ObjectEntryCompositionOperationResult result = await operation;
+                string releaseIssue = await release;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, result.Status, result.Diagnostic);
+                Assert.IsFalse(result.EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", result.Diagnostic);
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.AreEqual(0, root.transform.childCount,
+                    "The cancelled preparation must release its staged and acquired objects before owner removal.");
+            }
+            finally
+            {
+                allowPreparationCleanup.TrySetResult(true);
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                await operation;
+                await release;
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_ConsumerCancellationAndOwnerReleaseDrainTheSameOperation()
+        {
+            const string id = "qa.stable.dynamic-consumer-and-owner-cancellation";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            var preparationCleanupStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowPreparationCleanup = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            InstallDynamicRuntime(grant, async instance =>
+            {
+                if (instance != null && instance.name == "Object Entry Composition Preparation")
+                {
+                    preparationCleanupStarted.TrySetResult(true);
+                    bool destroy = await allowPreparationCleanup.Task;
+                    if (destroy && instance != null) Object.DestroyImmediate(instance);
+                    return destroy && instance == null;
+                }
+
+                if (instance != null) Object.DestroyImmediate(instance);
+                return instance == null;
+            });
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+
+            using var consumerCancellation = new CancellationTokenSource();
+            Task<string> release = null;
+            using CancellationTokenRegistration releaseOnConsumerCancellation =
+                consumerCancellation.Token.Register(() => release = _bindings.ReleaseOwnerAsync(_ownerA));
+            Task<ObjectEntryCompositionOperationResult> operation = null;
+            try
+            {
+                operation = contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition(
+                        "consumer-and-owner-cancelled",
+                        CreatePrefab("qa-dynamic-consumer-owner-cancellation")),
+                    consumerCancellation.Token);
+                await AssertSignalBeforeCompletionAsync(
+                    preparationCleanupStarted.Task,
+                    operation,
+                    "Preparation cleanup must remain in flight before consumer/owner cancellation overlap is tested.");
+
+                consumerCancellation.Cancel();
+
+                Assert.IsNotNull(release,
+                    "The consumer cancellation callback must start exact-owner release in the same cancellation turn.");
+                Assert.IsFalse(operation.IsCompleted,
+                    "Consumer cancellation cannot discard an operation while its asynchronous cleanup is blocked.");
+                Assert.IsFalse(release.IsCompleted,
+                    "Owner release must drain the cancelled consumer operation to completion.");
+                Assert.AreEqual(1, _bindings.BindingCount);
+
+                allowPreparationCleanup.TrySetResult(true);
+                ObjectEntryCompositionOperationResult result = await operation;
+                string releaseIssue = await release;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, result.Status, result.Diagnostic);
+                Assert.IsFalse(result.EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", result.Diagnostic);
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.AreEqual(0, root.transform.childCount);
+            }
+            finally
+            {
+                allowPreparationCleanup.TrySetResult(true);
+                if (!consumerCancellation.IsCancellationRequested) consumerCancellation.Cancel();
+                if (operation != null) await operation;
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                await release;
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_OwnerReleaseDrainsPostCommitAsyncReplacementCleanup()
+        {
+            const string id = "qa.stable.dynamic-owner-release-after-commit";
+            GameObject firstPrefab = CreatePrefab("qa-dynamic-owner-release-old");
+            GameObject replacementPrefab = CreatePrefab("qa-dynamic-owner-release-new");
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            var oldReleaseStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowOldRelease = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            int oldReleaseCount = 0;
+            InstallDynamicRuntime(grant, async instance =>
+            {
+                if (instance != null && instance.name == firstPrefab.name)
+                {
+                    int releaseNumber = System.Threading.Interlocked.Increment(ref oldReleaseCount);
+                    if (releaseNumber == 1)
+                    {
+                        oldReleaseStarted.TrySetResult(true);
+                        bool destroy = await allowOldRelease.Task;
+                        if (destroy && instance != null) Object.DestroyImmediate(instance);
+                        return destroy && instance == null;
+                    }
+
+                    Object.DestroyImmediate(instance);
+                    return instance == null;
+                }
+
+                if (instance != null) Object.DestroyImmediate(instance);
+                return instance == null;
+            });
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Committed,
+                (await contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("visual", firstPrefab))).Status);
+
+            Task<ObjectEntryCompositionOperationResult> replacement = null;
+            Task<string> release = null;
+            try
+            {
+                replacement = contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("visual", replacementPrefab));
+                await AssertSignalBeforeCompletionAsync(
+                    oldReleaseStarted.Task,
+                    replacement,
+                    "The replacement's asynchronous post-commit release must begin before its task completes.");
+
+                release = _bindings.ReleaseOwnerAsync(_ownerA);
+                Task<string> repeatedRelease = _bindings.ReleaseOwnerAsync(_ownerA);
+
+                Assert.AreSame(release, repeatedRelease,
+                    "Concurrent release requests for one exact owner record must share one release flight.");
+                Assert.IsFalse(replacement.IsCompleted,
+                    "The replacement operation includes its pending post-commit release and must remain pending.");
+                Assert.IsFalse(release.IsCompleted,
+                    "Composer close and acquired-resource reconciliation must wait for the replacement operation's full cleanup task.");
+                Assert.AreEqual(1, oldReleaseCount,
+                    "Owner reconciliation must not race a second release against the same materialization.");
+                Assert.AreEqual(1, _bindings.BindingCount,
+                    "The exact binding remains authoritative while asynchronous replacement cleanup is pending.");
+
+                allowOldRelease.TrySetResult(true);
+                ObjectEntryCompositionOperationResult replacementResult = await replacement;
+                string releaseIssue = await release;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Committed,
+                    replacementResult.Status, replacementResult.Diagnostic);
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.IsTrue(root != null,
+                    "Owner release must preserve the Object Entry root while it drains and closes subordinate parts.");
+                Assert.AreEqual(0, root.transform.childCount);
+            }
+            finally
+            {
+                allowOldRelease.TrySetResult(true);
+                if (replacement != null) await replacement;
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                await release;
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_OwnerReleaseDrainsMultipleIndependentOperations()
+        {
+            const string id = "qa.stable.dynamic-owner-release-multiple-operations";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            var bothPreparationsStarted = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowPreparationCleanup = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            int preparationCleanupCount = 0;
+            InstallDynamicRuntime(grant, async instance =>
+            {
+                if (instance != null && instance.name == "Object Entry Composition Preparation")
+                {
+                    if (System.Threading.Interlocked.Increment(ref preparationCleanupCount) == 2)
+                        bothPreparationsStarted.TrySetResult(true);
+                    bool destroy = await allowPreparationCleanup.Task;
+                    if (destroy && instance != null) Object.DestroyImmediate(instance);
+                    return destroy && instance == null;
+                }
+
+                if (instance != null) Object.DestroyImmediate(instance);
+                return instance == null;
+            });
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution firstContribution, out string diagnostic), diagnostic);
+            Assert.IsTrue(grant.TryOpenContribution(
+                1, out ObjectEntryCompositionContribution secondContribution, out diagnostic), diagnostic);
+
+            Task<ObjectEntryCompositionOperationResult> first = null;
+            Task<ObjectEntryCompositionOperationResult> second = null;
+            Task<string> release = null;
+            try
+            {
+                first = firstContribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("independent-first", CreatePrefab("qa-dynamic-independent-first")));
+                second = secondContribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("independent-second", CreatePrefab("qa-dynamic-independent-second")));
+                Task bothOperationsFinished = Task.WhenAny(first, second);
+                await AssertSignalBeforeCompletionAsync(
+                    bothPreparationsStarted.Task,
+                    bothOperationsFinished,
+                    "Both independent operation cleanups must start before either operation completes.");
+
+                release = _bindings.ReleaseOwnerAsync(_ownerA);
+
+                Assert.IsFalse(first.IsCompleted);
+                Assert.IsFalse(second.IsCompleted);
+                Assert.IsFalse(release.IsCompleted,
+                    "The owner drain must wait for every operation, including independent contribution/key closures.");
+                Assert.AreEqual(2, preparationCleanupCount);
+
+                allowPreparationCleanup.TrySetResult(true);
+                ObjectEntryCompositionOperationResult[] results = await Task.WhenAll(first, second);
+                string releaseIssue = await release;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, results[0].Status, results[0].Diagnostic);
+                Assert.IsFalse(results[0].EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", results[0].Diagnostic);
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, results[1].Status, results[1].Diagnostic);
+                Assert.IsFalse(results[1].EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", results[1].Diagnostic);
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.AreEqual(0, root.transform.childCount);
+            }
+            finally
+            {
+                allowPreparationCleanup.TrySetResult(true);
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                if (first != null) await first;
+                if (second != null) await second;
+                await release;
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_OwnerReleaseDuringOnEnableDrainsReentrantMutation()
+        {
+            const string id = "qa.stable.dynamic-owner-release-on-enable";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+            GameObject prefab = CreatePrefab(
+                "qa-dynamic-owner-release-on-enable",
+                value => value.AddComponent<ObjectEntryCompositionDisableProbe>());
+            Task<string> release = null;
+            ObjectEntryCompositionDisableProbe.Enabled = _ =>
+            {
+                if (release == null)
+                    release = _bindings.ReleaseOwnerAsync(_ownerA);
+            };
+
+            Task<ObjectEntryCompositionOperationResult> operation = null;
+            try
+            {
+                operation = contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("callback", prefab));
+                ObjectEntryCompositionOperationResult result = await operation;
+
+                Assert.IsNotNull(release,
+                    "The Unity OnEnable callback must start owner release while the exact mutation is still applying.");
+                string releaseIssue = await release;
+
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Degraded, result.Status, result.Diagnostic);
+                Assert.IsTrue(result.EffectsMayHaveApplied,
+                    "The callback invalidates the occurrence after Unity effects begin, so partial effects remain observable.");
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.IsTrue(root != null,
+                    "Reentrant owner release must preserve the declaration root while draining the callback operation.");
+                Assert.AreEqual(0, root.transform.childCount);
+            }
+            finally
+            {
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                if (operation != null) await operation;
+                await release;
+            }
+        }
+
+        [Test]
+        public async Task DynamicContribution_ReleaseFlightIsSharedDuringOnDisableCleanup()
+        {
+            const string id = "qa.stable.dynamic-owner-release-on-disable";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+            GameObject prefab = CreatePrefab(
+                "qa-dynamic-owner-release-on-disable",
+                value => value.AddComponent<ObjectEntryCompositionDisableProbe>());
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Committed,
+                (await contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("callback", prefab))).Status);
+            Task<string> repeatedRelease = null;
+            ObjectEntryCompositionDisableProbe.Disabled = _ =>
+            {
+                if (repeatedRelease == null)
+                    repeatedRelease = _bindings.ReleaseOwnerAsync(_ownerA);
+            };
+
+            Task<string> release = _bindings.ReleaseOwnerAsync(_ownerA);
+            string releaseIssue = await release;
+
+            Assert.IsNotNull(repeatedRelease,
+                "The Unity OnDisable callback must reenter release while cleanup is in progress.");
+            Assert.AreSame(release, repeatedRelease,
+                "Reentrant release must observe the already-published exact-owner release flight.");
+            Assert.IsEmpty(releaseIssue);
+            Assert.AreEqual(0, _bindings.BindingCount);
+            Assert.IsTrue(root != null);
+            Assert.AreEqual(0, root.transform.childCount);
+        }
+
+        [Test]
+        public async Task DynamicContribution_ConsumerCloseDrainsThroughOnDisableOwnerReleaseReentry()
+        {
+            const string id = "qa.stable.dynamic-consumer-close-on-disable";
+            ObjectEntryCompositionAccessGrant grant = await RegisterDynamicEntry(id);
+            GameObject root = GetGrantRoot(grant);
+            GameObject prefab = CreatePrefab(
+                "qa-dynamic-consumer-close-on-disable",
+                value => value.AddComponent<ObjectEntryCompositionDisableProbe>());
+            Assert.IsTrue(grant.TryOpenContribution(
+                0, out ObjectEntryCompositionContribution contribution, out string diagnostic), diagnostic);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Committed,
+                (await contribution.SetPartAsync(
+                    new ObjectEntryCompositionPartDefinition("callback", prefab))).Status);
+
+            Task<string> release = null;
+            bool releaseWasPendingInsideCallback = false;
+            int bindingCountInsideCallback = 0;
+            ObjectEntryCompositionDisableProbe.Disabled = _ =>
+            {
+                if (release == null)
+                {
+                    release = _bindings.ReleaseOwnerAsync(_ownerA);
+                    releaseWasPendingInsideCallback = !release.IsCompleted;
+                    bindingCountInsideCallback = _bindings.BindingCount;
+                }
+            };
+            Task<ObjectEntryCompositionOperationResult> close = null;
+            try
+            {
+                close = contribution.CloseAsync();
+                ObjectEntryCompositionOperationResult closeResult = await close;
+
+                Assert.IsNotNull(release,
+                    "OnDisable during consumer Close must reenter exact-owner release.");
+                Assert.IsTrue(releaseWasPendingInsideCallback,
+                    "The exact owner release must observe the consumer Close in the pending-operation ledger.");
+                Assert.AreEqual(1, bindingCountInsideCallback,
+                    "The exact owner record must remain registered during reentrant Close cleanup.");
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Degraded,
+                    closeResult.Status, closeResult.Diagnostic);
+                Assert.IsTrue(closeResult.EffectsMayHaveApplied,
+                    "OnDisable invalidates the exact guard after detach effects begin.");
+                string releaseIssue = await release;
+
+                Assert.IsEmpty(releaseIssue);
+                Assert.AreEqual(0, _bindings.BindingCount);
+                Assert.IsTrue(root != null,
+                    "Consumer close and owner release must preserve the declaration root.");
+                Assert.AreEqual(0, root.transform.childCount);
+            }
+            finally
+            {
+                if (close != null) await close;
+                if (release == null) release = _bindings.ReleaseOwnerAsync(_ownerA);
+                await release;
+            }
         }
 
         [Test]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Immersive.Composition;
+using Immersive.Framework.ApplicationLifecycle;
 using Immersive.Framework.Authoring;
 using Immersive.Framework.Identity;
 using Immersive.Framework.ObjectEntry;
@@ -229,6 +230,37 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(firstClose.IsSuccessful, firstClose.Diagnostic);
             Assert.IsTrue((await second.CloseAsync()).IsSuccessful);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
+        }
+
+        [Test]
+        public async Task HostStop_FencesDynamicGrantsEvenWhenBindingRegistryIsCreatedLater()
+        {
+            var hostObject = new GameObject("stable-object-binding-host-stop-lazy-registry");
+            _objects.Add(hostObject);
+            FrameworkRuntimeHost host = hostObject.AddComponent<FrameworkRuntimeHost>();
+            FrameworkRuntimeHostStopResult stop = await host.StopAsync("lazy-registry-fence-test");
+            Assert.IsTrue(stop.Succeeded, stop.Diagnostic);
+
+            GameObject root = CreateEntry("qa.stable.host-stop-lazy-dynamic", _routeA, false);
+            ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetDynamicOptIn(authoring, true);
+            StableObjectBindingRegistry hostBindings = host.StableObjectBindings;
+
+            Assert.IsTrue(hostBindings.TryRegisterOwnerContent(_ownerA, new[] { root }, out string diagnostic), diagnostic);
+            Assert.IsTrue(hostBindings.TryCommitOwner(_ownerA, out diagnostic), diagnostic);
+            Assert.IsEmpty(await hostBindings.ActivateOwnerCompositionsAsync(_ownerA));
+            Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _),
+                "A registry lazily created after Stop must inherit the persistent dynamic-write fence.");
+            Assert.IsTrue(hostBindings.TryResolve(
+                ObjectEntryId.From("qa.stable.host-stop-lazy-dynamic"),
+                null,
+                null,
+                out StableObjectBinding resolved,
+                out _,
+                out diagnostic), diagnostic);
+            Assert.AreSame(root, resolved.PhysicalObject,
+                "The dynamic-write fence must preserve read-only occurrence resolution.");
+            Assert.IsEmpty(await hostBindings.ReleaseOwnerAsync(_ownerA));
         }
 
         [Test]
