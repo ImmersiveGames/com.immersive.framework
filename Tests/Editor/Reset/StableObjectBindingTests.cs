@@ -16,7 +16,7 @@ using Object = UnityEngine.Object;
 
 namespace Immersive.Framework.Reset.Tests
 {
-    public sealed class StableObjectBindingTests
+    public sealed partial class StableObjectBindingTests
     {
         private sealed class NonRecoverableDetachFailureMaterializer : IPartMaterializer
         {
@@ -199,8 +199,8 @@ namespace Immersive.Framework.Reset.Tests
                 "Subsequent opens must reuse the exact occurrence Composer.");
             Assert.AreEqual(0, root.transform.childCount);
 
-            ObjectEntryCompositionContributionCloseResult firstClose = await first.CloseAsync();
-            Assert.IsTrue(firstClose.IsSuccessful, firstClose.Issue);
+            ObjectEntryCompositionOperationResult firstClose = await first.CloseAsync();
+            Assert.IsTrue(firstClose.IsSuccessful, firstClose.Diagnostic);
             Assert.IsTrue((await second.CloseAsync()).IsSuccessful);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
         }
@@ -410,7 +410,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsFalse(oldGrant.TryOpenContribution(0, out _, out string staleOpenIssue));
             StringAssert.Contains("stale", staleOpenIssue.ToLowerInvariant());
             Assert.AreEqual(
-                ObjectEntryCompositionContributionCloseStatus.Stale,
+                ObjectEntryCompositionOperationStatus.Stale,
                 (await oldContribution.CloseAsync()).Status);
 
             Register(_ownerA, root);
@@ -419,10 +419,10 @@ namespace Immersive.Framework.Reset.Tests
             Assert.AreNotSame(oldGrant, newGrant);
             Assert.IsFalse(oldGrant.TryOpenContribution(10, out _, out _));
             Assert.AreEqual(
-                ObjectEntryCompositionContributionCloseStatus.Stale,
+                ObjectEntryCompositionOperationStatus.Stale,
                 (await oldContribution.CloseAsync()).Status);
             Assert.IsTrue(newGrant.TryOpenContribution(10, out ObjectEntryCompositionContribution newContribution, out diagnostic), diagnostic);
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldContribution.CloseAsync()).Status);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await oldContribution.CloseAsync()).Status);
             Assert.AreEqual(0, root.transform.childCount);
             Assert.IsTrue((await newContribution.CloseAsync()).IsSuccessful);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
@@ -457,7 +457,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsFalse(hostAuthoring.TryGetCompositionAccessGrant(out _, out _));
             Assert.IsFalse(hostGrant.TryOpenContribution(0, out _, out string hostIssue));
             StringAssert.Contains("invalid", hostIssue.ToLowerInvariant());
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await hostHandle.CloseAsync()).Status);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await hostHandle.CloseAsync()).Status);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
         }
 
@@ -516,7 +516,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(baseRuntimeRemainsActive);
             Assert.IsTrue(baseActivationRemainsSuccessful, "The B2 Base remains successful while dynamic access is disabled.");
             Assert.AreNotSame(oldGrant, newGrant, "Restoring opt-in must publish a grant on a fresh context slot.");
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await oldHandle.CloseAsync()).Status);
             Assert.IsTrue(newGrant.TryOpenContribution(5, out ObjectEntryCompositionContribution newHandle, out diagnostic), diagnostic);
             Assert.IsTrue((await newHandle.CloseAsync()).IsSuccessful);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
@@ -616,7 +616,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsFalse(authoring.TryGetCompositionAccessGrant(out _, out _));
             Assert.IsFalse(grant.TryOpenContribution(10, out _, out string staleOpenIssue));
             StringAssert.Contains("release", staleOpenIssue.ToLowerInvariant());
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await handle.CloseAsync()).Status);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await handle.CloseAsync()).Status);
             Assert.AreEqual(1, _bindings.BindingCount, "The physical record remains until the owner release barrier completes.");
             Assert.IsTrue(root != null, "Pending cleanup must preserve the exact Object Entry root.");
 
@@ -648,7 +648,7 @@ namespace Immersive.Framework.Reset.Tests
             declaration.ConfigureForQa(Id("qa.stable.dynamic-context-replacement-stale"), ObjectEntryRequiredness.Required);
             string staleActivationIssue = await _bindings.ActivateOwnerCompositionsAsync(_ownerA);
             StringAssert.Contains("stale", staleActivationIssue.ToLowerInvariant());
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status);
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await oldHandle.CloseAsync()).Status);
 
             declaration.ConfigureForQa(Id(id), ObjectEntryRequiredness.Required);
             Assert.IsEmpty(await _bindings.ActivateOwnerCompositionsAsync(_ownerA));
@@ -662,7 +662,7 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(authoring.TryGetCompositionAccessGrant(out ObjectEntryCompositionAccessGrant newGrant, out diagnostic), diagnostic);
             Assert.AreNotSame(oldGrant, newGrant);
             Assert.IsTrue(newGrant.TryOpenContribution(10, out ObjectEntryCompositionContribution newHandle, out diagnostic), diagnostic);
-            Assert.AreEqual(ObjectEntryCompositionContributionCloseStatus.Stale, (await oldHandle.CloseAsync()).Status,
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, (await oldHandle.CloseAsync()).Status,
                 "A handle from the replaced context must remain stale after a new contribution opens.");
             Assert.IsTrue((await newHandle.CloseAsync()).IsSuccessful);
             Assert.IsEmpty(await _bindings.ReleaseOwnerAsync(_ownerA));
@@ -721,7 +721,7 @@ namespace Immersive.Framework.Reset.Tests
                 candidate => _bindings.IsCompositionTargetCurrent(candidate));
             var destroyedAdoption = new ObjectEntryCompositionPartMaterializer.PartBinding(
                 binding,
-                profile.Parts[0],
+                profile.Parts[0].Prefab,
                 adopted);
             var destroyedAdoptionComposer = new CompositionComposer();
             CompositionContribution destroyedAdoptionContribution = destroyedAdoptionComposer.CreateContribution(
@@ -745,7 +745,7 @@ namespace Immersive.Framework.Reset.Tests
                 candidate => _bindings.IsCompositionTargetCurrent(candidate));
             var part = new ObjectEntryCompositionPartMaterializer.PartBinding(
                 binding,
-                profile.Parts[0],
+                profile.Parts[0].Prefab,
                 adopted);
             var composer = new CompositionComposer();
             CompositionContribution contribution = composer.CreateContribution(

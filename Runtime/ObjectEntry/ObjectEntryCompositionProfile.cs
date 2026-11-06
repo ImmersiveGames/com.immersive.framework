@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using Immersive.Composition;
 using Immersive.Framework.ApiStatus;
-using Immersive.Framework.Actors;
-using Immersive.Framework.PlayerParticipation;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Immersive.Framework.ObjectEntry
 {
@@ -43,9 +40,16 @@ namespace Immersive.Framework.ObjectEntry
                     return false;
                 }
 
-                if (!ContentKey.TryCreate(part.Key, out ContentKey key))
+                if (!ObjectEntryCompositionPartValidation.TryValidate(
+                        part.Key,
+                        part.Prefab,
+                        part.Dependencies,
+                        requirePrefabAsset: false,
+                        out ContentKey key,
+                        out _,
+                        out issue))
                 {
-                    issue = $"Object Entry composition part '{index}' has invalid key '{part.Key}'.";
+                    issue = $"Object Entry composition part '{index}' is invalid. {issue}";
                     return false;
                 }
 
@@ -55,43 +59,10 @@ namespace Immersive.Framework.ObjectEntry
                     return false;
                 }
 
-                if (part.Prefab == null)
-                {
-                    issue = $"Object Entry composition part '{key.Value}' requires a prefab.";
-                    return false;
-                }
-
-                // A composed child must not smuggle in a new unadmitted identity or Actor/Player authority.
-                if (part.Prefab.GetComponentInChildren<ObjectEntryDeclaration>(true) != null ||
-                    part.Prefab.GetComponentInChildren<ObjectEntryCompositionAuthoring>(true) != null ||
-                    part.Prefab.GetComponentInChildren<ActorDeclaration>(true) != null ||
-                    part.Prefab.GetComponentInChildren<PlayerActorRuntimeHost>(true) != null ||
-                    part.Prefab.GetComponentInChildren<PlayerInput>(true) != null)
-                {
-                    issue = $"Object Entry composition prefab for '{key.Value}' contains a forbidden identity, composition authoring, Actor host or PlayerInput component.";
-                    return false;
-                }
-
                 if (!part.HasDependencies)
                 {
                     issue = $"Object Entry composition part '{key.Value}' has no serialized dependencies list.";
                     return false;
-                }
-
-                var seenDependencies = new HashSet<ContentKey>();
-                foreach (string dependencyText in part.Dependencies)
-                {
-                    if (!ContentKey.TryCreate(dependencyText, out ContentKey dependency))
-                    {
-                        issue = $"Object Entry composition part '{key.Value}' has invalid dependency '{dependencyText}'.";
-                        return false;
-                    }
-
-                    if (dependency == key || !seenDependencies.Add(dependency))
-                    {
-                        issue = $"Object Entry composition part '{key.Value}' has a self or duplicate dependency '{dependency.Value}'.";
-                        return false;
-                    }
                 }
 
                 byKey.Add(key, part);

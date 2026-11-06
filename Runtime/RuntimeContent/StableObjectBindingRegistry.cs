@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Immersive.Framework.ObjectEntry;
 using Immersive.Framework.Identity;
@@ -562,28 +563,158 @@ namespace Immersive.Framework.RuntimeContent
             return true;
         }
 
-        internal async Task<ObjectEntryCompositionContributionCloseResult> CloseDynamicContributionAsync(
+        internal async Task<ObjectEntryCompositionOperationResult> SetDynamicContributionPartAsync(
             ObjectEntryCompositionAccessGrant grant,
             ObjectEntryCompositionContribution contribution,
-            System.Threading.CancellationToken cancellationToken)
+            ObjectEntryCompositionPartDefinition part,
+            CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentCompositionAccessGrant(
-                    grant,
-                    out _,
-                    out StableObjectBinding binding,
+            if (!TryGetDynamicContributionRuntime(
+                    grant, contribution, out StableObjectBinding binding,
+                    out ObjectEntryCompositionRuntimeBinding runtime, out bool staleHandle,
                     out string diagnostic))
             {
-                return new ObjectEntryCompositionContributionCloseResult(
-                    ObjectEntryCompositionContributionCloseStatus.Stale,
-                    diagnostic);
+                return CreateOperationResult(
+                    staleHandle ? ObjectEntryCompositionOperationStatus.Stale : ObjectEntryCompositionOperationStatus.Rejected,
+                    runtime?.Revision ?? 0, diagnostic, false);
             }
 
-            if (contribution == null || !contribution.IsFrom(grant) ||
-                contribution.ComposerContribution == null)
+            if (!runtime.TryCreateDynamicPartDefinition(part, out Immersive.Composition.PartDefinition definition, out diagnostic))
             {
-                return new ObjectEntryCompositionContributionCloseResult(
-                    ObjectEntryCompositionContributionCloseStatus.Faulted,
-                    "The contribution handle does not belong to this exact Object Entry access grant.");
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Rejected, runtime.Revision, diagnostic, false);
+            }
+
+            Func<bool> isCurrent = () => IsDynamicContributionCurrent(grant, contribution, binding, runtime);
+            if (!isCurrent())
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Stale, runtime.Revision,
+                    "The exact Object Entry contribution grant or context became stale before mutation.", false);
+            }
+
+            try
+            {
+                Immersive.Composition.CompositionResult result = await runtime.SetDynamicPartAsync(
+                    contribution.ComposerContribution, definition, isCurrent, cancellationToken);
+                return ConvertOperationResult(result, runtime.Revision);
+            }
+            catch (OperationCanceledException)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Cancelled, runtime.Revision,
+                    "Object Entry composition mutation was cancelled before the kernel returned a result; effects may have applied.", true);
+            }
+            catch (Exception exception)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Faulted, runtime.Revision,
+                    $"Object Entry composition mutation failed. {exception.GetType().Name}: {exception.Message}", true);
+            }
+        }
+
+        internal async Task<ObjectEntryCompositionOperationResult> RemoveDynamicContributionPartAsync(
+            ObjectEntryCompositionAccessGrant grant,
+            ObjectEntryCompositionContribution contribution,
+            string keyText,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetDynamicContributionRuntime(
+                    grant, contribution, out StableObjectBinding binding,
+                    out ObjectEntryCompositionRuntimeBinding runtime, out bool staleHandle,
+                    out string diagnostic))
+            {
+                return CreateOperationResult(
+                    staleHandle ? ObjectEntryCompositionOperationStatus.Stale : ObjectEntryCompositionOperationStatus.Rejected,
+                    runtime?.Revision ?? 0, diagnostic, false);
+            }
+
+            if (!Immersive.Composition.ContentKey.TryCreate(keyText, out Immersive.Composition.ContentKey key))
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Rejected, runtime.Revision,
+                    $"Dynamic Object Entry composition removal has invalid key '{keyText}'.", false);
+            }
+
+            Func<bool> isCurrent = () => IsDynamicContributionCurrent(grant, contribution, binding, runtime);
+            if (!isCurrent())
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Stale, runtime.Revision,
+                    "The exact Object Entry contribution grant or context became stale before removal.", false);
+            }
+
+            try
+            {
+                Immersive.Composition.CompositionResult result = await runtime.RemoveDynamicPartAsync(
+                    contribution.ComposerContribution, key, isCurrent, cancellationToken);
+                return ConvertOperationResult(result, runtime.Revision);
+            }
+            catch (OperationCanceledException)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Cancelled, runtime.Revision,
+                    "Object Entry composition removal was cancelled before the kernel returned a result; effects may have applied.", true);
+            }
+            catch (Exception exception)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Faulted, runtime.Revision,
+                    $"Object Entry composition removal failed. {exception.GetType().Name}: {exception.Message}", true);
+            }
+        }
+
+        internal async Task<ObjectEntryCompositionOperationResult> CloseDynamicContributionAsync(
+            ObjectEntryCompositionAccessGrant grant,
+            ObjectEntryCompositionContribution contribution,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetDynamicContributionRuntime(
+                    grant, contribution, out StableObjectBinding binding,
+                    out ObjectEntryCompositionRuntimeBinding runtime, out bool staleHandle,
+                    out string diagnostic))
+            {
+                return CreateOperationResult(
+                    staleHandle ? ObjectEntryCompositionOperationStatus.Stale : ObjectEntryCompositionOperationStatus.Rejected,
+                    runtime?.Revision ?? 0, diagnostic, false);
+            }
+
+            Func<bool> isCurrent = () => IsDynamicContributionCurrent(grant, contribution, binding, runtime);
+            if (!isCurrent())
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Stale, runtime.Revision,
+                    "The exact Object Entry contribution grant or context became stale before close.", false);
+            }
+
+            try
+            {
+                Immersive.Composition.CompositionResult result = await runtime.CloseDynamicContributionAsync(
+                    contribution.ComposerContribution, isCurrent, cancellationToken);
+                return ConvertOperationResult(result, runtime.Revision);
+            }
+            catch (OperationCanceledException)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Cancelled, runtime.Revision,
+                    "Object Entry composition contribution close was cancelled before the kernel returned a result; effects may have applied.", true);
+            }
+            catch (Exception exception)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Faulted, runtime.Revision,
+                    $"Object Entry composition contribution close failed. {exception.GetType().Name}: {exception.Message}", true);
+            }
+        }
+
+        private bool TryGetDynamicContributionRuntime(
+            ObjectEntryCompositionAccessGrant grant,
+            ObjectEntryCompositionContribution contribution,
+            out StableObjectBinding binding,
+            out ObjectEntryCompositionRuntimeBinding runtime,
+            out bool staleHandle,
+            out string diagnostic)
+        {
+            binding = null;
+            runtime = contribution?.Runtime;
+            staleHandle = true;
+            if (!TryGetCurrentCompositionAccessGrant(grant, out _, out binding, out diagnostic))
+                return false;
+
+            staleHandle = false;
+            if (contribution == null || !contribution.IsFrom(grant) || contribution.ComposerContribution == null)
+            {
+                diagnostic = "The contribution handle does not belong to this exact Object Entry access grant.";
+                return false;
             }
 
             if (!grant.TryGetBinding(out _, out _, out ObjectEntryCompositionRuntimeSlot contextSlot) ||
@@ -592,52 +723,66 @@ namespace Immersive.Framework.RuntimeContent
                 (grant.ContextAtIssue != null && !ReferenceEquals(grant.ContextAtIssue, binding.CompositionRuntime)) ||
                 !contribution.IsFromRuntime(binding.CompositionRuntime))
             {
-                return new ObjectEntryCompositionContributionCloseResult(
-                    ObjectEntryCompositionContributionCloseStatus.Stale,
-                    "The contribution handle belongs to a previous Object Entry composition context.");
+                staleHandle = true;
+                diagnostic = "The contribution handle belongs to a previous Object Entry composition context.";
+                return false;
             }
 
-            try
-            {
-                Immersive.Composition.CompositionResult result =
-                    await contribution.ComposerContribution.CloseAsync(cancellationToken);
-                if (result == null)
-                {
-                    return new ObjectEntryCompositionContributionCloseResult(
-                        ObjectEntryCompositionContributionCloseStatus.Faulted,
-                        "The Composition kernel returned no close result.");
-                }
-
-                ObjectEntryCompositionContributionCloseStatus status = result.Status switch
-                {
-                    Immersive.Composition.CompositionResultStatus.Committed =>
-                        ObjectEntryCompositionContributionCloseStatus.Closed,
-                    Immersive.Composition.CompositionResultStatus.NoChange =>
-                        ObjectEntryCompositionContributionCloseStatus.NoChange,
-                    Immersive.Composition.CompositionResultStatus.Stale =>
-                        ObjectEntryCompositionContributionCloseStatus.Stale,
-                    Immersive.Composition.CompositionResultStatus.Cancelled =>
-                        ObjectEntryCompositionContributionCloseStatus.Cancelled,
-                    _ => ObjectEntryCompositionContributionCloseStatus.Faulted
-                };
-                string issue = result.Issues.Count == 0
-                    ? string.Empty
-                    : string.Join(" | ", result.Issues.Select(value => value.ToString()));
-                return new ObjectEntryCompositionContributionCloseResult(status, issue);
-            }
-            catch (OperationCanceledException)
-            {
-                return new ObjectEntryCompositionContributionCloseResult(
-                    ObjectEntryCompositionContributionCloseStatus.Cancelled,
-                    "Object Entry composition contribution close was cancelled.");
-            }
-            catch (Exception exception)
-            {
-                return new ObjectEntryCompositionContributionCloseResult(
-                    ObjectEntryCompositionContributionCloseStatus.Faulted,
-                    $"Object Entry composition contribution close failed. {exception.GetType().Name}: {exception.Message}");
-            }
+            runtime = binding.CompositionRuntime;
+            diagnostic = string.Empty;
+            return true;
         }
+
+        private bool IsDynamicContributionCurrent(
+            ObjectEntryCompositionAccessGrant grant,
+            ObjectEntryCompositionContribution contribution,
+            StableObjectBinding expectedBinding,
+            ObjectEntryCompositionRuntimeBinding expectedRuntime)
+        {
+            return TryGetDynamicContributionRuntime(
+                    grant, contribution, out StableObjectBinding currentBinding,
+                    out ObjectEntryCompositionRuntimeBinding currentRuntime, out _, out _) &&
+                ReferenceEquals(currentBinding, expectedBinding) &&
+                ReferenceEquals(currentRuntime, expectedRuntime);
+        }
+
+        private static ObjectEntryCompositionOperationResult ConvertOperationResult(
+            Immersive.Composition.CompositionResult result,
+            long currentRevision)
+        {
+            if (result == null)
+            {
+                return CreateOperationResult(ObjectEntryCompositionOperationStatus.Stale, currentRevision,
+                    "The exact Object Entry contribution became stale before the Composition kernel returned a result.", false);
+            }
+
+            ObjectEntryCompositionOperationStatus status = result.Status switch
+            {
+                Immersive.Composition.CompositionResultStatus.Committed => ObjectEntryCompositionOperationStatus.Committed,
+                Immersive.Composition.CompositionResultStatus.NoChange => ObjectEntryCompositionOperationStatus.NoChange,
+                Immersive.Composition.CompositionResultStatus.Rejected => ObjectEntryCompositionOperationStatus.Rejected,
+                Immersive.Composition.CompositionResultStatus.Stale => ObjectEntryCompositionOperationStatus.Stale,
+                Immersive.Composition.CompositionResultStatus.Cancelled => ObjectEntryCompositionOperationStatus.Cancelled,
+                Immersive.Composition.CompositionResultStatus.Degraded => ObjectEntryCompositionOperationStatus.Degraded,
+                _ => ObjectEntryCompositionOperationStatus.Faulted
+            };
+            string issue = result.Issues.Count == 0
+                ? string.Empty
+                : string.Join(" | ", result.Issues.Select(value => value.ToString()));
+            return new ObjectEntryCompositionOperationResult(
+                status,
+                result.Revision,
+                result.ChangedKeys.Select(key => key.Value),
+                issue,
+                result.EffectsMayHaveApplied);
+        }
+
+        private static ObjectEntryCompositionOperationResult CreateOperationResult(
+            ObjectEntryCompositionOperationStatus status,
+            long revision,
+            string diagnostic,
+            bool effectsMayHaveApplied) =>
+            new ObjectEntryCompositionOperationResult(status, revision, null, diagnostic, effectsMayHaveApplied);
         internal async Task<string> ReleaseOwnerAsync(RuntimeContentOwner owner)
         {
             if (!owner.IsValid)
