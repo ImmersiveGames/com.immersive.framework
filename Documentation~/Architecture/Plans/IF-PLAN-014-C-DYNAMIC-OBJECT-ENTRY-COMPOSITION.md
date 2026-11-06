@@ -1,8 +1,8 @@
 # IF-PLAN-014-C — Dynamic Object Entry Composition
 
-Status: **C1/C2 integrated; C3 implementation authored, Unity validation pending**
+Status: **C1/C2 integrated; C3 implementation Edit Mode tested (566/566 owner evidence), integration via PR #27; C4 pending**
 Authority: accepted [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
-Implementation: C1/C2 integrated to `master`; C3 source and deterministic regressions are authored on the dedicated C3 branch; validation evidence and remaining gaps are recorded in the Framework tracker
+Implementation: C1/C2 integrated to `master`; C3 source and deterministic regressions are authored on PR #27 and the Project Owner has supplied 566/566 Unity Edit Mode visual evidence after the stale-status test fix; C4 integrated Play Mode certification is pending. See the Framework tracker for evidence provenance.
 Boundary: Framework Object Entry / Runtime Content integration; Composition kernel unchanged
 
 The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. C1 and C2 are now integrated. Preserve the C2–C4 cut boundaries and their independent evidence gates. Dynamic mutation remains Experimental until C3/C4 lifecycle and Unity validation are complete.
@@ -105,7 +105,7 @@ Integrate dynamic work with existing RuntimeContent barriers and prove progress 
 
 ### C3 implementation state — 2026-11-06
 
-The exact-runtime task ledger, linked cancellation, owner-release single-flight, registry grant fence and Controlled Stop ordering are authored. Eight deterministic Edit Mode regressions are authored across `ObjectEntryCompositionMutationTests` and `StableObjectBindingTests`; the existing Host controlled-stop and Host teardown integration cases now exercise pending dynamic cleanup. The independent post-implementation review returned **CLEAR** after fixture corrections. `git diff --check` passes on the final source tree. Draft [PR #27](https://github.com/ImmersiveGames/com.immersive.framework/pull/27) contains implementation commit `2b5de992`. No Unity import, compile or tests were run. C3 is not validated; the Project Owner must run the requested focused suites and full Edit Mode suite in Unity.
+The exact-runtime task ledger, linked cancellation, owner-release single-flight, registry grant fence and Controlled Stop ordering are authored. Eight deterministic Edit Mode regressions are authored across `ObjectEntryCompositionMutationTests` and `StableObjectBindingTests`; the existing Host controlled-stop and Host teardown integration cases now exercise pending dynamic cleanup. The independent post-implementation review returned **CLEAR** after fixture corrections and `git diff --check` passed. [PR #27](https://github.com/ImmersiveGames/com.immersive.framework/pull/27) contains implementation commit `2b5de992` and test-semantics fix `4647f0b0` (`Stale` after owner/Host invalidation; `Cancelled` preserved when only consumer cancellation occurs). The Project Owner's subsequent QAFramework Unity Test Runner screenshot shows **566/566 Edit Mode PASS** across the discovered test assemblies, including 138/138 Reset tests. There is no NUnit XML or source-SHA fingerprint. The C3 Edit Mode gate is evidenced; integrated dynamic-consumer Play Mode validation and C4 certification remain pending.
 
 ### Expected files and surfaces
 
@@ -172,4 +172,4 @@ Record Unity version, checkout, package hash, test counts/results and Play Mode 
 
 ## Approval and execution gate
 
-The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. The bounded abrupt-teardown limitation described in C3 was separately and explicitly accepted by the Project Owner on **2026-11-06**. C1/C2 are integrated; C3 source implementation has a clear independent post-review, while Unity evidence remains pending; C4 certification remains planned. Do not advertise dynamic mutation as production-ready before C3/C4 validation. Package release and API maturity promotion remain separate decisions.
+The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. The bounded abrupt-teardown limitation described in C3 was separately and explicitly accepted by the Project Owner on **2026-11-06**. C1/C2 are integrated; C3 has an independent CLEAR review and Project Owner-provided 566/566 Edit Mode evidence after test correction, with integration tracked through PR #27; C4 certification remains planned. Do not advertise dynamic mutation as production-ready before C3/C4 validation. Package release and API maturity promotion remain separate decisions.
