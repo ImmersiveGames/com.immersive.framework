@@ -1077,7 +1077,9 @@ namespace Immersive.Framework.ApplicationLifecycle
             string resolvedReason = reason.NormalizeTextOrFallback("controlled-stop");
             while (true)
             {
-                await _admission.BeginStopAndWaitForOperationsAsync();
+                Task operationsDrained = _admission.BeginStopAndWaitForOperationsAsync();
+                InvalidateDynamicObjectEntryCompositionWrites();
+                await operationsDrained;
                 if (LifecyclePhase == FrameworkRuntimeHostPhase.Stopped)
                 {
                     return new FrameworkRuntimeHostStopResult(true, string.Empty);

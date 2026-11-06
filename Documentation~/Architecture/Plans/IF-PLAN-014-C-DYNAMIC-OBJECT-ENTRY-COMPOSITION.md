@@ -1,15 +1,15 @@
 # IF-PLAN-014-C — Dynamic Object Entry Composition
 
-Status: **Approved for staged execution — C1 authorized 2026-11-05; C2 source implemented, validation pending**
+Status: **C1/C2 integrated; C3 implementation authored, Unity validation pending**
 Authority: accepted [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
-Implementation: C1 implemented on the authorized branch; validation evidence and remaining gaps are recorded in the Framework tracker
+Implementation: C1/C2 integrated to `master`; C3 source and deterministic regressions are authored on the dedicated C3 branch; validation evidence and remaining gaps are recorded in the Framework tracker
 Boundary: Framework Object Entry / Runtime Content integration; Composition kernel unchanged
 
-The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. Start with a scoped public API review and exact-occurrence access work; preserve the C2–C4 cut boundaries and their independent test/evidence gates. The new dynamic mutation API must not be advertised as consumer-ready before C3 release/stop/teardown guarantees are validated.
+The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. C1 and C2 are now integrated. Preserve the C2–C4 cut boundaries and their independent evidence gates. Dynamic mutation remains Experimental until C3/C4 lifecycle and Unity validation are complete.
 
 ### C2 execution state — 2026-11-06
 
-The C2 source implementation and 19 focused Edit Mode tests are authored on `codex/if-adr-014-c2-dynamic-part-mutation`. `git diff --check` passed and the independent post-implementation review returned **CLEAR**. Unity import/compile/test execution, integration and validation are **not complete**. The pending Composer resource-release race is recorded as a **production BLOCKER** for C3; C2 must not be advertised as production-ready.
+The C2 implementation and 19 focused Edit Mode tests are integrated. The Project Owner supplied visual evidence of **558/558 Edit Mode PASS** on the pre-C3 baseline. This evidence does not validate C3 changes or certify C2 Play Mode lifecycle behavior.
 
 ## C1 — Access and exact occurrence identity
 
@@ -92,6 +92,21 @@ Map Framework-owned prefab requests to independent Composer contributions and re
 
 Integrate dynamic work with existing RuntimeContent barriers and prove progress through Activity, Route, Controlled Stop and teardown without another lifecycle authority.
 
+### C3 execution plan — 2026-11-06
+
+1. Add deterministic Edit Mode regressions first for owner release during preparation, release during post-commit asynchronous cleanup, multiple pending operations, and Unity callback re-entry. Use `TaskCompletionSource`; do not infer drain completion from the Composition gate or active-operation set.
+2. Add private pending-operation ownership to the exact `ObjectEntryCompositionRuntimeBinding`. Register before calling Composition, reject registration after invalidation, link consumer cancellation, and retain each operation through its complete Composer task and cleanup `finally`.
+3. Make owner release single-flight for the exact `OwnerBindings` record. Invalidate all grants, signal cancellation, drain, close, reconcile, then remove only the same record. Preserve B2 receipts and retry behavior.
+4. In Controlled Stop, close Host admission first, persistently fence dynamic grant publication (including lazy registry construction and activation already in flight), cancel pending dynamic work, and only then await admitted Host operations. Keep Activity/Route release and scene barriers in their existing owners.
+5. Do not add kernel, public API, global task, or second scene-retention infrastructure. Preserve synchronous grant invalidation and cancellation at abrupt Host callbacks; report cleanup as unconfirmed because those callbacks cannot await it. The Project Owner explicitly accepted this bounded abrupt-teardown limit on 2026-11-06. Controlled Stop retains its awaited drain and physical cleanup confirmation.
+6. Reconcile this plan, the Object Entry Composition guide and the Framework tracker with the resulting diff and evidence. Unity execution is a Project Owner validation step under workspace rules.
+
+**Pre-edit review:** the independent architectural-contract reviewer returned `CLEAR` for the awaited owner-release and Controlled Stop cut, subject to exact-registration removal and a persistent dynamic-write publication fence. It returned `DECISION_REQUIRED` for abrupt teardown; the Project Owner later accepted the bounded limit recorded above.
+
+### C3 implementation state — 2026-11-06
+
+The exact-runtime task ledger, linked cancellation, owner-release single-flight, registry grant fence and Controlled Stop ordering are authored. Eight deterministic Edit Mode regressions are authored across `ObjectEntryCompositionMutationTests` and `StableObjectBindingTests`; the existing Host controlled-stop and Host teardown integration cases now exercise pending dynamic cleanup. The independent post-implementation review returned **CLEAR** after fixture corrections. `git diff --check` passes on the final source tree. No Unity import, compile or tests were run. C3 is not validated; the Project Owner must run the requested focused suites and full Edit Mode suite in Unity.
+
 ### Expected files and surfaces
 
 - Runtime/RuntimeContent/StableObjectBindingRegistry.cs and ObjectEntryCompositionRuntimeBinding.cs — invalidate access, single-flight close/reconcile and retain owner until physical cleanup is confirmed.
@@ -102,12 +117,12 @@ Integrate dynamic work with existing RuntimeContent barriers and prove progress 
 
 ### Dependencies and contracts
 
-- At release start, reject new opens/writes and cancel work before awaiting operations that need this cancellation.
-- FrameworkRuntimeHost.StopAsync currently drains admitted operations before Activity clear and Route exit. C must not hold admission until a release that Stop cannot reach; add an ordering seam or prove another forward-progress path.
+- At release start, revoke grants, reject new opens/writes, cancel work, drain the exact runtime's pending task ledger, close Composition, reconcile acquired resources, then remove the exact owner record.
+- In Controlled Stop, begin closing Host admission, apply the persistent dynamic-write fence and cancellation before awaiting admitted operations. The later Activity/Route release retains its existing owner and scene barriers.
 - Track mutation, preparation, commit, replacement release and reconciliation through the exact-binding barrier. Do not overlap retries for one context.
 - Retain owner and physical registration until context close, all acquired resources and safety conditions are confirmed. Release scene content afterward.
 - Never block Unity's main thread or destroy/reparent the protected root.
-- Controlled Stop is the current awaited barrier. OnDestroy/OnApplicationQuit invalidate synchronously but do not await Route/Activity release. Prove owner-authority cleanup for abrupt teardown. If cleanup cannot be proven, any limit requires separate explicit Project Owner approval before C certification; Amendment 003 cannot narrow Amendment 002. Never report unconfirmed cleanup as success.
+- Controlled Stop drains and confirms the awaited owner cleanup. OnDestroy/OnApplicationQuit synchronously invalidate grants and request cancellation but cannot await Route/Activity release or guarantee external scene-unload ordering. This bounded limit was explicitly accepted by the Project Owner on 2026-11-06. Never report abrupt-path cleanup as confirmed.
 
 ### Tests and completion criteria
 
@@ -116,12 +131,12 @@ Integrate dynamic work with existing RuntimeContent barriers and prove progress 
 - A Stop blocked behind async preparation sends cancellation before waiting for admitted operations and reaches release without deadlock.
 - Concurrent close/retry is single-flight and cannot release a replacement or remove a binding early.
 - Detach fault, pending destruction, retry and nonrecoverable failure retain distinct outcomes.
-- Test host teardown while the owner scene remains loaded. If only best-effort cleanup can be proven, a separate explicit Project Owner approval is required before accepting that limit; otherwise C3 remains open. Never claim unconfirmed physical cleanup.
+- Test controlled release while work is pending and verify teardown's synchronous invalidation without asserting abrupt-path physical cleanup. Record that abrupt cleanup remains unconfirmed and never claim it as success.
 - Actor Composition and query/recognition contracts remain unchanged.
 
 ### Risks
 
-- Host teardown is not equivalent to Controlled Stop today; this blocks a complete lifecycle claim until cleanup is proven or the Project Owner separately approves a limit.
+- Abrupt Host teardown cannot await owner cleanup; the Project Owner accepted the bounded limitation, which remains distinct from the confirmed Controlled Stop guarantee.
 - Cancellation, Unity callbacks and same-frame re-entry can deadlock or produce partial effects.
 - Scheduling Unity Destroy is not proof of physical destruction.
 
@@ -157,4 +172,4 @@ Record Unity version, checkout, package hash, test counts/results and Play Mode 
 
 ## Approval and execution gate
 
-The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. C1 implementation is authorized, with its public API design and regression checks required before completion. C2–C4 remain planned and require their own gate reviews and evidence. Any proposal to limit the accepted teardown guarantee requires **separate explicit Project Owner approval**; no such limit has been approved. Do not advertise dynamic mutation before C3 validation. Package release, API maturity promotion and runtime merge remain separate decisions.
+The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. The bounded abrupt-teardown limitation described in C3 was separately and explicitly accepted by the Project Owner on **2026-11-06**. C1/C2 are integrated; C3 source implementation has a clear independent post-review, while Unity evidence remains pending; C4 certification remains planned. Do not advertise dynamic mutation as production-ready before C3/C4 validation. Package release and API maturity promotion remain separate decisions.

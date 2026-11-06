@@ -96,11 +96,13 @@ namespace Immersive.Framework.RuntimeContent
             internal List<ObjectEntryOccurrenceQueryBinding> QueryBindings { get; }
             internal bool IsCommitted { get; set; }
             internal bool IsReleasing { get; set; }
+            internal TaskCompletionSource<string> ReleaseFlight { get; set; }
         }
 
         private readonly Dictionary<RuntimeContentOwner, OwnerBindings> _owners =
             new Dictionary<RuntimeContentOwner, OwnerBindings>();
         private bool _queryAccessInvalidated;
+        private bool _dynamicCompositionWritesInvalidated;
 
         internal int BindingCount
         {
@@ -331,6 +333,26 @@ namespace Immersive.Framework.RuntimeContent
             }
         }
 
+        internal void InvalidateDynamicCompositionWrites()
+        {
+            if (_dynamicCompositionWritesInvalidated) return;
+            _dynamicCompositionWritesInvalidated = true;
+            OwnerBindings[] registrations = _owners.Values.ToArray();
+
+            foreach (OwnerBindings registration in registrations)
+            {
+                InvalidateCompositionAccessGrants(registration);
+            }
+
+            foreach (OwnerBindings registration in registrations)
+            {
+                for (int index = 0; index < registration.Bindings.Count; index++)
+                {
+                    registration.Bindings[index].CompositionRuntime?.BlockDynamicOperations();
+                }
+            }
+        }
+
         internal async Task<string> ActivateOwnerCompositionsAsync(RuntimeContentOwner owner)
         {
             if (!owner.IsValid || !_owners.TryGetValue(owner, out OwnerBindings registration))
@@ -354,7 +376,9 @@ namespace Immersive.Framework.RuntimeContent
                 }
             }
 
-            string profilelessGrantIssue = PublishProfilelessCompositionAccessGrants(registration);
+            string profilelessGrantIssue = _dynamicCompositionWritesInvalidated
+                ? string.Empty
+                : PublishProfilelessCompositionAccessGrants(registration);
             if (!string.IsNullOrEmpty(profilelessGrantIssue))
             {
                 return profilelessGrantIssue;
@@ -465,6 +489,11 @@ namespace Immersive.Framework.RuntimeContent
                 StableObjectBinding binding = registration.Bindings[index];
                 if (!binding.HasAuthoredProfile || !binding.AllowsDynamicComposition) continue;
                 if (!binding.CompositionAuthoring.AllowsDynamicContributions)
+                {
+                    InvalidateCompositionAccessForBinding(binding);
+                    continue;
+                }
+                if (_dynamicCompositionWritesInvalidated)
                 {
                     InvalidateCompositionAccessForBinding(binding);
                     continue;
@@ -783,45 +812,84 @@ namespace Immersive.Framework.RuntimeContent
             string diagnostic,
             bool effectsMayHaveApplied) =>
             new ObjectEntryCompositionOperationResult(status, revision, null, diagnostic, effectsMayHaveApplied);
-        internal async Task<string> ReleaseOwnerAsync(RuntimeContentOwner owner)
+        internal Task<string> ReleaseOwnerAsync(RuntimeContentOwner owner)
         {
             if (!owner.IsValid)
             {
-                return $"stable-object-binding-release-invalid-owner: owner='{owner.StableText}' is invalid.";
+                return Task.FromResult(
+                    $"stable-object-binding-release-invalid-owner: owner='{owner.StableText}' is invalid.");
             }
             if (!_owners.TryGetValue(owner, out OwnerBindings registration))
             {
-                return string.Empty;
+                return Task.FromResult(string.Empty);
             }
 
+            if (registration.ReleaseFlight != null)
+            {
+                return registration.ReleaseFlight.Task;
+            }
+
+            var completion = new TaskCompletionSource<string>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            registration.ReleaseFlight = completion;
             registration.IsReleasing = true;
             registration.IsCommitted = false;
-            InvalidateCompositionAccessGrants(registration);
-            for (int index = 0; index < registration.Bindings.Count; index++)
-            {
-                registration.Bindings[index].CompositionRuntime?.InvalidateWriteAccess();
-            }
-            ReleaseQueryBindings(registration);
+            _ = CompleteOwnerReleaseAsync(owner, registration, completion);
+            return completion.Task;
+        }
 
-            var issues = new List<string>();
-            for (int index = 0; index < registration.Bindings.Count; index++)
+        private async Task CompleteOwnerReleaseAsync(
+            RuntimeContentOwner owner,
+            OwnerBindings registration,
+            TaskCompletionSource<string> completion)
+        {
+            string result;
+            try
             {
-                StableObjectBinding binding = registration.Bindings[index];
-                if (binding.CompositionRuntime == null) continue;
-                string issue = await binding.CompositionRuntime.CloseAndReconcileAsync();
-                if (!string.IsNullOrEmpty(issue))
+                InvalidateCompositionAccessGrants(registration);
+                for (int index = 0; index < registration.Bindings.Count; index++)
                 {
-                    issues.Add($"ObjectEntryId='{binding.ObjectEntryId.StableText}': {issue}");
+                    registration.Bindings[index].CompositionRuntime?.InvalidateWriteAccess();
+                }
+                ReleaseQueryBindings(registration);
+
+                var issues = new List<string>();
+                for (int index = 0; index < registration.Bindings.Count; index++)
+                {
+                    StableObjectBinding binding = registration.Bindings[index];
+                    if (binding.CompositionRuntime == null) continue;
+                    string issue = await binding.CompositionRuntime.CloseAndReconcileAsync();
+                    if (!string.IsNullOrEmpty(issue))
+                    {
+                        issues.Add($"ObjectEntryId='{binding.ObjectEntryId.StableText}': {issue}");
+                    }
+                }
+
+                if (issues.Count > 0)
+                {
+                    result = $"stable-object-composition-release-pending: owner='{owner.StableText}' bindingsRetained='{registration.Bindings.Count}'. {string.Join(" | ", issues)}";
+                }
+                else
+                {
+                    if (_owners.TryGetValue(owner, out OwnerBindings currentRegistration) &&
+                        ReferenceEquals(currentRegistration, registration))
+                    {
+                        _owners.Remove(owner);
+                    }
+                    result = string.Empty;
                 }
             }
-
-            if (issues.Count > 0)
+            catch (Exception exception)
             {
-                return $"stable-object-composition-release-pending: owner='{owner.StableText}' bindingsRetained='{registration.Bindings.Count}'. {string.Join(" | ", issues)}";
+                result = $"stable-object-composition-release-pending: owner='{owner.StableText}' bindingsRetained='{registration.Bindings.Count}'. Release threw '{exception.GetType().Name}: {exception.Message}'.";
             }
 
-            _owners.Remove(owner);
-            return string.Empty;
+            if (!string.IsNullOrEmpty(result) &&
+                ReferenceEquals(registration.ReleaseFlight, completion))
+            {
+                registration.ReleaseFlight = null;
+            }
+            completion.TrySetResult(result);
         }
 
         internal async Task<string> ReleaseNonCurrentOwnerBindingsAsync(
@@ -1132,6 +1200,11 @@ namespace Immersive.Framework.RuntimeContent
             StableObjectBinding binding,
             out string diagnostic)
         {
+            if (_dynamicCompositionWritesInvalidated)
+            {
+                diagnostic = "Object Entry dynamic composition access cannot be published after Framework Host stop invalidated dynamic writes.";
+                return false;
+            }
             if (!binding.AllowsDynamicComposition || binding.CompositionAuthoring == null)
             {
                 diagnostic = "Object Entry composition access requires explicit dynamic-contribution opt-in.";
@@ -1260,6 +1333,13 @@ namespace Immersive.Framework.RuntimeContent
             {
                 InvalidateCompositionAccessGrant(grantBinding, grant);
                 diagnostic = "Object Entry composition access grant was invalidated by Framework host teardown.";
+                registration = null;
+                return false;
+            }
+            if (_dynamicCompositionWritesInvalidated)
+            {
+                InvalidateCompositionAccessGrant(grantBinding, grant);
+                diagnostic = "Object Entry composition access grant was invalidated when Framework Host stop blocked dynamic writes.";
                 registration = null;
                 return false;
             }

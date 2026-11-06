@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Immersive.Composition;
 using Immersive.Framework.ObjectEntry;
@@ -9,6 +10,19 @@ namespace Immersive.Framework.RuntimeContent
 {
     internal sealed class ObjectEntryCompositionRuntimeBinding
     {
+        private sealed class PendingDynamicOperation
+        {
+            internal PendingDynamicOperation(CancellationTokenSource cancellation)
+            {
+                Cancellation = cancellation;
+                Completion = new TaskCompletionSource<bool>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
+            internal CancellationTokenSource Cancellation { get; }
+            internal TaskCompletionSource<bool> Completion { get; }
+        }
+
         private readonly StableObjectBinding _target;
         private readonly ObjectEntryCompositionProfile _profile;
         private readonly bool _allowsDynamicContributions;
@@ -16,13 +30,18 @@ namespace Immersive.Framework.RuntimeContent
         private readonly CompositionComposer _composer;
         private readonly CompositionContribution _baseContribution;
         private readonly ObjectEntryCompositionPartMaterializer _materializer;
+        private readonly object _dynamicOperationSync = new();
+        private readonly List<PendingDynamicOperation> _pendingDynamicOperations = new();
 
         private Task<CompositionResult> _closeTask;
+        private Task<string> _closeAndReconcileTask;
         private CompositionResult _closeResult;
         private string _closeIssue = string.Empty;
         private bool _closeContextConfirmed;
         private bool _cleanupComplete;
         private bool _writeAccessInvalidated;
+        private bool _dynamicOperationsInvalidated;
+        private string _dynamicCancellationIssue = string.Empty;
         private bool _active;
 
         internal ObjectEntryCompositionRuntimeBinding(
@@ -79,7 +98,8 @@ namespace Immersive.Framework.RuntimeContent
                 issue = "Dynamic Object Entry composition priority cannot use the reserved B2 Base priority.";
                 return false;
             }
-            if (_writeAccessInvalidated || _closeTask != null || _closeContextConfirmed || _cleanupComplete ||
+            if (_writeAccessInvalidated || _dynamicOperationsInvalidated ||
+                _closeTask != null || _closeContextConfirmed || _cleanupComplete ||
                 !_isTargetCurrent(_target))
             {
                 issue = "Dynamic Object Entry composition cannot open a contribution after its exact occurrence or context was invalidated.";
@@ -134,35 +154,89 @@ namespace Immersive.Framework.RuntimeContent
             CompositionContribution contribution,
             PartDefinition definition,
             Func<bool> isConsumerCurrent,
-            System.Threading.CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
-            return _materializer.ExecuteConsumerOperationAsync(
-                _target,
+            return ExecuteTrackedDynamicOperationAsync(
                 isConsumerCurrent,
-                () => contribution.SetPartWhileCurrentAsync(definition, isConsumerCurrent, cancellationToken));
+                cancellationToken,
+                operationToken => contribution.SetPartWhileCurrentAsync(
+                    definition, isConsumerCurrent, operationToken));
         }
 
         internal Task<CompositionResult> RemoveDynamicPartAsync(
             CompositionContribution contribution,
             ContentKey key,
             Func<bool> isConsumerCurrent,
-            System.Threading.CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
-            return _materializer.ExecuteConsumerOperationAsync(
-                _target,
+            return ExecuteTrackedDynamicOperationAsync(
                 isConsumerCurrent,
-                () => contribution.RemovePartWhileCurrentAsync(key, isConsumerCurrent, cancellationToken));
+                cancellationToken,
+                operationToken => contribution.RemovePartWhileCurrentAsync(
+                    key, isConsumerCurrent, operationToken));
         }
 
         internal Task<CompositionResult> CloseDynamicContributionAsync(
             CompositionContribution contribution,
             Func<bool> isConsumerCurrent,
-            System.Threading.CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
-            return _materializer.ExecuteConsumerOperationAsync(
-                _target,
+            return ExecuteTrackedDynamicOperationAsync(
                 isConsumerCurrent,
-                () => contribution.CloseAsync(cancellationToken));
+                cancellationToken,
+                operationToken => contribution.CloseAsync(operationToken));
+        }
+
+        private Task<CompositionResult> ExecuteTrackedDynamicOperationAsync(
+            Func<bool> isConsumerCurrent,
+            CancellationToken consumerCancellationToken,
+            Func<CancellationToken, Task<CompositionResult>> startOperation)
+        {
+            PendingDynamicOperation pending;
+            lock (_dynamicOperationSync)
+            {
+                if (_dynamicOperationsInvalidated || _writeAccessInvalidated ||
+                    _closeAndReconcileTask != null || _cleanupComplete)
+                {
+                    return Task.FromResult<CompositionResult>(null);
+                }
+
+                CancellationTokenSource operationCancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(consumerCancellationToken);
+                pending = new PendingDynamicOperation(operationCancellation);
+                _pendingDynamicOperations.Add(pending);
+            }
+
+            return RunTrackedDynamicOperationAsync(pending, isConsumerCurrent, startOperation);
+        }
+
+        private async Task<CompositionResult> RunTrackedDynamicOperationAsync(
+            PendingDynamicOperation pending,
+            Func<bool> isConsumerCurrent,
+            Func<CancellationToken, Task<CompositionResult>> startOperation)
+        {
+            try
+            {
+                return await _materializer.ExecuteConsumerOperationAsync(
+                    _target,
+                    isConsumerCurrent,
+                    () => startOperation(pending.Cancellation.Token));
+            }
+            finally
+            {
+                try
+                {
+                    pending.Cancellation.Dispose();
+                }
+                finally
+                {
+                    lock (_dynamicOperationSync)
+                    {
+                        pending.Completion.TrySetResult(true);
+                        _pendingDynamicOperations.Remove(pending);
+                    }
+                }
+            }
         }
 
         internal static bool IsRecoverableCloseFailure(
@@ -184,7 +258,47 @@ namespace Immersive.Framework.RuntimeContent
 
         internal void InvalidateWriteAccess()
         {
-            _writeAccessInvalidated = true;
+            lock (_dynamicOperationSync)
+            {
+                _writeAccessInvalidated = true;
+            }
+            BlockDynamicOperations();
+        }
+
+        internal void BlockDynamicOperations()
+        {
+            PendingDynamicOperation[] pending;
+            lock (_dynamicOperationSync)
+            {
+                if (_dynamicOperationsInvalidated)
+                {
+                    return;
+                }
+
+                _dynamicOperationsInvalidated = true;
+                pending = _pendingDynamicOperations.ToArray();
+            }
+
+            for (int index = 0; index < pending.Length; index++)
+            {
+                try
+                {
+                    pending[index].Cancellation.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // A disposed source can only belong to an operation already in its completion finally.
+                }
+                catch (Exception exception)
+                {
+                    lock (_dynamicOperationSync)
+                    {
+                        _dynamicCancellationIssue = AppendIssue(
+                            _dynamicCancellationIssue,
+                            $"Dynamic Object Entry operation cancellation callback threw '{exception.GetType().Name}: {exception.Message}'.");
+                    }
+                }
+            }
         }
 
         internal async Task<string> ActivateAsync()
@@ -246,10 +360,73 @@ namespace Immersive.Framework.RuntimeContent
             }
         }
 
-        internal async Task<string> CloseAndReconcileAsync()
+        internal Task<string> CloseAndReconcileAsync()
         {
+            TaskCompletionSource<string> completion;
+            lock (_dynamicOperationSync)
+            {
+                if (_closeAndReconcileTask != null)
+                {
+                    return _closeAndReconcileTask;
+                }
+
+                completion = new TaskCompletionSource<string>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _closeAndReconcileTask = completion.Task;
+            }
+
             InvalidateWriteAccess();
             _active = false;
+            _ = CompleteCloseAndReconcileAsync(completion);
+            return completion.Task;
+        }
+
+        private async Task CompleteCloseAndReconcileAsync(
+            TaskCompletionSource<string> completion)
+        {
+            string issue;
+            try
+            {
+                Task[] pendingOperations;
+                lock (_dynamicOperationSync)
+                {
+                    pendingOperations = _pendingDynamicOperations
+                        .Select(operation => operation.Completion.Task)
+                        .ToArray();
+                }
+
+                await Task.WhenAll(pendingOperations);
+                issue = await CloseComposerAndReconcileAsync();
+
+                string cancellationIssue;
+                lock (_dynamicOperationSync)
+                {
+                    cancellationIssue = _dynamicCancellationIssue;
+                    _dynamicCancellationIssue = string.Empty;
+                }
+                issue = AppendIssue(issue, cancellationIssue);
+            }
+            catch (Exception exception)
+            {
+                issue = AppendIssue(
+                    _closeIssue,
+                    $"Object Entry composition drain or reconciliation threw '{exception.GetType().Name}: {exception.Message}'.");
+            }
+
+            lock (_dynamicOperationSync)
+            {
+                if ((!_cleanupComplete || !string.IsNullOrEmpty(issue)) &&
+                    ReferenceEquals(_closeAndReconcileTask, completion.Task))
+                {
+                    _closeAndReconcileTask = null;
+                }
+            }
+
+            completion.TrySetResult(issue);
+        }
+
+        private async Task<string> CloseComposerAndReconcileAsync()
+        {
             if (_closeTask == null && !_closeContextConfirmed && string.IsNullOrEmpty(_closeIssue))
             {
                 try

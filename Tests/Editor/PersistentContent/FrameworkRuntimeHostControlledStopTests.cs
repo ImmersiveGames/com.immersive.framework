@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using Immersive.Framework.ActivityFlow;
@@ -16,6 +17,7 @@ using Immersive.Framework.Performance;
 using Immersive.Framework.Pause;
 using Immersive.Framework.PlayerParticipation;
 using Immersive.Framework.PersistentContent.Tests;
+using Immersive.Framework.RuntimeContent;
 using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Transition;
@@ -38,6 +40,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private const string SetupMarkerKey =
             "Immersive.Framework.PersistentContent.HostControlledStop.SetupPrepared";
         private const int SessionParticipantCount = 3;
+        private const string DynamicPreparationEntryId = "qa.host-stop.dynamic-preparation";
+        private const string DynamicCleanupEntryId = "qa.host-stop.dynamic-cleanup";
+        private const string DynamicCleanupQueryName = "QA_HostStop_DynamicCleanupQuery";
 
         private readonly List<string> _scenePaths = new();
         private readonly List<UnsavedSceneBackup> _unsavedSceneBackups = new();
@@ -46,6 +51,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private Scene _originalActiveScene;
         private string _assetFolder;
         private FrameworkRuntimeHost _host;
+        private Task<FrameworkRuntimeHostStopResult> _pendingControlledStopForFixtureCleanup;
         private int _originalPlayModeStartup;
         private float _originalTimeScale;
         private bool _changedPlayModeStartup;
@@ -55,11 +61,21 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private ActivityAsset _postCommitReadinessActivity;
         private RouteAsset _postCommitReadinessRoute;
         private string _postCommitReadinessContentScenePath;
+        private GameObject _dynamicCompositionPrefab;
+        private GameObject _dynamicRemovePrefab;
+        private GameObject _dynamicOwnerClosePrefab;
+        private TaskCompletionSource<bool> _preparationCleanupStarted;
+        private TaskCompletionSource<bool> _allowPreparationCleanup;
+        private TaskCompletionSource<bool> _dynamicRemoveReleaseStarted;
+        private TaskCompletionSource<bool> _allowDynamicRemoveRelease;
+        private TaskCompletionSource<bool> _ownerCloseReleaseStarted;
+        private TaskCompletionSource<bool> _allowOwnerCloseRelease;
 
         [SetUp]
         public void SetUp()
         {
             _originalTimeScale = Time.timeScale;
+            _pendingControlledStopForFixtureCleanup = null;
             if (EditorApplication.isPlaying)
             {
                 return;
@@ -147,8 +163,28 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [UnityTearDown]
         public IEnumerator TearDown()
         {
+            _allowPreparationCleanup?.TrySetResult(true);
+            _allowDynamicRemoveRelease?.TrySetResult(true);
+            _allowOwnerCloseRelease?.TrySetResult(true);
             if (EditorApplication.isPlaying)
             {
+                if (_pendingControlledStopForFixtureCleanup != null)
+                {
+                    while (!_pendingControlledStopForFixtureCleanup.IsCompleted)
+                    {
+                        yield return null;
+                    }
+
+                    try
+                    {
+                        _pendingControlledStopForFixtureCleanup.GetAwaiter().GetResult();
+                    }
+                    catch
+                    {
+                        // Preserve teardown progress; the test's Stop assertion reports the failure.
+                    }
+                }
+
                 if (_host != null)
                 {
                     Task<FrameworkRuntimeHostStopResult> stopTask =
@@ -257,6 +293,16 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             {
                 AssetDatabase.DeleteAsset(_assetFolder);
             }
+            _dynamicCompositionPrefab = null;
+            _dynamicRemovePrefab = null;
+            _dynamicOwnerClosePrefab = null;
+            _preparationCleanupStarted = null;
+            _allowPreparationCleanup = null;
+            _dynamicRemoveReleaseStarted = null;
+            _allowDynamicRemoveRelease = null;
+            _ownerCloseReleaseStarted = null;
+            _allowOwnerCloseRelease = null;
+            _pendingControlledStopForFixtureCleanup = null;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -301,11 +347,29 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Scene primaryScene = SceneManager.GetSceneByPath(_scenePaths[0]);
             Assert.That(primaryScene.IsValid() && primaryScene.isLoaded, Is.True);
             Assert.That(SceneManager.GetActiveScene().handle, Is.EqualTo(primaryScene.handle));
-            ObjectEntryDeclaration composedDeclaration =
-                FindComponent<ObjectEntryDeclaration>(primaryScene);
+            ObjectEntryId expectedComposedIdentity = ObjectEntryId.From("qa.host-stop.object-entry");
+            ObjectEntryDeclaration composedDeclaration = null;
+            GameObject[] primarySceneRoots = primaryScene.GetRootGameObjects();
+            for (int rootIndex = 0; rootIndex < primarySceneRoots.Length; rootIndex++)
+            {
+                ObjectEntryDeclaration[] declarations =
+                    primarySceneRoots[rootIndex].GetComponentsInChildren<ObjectEntryDeclaration>(true);
+                for (int declarationIndex = 0; declarationIndex < declarations.Length; declarationIndex++)
+                {
+                    if (declarations[declarationIndex].TryGetObjectEntryId(out ObjectEntryId candidateIdentity) &&
+                        candidateIdentity == expectedComposedIdentity)
+                    {
+                        composedDeclaration = declarations[declarationIndex];
+                        break;
+                    }
+                }
+
+                if (composedDeclaration != null) break;
+            }
             Assert.That(composedDeclaration, Is.Not.Null,
-                "The Route scene must admit its composed Object Entry during startup.");
+                "The Route scene must admit the exact Base-profile Object Entry during startup.");
             Assert.That(composedDeclaration.TryGetObjectEntryId(out ObjectEntryId composedIdentity), Is.True);
+            Assert.That(composedIdentity, Is.EqualTo(expectedComposedIdentity));
             GameObject composedRoot = composedDeclaration.gameObject;
             ObjectEntryCompositionAuthoring compositionAuthoring =
                 composedRoot.GetComponent<ObjectEntryCompositionAuthoring>();
@@ -360,6 +424,102 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "The Route Object Entry capability must be materialized before controlled stop. " +
                 compositionStateDiagnostic);
 
+            Assert.That(_dynamicCompositionPrefab, Is.Not.Null,
+                "This exact controlled-stop integration test must include a gated profileless preparation occurrence.");
+            Assert.That(_dynamicRemovePrefab, Is.Not.Null);
+            Assert.That(_dynamicOwnerClosePrefab, Is.Not.Null);
+
+            _preparationCleanupStarted = NewSignal();
+            _allowPreparationCleanup = NewSignal();
+            _dynamicRemoveReleaseStarted = NewSignal();
+            _allowDynamicRemoveRelease = NewSignal();
+            _ownerCloseReleaseStarted = NewSignal();
+            _allowOwnerCloseRelease = NewSignal();
+
+            GameObject preparationRoot;
+            ObjectEntryCompositionAccessGrant preparationGrant;
+            ObjectEntryCompositionContribution preparationContribution =
+                OpenDynamicContribution(
+                    DynamicPreparationEntryId,
+                    async instance =>
+                    {
+                        if (instance != null && instance.name == "Object Entry Composition Preparation")
+                        {
+                            _preparationCleanupStarted.TrySetResult(true);
+                            await _allowPreparationCleanup.Task;
+                        }
+
+                        if (instance != null) UnityEngine.Object.DestroyImmediate(instance);
+                        return instance == null;
+                    },
+                    out preparationRoot,
+                    out preparationGrant);
+            Task<ObjectEntryCompositionOperationResult> preparationTask =
+                preparationContribution.SetPartAsync(new ObjectEntryCompositionPartDefinition(
+                    "qa.host-stop.dynamic-preparation-part",
+                    _dynamicCompositionPrefab));
+            while (!_preparationCleanupStarted.Task.IsCompleted && !preparationTask.IsCompleted)
+            {
+                yield return null;
+            }
+            Assert.That(_preparationCleanupStarted.Task.IsCompleted, Is.True,
+                "The pending dynamic operation must be held at preparation cleanup before Stop begins.");
+            Assert.That(preparationTask.IsCompleted, Is.False);
+
+            GameObject cleanupRoot;
+            ObjectEntryCompositionAccessGrant cleanupGrant;
+            ObjectEntryCompositionContribution cleanupContribution =
+                OpenDynamicContribution(
+                    DynamicCleanupEntryId,
+                    async instance =>
+                    {
+                        if (instance != null && instance.name == _dynamicRemovePrefab.name)
+                        {
+                            _dynamicRemoveReleaseStarted.TrySetResult(true);
+                            await _allowDynamicRemoveRelease.Task;
+                        }
+                        else if (instance != null && instance.name == _dynamicOwnerClosePrefab.name)
+                        {
+                            _ownerCloseReleaseStarted.TrySetResult(true);
+                            await _allowOwnerCloseRelease.Task;
+                        }
+
+                        if (instance != null) UnityEngine.Object.DestroyImmediate(instance);
+                        return instance == null;
+                    },
+                    out cleanupRoot,
+                    out cleanupGrant);
+            Task<ObjectEntryCompositionOperationResult> addRemovePart =
+                cleanupContribution.SetPartAsync(new ObjectEntryCompositionPartDefinition(
+                    "qa.host-stop.dynamic-remove-part",
+                    _dynamicRemovePrefab));
+            while (!addRemovePart.IsCompleted) yield return null;
+            Assert.That(addRemovePart.GetAwaiter().GetResult().Status,
+                Is.EqualTo(ObjectEntryCompositionOperationStatus.Committed));
+            Task<ObjectEntryCompositionOperationResult> addOwnerClosePart =
+                cleanupContribution.SetPartAsync(new ObjectEntryCompositionPartDefinition(
+                    "qa.host-stop.dynamic-owner-close-part",
+                    _dynamicOwnerClosePrefab));
+            while (!addOwnerClosePart.IsCompleted) yield return null;
+            Assert.That(addOwnerClosePart.GetAwaiter().GetResult().Status,
+                Is.EqualTo(ObjectEntryCompositionOperationStatus.Committed));
+            Assert.That(preparationRoot, Is.Not.Null);
+            Assert.That(cleanupRoot.transform.Find(_dynamicRemovePrefab.name), Is.Not.Null);
+            Assert.That(cleanupRoot.transform.Find(_dynamicOwnerClosePrefab.name), Is.Not.Null);
+            GameObject dynamicCleanupQueryRoot = GameObject.Find(DynamicCleanupQueryName);
+            Assert.That(dynamicCleanupQueryRoot, Is.Not.Null,
+                "The controlled-stop fixture requires an occurrence query as an exact-owner release checkpoint.");
+            ObjectEntryOccurrenceQueryBinding dynamicCleanupQuery =
+                dynamicCleanupQueryRoot.GetComponent<ObjectEntryOccurrenceQueryBinding>();
+            Assert.That(dynamicCleanupQuery, Is.Not.Null);
+            StableObjectReference dynamicCleanupReference = StableObjectReference.ForEntry(
+                ObjectEntryId.From(DynamicCleanupEntryId));
+            ObjectEntryOccurrenceResolution beforeStopQuery = dynamicCleanupQuery.Resolve(
+                dynamicCleanupReference);
+            Assert.That(beforeStopQuery.Status,
+                Is.EqualTo(ObjectEntryOccurrenceResolutionStatus.Resolved));
+            Assert.That(beforeStopQuery.Occurrence, Is.SameAs(cleanupRoot));
+
             const float runningTimeScale = 0.625f;
             Time.timeScale = runningTimeScale;
             PauseResult paused = _host.RequestPause(
@@ -375,6 +535,15 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 SceneCompositionScopeKind.Session,
                 rejectionCount: 1);
             FrameworkRuntimeHost owner = _host;
+            Task<ObjectEntryCompositionOperationResult> dynamicRemoveTask =
+                cleanupContribution.RemovePartAsync("qa.host-stop.dynamic-remove-part");
+            while (!_dynamicRemoveReleaseStarted.Task.IsCompleted && !dynamicRemoveTask.IsCompleted)
+            {
+                yield return null;
+            }
+            Assert.That(_dynamicRemoveReleaseStarted.Task.IsCompleted, Is.True,
+                "The post-commit dynamic remove must be held inside its Unity release callback before Stop begins.");
+            Assert.That(dynamicRemoveTask.IsCompleted, Is.False);
             IReadOnlyList<GameObject> roots =
                 CallsForScopeKind(SceneCompositionOperation.Available, SceneCompositionScopeKind.Session)[0].Roots;
             GameObject exactRoot = roots[0];
@@ -382,12 +551,99 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             LogAssert.Expect(
                 LogType.Error,
                 new Regex("FrameworkRuntimeHost controlled stop retained the live Host for retry\\."));
-            Task<FrameworkRuntimeHostStopResult> rejectedStopTask =
-                owner.StopAsync("controlled-stop-first-attempt");
+            Task<FrameworkRuntimeHostStopResult> rejectedStopTask = null;
+            IDisposable admittedOperation = null;
+            try
+            {
+                Assert.That(owner.TryEnterRuntimeOperation(
+                    cleanup: false,
+                    out admittedOperation), Is.True,
+                    "The controlled-stop ordering check requires an admitted Host operation to hold the drain open.");
+                rejectedStopTask = owner.StopAsync("controlled-stop-first-attempt");
+                _pendingControlledStopForFixtureCleanup = rejectedStopTask;
+                Assert.That(rejectedStopTask.IsCompleted, Is.False,
+                    "Controlled Stop must wait for the deliberately held Host admission lease.");
+                Assert.IsFalse(preparationGrant.TryOpenContribution(30, out _, out _),
+                    "The pending preparation occurrence grant must be invalidated before Stop waits for admitted Host work.");
+                Assert.IsFalse(cleanupGrant.TryOpenContribution(31, out _, out _),
+                    "The post-commit cleanup occurrence grant must be invalidated before Stop waits for admitted Host work.");
+                ObjectEntryOccurrenceResolution duringAdmissionDrain = dynamicCleanupQuery.Resolve(
+                    dynamicCleanupReference);
+                Assert.That(duringAdmissionDrain.Status,
+                    Is.EqualTo(ObjectEntryOccurrenceResolutionStatus.Resolved),
+                    "Stop's dynamic-write fence must leave the occurrence query available until Route owner release begins.");
+                Assert.That(duringAdmissionDrain.Occurrence, Is.SameAs(cleanupRoot));
+                Assert.That(preparationTask.IsCompleted, Is.False,
+                    "Preparation cleanup remains gated while Stop waits for admitted Host work.");
+                Assert.That(dynamicRemoveTask.IsCompleted, Is.False,
+                    "Post-commit cleanup remains gated while Stop waits for admitted Host work.");
+
+                _allowPreparationCleanup.TrySetResult(true);
+                while (!preparationTask.IsCompleted) yield return null;
+                ObjectEntryCompositionOperationResult preparationResult =
+                    preparationTask.GetAwaiter().GetResult();
+                Assert.That(preparationResult.Status,
+                    Is.EqualTo(ObjectEntryCompositionOperationStatus.Cancelled),
+                    preparationResult.Diagnostic);
+            }
+            finally
+            {
+                admittedOperation?.Dispose();
+            }
+
+            Assert.That(rejectedStopTask.IsCompleted, Is.False,
+                "Controlled Stop must remain pending while the exact Route owner is draining.");
+            Assert.That(dynamicRemoveTask.IsCompleted, Is.False,
+                "Controlled Stop must retain the owner while a post-commit dynamic release remains gated.");
+            Assert.That(_ownerCloseReleaseStarted.Task.IsCompleted, Is.False,
+                "Owner close cannot release remaining parts before it drains the pending dynamic remove.");
+
+            ObjectEntryOccurrenceResolution whileOwnerReleaseStarts = dynamicCleanupQuery.Resolve(
+                dynamicCleanupReference);
+            while (whileOwnerReleaseStarts.Status != ObjectEntryOccurrenceResolutionStatus.Unavailable &&
+                   !rejectedStopTask.IsCompleted)
+            {
+                yield return null;
+                whileOwnerReleaseStarts = dynamicCleanupQuery.Resolve(dynamicCleanupReference);
+            }
+            Assert.That(whileOwnerReleaseStarts.Status,
+                Is.EqualTo(ObjectEntryOccurrenceResolutionStatus.Unavailable),
+                "The exact owner release must invalidate its occurrence query before awaiting dynamic cleanup.");
+            Assert.That(rejectedStopTask.IsCompleted, Is.False,
+                "The controlled stop must still be pending after exact-owner release begins.");
+            Assert.That(dynamicRemoveTask.IsCompleted, Is.False,
+                "The pending Remove must still hold owner release after the exact-owner checkpoint.");
+            Assert.That(_ownerCloseReleaseStarted.Task.IsCompleted, Is.False,
+                "Owner close must not reach its remaining part until the gated Remove finishes.");
+
+            _allowDynamicRemoveRelease.TrySetResult(true);
+            while (!_ownerCloseReleaseStarted.Task.IsCompleted && !rejectedStopTask.IsCompleted)
+            {
+                yield return null;
+            }
+            Assert.That(_ownerCloseReleaseStarted.Task.IsCompleted, Is.True,
+                "Owner close must reach the remaining committed part only after the pending Remove finishes.");
+            Assert.That(dynamicRemoveTask.IsCompleted, Is.True);
+            Assert.That(rejectedStopTask.IsCompleted, Is.False,
+                "The scene release receipt must remain pending until owner-close destruction is confirmed.");
+            Assert.That(cleanupRoot != null && cleanupRoot.scene.isLoaded, Is.True,
+                "Controlled Stop must preserve the dynamic Object Entry root and Route scene while release is unconfirmed.");
+            ObjectEntryDeclaration cleanupDeclaration =
+                cleanupRoot.GetComponent<ObjectEntryDeclaration>();
+            Assert.That(cleanupDeclaration, Is.Not.Null);
+            Assert.That(cleanupDeclaration.ObjectEntryId,
+                Is.EqualTo(ObjectEntryId.From(DynamicCleanupEntryId)),
+                "Controlled Stop must preserve the exact dynamic declaration identity.");
+
+            _allowOwnerCloseRelease.TrySetResult(true);
             while (!rejectedStopTask.IsCompleted)
             {
                 yield return null;
             }
+
+            dynamicRemoveTask.GetAwaiter().GetResult();
+            Assert.That(cleanupRoot.transform.Find(_dynamicRemovePrefab.name), Is.Null);
+            Assert.That(cleanupRoot.transform.Find(_dynamicOwnerClosePrefab.name), Is.Null);
 
             FrameworkRuntimeHostStopResult rejectedStop = rejectedStopTask.GetAwaiter().GetResult();
 
@@ -429,6 +685,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
             Task<FrameworkRuntimeHostStopResult> retryTask =
                 owner.StopAsync("controlled-stop-retry");
+            _pendingControlledStopForFixtureCleanup = retryTask;
             while (!retryTask.IsCompleted)
             {
                 yield return null;
@@ -447,6 +704,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             int releaseCount = HostSessionLifecycleTestProbe.CallsFor(SceneCompositionOperation.Releasing).Count;
             Task<FrameworkRuntimeHostStopResult> repeatedTask =
                 owner.StopAsync("controlled-stop-repeat");
+            _pendingControlledStopForFixtureCleanup = repeatedTask;
             while (!repeatedTask.IsCompleted)
             {
                 yield return null;
@@ -1362,7 +1620,10 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             {
                 ConfigureRoutePlayerSessionConsumer(routeScenePath, importedRoute);
             }
-            ConfigureControlledStopObjectEntry(routeScenePath);
+            bool exerciseDynamicCompositionStop = TestContext.CurrentContext.Test.Name.Contains(
+                "FullStartupAndControlledStop_RetainExactRootsAndSameHostForReleaseRetry",
+                StringComparison.Ordinal);
+            ConfigureControlledStopObjectEntry(routeScenePath, exerciseDynamicCompositionStop);
 
             GameApplicationAsset application = CreateAsset<GameApplicationAsset>("GameApplication.asset");
             var serializedApplication = new SerializedObject(application);
@@ -1668,7 +1929,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "Route Join and Observer fixture must be saved before Play Mode.");
         }
 
-        private void ConfigureControlledStopObjectEntry(string routeScenePath)
+        private void ConfigureControlledStopObjectEntry(
+            string routeScenePath,
+            bool allowDynamicContributions)
         {
             Scene scene = SceneManager.GetSceneByPath(routeScenePath);
             Assert.That(scene.IsValid() && scene.isLoaded, Is.True,
@@ -1706,6 +1969,30 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             ObjectEntryCompositionAuthoring authoring =
                 root.AddComponent<ObjectEntryCompositionAuthoring>();
             SetObjectReference(authoring, "profile", profile);
+            if (allowDynamicContributions)
+            {
+                SetBoolean(authoring, "allowDynamicContributions", true);
+                _dynamicCompositionPrefab = SavePrefabAsset(
+                    "QA_HostStop_DynamicPreparationPart",
+                    "DynamicPreparationPart.prefab");
+                _dynamicRemovePrefab = SavePrefabAsset(
+                    "QA_HostStop_DynamicRemovePart",
+                    "DynamicRemovePart.prefab");
+                _dynamicOwnerClosePrefab = SavePrefabAsset(
+                    "QA_HostStop_DynamicOwnerClosePart",
+                    "DynamicOwnerClosePart.prefab");
+                CreateProfilelessDynamicObjectEntry(
+                    scene,
+                    DynamicPreparationEntryId,
+                    "QA_HostStop_DynamicPreparationEntry");
+                CreateProfilelessDynamicObjectEntry(
+                    scene,
+                    DynamicCleanupEntryId,
+                    "QA_HostStop_DynamicCleanupEntry");
+                GameObject queryRoot = new(DynamicCleanupQueryName);
+                SceneManager.MoveGameObjectToScene(queryRoot, scene);
+                queryRoot.AddComponent<ObjectEntryOccurrenceQueryBinding>();
+            }
             Assert.That(EditorSceneManager.SaveScene(scene), Is.True,
                 "Route scene must save its composed Object Entry before entering Play Mode.");
         }
@@ -1843,6 +2130,96 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(target);
         }
+
+        private static void SetBoolean(
+            UnityEngine.Object target,
+            string propertyName,
+            bool value)
+        {
+            var serialized = new SerializedObject(target);
+            SerializedProperty property = serialized.FindProperty(propertyName);
+            Assert.That(property, Is.Not.Null,
+                "Missing serialized field '" + propertyName + "'.");
+            property.boolValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private GameObject SavePrefabAsset(string name, string fileName)
+        {
+            GameObject source = new(name);
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(
+                source,
+                _assetFolder + "/" + fileName);
+            UnityEngine.Object.DestroyImmediate(source);
+            Assert.That(prefab, Is.Not.Null,
+                "The controlled-stop dynamic composition prefab must be persisted: " + fileName);
+            return prefab;
+        }
+
+        private static void CreateProfilelessDynamicObjectEntry(
+            Scene scene,
+            string objectEntryId,
+            string name)
+        {
+            GameObject root = new(name);
+            SceneManager.MoveGameObjectToScene(root, scene);
+            ObjectEntryDeclaration declaration = root.AddComponent<ObjectEntryDeclaration>();
+            declaration.ConfigureForQa(
+                ObjectEntryId.From(objectEntryId),
+                ObjectEntryRequiredness.Required);
+            ObjectEntryCompositionAuthoring authoring =
+                root.AddComponent<ObjectEntryCompositionAuthoring>();
+            SetBoolean(authoring, "allowDynamicContributions", true);
+        }
+
+        private ObjectEntryCompositionContribution OpenDynamicContribution(
+            string objectEntryId,
+            Func<GameObject, Task<bool>> destroyAndConfirmAsync,
+            out GameObject root,
+            out ObjectEntryCompositionAccessGrant grant)
+        {
+            ObjectEntryId id = ObjectEntryId.From(objectEntryId);
+            Assert.That(_host.StableObjectBindings.TryResolve(
+                id,
+                null,
+                null,
+                out StableObjectBinding binding,
+                out StableObjectBindingResolutionStatus status,
+                out string bindingDiagnostic), Is.True,
+                $"Dynamic Object Entry '{objectEntryId}' must be committed. status={status}; {bindingDiagnostic}");
+            Assert.That(binding.HasAuthoredProfile, Is.False);
+            Assert.That(binding.AllowsDynamicComposition, Is.True);
+            Assert.That(binding.CompositionRuntime, Is.Null,
+                "The profileless dynamic runtime must remain lazy until this test installs its cleanup gate.");
+            root = binding.PhysicalObject;
+            Assert.That(binding.CompositionAuthoring.TryGetCompositionAccessGrant(
+                out grant,
+                out string grantDiagnostic), Is.True, grantDiagnostic);
+            Assert.That(grant.TryGetBinding(
+                out _,
+                out StableObjectBinding grantBinding,
+                out ObjectEntryCompositionRuntimeSlot runtimeSlot), Is.True);
+            Assert.That(ReferenceEquals(binding, grantBinding), Is.True);
+
+            var runtime = new ObjectEntryCompositionRuntimeBinding(
+                binding,
+                null,
+                candidate => _host.StableObjectBindings.IsCompositionTargetCurrent(candidate),
+                destroyAndConfirmAsync,
+                allowDynamicContributions: true);
+            Assert.That(runtimeSlot.TryBind(runtime), Is.True,
+                "The deterministic materializer must bind before opening a contribution.");
+            binding.CompositionRuntime = runtime;
+            Assert.That(grant.TryOpenContribution(
+                20,
+                out ObjectEntryCompositionContribution contribution,
+                out string contributionDiagnostic), Is.True, contributionDiagnostic);
+            return contribution;
+        }
+
+        private static TaskCompletionSource<bool> NewSignal() =>
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private void RemoveTemporaryInputDevices()
         {

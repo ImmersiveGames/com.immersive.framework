@@ -10,6 +10,7 @@ namespace Immersive.Framework.ApplicationLifecycle
     {
         private ResettableOwnerRegistrationRuntime _resettableOwnerRegistration;
         private StableObjectBindingRegistry _stableObjectBindings;
+        private bool _objectEntryCompositionWritesInvalidated;
         private ActorOccurrenceReferenceRuntime _actorOccurrenceReferenceRuntime;
         private ActorGroupRuntime _actorGroupRuntime;
         private bool _sessionActorGroupsReleased;
@@ -21,8 +22,22 @@ namespace Immersive.Framework.ApplicationLifecycle
         internal ResettableOwnerRegistrationRuntime ResettableOwnerRegistration =>
             _resettableOwnerRegistration ??= new ResettableOwnerRegistrationRuntime(ResetRegistry);
 
-        internal StableObjectBindingRegistry StableObjectBindings =>
-            _stableObjectBindings ??= new StableObjectBindingRegistry();
+        internal StableObjectBindingRegistry StableObjectBindings
+        {
+            get
+            {
+                if (_stableObjectBindings == null)
+                {
+                    _stableObjectBindings = new StableObjectBindingRegistry();
+                    if (_objectEntryCompositionWritesInvalidated)
+                    {
+                        _stableObjectBindings.InvalidateDynamicCompositionWrites();
+                    }
+                }
+
+                return _stableObjectBindings;
+            }
+        }
 
         internal ActorOccurrenceReferenceRuntime ActorOccurrenceReferences =>
             _actorOccurrenceReferenceRuntime ??= new ActorOccurrenceReferenceRuntime();
@@ -105,15 +120,23 @@ namespace Immersive.Framework.ApplicationLifecycle
         /// </summary>
         private void InvalidateObjectEntryOccurrenceQueryAccess()
         {
+            InvalidateDynamicObjectEntryCompositionWrites();
             _stableObjectBindings?.InvalidateQueryAccess();
             int unresolvedCompositionCount =
                 _stableObjectBindings?.UnresolvedCompositionCleanupCount ?? 0;
             if (unresolvedCompositionCount > 0)
             {
                 _logger?.Warning(
-                    "Framework Host teardown invalidated Object Entry composition writes, but synchronous teardown cannot await the owner-scoped composition cleanup barrier. Cleanup is best-effort until canonical StopAsync completes.",
+                    "Framework Host teardown invalidated Object Entry dynamic writes and requested cancellation, but cannot await owner-scoped cleanup or confirm acquired-object destruction. Cleanup remains unconfirmed; use controlled StopAsync for the awaited barrier.",
                     LogFields.Of(new LogField("unresolvedCompositionBindings", unresolvedCompositionCount)));
             }
+        }
+
+        private void InvalidateDynamicObjectEntryCompositionWrites()
+        {
+            if (_objectEntryCompositionWritesInvalidated) return;
+            _objectEntryCompositionWritesInvalidated = true;
+            _stableObjectBindings?.InvalidateDynamicCompositionWrites();
         }
 
         internal bool TryReleaseSessionActorGroups(out string diagnostic)
