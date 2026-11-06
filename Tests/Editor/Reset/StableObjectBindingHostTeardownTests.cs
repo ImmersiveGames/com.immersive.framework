@@ -185,8 +185,10 @@ namespace Immersive.Framework.Reset.Tests
                 yield return null;
             }
             ObjectEntryCompositionOperationResult mutationResult = mutation.GetAwaiter().GetResult();
-            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled,
+            Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale,
                 mutationResult.Status, mutationResult.Diagnostic);
+            Assert.IsFalse(mutationResult.EffectsMayHaveApplied);
+            StringAssert.Contains("StaleOperation", mutationResult.Diagnostic);
             Task<string> release = _bindings.ReleaseOwnerAsync(_owner);
             while (!release.IsCompleted)
             {
@@ -195,6 +197,8 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsEmpty(release.GetAwaiter().GetResult());
             Assert.AreEqual(0, _bindings.BindingCount);
             Assert.IsTrue(target != null, "Owner cleanup must preserve the Object Entry root.");
+            Assert.AreEqual(0, target.transform.childCount,
+                "Host teardown cancellation and subsequent owner release must remove the pending preparation resources.");
         }
 
         [UnityTearDown]

@@ -465,7 +465,9 @@ namespace Immersive.Framework.Reset.Tests
                 ObjectEntryCompositionOperationResult result = await operation;
                 string releaseIssue = await release;
 
-                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, result.Status, result.Diagnostic);
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, result.Status, result.Diagnostic);
+                Assert.IsFalse(result.EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", result.Diagnostic);
                 Assert.IsEmpty(releaseIssue);
                 Assert.AreEqual(0, _bindings.BindingCount);
                 Assert.AreEqual(0, root.transform.childCount,
@@ -537,7 +539,9 @@ namespace Immersive.Framework.Reset.Tests
                 ObjectEntryCompositionOperationResult result = await operation;
                 string releaseIssue = await release;
 
-                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, result.Status, result.Diagnostic);
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, result.Status, result.Diagnostic);
+                Assert.IsFalse(result.EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", result.Diagnostic);
                 Assert.IsEmpty(releaseIssue);
                 Assert.AreEqual(0, _bindings.BindingCount);
                 Assert.AreEqual(0, root.transform.childCount);
@@ -694,8 +698,12 @@ namespace Immersive.Framework.Reset.Tests
                 ObjectEntryCompositionOperationResult[] results = await Task.WhenAll(first, second);
                 string releaseIssue = await release;
 
-                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, results[0].Status, results[0].Diagnostic);
-                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Cancelled, results[1].Status, results[1].Diagnostic);
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, results[0].Status, results[0].Diagnostic);
+                Assert.IsFalse(results[0].EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", results[0].Diagnostic);
+                Assert.AreEqual(ObjectEntryCompositionOperationStatus.Stale, results[1].Status, results[1].Diagnostic);
+                Assert.IsFalse(results[1].EffectsMayHaveApplied);
+                StringAssert.Contains("StaleOperation", results[1].Diagnostic);
                 Assert.IsEmpty(releaseIssue);
                 Assert.AreEqual(0, _bindings.BindingCount);
                 Assert.AreEqual(0, root.transform.childCount);

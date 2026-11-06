@@ -583,8 +583,12 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 ObjectEntryCompositionOperationResult preparationResult =
                     preparationTask.GetAwaiter().GetResult();
                 Assert.That(preparationResult.Status,
-                    Is.EqualTo(ObjectEntryCompositionOperationStatus.Cancelled),
+                    Is.EqualTo(ObjectEntryCompositionOperationStatus.Stale),
                     preparationResult.Diagnostic);
+                Assert.That(preparationResult.EffectsMayHaveApplied, Is.False);
+                StringAssert.Contains("StaleOperation", preparationResult.Diagnostic);
+                Assert.That(preparationRoot.transform.childCount, Is.EqualTo(0),
+                    "The cancelled and invalidated preparation must leave no acquired child behind.");
             }
             finally
             {
