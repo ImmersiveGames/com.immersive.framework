@@ -24,7 +24,7 @@ reimplementing their primitives.
 - Stable Framework `1.1.0` uses Unity `6000.5.0f1` or newer in the supported
   `6000.5` line, Foundation `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7`,
   and Input System `1.19.0`.
-- Framework preview `1.2.0-preview.4` declares
+- Framework preview `1.2.0-preview.5` declares
   Composition `0.1.0-preview.3`, Foundation `0.2.3`, Logging `0.2.4`,
   Cinemachine `3.1.7`, and Input System `1.19.0`. Preview APIs remain
   Experimental unless explicitly classified otherwise.
@@ -53,11 +53,11 @@ scope, then declare the Framework package:
 
 This manifest value deliberately keeps Framework on Stable `1.1.0`. Package
 Manager will not replace it automatically with a preview release or a newer
-Git branch. To use preview `1.2.0-preview.4`, set the dependency to that exact
+Git branch. To use preview `1.2.0-preview.5` after it is published, set the dependency to that exact
 version through OpenUPM; the stable value above remains unchanged until the
 project explicitly opts into the preview channel.
 
-The Framework preview release is [`1.2.0-preview.4`](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.4), available through [OpenUPM](https://openupm.com/packages/com.immersive.framework/). It includes Actor Profile part assets and migration, Actor Groups, scoped Actor occurrence queries, Player Actor composition contributions, and Object Entry occurrence queries. It depends on Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`. The preview does not promote Experimental contracts to Stable.
+Framework preview `1.2.0-preview.5` builds on the [previous published `1.2.0-preview.4`](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.4). The new candidate includes physical Object Entry recognition, optional prefab-backed Base composition, and exact-occurrence dynamic Set/Remove/Close contributions with cancellation, drain and cleanup integrated into Route/Activity lifecycle. [QAFramework C4](https://github.com/rinnocenti/QAFramework/pull/3) provides Project Owner Play Mode evidence **21/21 PASS** for the declared Route/Activity scope; C3 Edit Mode has separate **566/566 PASS** evidence. The new release is distributed via [GitHub Releases](https://github.com/ImmersiveGames/com.immersive.framework/releases) and [OpenUPM](https://openupm.com/packages/com.immersive.framework/) **after** the signed `v1.2.0-preview.5` tag workflow finishes successfully. Its dependencies remain Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`. Experimental contracts are not promoted to Stable; abrupt Host teardown cannot confirm asynchronous physical cleanup.
 Earlier package releases remain in the [changelog](CHANGELOG.md) as history;
 they are not migration baselines for `1.1.0`.
 
@@ -96,7 +96,7 @@ SemVer, so do not add a second Composition source in that setup:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.2.0-preview.4"
+    "com.immersive.framework": "1.2.0-preview.5"
   }
 }
 ```

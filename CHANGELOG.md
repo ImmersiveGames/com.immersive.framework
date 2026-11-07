@@ -2,10 +2,18 @@
 
 All notable package changes are documented in this file.
 
-## [Unreleased] — Physical Object Entry recognition
+## [Unreleased]
 
-- Adds the Experimental `IObjectEntryRecognitionQuery.Recognize(Collider)` capability to the existing owner-bound Object Entry query anchor. It recognizes the nearest declaration only when its exact GameObject is supported by one non-ambiguous committed owner binding; recognition is read-only and grants no gameplay authorization.
-- Adds focused EditMode coverage and documents IF-ADR-014 Amendment 001. Unity import, compile and test execution remain pending; no package version bump or publication is included.
+## [1.2.0-preview.5] - 2026-11-06 — Object Entry recognition and dynamic composition
+
+- Adds Experimental `IObjectEntryRecognitionQuery.Recognize(Collider)` to the existing Route/Activity owner-bound Object Entry query anchor. Recognition is read-only and uses the exact non-ambiguous committed physical binding; it does not discover spatial targets or authorize gameplay.
+- Adds `ObjectEntryIdReference` and focused Object Entry ID authoring/picker improvements; stable identity remains independent of scene object names or hierarchy.
+- Implements IF-ADR-014 Amendment 002: optional `ObjectEntryCompositionProfile` and authoring, validated prefab-backed Base capabilities, same-root materialization only after owner commit, and cleanup/retry coordinated with Route/Activity release. Plain Object Entries remain uncomposed.
+- Implements accepted IF-ADR-014 Amendment 003 (C1–C3): opt-in exact-occurrence `ObjectEntryCompositionAccessGrant`, independent contribution handles, Experimental `SetPartAsync`/`RemovePartAsync`/`CloseAsync`, per-part key/prefab/dependency validation, priority/conflict/dependency semantics delegated to Composition, typed outcomes including `Stale`, `Degraded` and `EffectsMayHaveApplied`.
+- Closes the dynamic-operation/owner-release race with a per-occurrence async operation ledger. Release revokes grants, cancels and drains work through materializer cleanup before Composer close, reconciliation and physical owner release. Controlled Stop fences new dynamic writes before waiting on admitted work; recoverable cleanup keeps its binding for retry.
+- C4 consumer QA is integrated in QAFramework [PR #3](https://github.com/rinnocenti/QAFramework/pull/3), and the Framework architecture/usage documentation has been reconciled. The Project Owner's Unity `6000.5.0f1` evidence reports **566/566 Edit Mode PASS** for the C3 source baseline, **21/21 C4 Play Mode PASS** in the specified Route/Activity scenario (including physical cleanup before owner-scene unload, stale handles and Activity readmission), and separate **10/10 B2 Play Mode PASS**. These are owner-provided screenshots/logs, not an immutable package-tarball/commit-fingerprinted consumer test or NUnit XML report.
+- **Scope and limits:** C4 certifies the tested Route/Activity composition paths only. `OnDestroy`/`OnApplicationQuit` synchronously invalidate grants and request cancellation, but cannot confirm asynchronous physical cleanup; Controlled Stop retains its awaited cleanup guarantee. Session and dynamic Object Entry spawning/transfers, supported Player builds and broad platform validation are not claimed. All new Object Entry APIs remain **Experimental**; no Stable contract is promoted.
+- Declared package dependency minimums are unchanged from `1.2.0-preview.4`: Composition `0.1.0-preview.3`, Foundation `0.2.3`, Logging `0.2.4`, Cinemachine `3.1.7` and Input System `1.19.0`.
 
 ## [1.2.0-preview.4] - 2026-11-01 — Actor composition and scoped occurrence queries
 
