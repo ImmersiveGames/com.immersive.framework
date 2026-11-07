@@ -1,11 +1,11 @@
 # IF-PLAN-014-C — Dynamic Object Entry Composition
 
-Status: **C1/C2 integrated; C3 implementation Edit Mode tested (566/566 owner evidence), integration via PR #27; C4 pending**
+Status: **C1–C3 integrated into Framework; C3 566/566 Edit Mode PASS; C4 21/21 Play Mode PASS and integrated in QAFramework PR #3 — tested Route/Activity scope technically validated**
 Authority: accepted [IF-ADR-014 Amendment 003](../ADRs/IF-ADR-014-AMENDMENT-003-DYNAMIC-OBJECT-ENTRY-COMPOSITION.md)
-Implementation: C1/C2 integrated to `master`; C3 source and deterministic regressions are authored on PR #27 and the Project Owner has supplied 566/566 Unity Edit Mode visual evidence after the stale-status test fix; C4 integrated Play Mode certification is pending. See the Framework tracker for evidence provenance.
+Implementation: C1–C3 are integrated to Framework `master` (C3 PR #27, merge `2bf0560b`); QAFramework C4 is integrated to `main` (PR #3, merge `ce9ed9f1`). Project Owner evidence: C3 566/566 Edit Mode screenshot, C4 21/21 Play Mode Console transcript, and separate B2 10/10 Play Mode. Evidence and bounded guarantees are tracked in the Framework tracker.
 Boundary: Framework Object Entry / Runtime Content integration; Composition kernel unchanged
 
-The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**. C1 and C2 are now integrated. Preserve the C2–C4 cut boundaries and their independent evidence gates. Dynamic mutation remains Experimental until C3/C4 lifecycle and Unity validation are complete.
+The Project Owner approved the five Amendment 003 decisions on 2026-11-05 and authorized **C1**; subsequent C1–C4 cuts were implemented and integrated through their separate PRs. The C3/C4 Unity evidence supports technical validation of the tested Route/Activity scope. The public dynamic composition API remains **Experimental**; Stable promotion, package release, supported Player builds and wider lifecycle scopes require separate decisions/evidence.
 
 ### C2 execution state — 2026-11-06
 
@@ -142,6 +142,9 @@ The exact-runtime task ledger, linked cancellation, owner-release single-flight,
 
 ## C4 — QAFramework certification
 
+**Execution result (Project Owner, 2026-11-06): PASS 21/21.** The C4 QAFramework generated scene setup reported `setup='Prepared' scenes='4'` and Framework boot succeeded. Exactly 21 distinct case IDs reported `pass='True'`; terminal `[IF-ADR-014-C4] status='Passed' cases='21/21' executed='21' diagnostic=''`. Physical evidence shows 8 Route-owned plus 1 current Activity-owned acquired part destroyed while the respective owner scene was still loaded and each root/declaration/ObjectEntryId remained intact; final retained-root cleanup `remaining='0'`. Activity Restart completed with non-blocking no-reset-subject warning (`blockingIssues='0'`); old grant/handle returned `Stale`, and a new physical occurrence with the same logical ID accepted a new mutation. QAFramework [PR #3](https://github.com/rinnocenti/QAFramework/pull/3) was merged at `ce9ed9f1`. The C3 **566/566 Edit Mode** screenshot and B2 **10/10 Play Mode** transcript are separate evidence. All are owner-provided visual/console artifacts without NUnit XML or a verifiable execution commit SHA. This closes C4's **defined Route/Activity integration matrix**, not broader runtime or production certification. Abrupt Host teardown still does not guarantee cleanup confirmation. No new Framework runtime API, package release, Stable promotion or Player-build/platform validation is implied.
+
+
 ### Objective
 
 Certify the integration in isolated Edit Mode and actual Unity Play Mode, separately from B2 evidence.
@@ -172,4 +175,4 @@ Record Unity version, checkout, package hash, test counts/results and Play Mode 
 
 ## Approval and execution gate
 
-The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. The bounded abrupt-teardown limitation described in C3 was separately and explicitly accepted by the Project Owner on **2026-11-06**. C1/C2 are integrated; C3 has an independent CLEAR review and Project Owner-provided 566/566 Edit Mode evidence after test correction, with integration tracked through PR #27; C4 certification remains planned. Do not advertise dynamic mutation as production-ready before C3/C4 validation. Package release and API maturity promotion remain separate decisions.
+The five architectural decisions in Amendment 003 were **approved by the Project Owner on 2026-11-05**. The bounded abrupt-teardown limitation described in C3 was separately and explicitly accepted by the Project Owner on **2026-11-06**. C1–C3 are integrated (C3 Framework PR #27); C4 is integrated (QAFramework PR #3). The Project Owner supplied C3 566/566 Edit Mode evidence and C4 21/21 Play Mode evidence, establishing **tested Route/Activity technical validation** for Amendment 003. The accepted abrupt-teardown limitation persists; Session, dynamic spawning, broader platforms and Player-build coverage are excluded. Do not advertise universal production readiness or promote the Experimental API to Stable automatically. Package release and API maturity promotion remain separate decisions.
