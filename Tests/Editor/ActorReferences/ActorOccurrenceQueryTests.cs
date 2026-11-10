@@ -226,6 +226,268 @@ namespace Immersive.Framework.ActorReferences.Tests
         }
 
         [Test]
+        public void RecognitionContracts_AreExperimental()
+        {
+            foreach (Type contract in new[]
+                     {
+                         typeof(IActorOccurrenceRecognitionQuery),
+                         typeof(ActorOccurrenceRecognitionResult),
+                         typeof(ActorOccurrenceRecognitionStatus)
+                     })
+            {
+                FrameworkApiStatusAttribute metadata = contract.GetCustomAttribute<FrameworkApiStatusAttribute>(false);
+                Assert.That(metadata, Is.Not.Null, contract.FullName);
+                Assert.That(metadata.Status, Is.EqualTo(FrameworkApiStatus.Experimental), contract.FullName);
+                Assert.That(metadata.Note, Is.Not.Empty, contract.FullName);
+            }
+        }
+
+        [Test]
+        public void Recognition_NullDestroyedAndUndeclaredCandidatesHaveExplicitOutcomes()
+        {
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Recognition Outcomes Query");
+            var recognition = (IActorOccurrenceRecognitionQuery)anchor;
+            Collider candidate = Track(new GameObject("Undeclared Candidate")).AddComponent<BoxCollider>();
+
+            Assert.That(recognition.Recognize(null).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Invalid));
+            Assert.That(recognition.Recognize(candidate).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unrecognized));
+
+            UnityEngine.Object.DestroyImmediate(candidate);
+            Assert.That(recognition.Recognize(candidate).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+
+            ActorOccurrencePublication publication = CreateNonPlayer("npc.query.unbound-recognition");
+            Collider declared = Track(new GameObject("Unbound Candidate Collider")).AddComponent<BoxCollider>();
+            declared.transform.SetParent(publication.transform, false);
+            Assert.That(recognition.Recognize(declared).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+
+            ActorOccurrencePublication unknownKind = CreateNonPlayer("npc.query.unknown-kind-recognition");
+            SetPrivateField(typeof(ActorDeclaration), unknownKind.ActorDeclaration, "actorKind", ActorKind.Unknown);
+            Collider unknownKindCandidate = Track(new GameObject("Unknown Kind Candidate Collider")).AddComponent<BoxCollider>();
+            unknownKindCandidate.transform.SetParent(unknownKind.transform, false);
+            Assert.That(recognition.Recognize(unknownKindCandidate).Status,
+                Is.EqualTo(ActorOccurrenceRecognitionStatus.Invalid));
+
+            AssertUnbound(anchor.Resolve(ActorOccurrenceReference.ForActorId(new ActorId("npc.query.unbound-recognition"))));
+        }
+
+        [Test]
+        public void Recognition_InvalidNearestDeclarationDoesNotFallThroughToOuterActor()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner owner = CreateActivityOwner("activity.query.invalid-recognition");
+            ActorOccurrencePublication publication = CreateNonPlayer("npc.query.valid-outer");
+            GameObject nestedRoot = Track(new GameObject("Invalid Nested Actor Declaration"));
+            nestedRoot.transform.SetParent(publication.transform, false);
+            ActorDeclaration invalidDeclaration = nestedRoot.AddComponent<ActorDeclaration>();
+            SetPrivateField(typeof(ActorDeclaration), invalidDeclaration, "actorId", string.Empty);
+            Collider candidate = Track(new GameObject("Nested Actor Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(nestedRoot.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Invalid Declaration Query");
+            Register(runtime, owner, publication.gameObject, anchor.gameObject);
+
+            ActorOccurrenceRecognitionResult result = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(candidate);
+
+            Assert.That(result.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Invalid));
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Occurrence.IsValid, Is.False);
+        }
+
+        [Test]
+        public void Recognition_NonPlayerMatchesExactRootAndDisambiguatesDuplicateActorIds()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner owner = CreateActivityOwner("activity.query.physical-duplicate");
+            ActorOccurrencePublication first = CreateNonPlayer("npc.query.physical-duplicate");
+            ActorOccurrencePublication second = CreateNonPlayer("npc.query.physical-duplicate");
+            Collider firstCollider = Track(new GameObject("First Physical Collider")).AddComponent<BoxCollider>();
+            firstCollider.transform.SetParent(first.transform, false);
+            Collider secondCollider = Track(new GameObject("Second Physical Collider")).AddComponent<BoxCollider>();
+            secondCollider.transform.SetParent(second.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Physical Duplicate Query");
+            Register(runtime, CreateRouteOwner("route.query.physical-duplicate-anchor"), anchor.gameObject);
+            Register(runtime, owner, first.gameObject, second.gameObject);
+            var actorId = new ActorId("npc.query.physical-duplicate");
+
+            Assert.That(anchor.Resolve(ActorOccurrenceReference.ForActorId(actorId, owner)).Status,
+                Is.EqualTo(ActorOccurrenceResolutionStatus.Ambiguous));
+
+            ActorOccurrenceRecognitionResult firstResult = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(firstCollider);
+            ActorOccurrenceRecognitionResult secondResult = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(secondCollider);
+
+            Assert.That(firstResult.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(secondResult.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(firstResult.Occurrence.ActorId, Is.EqualTo(actorId));
+            Assert.That(secondResult.Occurrence.ActorId, Is.EqualTo(actorId));
+            Assert.That(firstResult.Occurrence.ActorRoot, Is.SameAs(first.gameObject));
+            Assert.That(secondResult.Occurrence.ActorRoot, Is.SameAs(second.gameObject));
+            Assert.That(firstResult.Occurrence.Id, Is.Not.EqualTo(secondResult.Occurrence.Id));
+            Assert.That(firstResult.Occurrence.Owner, Is.EqualTo(owner));
+            Assert.That(secondResult.Occurrence.Owner, Is.EqualTo(owner));
+        }
+
+        [Test]
+        public void Recognition_StagedAndReleasedNonPlayerOccurrencesAreUnavailable()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner queryOwner = CreateRouteOwner("route.query.recognition-lifecycle");
+            RuntimeContentOwner targetOwner = CreateActivityOwner("activity.query.recognition-lifecycle");
+            ActorOccurrencePublication publication = CreateNonPlayer("npc.query.recognition-lifecycle");
+            Collider candidate = Track(new GameObject("Lifecycle Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(publication.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Lifecycle Recognition Query");
+            Register(runtime, queryOwner, anchor.gameObject);
+            var recognition = (IActorOccurrenceRecognitionQuery)anchor;
+
+            Assert.That(runtime.TryRegisterOwnerContent(targetOwner, new[] { publication.gameObject }, out string issue), Is.True, issue);
+            Assert.That(recognition.Recognize(candidate).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+
+            Assert.That(runtime.TryCommitOwner(targetOwner, out issue), Is.True, issue);
+            ActorOccurrenceRecognitionResult committed = recognition.Recognize(candidate);
+            Assert.That(committed.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(committed.Occurrence.ActorRoot, Is.SameAs(publication.gameObject));
+
+            Assert.That(runtime.TryReleaseOwner(targetOwner, out issue), Is.True, issue);
+            Assert.That(recognition.Recognize(candidate).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+        }
+
+        [Test]
+        public void Recognition_RejectsNonPlayerWhoseCompositionMountLeavesPublishedRoot()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner queryOwner = CreateRouteOwner("route.query.recognition-mount");
+            RuntimeContentOwner targetOwner = CreateActivityOwner("activity.query.recognition-mount");
+            ActorOccurrencePublication publication = CreateNonPlayer("npc.query.recognition-mount");
+            Transform mount = Track(new GameObject("Recognition Composition Mount")).transform;
+            mount.SetParent(publication.transform, false);
+            SetPrivateField(typeof(ActorOccurrencePublication), publication, "compositionMount", mount);
+            Collider candidate = Track(new GameObject("Mount Lifecycle Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(publication.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Mount Lifecycle Recognition Query");
+            Register(runtime, queryOwner, anchor.gameObject);
+            Assert.That(runtime.TryRegisterOwnerContent(targetOwner, new[] { publication.gameObject }, out string issue), Is.True, issue);
+            Assert.That(runtime.TryCommitOwner(targetOwner, out issue), Is.True, issue);
+            var recognition = (IActorOccurrenceRecognitionQuery)anchor;
+
+            ActorOccurrenceRecognitionResult committed = recognition.Recognize(candidate);
+            Assert.That(committed.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+
+            mount.SetParent(null, true);
+
+            Assert.That(anchor.Resolve(ActorOccurrenceReference.ForOccurrence(committed.Occurrence)).Status,
+                Is.EqualTo(ActorOccurrenceResolutionStatus.Stale));
+            Assert.That(recognition.Recognize(candidate).Status,
+                Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+        }
+
+        [Test]
+        public void Recognition_RejectsDeclarationThatChangesActorIdDuringKindValidation()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner owner = CreateActivityOwner("activity.query.recognition-reentrant-id");
+            GameObject root = Track(new GameObject("Reentrant Actor Declaration"));
+            var declaration = root.AddComponent<ActorKindMutatingDeclaration>();
+            const string originalId = "npc.query.recognition-reentrant-original";
+            const string changedId = "npc.query.recognition-reentrant-changed";
+            declaration.Configure(originalId);
+            ActorOccurrencePublication publication = root.AddComponent<ActorOccurrencePublication>();
+            SetPrivateField(typeof(ActorOccurrencePublication), publication, "actorDeclaration", declaration);
+            Collider candidate = Track(new GameObject("Reentrant Actor Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(root.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Reentrant Recognition Query");
+            Register(runtime, owner, publication.gameObject, anchor.gameObject);
+            declaration.MutateActorIdOnKindRead(2, changedId);
+
+            ActorOccurrenceRecognitionResult result = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(candidate);
+
+            Assert.That(result.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Invalid));
+            Assert.That(result.Succeeded, Is.False);
+        }
+
+        [Test]
+        public void Recognition_DoesNotInvokeDeclarationCallbacksDuringOccurrenceLookup()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            RuntimeContentOwner owner = CreateActivityOwner("activity.query.recognition-no-callback");
+            GameObject root = Track(new GameObject("No Callback Actor Declaration"));
+            var declaration = root.AddComponent<ActorKindMutatingDeclaration>();
+            const string actorId = "npc.query.recognition-no-callback";
+            declaration.Configure(actorId);
+            ActorOccurrencePublication publication = root.AddComponent<ActorOccurrencePublication>();
+            SetPrivateField(typeof(ActorOccurrencePublication), publication, "actorDeclaration", declaration);
+            Collider candidate = Track(new GameObject("No Callback Actor Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(root.transform, false);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("No Callback Recognition Query");
+            Register(runtime, owner, publication.gameObject, anchor.gameObject);
+            declaration.MutateActorIdOnKindRead(3, "npc.query.recognition-callback-ran");
+
+            ActorOccurrenceRecognitionResult result = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(candidate);
+
+            Assert.That(result.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(result.Occurrence.ActorId, Is.EqualTo(new ActorId(actorId)));
+            Assert.That(declaration.ActorId, Is.EqualTo(new ActorId(actorId)));
+        }
+
+        [Test]
+        public void Recognition_PlayerUsesCurrentSessionOccurrenceAndRejectsReplacedRoot()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            var source = new FakePlayerSource();
+            RuntimeContentOwner sessionOwner = RuntimeContentOwner.Session("session.query.player-recognition", "Session");
+            PlayerActorPhysicalOccurrence first = CreatePlayerPhysical(
+                PlayerSlotId.Player1, sessionOwner, "player.query.recognition-first", 1);
+            Collider firstCollider = Track(new GameObject("Player First Collider")).AddComponent<BoxCollider>();
+            firstCollider.transform.SetParent(first.ActorRoot.transform, false);
+            source.SetCurrent(first, notify: false);
+            runtime.SetPlayerSource(source);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Player Recognition Query");
+            Register(runtime, CreateRouteOwner("route.query.player-recognition-anchor"), anchor.gameObject);
+            var recognition = (IActorOccurrenceRecognitionQuery)anchor;
+
+            ActorOccurrenceRecognitionResult firstResult = recognition.Recognize(firstCollider);
+            Assert.That(firstResult.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(firstResult.Occurrence.ActorId, Is.EqualTo(first.ActorId));
+            Assert.That(firstResult.Occurrence.Id, Is.EqualTo(first.OccurrenceId));
+            Assert.That(firstResult.Occurrence.Owner, Is.EqualTo(sessionOwner));
+            Assert.That(firstResult.Occurrence.PlayerSlotId, Is.EqualTo(PlayerSlotId.Player1));
+            Assert.That(firstResult.Occurrence.ActorRoot, Is.SameAs(first.ActorRoot));
+
+            PlayerActorPhysicalOccurrence replacement = CreatePlayerPhysical(
+                PlayerSlotId.Player1, sessionOwner, "player.query.recognition-replacement", 2);
+            Collider replacementCollider = Track(new GameObject("Player Replacement Collider")).AddComponent<BoxCollider>();
+            replacementCollider.transform.SetParent(replacement.ActorRoot.transform, false);
+            source.SetCurrent(replacement, notify: true);
+
+            Assert.That(recognition.Recognize(firstCollider).Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Unavailable));
+            ActorOccurrenceRecognitionResult replacementResult = recognition.Recognize(replacementCollider);
+            Assert.That(replacementResult.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Resolved));
+            Assert.That(replacementResult.Occurrence.Id, Is.EqualTo(replacement.OccurrenceId));
+            Assert.That(replacementResult.Occurrence.ActorRoot, Is.SameAs(replacement.ActorRoot));
+        }
+
+        [Test]
+        public void Recognition_DuplicateExactPhysicalEvidenceIsAmbiguous()
+        {
+            var runtime = new ActorOccurrenceReferenceRuntime();
+            var source = new FakePlayerSource();
+            RuntimeContentOwner sessionOwner = RuntimeContentOwner.Session("session.query.ambiguous-recognition", "Session");
+            PlayerActorPhysicalOccurrence current = CreatePlayerPhysical(
+                PlayerSlotId.Player1, sessionOwner, "player.query.ambiguous-recognition", 1);
+            Collider candidate = Track(new GameObject("Ambiguous Player Collider")).AddComponent<BoxCollider>();
+            candidate.transform.SetParent(current.ActorRoot.transform, false);
+            source.SetCurrent(current, notify: false);
+            source.AddDuplicate(current);
+            runtime.SetPlayerSource(source);
+            ActorOccurrenceQueryBinding anchor = CreateAnchor("Ambiguous Recognition Query");
+            Register(runtime, CreateRouteOwner("route.query.ambiguous-recognition-anchor"), anchor.gameObject);
+
+            ActorOccurrenceRecognitionResult result = ((IActorOccurrenceRecognitionQuery)anchor).Recognize(candidate);
+
+            Assert.That(result.Status, Is.EqualTo(ActorOccurrenceRecognitionStatus.Ambiguous));
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Occurrence.IsValid, Is.False);
+        }
+
+        [Test]
         public void DuplicateActorId_IsAmbiguousUntilExactOwnerSelected()
         {
             var runtime = new ActorOccurrenceReferenceRuntime();
@@ -555,6 +817,7 @@ namespace Immersive.Framework.ActorReferences.Tests
         private sealed class FakePlayerSource : IPlayerPreparedActorOccurrenceSource
         {
             private PlayerActorPhysicalOccurrence _current;
+            private PlayerActorPhysicalOccurrence? _duplicate;
             public event Action<PlayerSlotId> CurrentActorInvalidated;
             public string SessionContextId => "session.player";
 
@@ -575,12 +838,54 @@ namespace Immersive.Framework.ActorReferences.Tests
             public void CollectCurrentPhysicalActorOccurrences(ICollection<PlayerActorPhysicalOccurrence> occurrences)
             {
                 if (_current.IsValid) occurrences.Add(_current);
+                if (_duplicate.HasValue && _duplicate.Value.IsValid) occurrences.Add(_duplicate.Value);
             }
+
+            internal void AddDuplicate(PlayerActorPhysicalOccurrence occurrence) => _duplicate = occurrence;
 
             internal void SetCurrent(PlayerActorPhysicalOccurrence occurrence, bool notify)
             {
                 _current = occurrence;
                 if (notify) CurrentActorInvalidated?.Invoke(PlayerSlotId.Player1);
+            }
+        }
+
+        private sealed class ActorKindMutatingDeclaration : ActorDeclaration
+        {
+            private int _kindReads;
+            private int _mutationRead;
+            private string _replacementActorId;
+
+            public override ActorKind ActorKind
+            {
+                get
+                {
+                    _kindReads++;
+                    if (_kindReads == _mutationRead)
+                    {
+                        ConfigureForDiagnostics(
+                            _replacementActorId,
+                            ActorKind.NonPlayer,
+                            ActorRole.Neutral,
+                            name,
+                            "test.recognition.reentrant-id");
+                    }
+
+                    return ActorKind.NonPlayer;
+                }
+            }
+
+            internal void Configure(string actorId)
+            {
+                ConfigureForDiagnostics(actorId, ActorKind.NonPlayer, ActorRole.Neutral, name, "test.recognition");
+                _kindReads = 0;
+            }
+
+            internal void MutateActorIdOnKindRead(int read, string actorId)
+            {
+                _kindReads = 0;
+                _mutationRead = read;
+                _replacementActorId = actorId;
             }
         }
     }

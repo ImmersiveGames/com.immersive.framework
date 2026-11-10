@@ -255,6 +255,56 @@ public sealed class KnowledgeSystem
   and allocates. Query per event or decision, not per frame. Use observation for
   continuous tracking.
 
+## Physical Actor recognition
+
+When a system already has a physical `Collider` and needs to associate it with a
+Framework Actor, use the optional `IActorOccurrenceRecognitionQuery` implemented
+by the same `ActorOccurrenceQueryBinding`. This operation reuses the existing
+host-scoped Actor occurrence authority; it does not create another registry or
+perform spatial discovery.
+
+```csharp
+IActorOccurrenceRecognitionQuery recognition = occurrenceQueryBinding;
+ActorOccurrenceRecognitionResult result = recognition.Recognize(candidateCollider);
+
+if (result.Status == ActorOccurrenceRecognitionStatus.Resolved)
+{
+    ActorOccurrence occurrence = result.Occurrence;
+    ActorId actorId = occurrence.ActorId;
+    GameObject actorRoot = occurrence.ActorRoot;
+    ActorOccurrenceId incarnation = occurrence.Id;
+}
+```
+
+The nearest `ActorDeclaration` in the candidate Collider's ancestor chain is the
+identity boundary. A valid declaration is not sufficient by itself: its exact
+GameObject must be the root of a current committed occurrence. Player results
+come from the Session's existing prepared-Actor authority. NonPlayer results come
+from an exact owner-committed `ActorOccurrencePublication`. The query anchor's
+owner controls how long the query capability is available; it does not limit
+which committed Actor owners can be recognized.
+
+| Status | Meaning |
+|---|---|
+| `Unrecognized` | No Actor declaration exists in the Collider's ancestor chain. |
+| `Invalid` | The candidate is null or the nearest Actor declaration is invalid. |
+| `Resolved` | One current committed occurrence matches the exact declaration and root. The typed `ActorOccurrence` includes ActorId, ActorOccurrenceId, root, owner and optional Player Slot. |
+| `Unavailable` | The Collider was destroyed, the query is unbound, or the declaration does not match a current committed occurrence. Staged and released occurrences are not recognized. |
+| `Ambiguous` | More than one current committed occurrence matches the same exact declaration root. The Framework does not select by enumeration order. |
+
+Multiple current occurrences with the same `ActorId` on different roots do not
+make a supplied physical candidate ambiguous: the Collider's nearest declaration
+and exact root select its occurrence. `Resolve(ActorOccurrenceReference.ForActorId(...))`
+retains its existing identity-level ambiguity behavior. Recognition is
+point-in-time evidence only; it does not say that the Collider is enabled,
+visible, detected by a sensor, eligible for targeting or authorized for gameplay.
+
+The minimum validation scenarios are a Player and a committed NonPlayer with
+descendant Colliders, an invalid nested Actor declaration that must not fall
+through to an outer one, an uncommitted or released declaration, and duplicate
+ActorIds on separate roots. Confirm recognition returns the exact root and
+occurrence identity without changing the existing `Resolve` results.
+
 ## Manual Unity validation
 
 The implementation includes an Editor contract test assembly. After importing
@@ -303,6 +353,21 @@ On-demand query (Amendment 001), in Play Mode with a composed scene:
     `EditorApplication.playModeStateChanged == EnteredEditMode`, call `Resolve`.
     Confirm no exception and `Unavailable` with the "not bound" diagnostic. Then
     re-enter Play Mode and confirm the anchors bind again.
+12. On a Player Actor and a committed NonPlayer Actor, pass a Collider on a child
+    object to `IActorOccurrenceRecognitionQuery`. Confirm both results carry the
+    exact official ActorOccurrenceId and declared Actor root.
+13. Pass an ordinary Collider, a literal null Collider, a destroyed Collider and
+    a Collider under an invalid nearest declaration. Confirm `Unrecognized`,
+    `Invalid`, `Unavailable` and `Invalid`, respectively; an invalid nested
+    declaration must not fall through to a valid outer Actor declaration.
+14. Stage a NonPlayer owner without committing it, then release an already
+    committed owner. In both cases keep the Collider alive and confirm recognition
+    returns `Unavailable`; after commit, confirm the exact root resolves.
+15. Commit two occurrences with the same ActorId on different roots. Confirm the
+    identity query remains `Ambiguous` while physical recognition returns each
+    exact root and distinct ActorOccurrenceId. Also confirm a replacement Player's
+    old Collider is `Unavailable` and the replacement Collider resolves to the
+    new committed occurrence.
 
 Do not treat source test presence or static checks as Unity compile/import,
 EditMode, Play Mode or external consumer evidence. API maturity remains

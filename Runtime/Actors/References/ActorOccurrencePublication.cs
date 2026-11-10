@@ -66,8 +66,7 @@ namespace Immersive.Framework.Actors
                 diagnostic = "ActorOccurrencePublication accepts only NonPlayer declarations. Player publication is owned by Player Session.";
                 return false;
             }
-            Transform mount = CompositionMount;
-            if (mount != null && mount != transform && !mount.IsChildOf(transform))
+            if (!HasValidCompositionMountTopology())
             {
                 diagnostic = "Published Actor composition mount must be the exact producer-owned root or one of its children.";
                 return false;
@@ -82,6 +81,12 @@ namespace Immersive.Framework.Actors
                 diagnostic = "Publication ActorDeclaration has an invalid ActorId. " + exception.Message;
                 return false;
             }
+        }
+
+        internal bool HasValidCompositionMountTopology()
+        {
+            Transform mount = CompositionMount;
+            return mount == null || mount == transform || mount.IsChildOf(transform);
         }
 
         internal void BindRuntime(ActorOccurrenceReferenceRuntime runtime)

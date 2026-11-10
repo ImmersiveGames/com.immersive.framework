@@ -536,6 +536,86 @@ namespace Immersive.Framework.Actors
                     : "No committed physical Actor occurrence matches this selector.");
         }
 
+        internal ActorOccurrenceRecognitionResult Recognize(ActorDeclaration declaration, ActorDescriptor descriptor)
+        {
+            if (declaration == null || !descriptor.ActorId.IsValid ||
+                (descriptor.ActorKind != ActorKind.Player && descriptor.ActorKind != ActorKind.NonPlayer))
+            {
+                return new ActorOccurrenceRecognitionResult(
+                    ActorOccurrenceRecognitionStatus.Invalid,
+                    "Actor occurrence recognition requires a valid Player or NonPlayer declaration.");
+            }
+
+            GameObject declarationRoot = declaration.gameObject;
+            if (declarationRoot == null)
+            {
+                return new ActorOccurrenceRecognitionResult(
+                    ActorOccurrenceRecognitionStatus.Unavailable,
+                    "The nearest Actor declaration is no longer physically available.");
+            }
+
+            var matches = new List<ActorOccurrence>();
+            if (descriptor.ActorKind == ActorKind.NonPlayer)
+            {
+                foreach (PublicationRecord record in _publications.Values)
+                {
+                    if (!_committedOwners.ContainsKey(record.Owner) || record.ActorId != descriptor.ActorId)
+                        continue;
+
+                    ActorOccurrencePublication publisher = record.Publisher;
+                    if (publisher == null || !ReferenceEquals(publisher.ActorDeclaration, declaration) ||
+                        !ReferenceEquals(publisher.gameObject, declarationRoot) ||
+                        !publisher.HasValidCompositionMountTopology())
+                    {
+                        continue;
+                    }
+
+                    matches.Add(CreatePublicationOccurrence(record));
+                }
+            }
+
+            if (descriptor.ActorKind == ActorKind.Player && _playerSource != null)
+            {
+                var physicalPlayers = new List<PlayerActorPhysicalOccurrence>();
+                _playerSource.CollectCurrentPhysicalActorOccurrences(physicalPlayers);
+                for (int index = 0; index < physicalPlayers.Count; index++)
+                {
+                    PlayerActorPhysicalOccurrence physical = physicalPlayers[index];
+                    if (!physical.IsValid || physical.ActorId != descriptor.ActorId ||
+                        !ReferenceEquals(physical.Declaration, declaration) ||
+                        !ReferenceEquals(physical.ActorRoot, declarationRoot))
+                    {
+                        continue;
+                    }
+
+                    matches.Add(new ActorOccurrence(
+                        physical.OccurrenceId,
+                        physical.ActorId,
+                        physical.ActorRoot,
+                        physical.Owner,
+                        physical.PlayerSlotId));
+                }
+            }
+
+            if (matches.Count == 1)
+            {
+                return new ActorOccurrenceRecognitionResult(
+                    matches[0],
+                    $"actor-occurrence-recognized: ActorId='{descriptor.ActorId.StableText}' root='{declarationRoot.name}'.");
+            }
+
+            if (matches.Count > 1)
+            {
+                return new ActorOccurrenceRecognitionResult(
+                    ActorOccurrenceRecognitionStatus.Ambiguous,
+                    $"actor-occurrence-recognition-ambiguous: ActorId='{descriptor.ActorId.StableText}' and exact declaration root match '{matches.Count}' current committed occurrences.");
+            }
+
+            return new ActorOccurrenceRecognitionResult(
+                ActorOccurrenceRecognitionStatus.Unavailable,
+                $"actor-occurrence-recognition-unavailable: no current committed occurrence matches ActorId='{descriptor.ActorId.StableText}' and the exact declaration root.");
+        }
+
         internal void BindConsumer(ActorOccurrenceReferenceBinding consumer)
         {
             if (consumer == null) return;

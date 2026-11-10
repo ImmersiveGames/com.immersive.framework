@@ -4,6 +4,8 @@ All notable package changes are documented in this file.
 
 ## [Unreleased]
 
+- Adds Experimental `IActorOccurrenceRecognitionQuery.Recognize(Collider)` to the existing owner-bound Actor occurrence query anchor. Recognition validates the nearest `ActorDeclaration` against an exact current committed Player or NonPlayer root and returns the official typed `ActorOccurrence`; different roots with the same `ActorId` are disambiguated by physical evidence. It does not discover candidates, evaluate visibility, mutate occurrence state or grant gameplay authority.
+
 ## [1.2.0-preview.5] - 2026-11-06 — Object Entry recognition and dynamic composition
 
 - Adds Experimental `IObjectEntryRecognitionQuery.Recognize(Collider)` to the existing Route/Activity owner-bound Object Entry query anchor. Recognition is read-only and uses the exact non-ambiguous committed physical binding; it does not discover spatial targets or authorize gameplay.

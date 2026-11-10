@@ -2,7 +2,7 @@
 
 Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
 
-Last updated: **2026-11-05**
+Last updated: **2026-11-10**
 
 ## 1.1.0 first Stable release readiness
 
@@ -2636,3 +2636,11 @@ Controlled `FrameworkRuntimeHost.StopAsync` now closes admission, persistently f
 **Evidence provenance:** Project Owner-provided Console transcript and Test Runner screenshot in the project conversation; not immutable artifacts in the repo and not linked to an exact tested checkout SHA or machine-readable NUnit XML. The QAFramework README records the declared Unity `6000.5.0f1`, C4 source baseline, Framework `2bf0560b` and installed Composition `0.1.0-preview.3` as configuration references, **not verified runtime hash fingerprints**. Source review of QAFramework C4 was CLEAR, with generator corrections through `1e287992` before owner execution; the QA PR was merged after the owner-provided 21/21 transcript.
 
 **Certification decision:** **IF-ADR-014 Amendment 003 is technically validated for its defined Route/Activity C4 Play Mode scenario**, supported by C1–C3 Edit Mode and B2 regression evidence. C1–C4 are implemented and integrated. The public API remains **Experimental**; no automatic Stable promotion, package release, claim of universal production readiness, Session/dynamic spawn support, supported Player build/platform certification or teardown-abrupt cleanup completion. Those require separate scope and approval.
+
+## IF-ADR-049 implementation follow-up — physical Actor recognition — 2026-11-10
+
+**Implementation record:** the current source adds Experimental `IActorOccurrenceRecognitionQuery.Recognize(Collider)` to the existing owner-bound `ActorOccurrenceQueryBinding`. Recognition uses the existing committed Player and NonPlayer occurrence authorities, the candidate's nearest valid `ActorDeclaration`, and exact declaration-root matching. It returns typed `ActorOccurrence` evidence with explicit `Invalid`, `Unrecognized`, `Resolved`, `Unavailable` and `Ambiguous` outcomes. It does not add a registry, candidate discovery, visibility evaluation, mutation, or gameplay authorization.
+
+**Documentation and coverage:** [Public API](../../API/Public-API.md) lists the interface/result/status; [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md) documents authority, outcomes and manual scenarios; [CHANGELOG](../../../CHANGELOG.md) records the change under Unreleased. Focused Editor test cases are authored in `ActorOccurrenceQueryTests` and metadata coverage is added to `FrameworkApiStatusMetadataTests`; neither suite was run for this update.
+
+**Status and limits:** this note records the implementation state only. It does not amend or reinterpret the accepted IF-ADR-049 contract, grant architecture acceptance to a new decision, change API maturity, or certify consumer behavior. Unity import/compile, Edit Mode execution and PEGA consumer Play Mode validation remain pending. The PEGA workspace consumes the corresponding local Framework source change; this commit does not update `package.json`, create a version, tag, release or publish a package.
