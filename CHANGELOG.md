@@ -2,9 +2,46 @@
 
 All notable package changes are documented in this file.
 
-## [Unreleased]
+## [1.2.0] - 2026-11-15 — Stable package release
 
-- Adds Experimental `IActorOccurrenceRecognitionQuery.Recognize(Collider)` to the existing owner-bound Actor occurrence query anchor. Recognition validates the nearest `ActorDeclaration` against an exact current committed Player or NonPlayer root and returns the official typed `ActorOccurrence`; different roots with the same `ActorId` are disambiguated by physical evidence. It does not discover candidates, evaluate visibility, mutate occurrence state or grant gameplay authority.
+This is a Stable package release under the per-contract policy in IF-ADR-047
+and IF-GOV-001. `1.1.0` remains the first Stable compatibility baseline. The
+package version does not promote Experimental or Internal APIs; maturity remains
+declared per contract in [Public API](Documentation~/API/Public-API.md).
+
+- Adds Stable identity vocabulary `FrameworkIdentityDomain.Group = 260`;
+  Actor Group authoring and runtime contracts remain Experimental.
+- Includes Experimental Actor Groups, Actor Profile composition, Actor
+  occurrence references and scoped queries, plus Object Entry identity,
+  recognition, optional composition and dynamic contributions. Existing
+  serialized Actor Profile content requires the documented part-asset
+  migration; no Runtime fallback is provided.
+- Adds Experimental `IActorOccurrenceRecognitionQuery.Recognize(Collider)` to
+  the existing owner-bound Actor occurrence query anchor. Recognition checks
+  the nearest `ActorDeclaration` against an exact current committed Player or
+  NonPlayer root and returns typed `ActorOccurrence` evidence. Different roots
+  with the same `ActorId` are distinguished by physical evidence. It does not
+  discover candidates, evaluate visibility, mutate occurrence state or grant
+  gameplay authority.
+- Project Owner evidence reports **566/566 Edit Mode PASS** for the IF-ADR-014
+  C3 source baseline and **21/21 Play Mode PASS** for its specified Route /
+  Activity C4 scenario. These results are scoped to those behaviors and do not
+  identify the current 1.2.0 revision. The Project Owner confirms the Actor
+  recognition path was run and proven in PEGA under Unity `6000.5.0f1`, using
+  the Framework's local package path. The owner also confirms existing
+  `CameraRigComposer` assets authored under `1.1.0` were exercised with Preview,
+  Save Configuration and Apply/Rebuild. PEGA's code uses recognition in its
+  Actor attack and NPC perception consumers. This is manual, owner-reported
+  consumer evidence; PEGA's Git revision and execution logs were unavailable
+  for this record, so no immutable tested SHA is claimed. The focused Actor
+  recognition Editor test cases were authored but not executed.
+- The package declares Composition `0.1.0-preview.3`, Foundation `0.2.3`,
+  Logging `0.2.4`, Cinemachine `3.1.7` and Input System `1.19.0`. The
+  Composition dependency is still a prerelease; composition-dependent feature
+  contracts remain Experimental.
+
+Publication and candidate validation status are tracked in
+[`IF-TRACK-Framework`](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md).
 
 ## [1.2.0-preview.5] - 2026-11-06 — Object Entry recognition and dynamic composition
 
@@ -38,7 +75,7 @@ All notable package changes are documented in this file.
 ## [1.2.0-preview.2] - 2026-10-17 — Experimental Actor occurrence references; PEGA integration pending
 
 - Implemented IF-ADR-049 Experimental Actor occurrence references for Player Slot and ActorId selection, owner-scoped NonPlayer publication, committed Route/Activity/Persistent Content lifecycles, read-only change observation and stale/ambiguous outcomes.
-- The Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. PEGA consumer integration remains pending; this preview does not promote Stable contracts.
+- The Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. PEGA consumer integration was pending for this preview; subsequent local-source recognition evidence is recorded in the 1.2.0 Stable release entry. This preview does not promote Stable contracts.
 
 ## [1.2.0-preview.1] - 2026-10-16 — experimental Camera Authoring candidate; OpenUPM publication pending
 

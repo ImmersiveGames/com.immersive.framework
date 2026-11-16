@@ -4,9 +4,10 @@
 Immersive Games application around explicit application, Session, Route and
 Activity lifecycles.
 
-`1.1.0` is the first official Stable baseline. Compatibility follows SemVer
-for contracts explicitly classified Stable; a Stable package version does
-not promote Experimental or Internal surfaces. Versions before 1.1.0,
+`1.1.0` remains the first official Stable compatibility baseline. Package
+version `1.2.0` is Stable; compatibility follows
+SemVer for contracts explicitly classified Stable, and the package version
+does not promote Experimental or Internal surfaces. Versions before 1.1.0,
 including 1.0.2 and `1.1.0-preview.*`, are historical records and carry no
 generic migration obligation to this baseline. See
 [IF-ADR-047](Documentation~/Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md)
@@ -21,13 +22,11 @@ reimplementing their primitives.
 
 ## Requirements
 
-- Stable Framework `1.1.0` uses Unity `6000.5.0f1` or newer in the supported
-  `6000.5` line, Foundation `0.2.2`, Logging `0.2.3`, Cinemachine `3.1.7`,
-  and Input System `1.19.0`.
-- Framework preview `1.2.0-preview.5` declares
-  Composition `0.1.0-preview.3`, Foundation `0.2.3`, Logging `0.2.4`,
-  Cinemachine `3.1.7`, and Input System `1.19.0`. Preview APIs remain
-  Experimental unless explicitly classified otherwise.
+- Framework `1.2.0` targets Unity `6000.5.0f1` or newer in the supported
+  `6000.5` line and declares Composition `0.1.0-preview.3`, Foundation
+  `0.2.3`, Logging `0.2.4`, Cinemachine `3.1.7`, and Input System `1.19.0`.
+  Composition remains a prerelease dependency; composition-dependent API
+  contracts remain Experimental.
 
 There is no support or validation matrix for earlier Unity versions.
 
@@ -46,20 +45,33 @@ scope, then declare the Framework package:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.1.0"
+    "com.immersive.framework": "1.2.0"
   }
 }
 ```
 
-This manifest value deliberately keeps Framework on Stable `1.1.0`. Package
-Manager will not replace it automatically with a preview release or a newer
-Git branch. To use preview `1.2.0-preview.5` after it is published, set the dependency to that exact
-version through OpenUPM; the stable value above remains unchanged until the
-project explicitly opts into the preview channel.
+This manifest selects Stable package version `1.2.0`. Package Manager does
+not replace it automatically with another channel or a newer Git branch. Check
+[GitHub Releases](https://github.com/ImmersiveGames/com.immersive.framework/releases)
+or [OpenUPM](https://openupm.com/packages/com.immersive.framework/) for
+availability.
 
-Framework preview `1.2.0-preview.5` builds on the [previous published `1.2.0-preview.4`](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.4). The new candidate includes physical Object Entry recognition, optional prefab-backed Base composition, and exact-occurrence dynamic Set/Remove/Close contributions with cancellation, drain and cleanup integrated into Route/Activity lifecycle. [QAFramework C4](https://github.com/rinnocenti/QAFramework/pull/3) provides Project Owner Play Mode evidence **21/21 PASS** for the declared Route/Activity scope; C3 Edit Mode has separate **566/566 PASS** evidence. The new release is distributed via [GitHub Releases](https://github.com/ImmersiveGames/com.immersive.framework/releases) and [OpenUPM](https://openupm.com/packages/com.immersive.framework/) **after** the signed `v1.2.0-preview.5` tag workflow finishes successfully. Its dependencies remain Composition `0.1.0-preview.3`, Foundation `0.2.3` and Logging `0.2.4`. Experimental contracts are not promoted to Stable; abrupt Host teardown cannot confirm asynchronous physical cleanup.
+Version `1.2.0` includes the experimental Actor Group and Actor composition
+surfaces, Actor occurrence references / queries / physical recognition, and
+Object Entry identity, recognition and optional composition. The C3 Edit Mode
+and C4 Play Mode results recorded for Object Entry are limited to their stated
+source and Route / Activity scenario; they do not certify the current
+1.2.0 revision. The Project Owner confirms the recognition path was run and
+proven in PEGA using the local Framework package. Existing `1.1.0`
+`CameraRigComposer` rigs were also exercised with Preview, Save Configuration
+and Apply/Rebuild. The Editor recognition test suite was not run. See the
+[changelog](CHANGELOG.md), [Public API](Documentation~/API/Public-API.md)
+and [framework tracker](Documentation~/Architecture/Tracking/IF-TRACK-Framework.md)
+for exact maturity and validation boundaries. Abrupt Host teardown does not
+confirm asynchronous physical cleanup.
+
 Earlier package releases remain in the [changelog](CHANGELOG.md) as history;
-they are not migration baselines for `1.1.0`.
+versions before `1.1.0` are not migration baselines for the Stable contract.
 
 For Framework development from Git, Unity cannot resolve custom-package SemVer
 dependencies to Git packages. Add Framework and each custom package it
@@ -96,7 +108,7 @@ SemVer, so do not add a second Composition source in that setup:
     }
   ],
   "dependencies": {
-    "com.immersive.framework": "1.2.0-preview.5"
+    "com.immersive.framework": "1.2.0"
   }
 }
 ```

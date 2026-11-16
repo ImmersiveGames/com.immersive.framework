@@ -1,8 +1,73 @@
 # IF-TRACK — Immersive Framework
 
-Status: **Complete — Stable 1.1.0 published and verified on 2026-10-14; IF-ADR-046 Player Join closure APPROVED Stable**
+Status: **In progress — Stable 1.2.0; PEGA validation and GitHub promotion gate confirmed, tag publication pending**
 
-Last updated: **2026-11-10**
+Last updated: **2026-11-15**
+
+## 1.2.0 Stable package release preparation
+
+**Target:** Stable package version `1.2.0`. This package-level release does not
+promote Experimental or Internal APIs. `1.1.0` remains the first Stable
+compatibility baseline; maturity and compatibility continue to follow the
+individual contracts in `FrameworkApiStatusAttribute`, Public-API and their
+owning ADRs.
+
+**Reviewed source boundary:** At preparation start, Framework `master` was at
+`833dfe879c3e3dffd7e01d891ccdf7c2e95c93b4`, one commit after published
+`v1.2.0-preview.5` (`0cb39de81f8ff63ae61c080fb7f13dfffef1b38a`). The additional
+commit adds Experimental physical Actor occurrence recognition and focused
+Editor test cases. The Project Owner confirms the current local Framework
+source was exercised and proven in PEGA under Unity `6000.5.0f1`; PEGA's code
+uses recognition in its Actor attack and NPC perception consumers. PEGA's
+manifest and lock resolve Framework from this workspace's local package path.
+The exact PEGA Git revision and execution logs were not captured, so this is
+owner-reported manual integration evidence, not a revision-fingerprinted NUnit
+result. Focused recognition Editor tests were authored but not executed.
+
+**Stable-scope review:** `FrameworkIdentityDomain.Group = 260` is the compatible
+Stable identity vocabulary addition allowed by IF-ADR-047; Actor Group APIs
+remain Experimental. `CameraRigComposer` is Stable and gained hidden captured
+camera-setting fields plus Editor capture/read methods since `1.1.0`. The
+Project Owner confirms existing `1.1.0` rigs were exercised in PEGA for Preview,
+Save Configuration and Apply/Rebuild. The new capture flags default off for
+existing serialized data. No breaking Stable API or serialized-data change is
+intended.
+
+**Evidence boundary:** The Project Owner reports `566/566` Edit Mode PASS for
+the IF-ADR-014 C3 source baseline and `21/21` Play Mode PASS for its specified
+Route/Activity C4 scenario. These results do not identify or certify the current
+candidate source revision and do not cover Actor physical recognition. The
+manual PEGA evidence above covers the recognition consumer path and the
+1.1.0-era CameraRigComposer regression scenarios; it is not automated test
+evidence. The Experimental focused Editor tests remain unexecuted and do not
+block this package release because no Experimental contract is being promoted.
+
+**Dependencies:** The manifest declares Composition `0.1.0-preview.3`,
+Foundation `0.2.3`, Logging `0.2.4`, Cinemachine `3.1.7` and Input System
+`1.19.0`. PEGA's lockfile resolves this graph with the Framework package from
+the workspace's local path. Composition remains a prerelease dependency; do
+not describe the Framework release as an upgrade or Stable promotion of
+Composition. A consumer installation from the versioned registry artifact is
+not yet verified.
+
+**Publication gates:**
+
+1. **Confirmed 2026-11-15:** repository Actions variable
+   `STABLE_ARTIFACT_PROMOTION_ENABLED` is exactly `true`. Environment
+   `framework-stable-release` exists with no required reviewer, wait timer or
+   deployment branch/tag restriction.
+2. Release metadata and documentation are committed as `d7569dec`. Create
+   immutable `v1.2.0` on this commit and inspect the signed-release run. Record
+   the tag target and verify the built archive's package identity, dependency
+   metadata, contents and SHA-256.
+3. Verify the GitHub Release and OpenUPM expose the same archive/version. A
+   consumer installation from the versioned artifact remains unverified until
+   one is performed.
+
+No release tag or publication is recorded for `1.2.0` yet. The promotion
+variable and environment gate are confirmed ready. Unity execution is
+prohibited for this task, but the owner-reported PEGA validation is recorded
+above with its revision/log limitations.
 
 ## 1.1.0 first Stable release readiness
 
@@ -69,9 +134,10 @@ undermine a Stable guarantee or a specific accepted release gate.
    only after the gates pass; do not infer publication or validation from the
    existence of a local source SHA or old preview evidence.
 
-The sequence above remains the current tracker checklist, reconciled with the
-five accepted IF-ADR-048 phases. The tracker records execution evidence and
-phase status; acceptance of the roadmap did not complete any phase.
+The sequence above records the 1.1.0 release checklist, reconciled with the
+five accepted IF-ADR-048 phases. Current 1.2.0 gates are recorded at the start
+of this tracker. The tracker records execution evidence and phase status;
+acceptance of the roadmap did not complete any phase.
 
 The GitHub workflow's presence/attestation-file check is not itself proof of
 independent cryptographic signature verification; record only what the run and
@@ -918,7 +984,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 011 | ACCEPTED / RECONCILED / IMPLEMENTED | readiness/progress certified | consumer proof PASS |
 | 012 | ACCEPTED / RECONCILED / IMPLEMENTED | historical Player aggregate 27/27; QA-001 coverage in current recertification report | architecture accepted; current full Player certification open |
 | 013 | ACCEPTED / EXPERIMENTAL / IMPLEMENTED / VALIDATED | QA-NEW-005 12/12 PASS post-IF-ADR-040; historical 44/44 retained | consumer gate PASS; maturity remains Experimental |
-| 014 | ACCEPTED / IMPLEMENTED; Amendment 001 accepted and Experimental physical recognition implemented | Pre-amendment Project Owner report: QAFramework EditMode 491/491 with zero failures, including the Object Entry host-teardown regression; no raw NUnit XML or execution SHA supplied. Amendment 001 focused EditMode tests are authored but not run. | Amendment implementation's Unity import/compile and EditMode validation are pending; batchmode could not connect to Licensing and UPM resolution failed with `packages.unity.com` ENOTFOUND. No amendment PASS is claimed. PEGA consumer integration remains separate. |
+| 014 | ACCEPTED / IMPLEMENTED; Amendment 001 accepted and Experimental physical recognition implemented | Pre-amendment Project Owner report: QAFramework EditMode 491/491 with zero failures, including the Object Entry host-teardown regression; no raw NUnit XML or execution SHA supplied. Amendment 001 focused EditMode tests are authored but not run. | Amendment implementation's Unity import/compile and EditMode validation are pending; batchmode could not connect to Licensing and UPM resolution failed with `packages.unity.com` ENOTFOUND. No amendment PASS is claimed. PEGA manual consumer evidence for current local recognition is recorded in the 1.2.0 release entry; distributed-artifact installation remains unverified. |
 | 015 | ACCEPTED / RECONCILED / IMPLEMENTED | public surface aggregate + Manager functional 14/14 are dated evidence; QA-001 Slices bounded | Observer/commands implemented; Player recertification open |
 | 016 | ACCEPTED / IMPLEMENTED | historical Player aggregate 27/27; Slice 1 default-selection path user-reported | policies remain Experimental/current recertification open |
 | 017 | ACCEPTED / RECONCILED / IMPLEMENTED | frame-rate matrices certified | current |
@@ -940,7 +1006,7 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 046 | ACCEPTED — bounded Player Join closure APPROVED Stable; I1/I2/I3 implemented; public entrypoint retirement committed; I4 accepted by composed evidence; physical compensation accepted under Amendment 002; partial provenance expressly accepted under Amendment 003 | Only `PlayerSessionJoinTrigger` and the explicitly listed Join contract closure are Stable; Session/Slot/Actor/Leave/participation/readiness, broad scoped access and the Framework remain at their separately declared maturities | See [Stable-promotion decision](../ADRs/IF-ADR-046-STABLE-PROMOTION-DECISION.md), convergence audit and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md). Preserve the accepted residuals and provenance scope recorded there; this bounded decision does not promote adjacent APIs or the Framework. |
 | 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Release publication pending; apply the four GO/NO-GO gates above. |
 | 048 | ACCEPTED — ordered 1.1.0 Stable readiness roadmap | No Runtime/API behavior; no maturity changes | Execution pending; no phase is certified complete; current 1.1.0 disposition remains NO-GO. |
-| 049 | ACCEPTED / EXPERIMENTAL / PUBLISHED in `1.2.0-preview.2` | Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. Source `d588e1c481692393360e93962cd587fe60a031d3`, tag `v1.2.0-preview.2`, workflow [#22](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38998090165) succeeded; Stable promotion job was skipped. [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.2) is a prerelease with `com.immersive.framework-1.2.0-preview.2.tgz`, SHA-256 `af3408453bd238f9ed8f0f786419c729eb8cd65fae5f07026b1c1da0e3d816c5`. OpenUPM status: `succeeded`, signed, published version `1.2.0-preview.2`; downloaded registry tarball SHA-256 matches the Release asset. | PEGA consumer integration remains pending; see [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md). [Amendment 001](../ADRs/IF-ADR-049-AMENDMENT-001-SCOPED-ON-DEMAND-OCCURRENCE-QUERY.md) (scoped on-demand query role) is **ACCEPTED** 2026-10-31 by the Project Owner; architecture review CLEAR with adjustments A1–A3; [implementation plan v1](../Plans/IF-PLAN-ADR-049-AMENDMENT-001-SCOPED-OCCURRENCE-QUERY.v1.md) **APPROVED** 2026-10-31; Q01 contract clarifications recorded (amendment §8). Q02 **EditMode PASS** (owner-reported 480/480, ActorReferences 28/28). Q03 Public API, guide, metadata coverage and changelog delivered. Manual Play Mode checklist steps 8–11 **PASS** and EditMode **481/481** including metadata coverage, all owner-reported on 2026-11-01. **Q03 evidence complete**; the only open acceptance item is the tested Framework revision, which was not reported (see Q03 closure entry). PEGA consumer validation against a resolved candidate package (Amendment §6.7) remains a separate task. No maturity change. |
+| 049 | ACCEPTED / EXPERIMENTAL / PUBLISHED in `1.2.0-preview.2` | Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. Source `d588e1c481692393360e93962cd587fe60a031d3`, tag `v1.2.0-preview.2`, workflow [#22](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38998090165) succeeded; Stable promotion job was skipped. [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.2) is a prerelease with `com.immersive.framework-1.2.0-preview.2.tgz`, SHA-256 `af3408453bd238f9ed8f0f786419c729eb8cd65fae5f07026b1c1da0e3d816c5`. OpenUPM status: `succeeded`, signed, published version `1.2.0-preview.2`; downloaded registry tarball SHA-256 matches the Release asset. | At preview.2 publication, PEGA consumer integration was pending; current local-source manual recognition evidence is recorded in the 1.2.0 release preparation above, while validation against a distributed candidate remains unverified. See [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md). [Amendment 001](../ADRs/IF-ADR-049-AMENDMENT-001-SCOPED-ON-DEMAND-OCCURRENCE-QUERY.md) (scoped on-demand query role) is **ACCEPTED** 2026-10-31 by the Project Owner; architecture review CLEAR with adjustments A1–A3; [implementation plan v1](../Plans/IF-PLAN-ADR-049-AMENDMENT-001-SCOPED-OCCURRENCE-QUERY.v1.md) **APPROVED** 2026-10-31; Q01 contract clarifications recorded (amendment §8). Q02 **EditMode PASS** (owner-reported 480/480, ActorReferences 28/28). Q03 Public API, guide, metadata coverage and changelog delivered. Manual Play Mode checklist steps 8–11 **PASS** and EditMode **481/481** including metadata coverage, all owner-reported on 2026-11-01. **Q03 evidence complete**; the only open acceptance item is the tested Framework revision, which was not reported (see Q03 closure entry). PEGA consumer validation against a resolved candidate package (Amendment §6.7) remains a separate task. No maturity change. |
 | 050 | ACCEPTED — FUTURE ARCHITECTURE; PLAN v1 APPROVED; D00–D08 COMPLETE; FRAMEWORK PREVIEW 1.2.0-preview.3 PUBLISHED | Target accepted 2026-10-17; [contract migration](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) and [reconciliation crosswalk](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) recorded. D01 changes only the existing managed visual release order. D02 shifts Player occurrence-ID issuance to physical preparation commit and preserves physical resolver availability semantics; M02 keeps `ActorId` with the logical Actor across root replacement unless an explicit logical switch is requested. Its identity-policy request remains Experimental and non-serialized. D05 adds a task-gated scoped API that targets only the exact current physical Actor; no Stable schema changed. D06 postcommit Gameplay/Camera reprojection, retired-A cleanup and selection recovery proofs are complete. The Project Owner's 2026-10-18 QAFramework EditMode result reports 430/430 passed, 0 failed, including Composition 16/16 and Camera 99/99; this closes D07's focused EditMode acceptance at owner-reported provenance. D08 package, test, publication and authored-data migration gates close at the boundary recorded in the D08 closeout below. | [IF-ADR-050](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) / [IF-SPEC-050](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md) accepted target. [Implementation plan v1](../Plans/IF-PLAN-ADR-050-ACTOR-COMPOSITION-AND-OCCURRENCE-LIFECYCLE.v1.md) is **Approved — implementation task-gated**. [D00 baseline](../Reconciliation/IF-ADR-050-D00-IMPLEMENTATION-BASELINE-2026-10-17.md) completed at `086efe9cd5f5aa3b52d3e0757c4fe2a7c25f617b`. The Project Owner explicitly authorized Framework preview `1.2.0-preview.3` publication on 2026-10-18; this supersedes the earlier hold for that Framework preview only and does not promote Stable contracts. |
 | 051 | ACCEPTED — single-Profile architecture; prior G01–G04 implementation has owner-reported 467/467 evidence; current API correction awaits Unity confirmation | IF-ADR-051 now defines `GroupProfile` as the sole Group authoring asset and `GroupId` as its only identity. The prior Unity result applies only to the earlier API shape; no Unity validation was run for this correction. | Framework Core owns explicit runtime Group creation, lifecycle and membership by `ActorId`; PEGA owns its Gangue knowledge and sharing policy. Current API and migration state are recorded in the correction entry below. The approved plan v1 remains historical and unchanged. |
 
@@ -2641,6 +2707,6 @@ Controlled `FrameworkRuntimeHost.StopAsync` now closes admission, persistently f
 
 **Implementation record:** the current source adds Experimental `IActorOccurrenceRecognitionQuery.Recognize(Collider)` to the existing owner-bound `ActorOccurrenceQueryBinding`. Recognition uses the existing committed Player and NonPlayer occurrence authorities, the candidate's nearest valid `ActorDeclaration`, and exact declaration-root matching. It returns typed `ActorOccurrence` evidence with explicit `Invalid`, `Unrecognized`, `Resolved`, `Unavailable` and `Ambiguous` outcomes. It does not add a registry, candidate discovery, visibility evaluation, mutation, or gameplay authorization.
 
-**Documentation and coverage:** [Public API](../../API/Public-API.md) lists the interface/result/status; [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md) documents authority, outcomes and manual scenarios; [CHANGELOG](../../../CHANGELOG.md) records the change under Unreleased. Focused Editor test cases are authored in `ActorOccurrenceQueryTests` and metadata coverage is added to `FrameworkApiStatusMetadataTests`; neither suite was run for this update.
+**Documentation and coverage:** [Public API](../../API/Public-API.md) lists the interface/result/status; [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md) documents authority, outcomes and manual scenarios; [CHANGELOG](../../../CHANGELOG.md) records the change under 1.2.0. Focused Editor test cases are authored in `ActorOccurrenceQueryTests` and metadata coverage is added to `FrameworkApiStatusMetadataTests`; neither suite was run. The Project Owner reports the consumer path was manually exercised in PEGA against the local Framework package; this does not change Experimental maturity.
 
-**Status and limits:** this note records the implementation state only. It does not amend or reinterpret the accepted IF-ADR-049 contract, grant architecture acceptance to a new decision, change API maturity, or certify consumer behavior. Unity import/compile, Edit Mode execution and PEGA consumer Play Mode validation remain pending. The PEGA workspace consumes the corresponding local Framework source change; this commit does not update `package.json`, create a version, tag, release or publish a package.
+**Status and limits:** this note records the implementation state only. It does not amend or reinterpret the accepted IF-ADR-049 contract, grant architecture acceptance to a new decision, change API maturity or certify behavior beyond the reported PEGA consumer scenario. PEGA consumer use is owner-confirmed manual evidence with no captured Git revision or execution logs. Focused Edit Mode tests were not run. This earlier implementation commit did not update `package.json`, create a version, tag, release or publish a package.

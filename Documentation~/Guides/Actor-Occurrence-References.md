@@ -1,6 +1,6 @@
 # Actor Occurrence References
 
-Status: **Experimental in `1.2.0-preview.2`. The Project Owner reports 11/11 Actor References EditMode tests passed; PEGA consumer integration validation is pending. The on-demand query role (Amendment 001) is Experimental and unreleased: the Project Owner reports its EditMode tests passed, and its manual Play Mode confirmation is pending.**
+Status: **Experimental in package version `1.2.0`. Actor occurrence references, scoped queries and physical recognition do not receive Stable guarantees from the package release. The Project Owner confirms the recognition path was run and proven in PEGA using the local Framework source under Unity `6000.5.0f1`; the focused Editor test suite was not run, and the PEGA Git revision/logs were not captured. Earlier Actor References evidence is scoped in the Framework tracker.**
 Decision: [IF-ADR-049 — Public Actor Occurrence Reference and Resolution](../Architecture/ADRs/IF-ADR-049-Public-Actor-Occurrence-Reference-and-Resolution.md) and [Amendment 001 — Scoped On-Demand Actor Occurrence Query](../Architecture/ADRs/IF-ADR-049-AMENDMENT-001-SCOPED-ON-DEMAND-OCCURRENCE-QUERY.md)
 
 ## Contract

@@ -4,14 +4,16 @@ This is a curated map of supported consumer surfaces, not a list of every public
 
 ## Compatibility baseline
 
-Framework `1.1.0` is the first official Stable baseline. Compatibility
-guarantees begin at 1.1.0 and apply to each contract classified Stable under
+Framework `1.1.0` remains the first official Stable compatibility baseline.
+Package version `1.2.0` is Stable; compatibility guarantees
+apply to each contract classified Stable under
 [IF-GOV-001](../Architecture/Governance/IF-GOV-001-API-MATURITY-AND-VALIDATION-GOVERNANCE.md)
 and [IF-ADR-047](../Architecture/ADRs/IF-ADR-047-Initial-Stable-Baseline-and-Versioning-Policy.md).
 Earlier releases, including 1.0.2 and `1.1.0-preview.*`, remain historical and
 do not establish a compatibility or migration obligation to this baseline.
-This baseline does not change the per-type categories below or promote an
-Experimental or Internal contract.
+This package release does not change the per-type categories below or promote
+an Experimental or Internal contract. The current 1.2.0 additions to Actor and
+Object Entry APIs remain Experimental unless a row explicitly states otherwise.
 
 ## Maturity and categories
 
