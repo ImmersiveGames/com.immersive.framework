@@ -1,10 +1,10 @@
 # IF-TRACK — Immersive Framework
 
-Status: **In progress — Stable 1.2.0; PEGA validation and GitHub promotion gate confirmed, tag publication pending**
+Status: **Complete — Stable 1.2.0 published and verified 2026-11-15**
 
 Last updated: **2026-11-15**
 
-## 1.2.0 Stable package release preparation
+## 1.2.0 Stable package release record
 
 **Target:** Stable package version `1.2.0`. This package-level release does not
 promote Experimental or Internal APIs. `1.1.0` remains the first Stable
@@ -50,24 +50,28 @@ not describe the Framework release as an upgrade or Stable promotion of
 Composition. A consumer installation from the versioned registry artifact is
 not yet verified.
 
-**Publication gates:**
+**Publication record:** Repository Actions variable
+`STABLE_ARTIFACT_PROMOTION_ENABLED` was `true`; environment
+`framework-stable-release` existed without a required reviewer, wait timer or
+deployment branch/tag restriction. The annotated tag `v1.2.0` (tag object
+`8833286f790e322ed481768dce29786071849bd0`) targets commit
+`7ad97acb546398a807da3f74f6c48922343a7ae9`. GitHub Actions run
+[#26](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/43780502431)
+completed successfully: signed candidate build, identity/provenance checks,
+GitHub Release asset hash verification, OpenUPM publication and byte-for-byte
+OpenUPM tarball verification all passed. The Stable, non-draft GitHub Release
+[`v1.2.0`](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0)
+contains `com.immersive.framework-1.2.0.tgz` (2,258,536 bytes), SHA-256
+`199bd5c56b720efcaf004d769e145ed2d39431d9967475b49ae38fcc4c27849f`.
+OpenUPM published version `1.2.0`; the workflow verified its tarball bytes
+match that release asset.
 
-1. **Confirmed 2026-11-15:** repository Actions variable
-   `STABLE_ARTIFACT_PROMOTION_ENABLED` is exactly `true`. Environment
-   `framework-stable-release` exists with no required reviewer, wait timer or
-   deployment branch/tag restriction.
-2. Release metadata and documentation are committed as `d7569dec`. Create
-   immutable `v1.2.0` on this commit and inspect the signed-release run. Record
-   the tag target and verify the built archive's package identity, dependency
-   metadata, contents and SHA-256.
-3. Verify the GitHub Release and OpenUPM expose the same archive/version. A
-   consumer installation from the versioned artifact remains unverified until
-   one is performed.
-
-No release tag or publication is recorded for `1.2.0` yet. The promotion
-variable and environment gate are confirmed ready. Unity execution is
-prohibited for this task, but the owner-reported PEGA validation is recorded
-above with its revision/log limitations.
+The package versioned tarball has not been installed in a consumer project;
+PEGA validation used the local Framework package path. This publication receipt
+was added to the mutable tracker after the immutable `v1.2.0` tag, so the tag
+contains the release preparation record but not this workflow result. Unity
+Editor tests were not run by this task; the focused Actor recognition suite
+remains unexecuted and Experimental, with no maturity promotion.
 
 ## 1.1.0 first Stable release readiness
 
@@ -1004,8 +1008,8 @@ Character Selection Split Screen IMPLEMENTED / INTEGRATED / MANUAL PLAY MODE PAS
 | 044 | ACCEPTED / IMPLEMENTED / INTEGRATED / VALIDATED | Public occurrence-scoped block/release token, Session-lifetime composition, canonical input adapter projection and Leave cleanup; QAFramework IF-ADR-044 **8/8 PASS** with `BaselineRestored`; `PlayerGameplayAvailabilityBlockTrigger` manually validated in Local Multiplayer on 2026-10-08 for P1/P2 Block/Release, independent ownership, teardown cleanup and Pause composition | current; gameplay turn/active-player cycling remains consumer-owned and outside Framework scope |
 | 045 | ACCEPTED / D IMPLEMENTED / D2 STATIC AUDIT COMPLETE / D4-D5 TEST FIXES IMPLEMENTED / D7 PARTIAL QA CERTIFICATION 6/7 / D8 PACKAGE-LEVEL / D9 EDIT MODE RESULTS USER-REPORTED / D10 DOCUMENTS RECONCILED | Persistent Content uses path/name, explicit idempotent migration and path-driven Scene Picker; runtime retains source roots through Session composition before application-lifetime transfer. D7: Prepare/cleanup PASS, scoped migration 4/4 PASS, and six runtime checkpoints PASS including exact unload/root transfer, Route/Activity transitions, and Route A baseline restoration; Session shutdown/release remains BLOCKED, so QAFramework stays 6/7. D8 assigns that internal Session release contract to PACKAGE-LEVEL tests because consumers have no supported shutdown request/result. D9 source adds release-failure aggregation/retry, participant-clear, root-survival and repeated-release assertions. D10 records the user-reported Unity Edit Mode result: 194 passed, 0 failed, 0 ignored; named evidence: `SessionCompositionReleaseTests` PASS, Audio 5/5, `PersistentContentSceneReferenceTests` 12/12. | Implemented, test source, reported execution and Play Mode evidence are distinct; this is not full IF-ADR-045 certification. `FrameworkRuntimeHost.OnDestroy → ReleaseSessionScope` integration remains uncovered. Package transfer Edit Mode regression, other ADR-045 gates, four legacy QA setup references, Standalone/WebGL Player Build validation and independent reproduction of the consumer incident remain pending. Do not change QAFramework 6/7 or rewrite the approved plan; it directs progress records to this tracker. |
 | 046 | ACCEPTED — bounded Player Join closure APPROVED Stable; I1/I2/I3 implemented; public entrypoint retirement committed; I4 accepted by composed evidence; physical compensation accepted under Amendment 002; partial provenance expressly accepted under Amendment 003 | Only `PlayerSessionJoinTrigger` and the explicitly listed Join contract closure are Stable; Session/Slot/Actor/Leave/participation/readiness, broad scoped access and the Framework remain at their separately declared maturities | See [Stable-promotion decision](../ADRs/IF-ADR-046-STABLE-PROMOTION-DECISION.md), convergence audit and [canonical Player matrix](../Reconciliation/IF-PLAYER-FULL-RECERTIFICATION-2026-10-11.md). Preserve the accepted residuals and provenance scope recorded there; this bounded decision does not promote adjacent APIs or the Framework. |
-| 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Release publication pending; apply the four GO/NO-GO gates above. |
-| 048 | ACCEPTED — ordered 1.1.0 Stable readiness roadmap | No Runtime/API behavior; no maturity changes | Execution pending; no phase is certified complete; current 1.1.0 disposition remains NO-GO. |
+| 047 | ACCEPTED — 1.1.0 first official Stable baseline; forward SemVer policy | No Runtime behavior; per-contract maturity unchanged | Stable 1.1.0 publication completed and verified; see the first Stable release readiness section. |
+| 048 | ACCEPTED — ordered 1.1.0 Stable readiness roadmap | No Runtime/API behavior; no maturity changes | Phases 1–5 closed for the published 1.1.0 release; see the first Stable release readiness section. |
 | 049 | ACCEPTED / EXPERIMENTAL / PUBLISHED in `1.2.0-preview.2` | Project Owner reports 11/11 PASS for `Immersive.Framework.ActorReferences.Editor.Tests` in Unity EditMode. Source `d588e1c481692393360e93962cd587fe60a031d3`, tag `v1.2.0-preview.2`, workflow [#22](https://github.com/ImmersiveGames/com.immersive.framework/actions/runs/38998090165) succeeded; Stable promotion job was skipped. [GitHub Release](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0-preview.2) is a prerelease with `com.immersive.framework-1.2.0-preview.2.tgz`, SHA-256 `af3408453bd238f9ed8f0f786419c729eb8cd65fae5f07026b1c1da0e3d816c5`. OpenUPM status: `succeeded`, signed, published version `1.2.0-preview.2`; downloaded registry tarball SHA-256 matches the Release asset. | At preview.2 publication, PEGA consumer integration was pending; current local-source manual recognition evidence is recorded in the 1.2.0 release preparation above, while validation against a distributed candidate remains unverified. See [Actor Occurrence References](../../Guides/Actor-Occurrence-References.md). [Amendment 001](../ADRs/IF-ADR-049-AMENDMENT-001-SCOPED-ON-DEMAND-OCCURRENCE-QUERY.md) (scoped on-demand query role) is **ACCEPTED** 2026-10-31 by the Project Owner; architecture review CLEAR with adjustments A1–A3; [implementation plan v1](../Plans/IF-PLAN-ADR-049-AMENDMENT-001-SCOPED-OCCURRENCE-QUERY.v1.md) **APPROVED** 2026-10-31; Q01 contract clarifications recorded (amendment §8). Q02 **EditMode PASS** (owner-reported 480/480, ActorReferences 28/28). Q03 Public API, guide, metadata coverage and changelog delivered. Manual Play Mode checklist steps 8–11 **PASS** and EditMode **481/481** including metadata coverage, all owner-reported on 2026-11-01. **Q03 evidence complete**; the only open acceptance item is the tested Framework revision, which was not reported (see Q03 closure entry). PEGA consumer validation against a resolved candidate package (Amendment §6.7) remains a separate task. No maturity change. |
 | 050 | ACCEPTED — FUTURE ARCHITECTURE; PLAN v1 APPROVED; D00–D08 COMPLETE; FRAMEWORK PREVIEW 1.2.0-preview.3 PUBLISHED | Target accepted 2026-10-17; [contract migration](../Reconciliation/IF-ADR-050-ACCEPTED-TARGET-CONTRACT-MIGRATION-2026-10-17.md) and [reconciliation crosswalk](../Reconciliation/IF-ADR-050-ACTOR-LIFECYCLE-COMPOSITION-RECONCILIATION-2026-10-17.md) recorded. D01 changes only the existing managed visual release order. D02 shifts Player occurrence-ID issuance to physical preparation commit and preserves physical resolver availability semantics; M02 keeps `ActorId` with the logical Actor across root replacement unless an explicit logical switch is requested. Its identity-policy request remains Experimental and non-serialized. D05 adds a task-gated scoped API that targets only the exact current physical Actor; no Stable schema changed. D06 postcommit Gameplay/Camera reprojection, retired-A cleanup and selection recovery proofs are complete. The Project Owner's 2026-10-18 QAFramework EditMode result reports 430/430 passed, 0 failed, including Composition 16/16 and Camera 99/99; this closes D07's focused EditMode acceptance at owner-reported provenance. D08 package, test, publication and authored-data migration gates close at the boundary recorded in the D08 closeout below. | [IF-ADR-050](../ADRs/IF-ADR-050-Actor-Occurrence-Lifecycle-Authority-and-Commit.md) / [IF-SPEC-050](../Specifications/IF-SPEC-050-Actor-Lifecycle-Participation-and-Composition.md) accepted target. [Implementation plan v1](../Plans/IF-PLAN-ADR-050-ACTOR-COMPOSITION-AND-OCCURRENCE-LIFECYCLE.v1.md) is **Approved — implementation task-gated**. [D00 baseline](../Reconciliation/IF-ADR-050-D00-IMPLEMENTATION-BASELINE-2026-10-17.md) completed at `086efe9cd5f5aa3b52d3e0757c4fe2a7c25f617b`. The Project Owner explicitly authorized Framework preview `1.2.0-preview.3` publication on 2026-10-18; this supersedes the earlier hold for that Framework preview only and does not promote Stable contracts. |
 | 051 | ACCEPTED — single-Profile architecture; prior G01–G04 implementation has owner-reported 467/467 evidence; current API correction awaits Unity confirmation | IF-ADR-051 now defines `GroupProfile` as the sole Group authoring asset and `GroupId` as its only identity. The prior Unity result applies only to the earlier API shape; no Unity validation was run for this correction. | Framework Core owns explicit runtime Group creation, lifecycle and membership by `ActorId`; PEGA owns its Gangue knowledge and sharing policy. Current API and migration state are recorded in the correction entry below. The approved plan v1 remains historical and unchanged. |

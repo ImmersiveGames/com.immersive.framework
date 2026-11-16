@@ -50,11 +50,11 @@ scope, then declare the Framework package:
 }
 ```
 
-This manifest selects Stable package version `1.2.0`. Package Manager does
-not replace it automatically with another channel or a newer Git branch. Check
-[GitHub Releases](https://github.com/ImmersiveGames/com.immersive.framework/releases)
-or [OpenUPM](https://openupm.com/packages/com.immersive.framework/) for
-availability.
+This manifest selects Stable package version `1.2.0`, published through
+[GitHub Releases](https://github.com/ImmersiveGames/com.immersive.framework/releases/tag/v1.2.0)
+and [OpenUPM](https://openupm.com/packages/com.immersive.framework/). Package
+Manager does not replace it automatically with another channel or a newer Git
+branch.
 
 Version `1.2.0` includes the experimental Actor Group and Actor composition
 surfaces, Actor occurrence references / queries / physical recognition, and
@@ -76,7 +76,7 @@ versions before `1.1.0` are not migration baselines for the Stable contract.
 For Framework development from Git, Unity cannot resolve custom-package SemVer
 dependencies to Git packages. Add Framework and each custom package it
 depends on as direct Git dependencies in the project's existing
-`Packages/manifest.json`; the current candidate graph includes:
+`Packages/manifest.json`; the 1.2.0 dependency graph includes:
 
 ```json
 {
