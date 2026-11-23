@@ -53,7 +53,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private Scene _originalActiveScene;
         private string _assetFolder;
         private FrameworkRuntimeHost _host;
-        private Task<FrameworkRuntimeHostStopResult> _pendingControlledStopForFixtureCleanup;
+        private Task _pendingControlledStopForFixtureCleanup;
         private int _originalPlayModeStartup;
         private float _originalTimeScale;
         private ImmersiveFrameworkSettingsAsset _changedSettings;
@@ -775,8 +775,15 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 Is.EqualTo(ObjectEntryId.From(DynamicCleanupEntryId)),
                 "Controlled Stop must preserve the exact dynamic declaration identity.");
 
+            Task<FrameworkRuntimeHostStopResult> overlappingStopTask =
+                owner.StopAsync("controlled-stop-overlapping-attempt");
+            _pendingControlledStopForFixtureCleanup =
+                Task.WhenAll(rejectedStopTask, overlappingStopTask);
+            Assert.That(overlappingStopTask.IsCompleted, Is.False,
+                "An overlapping Stop must await the pending release on the same Host.");
+
             _allowOwnerCloseRelease.TrySetResult(true);
-            while (!rejectedStopTask.IsCompleted)
+            while (!_pendingControlledStopForFixtureCleanup.IsCompleted)
             {
                 yield return null;
             }
@@ -786,8 +793,11 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(cleanupRoot.transform.Find(_dynamicOwnerClosePrefab.name), Is.Null);
 
             FrameworkRuntimeHostStopResult rejectedStop = rejectedStopTask.GetAwaiter().GetResult();
+            FrameworkRuntimeHostStopResult overlappingStop = overlappingStopTask.GetAwaiter().GetResult();
 
             Assert.That(rejectedStop.Succeeded, Is.False);
+            Assert.That(overlappingStop.Succeeded, Is.False);
+            Assert.That(overlappingStop.Diagnostic, Is.EqualTo(rejectedStop.Diagnostic));
             Assert.That(owner.PauseState, Is.EqualTo(Immersive.Framework.Pause.PauseState.Running),
                 "Controlled Activity exit must restore canonical Pause before later Session cleanup can reject.");
             Assert.That(Time.timeScale, Is.EqualTo(runningTimeScale).Within(0.0001f),
@@ -840,6 +850,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(owner != null, Is.True, "Controlled stop completes before the caller destroys the Host.");
             Assert.That(exactRoot != null, Is.True);
             AssertReleaseCallsUseSameOwnerAndRoots(owner, roots);
+            Assert.That(CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Scene),
+                Has.Count.EqualTo(routeSceneReleases.Count),
+                "Retrying Session release must not release the already completed Route again.");
 
             int releaseCount = HostSessionLifecycleTestProbe.CallsFor(SceneCompositionOperation.Releasing).Count;
             Task<FrameworkRuntimeHostStopResult> repeatedTask =

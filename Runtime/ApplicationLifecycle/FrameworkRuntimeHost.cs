@@ -64,6 +64,7 @@ namespace Immersive.Framework.ApplicationLifecycle
 
         private GameApplicationAsset _gameApplication;
         private readonly FrameworkRuntimeHostAdmission _admission = new();
+        private Task<FrameworkRuntimeHostStopResult> _controlledStopInFlight;
         private GameFlowRuntime _gameFlowRuntime;
         private readonly ActivityParticipantSourceBindings
             _activityParticipantSourceBindings =
@@ -1072,7 +1073,55 @@ namespace Immersive.Framework.ApplicationLifecycle
             return result;
         }
 
-        internal async Task<FrameworkRuntimeHostStopResult> StopAsync(string reason)
+        internal Task<FrameworkRuntimeHostStopResult> StopAsync(string reason)
+        {
+            if (_controlledStopInFlight != null)
+            {
+                return _controlledStopInFlight;
+            }
+
+            // Publish the task before cleanup can call back into the Host on the Unity thread.
+            var completion = new TaskCompletionSource<FrameworkRuntimeHostStopResult>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _controlledStopInFlight = completion.Task;
+            _ = CompleteControlledStopAsync(reason, completion);
+            return completion.Task;
+        }
+
+        private async Task CompleteControlledStopAsync(
+            string reason,
+            TaskCompletionSource<FrameworkRuntimeHostStopResult> completion)
+        {
+            FrameworkRuntimeHostStopResult result = default;
+            Exception failure = null;
+            try
+            {
+                result = await StopCoreAsync(reason);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                _controlledStopInFlight = null;
+            }
+
+            if (failure is OperationCanceledException)
+            {
+                completion.SetCanceled();
+            }
+            else if (failure != null)
+            {
+                completion.SetException(failure);
+            }
+            else
+            {
+                completion.SetResult(result);
+            }
+        }
+
+        private async Task<FrameworkRuntimeHostStopResult> StopCoreAsync(string reason)
         {
             string resolvedReason = reason.NormalizeTextOrFallback("controlled-stop");
             while (true)
