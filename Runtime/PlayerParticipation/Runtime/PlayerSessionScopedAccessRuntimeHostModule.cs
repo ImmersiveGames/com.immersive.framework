@@ -1059,9 +1059,28 @@ namespace Immersive.Framework.PlayerParticipation
 
         private void ForwardChange(PlayerSessionChange change)
         {
-            if (IsCurrent())
+            Action<PlayerSessionChange> subscribers = _changed;
+            if (subscribers == null || !IsCurrent())
             {
-                _changed?.Invoke(change);
+                return;
+            }
+
+            // Consumer observation must not interrupt an authoritative Session mutation.
+            foreach (Action<PlayerSessionChange> subscriber in subscribers.GetInvocationList())
+            {
+                try
+                {
+                    subscriber(change);
+                }
+                catch (Exception exception)
+                {
+                    FrameworkLogger.Create<PlayerSessionScopedAccess>().Warning(
+                        "Player Session change observer failed.",
+                        LogFields.Of(
+                            LogFields.Field("observer", subscriber.Method.Name),
+                            LogFields.Field("exception", exception.GetType().Name),
+                            LogFields.Field("diagnostic", exception.Message)));
+                }
             }
         }
 

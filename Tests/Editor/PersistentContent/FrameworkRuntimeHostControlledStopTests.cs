@@ -1469,6 +1469,16 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "Route-scoped Player Session Observer did not bind after Framework startup. " +
                 observer.Diagnostic);
 
+            int reservationNotifications = 0;
+            observer.Changed += change =>
+            {
+                if (change.CurrentSlot.IsReserved)
+                {
+                    reservationNotifications++;
+                    throw new InvalidOperationException("Injected Player Session observer failure.");
+                }
+            };
+
             Keyboard firstKeyboard = InputSystem.AddDevice<Keyboard>();
             Keyboard secondKeyboard = InputSystem.AddDevice<Keyboard>();
             _temporaryInputDevices.Add(firstKeyboard);
@@ -1508,6 +1518,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
             Assert.That(joinedSnapshot, Is.Not.Null);
             Assert.That(joinedSnapshot.JoinedCount, Is.EqualTo(2));
+            Assert.That(joinedSnapshot.ReservedCount, Is.Zero);
+            Assert.That(reservationNotifications, Is.EqualTo(2));
 
             LocalPlayerHostAuthoring firstHost = FindJoinedHost(_firstSlot.PlayerSlotId);
             LocalPlayerHostAuthoring secondHost = FindJoinedHost(_secondSlot.PlayerSlotId);
