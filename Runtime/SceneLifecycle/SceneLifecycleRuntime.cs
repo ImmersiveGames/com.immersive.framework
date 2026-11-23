@@ -22,6 +22,7 @@ namespace Immersive.Framework.SceneLifecycle
         private const string AdditiveLoadMode = "Additive";
         private readonly ISceneLifecycleParticipant[] _participants;
         private readonly List<ISceneLifecycleParticipant> _sessionParticipants = new();
+        private HashSet<ISceneLifecycleParticipant> _completedSessionReleases;
         private readonly HashSet<SceneCompositionScope> _availableScopes = new();
         private SceneCompositionScope _sessionScope;
         private bool _hasSessionScope;
@@ -748,11 +749,16 @@ namespace Immersive.Framework.SceneLifecycle
                 CollectCompositionParticipants(roots);
             ISceneLifecycleParticipant[] participants =
                 CreateParticipantSnapshot(discoveredParticipants);
-            return NotifyAvailable(
+            SceneCompositionResult result = NotifyAvailable(
                 scope,
                 roots,
                 participants,
                 participant => RetainSessionParticipant(scope, participant));
+            // Partial composition keeps its existing rollback ledger.
+            _completedSessionReleases = result.Succeeded
+                ? new HashSet<ISceneLifecycleParticipant>()
+                : null;
+            return result;
         }
 
         internal SceneCompositionResult ReleaseSessionScope(
@@ -789,10 +795,12 @@ namespace Immersive.Framework.SceneLifecycle
                 scope,
                 roots,
                 reason,
-                CreateSessionParticipantSnapshot());
+                CreateSessionParticipantSnapshot(),
+                _completedSessionReleases);
             if (result.Succeeded)
             {
                 _sessionParticipants.Clear();
+                _completedSessionReleases = null;
                 _sessionScope = default;
                 _hasSessionScope = false;
             }
@@ -925,7 +933,8 @@ namespace Immersive.Framework.SceneLifecycle
             SceneCompositionScope scope,
             IReadOnlyList<GameObject> roots,
             string reason,
-            IReadOnlyList<ISceneLifecycleParticipant> participants)
+            IReadOnlyList<ISceneLifecycleParticipant> participants,
+            HashSet<ISceneLifecycleParticipant> completedReleases = null)
         {
             if (!scope.IsValid)
             {
@@ -948,7 +957,7 @@ namespace Immersive.Framework.SceneLifecycle
             for (int i = participants.Count - 1; i >= 0; i--)
             {
                 ISceneLifecycleParticipant participant = participants[i];
-                if (participant == null)
+                if (participant == null || completedReleases?.Contains(participant) == true)
                 {
                     continue;
                 }
@@ -962,6 +971,10 @@ namespace Immersive.Framework.SceneLifecycle
                     string issue = participantResult.Diagnostic.NormalizeTextOrFallback(
                         "Participant rejected scene release.");
                     issues.Add($"participant='{participant.GetType().Name}' {issue}");
+                }
+                else
+                {
+                    completedReleases?.Add(participant);
                 }
             }
 

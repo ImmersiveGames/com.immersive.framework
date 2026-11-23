@@ -62,6 +62,30 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         }
 
         [Test]
+        public void ReleaseComposedSessionScope_RetrySkipsParticipantThatAlreadyReleased()
+        {
+            GameObject owner = Create("session-owner");
+            GameObject root = Create("persistent-content-root");
+            GameObject[] roots = { root };
+            var completed = new RecordingParticipant("completed participant",
+                rejectFirstRelease: false, rejectRepeatedSuccess: true);
+            var pending = new RecordingParticipant("pending participant", rejectFirstRelease: true);
+            var lifecycle = new SceneLifecycleRuntime(completed, pending);
+            Assert.That(lifecycle.ComposeSessionScope(owner, roots).Succeeded, Is.True);
+
+            SceneCompositionResult first = lifecycle.ReleaseSessionScope(owner, roots, "stop");
+            Assert.That(first.Succeeded, Is.False);
+            Assert.That(first.Diagnostic, Does.Contain("pending participant rejected release"));
+            AssertReleaseEvidence(completed, owner, roots, "stop", 1);
+
+            SceneCompositionResult retry = lifecycle.ReleaseSessionScope(owner, roots, "retry");
+            Assert.That(retry.Succeeded, Is.True, retry.Diagnostic);
+            AssertReleaseEvidence(completed, owner, roots, "stop", 1);
+            AssertReleaseEvidence(pending, owner, roots, "retry", 2);
+            Assert.That(root != null, Is.True);
+        }
+
+        [Test]
         public void ComposeSessionScope_FailureRollsBackAndRetainsEveryAttemptedParticipantForRetry()
         {
             GameObject owner = Create("session-owner");
@@ -215,12 +239,14 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private sealed class RecordingParticipant : ISceneLifecycleParticipant
         {
             private readonly string _name;
+            private readonly bool _rejectRepeatedSuccess;
             private bool _rejectNextRelease;
 
-            internal RecordingParticipant(string name, bool rejectFirstRelease)
+            internal RecordingParticipant(string name, bool rejectFirstRelease, bool rejectRepeatedSuccess = false)
             {
                 _name = name;
                 _rejectNextRelease = rejectFirstRelease;
+                _rejectRepeatedSuccess = rejectRepeatedSuccess;
             }
 
             internal int ReleaseCount { get; private set; }
@@ -248,6 +274,14 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 LastReleaseScope = scope;
                 LastReleaseRoots = roots;
                 LastReleaseReason = reason;
+                if (_rejectRepeatedSuccess && ReleaseCount > 1)
+                {
+                    return SceneCompositionResult.Rejected(
+                        scope,
+                        SceneCompositionOperation.Releasing,
+                        _name + " rejected duplicate release.");
+                }
+
                 if (_rejectNextRelease)
                 {
                     _rejectNextRelease = false;
