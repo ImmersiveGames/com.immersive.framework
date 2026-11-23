@@ -3,8 +3,8 @@
   "version": "1.2.0",
   "displayName": "Immersive Framework",
   "description": "Immersive Framework runtime, authoring, diagnostics and validation surfaces for Unity projects.",
-  "unity": "6000.5",
-  "unityRelease": "0f1",
+  "unity": "6000.6",
+  "unityRelease": "10f1",
   "license": "MIT",
   "licensesUrl": "https://github.com/ImmersiveGames/com.immersive.framework/blob/master/LICENSE.md",
   "documentationUrl": "https://github.com/ImmersiveGames/com.immersive.framework#readme",
@@ -19,6 +19,7 @@
     "com.immersive.foundation": "0.2.3",
     "com.immersive.logging": "0.2.4",
     "com.unity.cinemachine": "3.1.7",
-    "com.unity.inputsystem": "1.19.0"
+    "com.unity.inputsystem": "1.19.0",
+    "com.unity.ugui": "2.6.0"
   }
 }
