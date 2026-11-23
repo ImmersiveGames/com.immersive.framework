@@ -22,6 +22,7 @@ using Immersive.Framework.RouteLifecycle;
 using Immersive.Framework.SceneLifecycle;
 using Immersive.Framework.Transition;
 using NUnit.Framework;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -34,9 +35,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 {
     public sealed class FrameworkRuntimeHostControlledStopTests
     {
-        private const string AssetFolder = "Assets/__IF_FrameworkRuntimeHostControlledStopTests";
-        private const string ApplicationAssetPath = AssetFolder + "/GameApplication.asset";
-        private const string PersistentContentScenePath = AssetFolder + "/PersistentContent.unity";
+        private string ApplicationAssetPath => _assetFolder + "/GameApplication.asset";
+        private string PersistentContentScenePath => _assetFolder + "/PersistentContent.unity";
+        private const string KeyboardScheme = "HostStop.Keyboard";
         private const string SetupMarkerKey =
             "Immersive.Framework.PersistentContent.HostControlledStop.SetupPrepared";
         private const int SessionParticipantCount = 3;
@@ -45,6 +46,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private const string DynamicCleanupQueryName = "QA_HostStop_DynamicCleanupQuery";
 
         private readonly List<string> _scenePaths = new();
+        private readonly List<Scene> _fixtureScenes = new();
         private readonly List<UnsavedSceneBackup> _unsavedSceneBackups = new();
         private readonly List<InputDevice> _temporaryInputDevices = new();
         private EditorBuildSettingsScene[] _originalBuildScenes;
@@ -54,10 +56,14 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         private Task<FrameworkRuntimeHostStopResult> _pendingControlledStopForFixtureCleanup;
         private int _originalPlayModeStartup;
         private float _originalTimeScale;
-        private bool _changedPlayModeStartup;
+        private ImmersiveFrameworkSettingsAsset _changedSettings;
         private bool _originalEnterPlayModeOptionsEnabled;
         private EnterPlayModeOptions _originalEnterPlayModeOptions;
-        private bool _usesTwoPlayerCameraStopFixture;
+        private PlayerSlotProfile _firstSlot;
+        private PlayerSlotProfile _secondSlot;
+        private CameraOutputDefinition _firstOutputDefinition;
+        private CameraOutputDefinition _secondOutputDefinition;
+        private SessionCameraAssignmentAsset _cameraAssignment;
         private ActivityAsset _postCommitReadinessActivity;
         private RouteAsset _postCommitReadinessRoute;
         private string _postCommitReadinessContentScenePath;
@@ -74,9 +80,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         [SetUp]
         public void SetUp()
         {
-            _originalTimeScale = Time.timeScale;
-            _pendingControlledStopForFixtureCleanup = null;
-            if (EditorApplication.isPlaying)
+            if (TestContext.CurrentContext.Test.Name == nameof(PartialSetupFailureRestoresEditorState) ||
+                EditorApplication.isPlaying)
             {
                 return;
             }
@@ -86,19 +91,49 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 return;
             }
 
+            SetUpFixture();
+        }
+
+        private void SetUpFixture(Action beforeSetupCompletes = null)
+        {
+            _originalTimeScale = Time.timeScale;
+            _pendingControlledStopForFixtureCleanup = null;
+            try
+            {
+                PrepareFixture();
+                beforeSetupCompletes?.Invoke();
+                SessionState.SetBool(SetupMarkerKey, true);
+            }
+            catch (Exception setupFailure)
+            {
+                try
+                {
+                    RestoreEditorState();
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(setupFailure, cleanupFailure);
+                }
+
+                throw;
+            }
+        }
+
+        private void PrepareFixture()
+        {
             HostSessionLifecycleTestProbe.ClearRecords();
-            _usesTwoPlayerCameraStopFixture = TestContext.CurrentContext.Test.Name.Contains(
+            bool usesTwoPlayerCameraStopFixture = TestContext.CurrentContext.Test.Name.Contains(
                 "TwoJoinedPlayersCameraAndPause",
                 StringComparison.Ordinal);
             _originalEnterPlayModeOptionsEnabled =
                 EditorSettings.enterPlayModeOptionsEnabled;
             _originalEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
+            _originalBuildScenes = EditorBuildSettings.scenes;
+            _originalActiveScene = SceneManager.GetActiveScene();
             EditorSettings.enterPlayModeOptionsEnabled = true;
             EditorSettings.enterPlayModeOptions =
                 EnterPlayModeOptions.DisableDomainReload |
                 EnterPlayModeOptions.DisableSceneReload;
-            _originalBuildScenes = EditorBuildSettings.scenes;
-            _originalActiveScene = SceneManager.GetActiveScene();
             ImmersiveFrameworkSettingsAsset settings =
                 Resources.Load<ImmersiveFrameworkSettingsAsset>("ImmersiveFrameworkSettings");
             if (settings != null)
@@ -107,21 +142,18 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 SerializedProperty playModeStartup =
                     serializedSettings.FindProperty("editorPlayModeStartup");
                 _originalPlayModeStartup = playModeStartup.enumValueIndex;
+                _changedSettings = settings;
                 playModeStartup.enumValueIndex =
                     (int)FrameworkEditorPlayModeStartup.CurrentSceneOnly;
                 serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(settings);
-                AssetDatabase.SaveAssets();
-                _changedPlayModeStartup = true;
+                AssetDatabase.SaveAssetIfDirty(settings);
             }
 
-            if (AssetDatabase.IsValidFolder(AssetFolder))
-            {
-                AssetDatabase.DeleteAsset(AssetFolder);
-            }
-
-            _assetFolder = AssetFolder;
-            AssetDatabase.CreateFolder("Assets", "__IF_FrameworkRuntimeHostControlledStopTests");
+            string folderGuid = AssetDatabase.CreateFolder(
+                "Assets", "__IF_FrameworkRuntimeHostControlledStopTests_" + Guid.NewGuid().ToString("N"));
+            _assetFolder = AssetDatabase.GUIDToAssetPath(folderGuid);
+            Assert.That(_assetFolder, Is.Not.Empty, "Could not create the fixture asset folder.");
 
             int backupIndex = 0;
             for (int index = 0; index < SceneManager.sceneCount; index++)
@@ -140,7 +172,6 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
                 _unsavedSceneBackups.Add(new UnsavedSceneBackup(
                     backupPath,
-                    scene.name,
                     SceneManager.GetActiveScene() == scene));
             }
 
@@ -150,14 +181,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 StringComparison.Ordinal);
             CreateApplicationFixture(
                 startupFailureCase ? string.Empty : "host-stop.route",
-                _usesTwoPlayerCameraStopFixture);
+                usesTwoPlayerCameraStopFixture);
             if (TestContext.CurrentContext.Test.Name.Contains(
                     "PostCommitReadinessFailure",
                     StringComparison.Ordinal))
             {
                 CreatePostCommitRouteReadinessFixture();
             }
-            SessionState.SetBool(SetupMarkerKey, true);
         }
 
         [UnityTearDown]
@@ -185,35 +215,15 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     }
                 }
 
-                if (_host != null)
+                Task cleanup = StopHostForFixtureCleanup();
+                while (!cleanup.IsCompleted)
                 {
-                    Task<FrameworkRuntimeHostStopResult> stopTask =
-                        _host.StopAsync("test-fixture-cleanup");
-                    while (!stopTask.IsCompleted)
-                    {
-                        yield return null;
-                    }
-
-                    FrameworkRuntimeHostStopResult stop = stopTask.GetAwaiter().GetResult();
-                    if (!stop.Succeeded)
-                    {
-                        stopTask = _host.StopAsync("test-fixture-cleanup-retry");
-                        while (!stopTask.IsCompleted)
-                        {
-                            yield return null;
-                        }
-
-                        stop = stopTask.GetAwaiter().GetResult();
-                    }
-
-                    if (stop.Succeeded && _host != null)
-                    {
-                        UnityEngine.Object.Destroy(_host.gameObject);
-                        _host = null;
-                    }
+                    yield return null;
                 }
 
-                RemoveTemporaryInputDevices();
+                var cleanupErrors = new List<Exception>();
+                Restore(() => cleanup.GetAwaiter().GetResult(), cleanupErrors);
+                Restore(RemoveTemporaryInputDevices, cleanupErrors);
 
                 foreach (GameObject root in HostSessionLifecycleTestProbe.CreatedRoots)
                 {
@@ -225,13 +235,69 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
                 yield return null;
                 yield return new ExitPlayMode();
+                Restore(RestoreEditorState, cleanupErrors);
+                if (cleanupErrors.Count > 0)
+                {
+                    throw new AggregateException("Controlled Stop fixture teardown failed.", cleanupErrors);
+                }
+
+                yield break;
             }
 
+            RestoreEditorState();
+        }
+
+        private async Task StopHostForFixtureCleanup()
+        {
+            if (_host == null)
+            {
+                return;
+            }
+
+            FrameworkRuntimeHostStopResult stop = await _host.StopAsync("test-fixture-cleanup");
+            if (!stop.Succeeded)
+            {
+                stop = await _host.StopAsync("test-fixture-cleanup-retry");
+            }
+
+            Assert.That(stop.Succeeded, Is.True, stop.Diagnostic);
+            if (_host != null)
+            {
+                UnityEngine.Object.Destroy(_host.gameObject);
+                _host = null;
+            }
+        }
+
+        private void RestoreEditorState()
+        {
+            if (_originalBuildScenes == null)
+            {
+                return;
+            }
+
+            var errors = new List<Exception>();
+            Restore(() => EditorBuildSettings.scenes = _originalBuildScenes, errors);
+            Restore(RestorePlayModeStartupSetting, errors);
+            Restore(() => Time.timeScale = _originalTimeScale, errors);
+            Restore(() => EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions, errors);
+            Restore(() => EditorSettings.enterPlayModeOptionsEnabled = _originalEnterPlayModeOptionsEnabled, errors);
+            SessionState.EraseBool(SetupMarkerKey);
+
+            Restore(RemoveTemporaryInputDevices, errors);
             foreach (GameObject root in HostSessionLifecycleTestProbe.CreatedRoots)
             {
                 if (root != null)
                 {
-                    UnityEngine.Object.DestroyImmediate(root);
+                    Restore(() => UnityEngine.Object.DestroyImmediate(root), errors);
+                }
+            }
+
+            for (int index = _fixtureScenes.Count - 1; index >= 0; index--)
+            {
+                Scene scene = _fixtureScenes[index];
+                if (scene.IsValid() && scene.isLoaded)
+                {
+                    Restore(() => Assert.That(EditorSceneManager.CloseScene(scene, removeScene: true), Is.True), errors);
                 }
             }
 
@@ -240,11 +306,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 Scene scene = SceneManager.GetSceneByPath(_scenePaths[index]);
                 if (scene.IsValid() && scene.isLoaded)
                 {
-                    EditorSceneManager.CloseScene(scene, removeScene: true);
+                    Restore(() => Assert.That(EditorSceneManager.CloseScene(scene, removeScene: true), Is.True), errors);
                 }
             }
-
-            EditorBuildSettings.scenes = _originalBuildScenes;
 
             for (int index = 0; index < _unsavedSceneBackups.Count; index++)
             {
@@ -255,21 +319,25 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     continue;
                 }
 
-                Scene restored = EditorSceneManager.NewScene(
-                    NewSceneSetup.EmptyScene,
-                    NewSceneMode.Additive);
-                GameObject[] roots = snapshot.GetRootGameObjects();
-                for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+                Restore(() =>
                 {
-                    SceneManager.MoveGameObjectToScene(roots[rootIndex], restored);
-                }
+                    Scene restored = EditorSceneManager.NewScene(
+                        NewSceneSetup.EmptyScene,
+                        NewSceneMode.Additive);
+                    foreach (GameObject root in snapshot.GetRootGameObjects())
+                    {
+                        SceneManager.MoveGameObjectToScene(root, restored);
+                    }
 
-                EditorSceneManager.SaveScene(snapshot);
-                EditorSceneManager.CloseScene(snapshot, removeScene: true);
-                if (backup.WasActive)
-                {
-                    SceneManager.SetActiveScene(restored);
-                }
+                    // Moving the roots dirties the throwaway snapshot. Unity refuses to close it
+                    // without saving, even though the original roots are already back in memory.
+                    Assert.That(EditorSceneManager.SaveScene(snapshot), Is.True, backup.Path);
+                    Assert.That(EditorSceneManager.CloseScene(snapshot, removeScene: true), Is.True, backup.Path);
+                    if (backup.WasActive)
+                    {
+                        RestoreActiveScene(restored);
+                    }
+                }, errors);
             }
 
             if (_originalActiveScene.IsValid() && _originalActiveScene.isLoaded)
@@ -286,33 +354,101 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
                 if (!originallyUnsaved)
                 {
-                    SceneManager.SetActiveScene(_originalActiveScene);
+                    Restore(() => RestoreActiveScene(_originalActiveScene), errors);
                 }
             }
-            if (!string.IsNullOrWhiteSpace(_assetFolder))
+            if (!string.IsNullOrWhiteSpace(_assetFolder) && _unsavedSceneBackups.TrueForAll(backup =>
+                    !SceneManager.GetSceneByPath(backup.Path).isLoaded))
             {
-                AssetDatabase.DeleteAsset(_assetFolder);
+                Restore(() => Assert.That(AssetDatabase.DeleteAsset(_assetFolder), Is.True), errors);
             }
-            _dynamicCompositionPrefab = null;
-            _dynamicRemovePrefab = null;
-            _dynamicOwnerClosePrefab = null;
-            _preparationCleanupStarted = null;
-            _allowPreparationCleanup = null;
-            _dynamicRemoveReleaseStarted = null;
-            _allowDynamicRemoveRelease = null;
-            _ownerCloseReleaseStarted = null;
-            _allowOwnerCloseRelease = null;
-            _pendingControlledStopForFixtureCleanup = null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            RestorePlayModeStartupSetting();
-            Time.timeScale = _originalTimeScale;
-            EditorSettings.enterPlayModeOptionsEnabled =
-                _originalEnterPlayModeOptionsEnabled;
-            EditorSettings.enterPlayModeOptions = _originalEnterPlayModeOptions;
-            SessionState.EraseBool(SetupMarkerKey);
+            _fixtureScenes.Clear();
+            _scenePaths.Clear();
+            _unsavedSceneBackups.Clear();
+            _originalBuildScenes = null;
+            _assetFolder = null;
             HostSessionLifecycleTestProbe.ClearRecords();
+            if (errors.Count > 0)
+            {
+                throw new AggregateException("Controlled Stop fixture cleanup failed.", errors);
+            }
+        }
+
+        private static void RestoreActiveScene(Scene scene)
+        {
+            if (SceneManager.GetActiveScene() != scene)
+            {
+                SceneManager.SetActiveScene(scene);
+            }
+            Assert.That(SceneManager.GetActiveScene(), Is.EqualTo(scene));
+        }
+
+        private static void Restore(Action action, List<Exception> errors)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                errors.Add(exception);
+            }
+        }
+
+        [Test]
+        public void PartialSetupFailureRestoresEditorState()
+        {
+            bool optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            EnterPlayModeOptions options = EditorSettings.enterPlayModeOptions;
+            EditorBuildSettingsScene[] buildScenes = EditorBuildSettings.scenes;
+            int sceneCount = SceneManager.sceneCount;
+            float timeScale = Time.timeScale;
+            ImmersiveFrameworkSettingsAsset settings =
+                Resources.Load<ImmersiveFrameworkSettingsAsset>("ImmersiveFrameworkSettings");
+            FrameworkEditorPlayModeStartup? startup = settings != null
+                ? settings.EditorPlayModeStartup
+                : null;
+            var activeSceneRoot = new GameObject("Controlled Stop setup restoration probe");
+            string activeScenePath = activeSceneRoot.scene.path;
+            var failure = new InvalidOperationException("Injected failure during fixture setup.");
+            string fixtureFolder = null;
+
+            try
+            {
+                Assert.That(Assert.Throws<InvalidOperationException>(() => SetUpFixture(() =>
+                {
+                    fixtureFolder = _assetFolder;
+                    Assert.That(AssetDatabase.IsValidFolder(fixtureFolder), Is.True);
+                    Assert.That(EditorBuildSettings.scenes.Length, Is.GreaterThan(buildScenes.Length));
+                    Time.timeScale = 0.5f;
+                    throw failure;
+                })), Is.SameAs(failure));
+
+                Assert.That(Time.timeScale, Is.EqualTo(timeScale));
+                if (settings != null)
+                {
+                    Assert.That(settings.EditorPlayModeStartup, Is.EqualTo(startup));
+                }
+                Assert.That(EditorSettings.enterPlayModeOptionsEnabled, Is.EqualTo(optionsEnabled));
+                Assert.That(EditorSettings.enterPlayModeOptions, Is.EqualTo(options));
+                EditorBuildSettingsScene[] restoredBuildScenes = EditorBuildSettings.scenes;
+                Assert.That(restoredBuildScenes, Has.Length.EqualTo(buildScenes.Length));
+                for (int index = 0; index < buildScenes.Length; index++)
+                {
+                    Assert.That(restoredBuildScenes[index].path, Is.EqualTo(buildScenes[index].path));
+                    Assert.That(restoredBuildScenes[index].enabled, Is.EqualTo(buildScenes[index].enabled));
+                }
+                Assert.That(SceneManager.sceneCount, Is.EqualTo(sceneCount));
+                Assert.That(SceneManager.GetActiveScene(), Is.EqualTo(activeSceneRoot.scene));
+                Assert.That(activeSceneRoot.scene.path, Is.EqualTo(activeScenePath));
+                Assert.That(AssetDatabase.IsValidFolder(fixtureFolder), Is.False);
+                Assert.That(SessionState.GetBool(SetupMarkerKey, false), Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(activeSceneRoot);
+            }
         }
 
         [UnityTest]
@@ -1036,7 +1172,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SetString(
                 unavailableRoute,
                 "primaryScenePath",
-                AssetFolder + "/UnavailablePrimary.unity");
+                _assetFolder + "/UnavailablePrimary.unity");
             SetString(unavailableRoute, "primarySceneName", "UnavailablePrimary");
             Assert.That(unavailableRoute.HasValidRouteId, Is.True);
             Assert.That(unavailableRoute.HasPrimaryScene, Is.True);
@@ -1121,7 +1257,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(startup.Started, Is.True, startup.Message);
 
             RouteAsset exactRoute = AssetDatabase.LoadAssetAtPath<RouteAsset>(
-                AssetFolder + "/Route.asset");
+                _assetFolder + "/Route.asset");
             Scene primaryScene = SceneManager.GetSceneByPath(_scenePaths[0]);
             Assert.That(exactRoute, Is.Not.Null);
             Assert.That(primaryScene.IsValid() && primaryScene.isLoaded, Is.True);
@@ -1330,13 +1466,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                     "host-stop-integration",
                     "join-player-1",
                     firstKeyboard,
-                    "QA.Keyboard"));
+                    KeyboardScheme));
             LocalPlayerJoinOutcome secondJoin = join.RequestJoin(
                 new LocalPlayerJoinRequest(
                     "host-stop-integration",
                     "join-player-2",
                     secondKeyboard,
-                    "QA.Keyboard"));
+                    KeyboardScheme));
 
             Assert.That(firstJoin.Code, Is.EqualTo(LocalPlayerJoinOutcomeCode.Joined),
                 "code=" + firstJoin.Code + " admission=" + firstJoin.AdmissionState +
@@ -1360,24 +1496,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(joinedSnapshot, Is.Not.Null);
             Assert.That(joinedSnapshot.JoinedCount, Is.EqualTo(2));
 
-            PlayerSlotProfile firstSlot = AssetDatabase.LoadAssetAtPath<PlayerSlotProfile>(
-                "Assets/QA-IF-ADR-043/Settings/PlayerSlot_QaIfAdr043_P1.asset");
-            PlayerSlotProfile secondSlot = AssetDatabase.LoadAssetAtPath<PlayerSlotProfile>(
-                "Assets/QA-IF-ADR-043/Settings/PlayerSlot_QaIfAdr043_P2.asset");
-            SessionCameraAssignmentAsset assignment = AssetDatabase.LoadAssetAtPath<SessionCameraAssignmentAsset>(
-                "Assets/QA-IF-ADR-043/Settings/CameraAssignment_QaIfAdr043_Individual.asset");
-            CameraOutputDefinition firstDefinition = AssetDatabase.LoadAssetAtPath<CameraOutputDefinition>(
-                "Assets/QA-IF-ADR-043/Camera/CameraOutput_QaIfAdr043_P1.asset");
-            CameraOutputDefinition secondDefinition = AssetDatabase.LoadAssetAtPath<CameraOutputDefinition>(
-                "Assets/QA-IF-ADR-043/Camera/CameraOutput_QaIfAdr043_P2.asset");
-            Assert.That(firstSlot, Is.Not.Null);
-            Assert.That(secondSlot, Is.Not.Null);
-            Assert.That(assignment, Is.Not.Null);
-            Assert.That(firstDefinition, Is.Not.Null);
-            Assert.That(secondDefinition, Is.Not.Null);
-
-            LocalPlayerHostAuthoring firstHost = FindJoinedHost(firstSlot.PlayerSlotId);
-            LocalPlayerHostAuthoring secondHost = FindJoinedHost(secondSlot.PlayerSlotId);
+            LocalPlayerHostAuthoring firstHost = FindJoinedHost(_firstSlot.PlayerSlotId);
+            LocalPlayerHostAuthoring secondHost = FindJoinedHost(_secondSlot.PlayerSlotId);
             Assert.That(firstHost, Is.Not.Null);
             Assert.That(secondHost, Is.Not.Null);
             Assert.That(firstHost.PlayerInput, Is.Not.Null);
@@ -1392,8 +1512,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             {
                 outputs = UnityEngine.Object.FindObjectsByType<CameraOutputAuthoring>(
                     FindObjectsSortMode.None);
-                firstOutput = FindOutput(outputs, firstDefinition);
-                secondOutput = FindOutput(outputs, secondDefinition);
+                firstOutput = FindOutput(outputs, _firstOutputDefinition);
+                secondOutput = FindOutput(outputs, _secondOutputDefinition);
                 if (outputs.Length == 2 &&
                     firstOutput != null && firstOutput.Session?.OutputState.HasActiveAssignment == true &&
                     secondOutput != null && secondOutput.Session?.OutputState.HasActiveAssignment == true &&
@@ -1412,9 +1532,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(firstOutput.Session.OutputState.HasActiveAssignment, Is.True);
             Assert.That(secondOutput.Session.OutputState.HasActiveAssignment, Is.True);
             Assert.That(firstOutput.Session.OutputState.ActiveAssignmentId,
-                Is.EqualTo(assignment.AssignmentId));
+                Is.EqualTo(_cameraAssignment.AssignmentId));
             Assert.That(secondOutput.Session.OutputState.ActiveAssignmentId,
-                Is.EqualTo(assignment.AssignmentId));
+                Is.EqualTo(_cameraAssignment.AssignmentId));
             Assert.That(firstPlayerInput.camera, Is.SameAs(firstOutput.UnityCamera));
             Assert.That(secondPlayerInput.camera, Is.SameAs(secondOutput.UnityCamera));
 
@@ -1515,25 +1635,17 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
         private void RestorePlayModeStartupSetting()
         {
-            if (!_changedPlayModeStartup)
+            if (_changedSettings == null)
             {
                 return;
             }
 
-            ImmersiveFrameworkSettingsAsset settings =
-                Resources.Load<ImmersiveFrameworkSettingsAsset>("ImmersiveFrameworkSettings");
-            if (settings == null)
-            {
-                return;
-            }
-
-            var serializedSettings = new SerializedObject(settings);
+            var serializedSettings = new SerializedObject(_changedSettings);
             serializedSettings.FindProperty("editorPlayModeStartup").enumValueIndex =
                 _originalPlayModeStartup;
             serializedSettings.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(settings);
-            AssetDatabase.SaveAssets();
-            _changedPlayModeStartup = false;
+            AssetDatabase.SaveAssetIfDirty(_changedSettings);
+            _changedSettings = null;
         }
 
         private FrameworkRuntimeHost CreateHost(GameApplicationAsset application)
@@ -1575,7 +1687,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SetString(activity, "activityId", "host-stop.activity");
             SetString(activity, "activityName", "Host Stop Activity");
             AssetDatabase.SaveAssetIfDirty(activity);
-            string activityAssetPath = AssetFolder + "/Activity.asset";
+            string activityAssetPath = _assetFolder + "/Activity.asset";
             AssetDatabase.ImportAsset(
                 activityAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
@@ -1595,12 +1707,11 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             EditorUtility.SetDirty(route);
             Assert.That(route.PrimaryScenePath, Is.EqualTo(routeScenePath),
                 "The Route fixture must retain the Primary Scene path immediately after authoring.");
-            string routeAssetPath = AssetFolder + "/Route.asset";
+            string routeAssetPath = _assetFolder + "/Route.asset";
             AssetDatabase.SaveAssetIfDirty(route);
             string routeYamlPath = Path.Combine(
-                Application.dataPath,
-                "__IF_FrameworkRuntimeHostControlledStopTests",
-                "Route.asset");
+                Path.GetDirectoryName(Application.dataPath),
+                routeAssetPath);
             string routeYaml = File.ReadAllText(routeYamlPath);
             Assert.That(routeYaml, Does.Contain(routeScenePath),
                 "The Route asset file must serialize its Primary Scene path before import.");
@@ -1638,44 +1749,27 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SerializedProperty persistentContent = serializedApplication.FindProperty("persistentContent");
             persistentContent.FindPropertyRelative("scenePath").stringValue = contentScenePath;
             persistentContent.FindPropertyRelative("sceneName").stringValue = "PersistentContent";
-            GameObject cameraOutputPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/QA-NEW-001/Camera/PF_CameraOutput_QaNew001.prefab");
-            Assert.That(cameraOutputPrefab, Is.Not.Null,
-                "Host integration requires the QAFramework's canonical Camera Output prefab.");
             SerializedProperty outputPrefabs = serializedApplication
                 .FindProperty("cameraSession")
                 .FindPropertyRelative("outputPrefabs");
             if (configureTwoPlayerCameraStop)
             {
-                PlayerSessionProfile session = AssetDatabase.LoadAssetAtPath<PlayerSessionProfile>(
-                    "Assets/QA-IF-ADR-043/Settings/PlayerSession_QaIfAdr043.asset");
-                SessionCameraAssignmentAsset assignment = AssetDatabase.LoadAssetAtPath<SessionCameraAssignmentAsset>(
-                    "Assets/QA-IF-ADR-043/Settings/CameraAssignment_QaIfAdr043_Individual.asset");
-                GameObject firstOutput = AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/QA-IF-ADR-043/Camera/PF_CameraOutput_QaIfAdr043_P1.prefab");
-                GameObject secondOutput = AssetDatabase.LoadAssetAtPath<GameObject>(
-                    "Assets/QA-IF-ADR-043/Camera/PF_CameraOutput_QaIfAdr043_P2.prefab");
-                Assert.That(session, Is.Not.Null);
-                Assert.That(assignment, Is.Not.Null);
-                Assert.That(firstOutput, Is.Not.Null);
-                Assert.That(secondOutput, Is.Not.Null);
-
+                PlayerSessionProfile session = CreateTwoPlayerCameraFixture();
                 serializedApplication.FindProperty("playerSessionEnabled").boolValue = true;
                 serializedApplication.FindProperty("defaultPlayerSessionProfile").objectReferenceValue = session;
-                outputPrefabs.arraySize = 2;
-                outputPrefabs.GetArrayElementAtIndex(0).objectReferenceValue = firstOutput;
-                outputPrefabs.GetArrayElementAtIndex(1).objectReferenceValue = secondOutput;
-                SerializedProperty startupAssignments =
-                    serializedApplication.FindProperty("startupCameraAssignments");
-                startupAssignments.arraySize = 1;
-                startupAssignments.GetArrayElementAtIndex(0).objectReferenceValue = assignment;
+                SetReferences(outputPrefabs,
+                    CreateCameraOutput("Player1Output", _firstOutputDefinition),
+                    CreateCameraOutput("Player2Output", _secondOutputDefinition));
+                SetReferences(serializedApplication.FindProperty("startupCameraAssignments"),
+                    _cameraAssignment);
             }
             else
             {
-                outputPrefabs.arraySize = 1;
-                outputPrefabs.GetArrayElementAtIndex(0).objectReferenceValue = cameraOutputPrefab;
+                SetReferences(outputPrefabs,
+                    CreateCameraOutput("DefaultOutput", CreateOutputDefinition("DefaultOutput")));
             }
             serializedApplication.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
             EditorUtility.SetDirty(application);
             AssetDatabase.SaveAssetIfDirty(application);
             AssetDatabase.ImportAsset(
@@ -1707,7 +1801,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
             const string activityId = "host-stop.post-commit.activity";
             const string activityName = "Post-Commit Readiness Activity";
-            string activityAssetPath = AssetFolder + "/PostCommitActivity.asset";
+            string activityAssetPath = _assetFolder + "/PostCommitActivity.asset";
             ActivityAsset activity = CreateAsset<ActivityAsset>("PostCommitActivity.asset");
             SetString(activity, "activityId", activityId);
             SetString(activity, "activityName", activityName);
@@ -1756,10 +1850,10 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             EditorUtility.SetDirty(profile);
             AssetDatabase.SaveAssetIfDirty(profile);
             AssetDatabase.ImportAsset(
-                AssetFolder + "/PostCommitActivityContentProfile.asset",
+                _assetFolder + "/PostCommitActivityContentProfile.asset",
                 ImportAssetOptions.ForceSynchronousImport);
             profile = AssetDatabase.LoadAssetAtPath<ActivityContentProfileAsset>(
-                AssetFolder + "/PostCommitActivityContentProfile.asset");
+                _assetFolder + "/PostCommitActivityContentProfile.asset");
             Assert.That(profile, Is.Not.Null,
                 "The Post-commit Activity Content Profile must reload from its persisted asset.");
 
@@ -1821,7 +1915,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SetString(route, "primarySceneName", "PostCommitRoute");
             SetObjectReference(route, "startupActivity", _postCommitReadinessActivity);
             AssetDatabase.SaveAssetIfDirty(route);
-            string routeAssetPath = AssetFolder + "/PostCommitRoute.asset";
+            string routeAssetPath = _assetFolder + "/PostCommitRoute.asset";
             AssetDatabase.ImportAsset(
                 routeAssetPath,
                 ImportAssetOptions.ForceSynchronousImport);
@@ -1877,6 +1971,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Scene scene = EditorSceneManager.NewScene(
                 NewSceneSetup.EmptyScene,
                 NewSceneMode.Additive);
+            _fixtureScenes.Add(scene);
             Assert.That(scene.IsValid() && scene.isLoaded, Is.True,
                 "The Host fixture must create a loaded scene before adding its participant root.");
             GameObject root = new(sceneName + "Root");
@@ -2001,12 +2096,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "Route scene must save its composed Object Entry before entering Play Mode.");
         }
 
-        private static void ConfigurePlayerProvisioning(GameObject root)
+        private void ConfigurePlayerProvisioning(GameObject root)
         {
-            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/QA-IF-ADR-044/Players/PF_LocalPlayerHost_QaIfAdr044.prefab");
-            Assert.That(playerPrefab, Is.Not.Null,
-                "The integrated Host test requires the QAFramework Local Player Host prefab with its supported Pause/Input binding.");
+            GameObject playerPrefab = CreateLocalPlayerPrefab();
 
             PlayerInputManager manager = root.AddComponent<PlayerInputManager>();
             manager.playerPrefab = playerPrefab;
@@ -2032,6 +2124,167 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(provisioning.UsesManualJoin, Is.True);
             Assert.That(provisioning.UsesCSharpJoinNotifications, Is.True);
             Assert.That(registration.ProvisioningAuthoring, Is.SameAs(provisioning));
+        }
+
+        private PlayerSessionProfile CreateTwoPlayerCameraFixture()
+        {
+            _firstSlot = CreatePlayerSlot(1);
+            _secondSlot = CreatePlayerSlot(2);
+            _firstOutputDefinition = CreateOutputDefinition("Player1Output");
+            _secondOutputDefinition = CreateOutputDefinition("Player2Output");
+
+            PlayerSessionProfile session = CreateAsset<PlayerSessionProfile>("PlayerSession.asset");
+            var sessionData = new SerializedObject(session);
+            SetReferences(sessionData.FindProperty("supportedSlots"), _firstSlot, _secondSlot);
+            sessionData.FindProperty("initialJoiningOpen").boolValue = true;
+            sessionData.FindProperty("actorResolutionPolicy").intValue =
+                (int)PlayerActorResolutionPolicy.LeaveUnresolved;
+            sessionData.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssetIfDirty(session);
+
+            GameObject rigPrefab = new("AssignmentRig");
+            try
+            {
+                CreateFixedCameraRig(rigPrefab, "AssignmentRig");
+                _cameraAssignment = CreateAsset<SessionCameraAssignmentAsset>("CameraAssignment.asset");
+                var data = new SerializedObject(_cameraAssignment);
+                data.FindProperty("assignmentId").stringValue = Guid.NewGuid().ToString("N");
+                data.FindProperty("rigPrefab").objectReferenceValue =
+                    SaveFixturePrefab(rigPrefab, "AssignmentRig");
+                data.FindProperty("occurrenceMode").intValue = (int)CameraOccurrenceMode.IndividualPerPlayer;
+                data.FindProperty("membershipPolicy").intValue = (int)CameraMembershipPolicy.ExplicitPlayerSlots;
+                data.FindProperty("targetPolicy").intValue = (int)CameraTargetPolicy.NoSubject;
+                SetReferences(data.FindProperty("memberSlots"), _firstSlot, _secondSlot);
+                SetReferences(data.FindProperty("outputDefinitions"), _firstOutputDefinition, _secondOutputDefinition);
+                SerializedProperty mappings = data.FindProperty("individualMemberOutputMappings");
+                mappings.arraySize = 2;
+                SetMapping(mappings.GetArrayElementAtIndex(0), _firstSlot, _firstOutputDefinition);
+                SetMapping(mappings.GetArrayElementAtIndex(1), _secondSlot, _secondOutputDefinition);
+                data.ApplyModifiedPropertiesWithoutUndo();
+                AssetDatabase.SaveAssetIfDirty(_cameraAssignment);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(rigPrefab);
+            }
+
+            return session;
+        }
+
+        private PlayerSlotProfile CreatePlayerSlot(int index)
+        {
+            PlayerSlotProfile slot = CreateAsset<PlayerSlotProfile>("Player" + index + ".asset");
+            SetString(slot, "playerSlotId", "player." + index);
+            SetString(slot, "displayName", "Player " + index);
+            return slot;
+        }
+
+        private CameraOutputDefinition CreateOutputDefinition(string name)
+        {
+            CameraOutputDefinition definition = CreateAsset<CameraOutputDefinition>(name + ".asset");
+            SetString(definition, "stableId", Guid.NewGuid().ToString("N"));
+            AssetDatabase.SaveAssetIfDirty(definition);
+            return definition;
+        }
+
+        private GameObject CreateCameraOutput(string name, CameraOutputDefinition definition)
+        {
+            GameObject root = new(name);
+            try
+            {
+                var camera = root.AddComponent<UnityEngine.Camera>();
+                var brain = root.AddComponent<CinemachineBrain>();
+                var fallback = new GameObject("Fallback Camera");
+                fallback.transform.SetParent(root.transform, false);
+                CameraRigComposer rig = CreateFixedCameraRig(fallback, name + "Fallback");
+                var output = root.AddComponent<CameraOutputAuthoring>();
+                SetObjectReference(output, "outputDefinition", definition);
+                SetObjectReference(output, "unityCamera", camera);
+                SetObjectReference(output, "cinemachineBrain", brain);
+                SetObjectReference(output, "fallbackCameraRig", rig);
+                return SaveFixturePrefab(root, name);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private CameraRigComposer CreateFixedCameraRig(GameObject root, string name)
+        {
+            var camera = root.AddComponent<CinemachineCamera>();
+            var rig = root.AddComponent<CameraRigComposer>();
+            SetObjectReference(rig, "cinemachineCamera", camera);
+            SetObjectReference(rig, "behaviorDefinition",
+                CreateAsset<FixedCameraRigBehaviorDefinition>(name + "Behavior.asset"));
+            return rig;
+        }
+
+        private GameObject CreateLocalPlayerPrefab()
+        {
+            var actions = ScriptableObject.CreateInstance<InputActionAsset>();
+            AssetDatabase.CreateAsset(actions, _assetFolder + "/PlayerInputActions.asset");
+            InputActionMap gameplay = actions.AddActionMap("Player");
+            gameplay.AddAction("Move", InputActionType.Button, "<Keyboard>/space", groups: KeyboardScheme);
+            InputActionMap pauseMap = actions.AddActionMap("Pause");
+            InputAction pause = pauseMap.AddAction("Pause", InputActionType.Button, "<Keyboard>/escape",
+                groups: KeyboardScheme);
+            actions.AddControlScheme(KeyboardScheme).WithRequiredDevice("<Keyboard>");
+            EditorUtility.SetDirty(actions);
+            AssetDatabase.SaveAssetIfDirty(actions);
+            InputActionReference pauseReference = InputActionReference.Create(pause);
+            AssetDatabase.CreateAsset(pauseReference, _assetFolder + "/PauseAction.asset");
+
+            GameObject root = new("LocalPlayerHost");
+            root.SetActive(false);
+            try
+            {
+                var input = root.AddComponent<PlayerInput>();
+                input.actions = actions;
+                input.defaultActionMap = gameplay.name;
+                input.defaultControlScheme = KeyboardScheme;
+                var mount = new GameObject("Actor Mount");
+                mount.transform.SetParent(root.transform, false);
+                var host = root.AddComponent<LocalPlayerHostAuthoring>();
+                SetObjectReference(host, "playerInput", input);
+                SetObjectReference(host, "actorMount", mount.transform);
+                var gate = root.AddComponent<Immersive.Framework.UnityInput.UnityPlayerInputGateAdapter>();
+                SetObjectReference(gate, "playerInput", input);
+                SetString(gate, "gameplayActionMapName", gameplay.name);
+                SetBoolean(gate, "blockOnInputAcceptance", false);
+                SetBoolean(gate, "blockOnGameplayAction", true);
+                SetObjectReference(root.AddComponent<PlayerPauseInput>(), "pauseAction", pauseReference);
+
+                root.SetActive(true);
+                return SaveFixturePrefab(root, "LocalPlayerHost");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private GameObject SaveFixturePrefab(GameObject root, string name)
+        {
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, _assetFolder + "/" + name + ".prefab");
+            Assert.That(prefab, Is.Not.Null, "Could not persist fixture prefab " + name);
+            return prefab;
+        }
+
+        private static void SetReferences(SerializedProperty array, params UnityEngine.Object[] values)
+        {
+            array.arraySize = values.Length;
+            for (int index = 0; index < values.Length; index++)
+            {
+                array.GetArrayElementAtIndex(index).objectReferenceValue = values[index];
+            }
+        }
+
+        private static void SetMapping(
+            SerializedProperty mapping, PlayerSlotProfile slot, CameraOutputDefinition output)
+        {
+            mapping.FindPropertyRelative("playerSlotProfile").objectReferenceValue = slot;
+            mapping.FindPropertyRelative("outputDefinition").objectReferenceValue = output;
         }
 
         private static T FindComponent<T>(Scene scene)
@@ -2327,16 +2580,13 @@ namespace Immersive.Framework.Authoring.Editor.Tests
 
         private readonly struct UnsavedSceneBackup
         {
-            internal UnsavedSceneBackup(string path, string originalName, bool wasActive)
+            internal UnsavedSceneBackup(string path, bool wasActive)
             {
                 Path = path;
-                OriginalName = originalName;
                 WasActive = wasActive;
             }
 
             internal string Path { get; }
-
-            internal string OriginalName { get; }
 
             internal bool WasActive { get; }
         }

@@ -6,6 +6,7 @@
     "Immersive.Framework.Editor",
     "Immersive.Framework.PersistentContent.TestComponents",
     "Unity.InputSystem",
+    "Unity.Cinemachine",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
