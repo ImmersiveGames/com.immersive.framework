@@ -184,6 +184,17 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             CreateApplicationFixture(
                 startupFailureCase ? string.Empty : "host-stop.route",
                 usesTwoPlayerCameraStopFixture);
+            if (TestContext.CurrentContext.Test.Name ==
+                nameof(RoutePrimarySceneUnavailableBeforeCommit_ProjectsRetainedRouteAndCanRestoreActivity))
+            {
+                string homonymPath = CreateScene("UnavailablePrimary", addParticipant: false);
+                EditorSceneManager.CloseScene(SceneManager.GetSceneByPath(homonymPath), removeScene: true);
+                var buildScenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes)
+                {
+                    new EditorBuildSettingsScene(homonymPath, enabled: true)
+                };
+                EditorBuildSettings.scenes = buildScenes.ToArray();
+            }
             if (TestContext.CurrentContext.Test.Name.Contains(
                     "PostCommitReadinessFailure",
                     StringComparison.Ordinal))
@@ -1187,7 +1198,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             SetString(
                 unavailableRoute,
                 "primaryScenePath",
-                _assetFolder + "/UnavailablePrimary.unity");
+                _assetFolder + "/Missing/UnavailablePrimary.unity");
             SetString(unavailableRoute, "primarySceneName", "UnavailablePrimary");
             Assert.That(unavailableRoute.HasValidRouteId, Is.True);
             Assert.That(unavailableRoute.HasPrimaryScene, Is.True);
@@ -1195,6 +1206,20 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 Application.CanStreamedLevelBeLoaded(unavailableRoute.PrimaryScenePath),
                 Is.False,
                 "The target scene must be unavailable to produce a real pre-commit Scene Lifecycle failure.");
+            string homonymPath = _assetFolder + "/UnavailablePrimary.unity";
+            Assert.That(Application.CanStreamedLevelBeLoaded(homonymPath), Is.True);
+            var sceneLifecycle = new SceneLifecycleRuntime();
+            Task<SceneLifecycleLoadResult> additiveLoad = sceneLifecycle.LoadAdditiveSceneAsync(
+                unavailableRoute.PrimarySceneName, unavailableRoute.PrimaryScenePath);
+            while (!additiveLoad.IsCompleted)
+            {
+                yield return null;
+            }
+
+            Assert.That(additiveLoad.GetAwaiter().GetResult().Loaded, Is.False);
+            Assert.That(SceneManager.GetSceneByPath(homonymPath).isLoaded, Is.False);
+            int sceneReleaseCount = CallsForScopeKind(
+                SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Scene).Count;
 
             LogAssert.Expect(
                 LogType.Error,
@@ -1230,6 +1255,9 @@ namespace Immersive.Framework.Authoring.Editor.Tests
                 "Host state must project the live Activity authority after a non-authoritative Route failure.");
             Assert.That(baselinePrimaryScene.IsValid() && baselinePrimaryScene.isLoaded, Is.True);
             Assert.That(SceneManager.GetActiveScene().handle, Is.EqualTo(baselinePrimaryScene.handle));
+            Assert.That(SceneManager.GetSceneByPath(homonymPath).isLoaded, Is.False);
+            Assert.That(CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Scene),
+                Has.Count.EqualTo(sceneReleaseCount));
             Assert.That(owner.CurrentGameFlowRuntime.CurrentTransitionGateSnapshot.HasBlockers, Is.False);
             Assert.That(owner.CurrentGameFlowRuntime.HasLifecycleRequestInFlight, Is.False);
 

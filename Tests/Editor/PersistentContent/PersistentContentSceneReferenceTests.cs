@@ -5,6 +5,7 @@ using Immersive.Framework.Authoring;
 using Immersive.Framework.Editor.Authoring;
 using Immersive.Framework.Editor.Validation;
 using Immersive.Framework.GlobalUi;
+using Immersive.Framework.SceneLifecycle;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -215,7 +216,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             string homonymousPath = $"{_folder}/Other/Shared.unity";
 
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
+            bool resolved = SceneLoadIdentity.TryResolveSceneLoadIdentifierFromCandidates(
                 $"{_folder}/Missing/Shared.unity",
                 "Shared",
                 new[] { homonymousPath },
@@ -233,7 +234,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         {
             string firstPath = $"{_folder}/A/Shared.unity";
             string secondPath = $"{_folder}/B/Shared.unity";
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
+            bool resolved = SceneLoadIdentity.TryResolveSceneLoadIdentifierFromCandidates(
                 string.Empty,
                 "Shared",
                 new[] { firstPath, secondPath },
@@ -250,7 +251,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         public void NameOnlyReference_WithSingleCandidateResolvesToItsPath()
         {
             string expectedPath = $"{_folder}/Shared.unity";
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
+            bool resolved = SceneLoadIdentity.TryResolveSceneLoadIdentifierFromCandidates(
                 string.Empty,
                 "Shared",
                 new[] { expectedPath },
@@ -266,7 +267,7 @@ namespace Immersive.Framework.Authoring.Editor.Tests
         public void NameOnlyReference_WithSingleUnavailableCandidateIsRejected()
         {
             const string candidatePath = "Assets/Scenes/Shared.unity";
-            bool resolved = GlobalUiSceneRuntime.TryResolveSceneLoadIdentifierFromCandidates(
+            bool resolved = SceneLoadIdentity.TryResolveSceneLoadIdentifierFromCandidates(
                 string.Empty,
                 "Shared",
                 new[] { candidatePath },

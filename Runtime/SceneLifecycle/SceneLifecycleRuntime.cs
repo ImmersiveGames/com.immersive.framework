@@ -52,10 +52,10 @@ namespace Immersive.Framework.SceneLifecycle
             }
 
             string sceneName = route.PrimarySceneName;
-            string scenePath = route.PrimaryScenePath;
-            if (string.IsNullOrWhiteSpace(sceneName))
+            string scenePath = Normalize(route.PrimaryScenePath);
+            if (!TryResolveLegacyPathIfNeeded(sceneName, ref scenePath, out string identityIssue))
             {
-                return SceneLifecycleLoadResult.Failed("Route Primary Scene name is empty.");
+                return SceneLifecycleLoadResult.Failed(identityIssue);
             }
 
             var activeScene = SceneManager.GetActiveScene();
@@ -74,11 +74,17 @@ namespace Immersive.Framework.SceneLifecycle
 
             if (!alreadyLoaded)
             {
+                if (!SceneLoadIdentity.TryResolveSceneLoadIdentifier(
+                        scenePath, sceneName, out string loadPath, out string loadIssue))
+                {
+                    return SceneLifecycleLoadResult.Failed(loadIssue);
+                }
+
                 if (!ReleaseLoadedScenesForSingleLoad(activeScene, out string releaseIssue))
                 {
                     return SceneLifecycleLoadResult.Failed(releaseIssue);
                 }
-                var loadResult = await TryLoadSceneSingleAsync(scenePath, sceneName, progressReporter);
+                var loadResult = await TryLoadSceneSingleAsync(loadPath, sceneName, progressReporter);
                 if (!loadResult.Loaded)
                 {
                     TryCompensateWithSceneAvailable(activeScene, out string replacementCompensationDiagnostic);
@@ -136,6 +142,11 @@ namespace Immersive.Framework.SceneLifecycle
                 return SceneLifecycleLoadResult.Failed("Scene Lifecycle cannot load Additive Scene because scene name and path are empty.");
             }
 
+            if (!TryResolveLegacyPathIfNeeded(sceneName, ref scenePath, out string identityIssue))
+            {
+                return SceneLifecycleLoadResult.Failed(identityIssue);
+            }
+
             var loadedScene = FindLoadedScene(scenePath, sceneName);
             if (loadedScene.IsValid() && loadedScene.isLoaded)
             {
@@ -150,7 +161,13 @@ namespace Immersive.Framework.SceneLifecycle
                     AlreadyLoadedMode);
             }
 
-            var loadResult = await TryLoadSceneAdditiveAsync(scenePath, sceneName, progressReporter);
+            if (!SceneLoadIdentity.TryResolveSceneLoadIdentifier(
+                    scenePath, sceneName, out string loadPath, out string loadIssue))
+            {
+                return SceneLifecycleLoadResult.Failed(loadIssue);
+            }
+
+            var loadResult = await TryLoadSceneAdditiveAsync(loadPath, sceneName, progressReporter);
             if (!loadResult.Loaded)
             {
                 return loadResult;
@@ -437,15 +454,9 @@ namespace Immersive.Framework.SceneLifecycle
             IFrameworkLoadingProgressReporter progressReporter)
         {
             string sceneLabel = ResolveSceneLabel(scenePath, sceneName);
-            if (!TryGetLoadSceneIdentifier(scenePath, sceneName, out string sceneIdentifier))
-            {
-                return SceneLifecycleLoadResult.Failed(
-                    $"Scene Lifecycle cannot load {sceneRoleLabel} '{sceneLabel}'. Add it to the active Build Profile or Shared Scene List.");
-            }
-
             try
             {
-                var operation = SceneManager.LoadSceneAsync(sceneIdentifier, sceneLoadMode);
+                var operation = SceneManager.LoadSceneAsync(scenePath, sceneLoadMode);
                 if (operation == null)
                 {
                     return SceneLifecycleLoadResult.Failed(
@@ -544,46 +555,26 @@ namespace Immersive.Framework.SceneLifecycle
             return value;
         }
 
-        private static bool TryGetLoadSceneIdentifier(string scenePath, string sceneName, out string sceneIdentifier)
+        private static bool TryResolveLegacyPathIfNeeded(string sceneName, ref string scenePath, out string diagnostic)
         {
-            if (!string.IsNullOrWhiteSpace(scenePath) && Application.CanStreamedLevelBeLoaded(scenePath))
+            if (!string.IsNullOrWhiteSpace(scenePath))
             {
-                sceneIdentifier = scenePath;
+                diagnostic = string.Empty;
                 return true;
             }
 
-            if (!string.IsNullOrWhiteSpace(sceneName) && Application.CanStreamedLevelBeLoaded(sceneName))
-            {
-                sceneIdentifier = sceneName;
-                return true;
-            }
-
-            sceneIdentifier = null;
-            return false;
+            return SceneLoadIdentity.TryResolveLegacyPath(sceneName, out scenePath, out diagnostic);
         }
 
         private static Scene FindLoadedScene(string scenePath, string sceneName)
         {
-            if (!string.IsNullOrWhiteSpace(scenePath))
-            {
-                var sceneByPath = SceneManager.GetSceneByPath(scenePath);
-                if (sceneByPath.IsValid() && sceneByPath.isLoaded)
-                {
-                    return sceneByPath;
-                }
-
-                // Path was the requested identity and failed. Do not resolve a different
-                // scene that merely shares the same name.
-                return default;
-            }
-
-            if (string.IsNullOrWhiteSpace(sceneName))
+            if (!TryResolveLegacyPathIfNeeded(sceneName, ref scenePath, out _))
             {
                 return default;
             }
 
-            var sceneByName = SceneManager.GetSceneByName(sceneName);
-            return sceneByName.IsValid() && sceneByName.isLoaded ? sceneByName : default;
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            return scene.IsValid() && scene.isLoaded ? scene : default;
         }
 
         private static string GetSceneNameForDiagnostics(Scene scene, string fallbackSceneName)
@@ -633,14 +624,8 @@ namespace Immersive.Framework.SceneLifecycle
                 return false;
             }
 
-            // Path wins as functional identity when present; name is legacy-only when path is empty.
-            if (!string.IsNullOrWhiteSpace(scenePath))
-            {
-                return string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase);
-            }
-
-            return !string.IsNullOrWhiteSpace(sceneName)
-                && string.Equals(scene.name, sceneName, StringComparison.OrdinalIgnoreCase);
+            return TryResolveLegacyPathIfNeeded(sceneName, ref scenePath, out _) &&
+                string.Equals(scene.path, scenePath, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool ReleaseLoadedScenesForSingleLoad(Scene activeScene, out string issue)
