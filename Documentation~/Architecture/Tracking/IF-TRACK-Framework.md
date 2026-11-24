@@ -2,7 +2,16 @@
 
 Status: **Complete — Stable 1.2.0 published and verified 2026-11-15**
 
-Last updated: **2026-11-15**
+Last updated: **2026-11-23**
+
+## 1.2.x maintenance review
+
+**After the 1.2.x review:** migrate Framework-authored scene references to
+Unity Addressables as a separate increment. Review the scene identity and
+handle ownership contract, migration of existing authored assets, and Player
+build evidence before implementation. The current 1.2.x review continues
+against the scene path and name contract in
+[IF-ADR-045](../ADRs/IF-ADR-045-Persistent-Content-Scene-Reference-Player-Builds.md).
 
 ## 1.2.0 Stable package release record
 
