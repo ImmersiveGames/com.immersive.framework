@@ -1371,8 +1371,30 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             IReadOnlyList<GameObject> roots =
                 CallsForScopeKind(SceneCompositionOperation.Available, SceneCompositionScopeKind.Session)[0].Roots;
             GameObject exactRoot = roots[0];
+            HostSessionLifecycleTestProbe.RejectRelease(
+                "second", SceneCompositionScopeKind.Session, rejectionCount: 1, throwOnRejection: true);
+            LogAssert.Expect(LogType.Error,
+                new Regex("FrameworkRuntimeHost controlled stop retained the live Host for retry\\."));
+            Task<FrameworkRuntimeHostStopResult> firstStop = owner.StopAsync("startup-failure-release-throws");
+            _pendingControlledStopForFixtureCleanup = firstStop;
+            while (!firstStop.IsCompleted)
+            {
+                yield return null;
+            }
+
+            FrameworkRuntimeHostStopResult failed = firstStop.GetAwaiter().GetResult();
+            Assert.That(failed.Succeeded, Is.False);
+            Assert.That(failed.Diagnostic, Does.Contain("Injected Session release exception."));
+            Assert.That(owner.LifecyclePhase, Is.EqualTo(FrameworkRuntimeHostPhase.Stopping));
+            Assert.That(exactRoot != null, Is.True);
+            Assert.That(
+                CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Session),
+                Has.Count.EqualTo(SessionParticipantCount));
+            AssertReleaseCallsUseSameOwnerAndRoots(owner, roots);
+
             Task<FrameworkRuntimeHostStopResult> stopTask =
-                owner.StopAsync("startup-failure-controlled-stop");
+                owner.StopAsync("startup-failure-controlled-stop-retry");
+            _pendingControlledStopForFixtureCleanup = stopTask;
             while (!stopTask.IsCompleted)
             {
                 yield return null;
@@ -1385,7 +1407,10 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             Assert.That(exactRoot != null, Is.True);
             Assert.That(
                 CallsForScopeKind(SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Session),
-                Has.Count.EqualTo(SessionParticipantCount));
+                Has.Count.EqualTo(SessionParticipantCount + 1));
+            Assert.That(CallsForScopeKindAndParticipant(
+                SceneCompositionOperation.Releasing, SceneCompositionScopeKind.Session, "second"),
+                Has.Count.EqualTo(2));
             AssertReleaseCallsUseSameOwnerAndRoots(owner, roots);
 
             UnityEngine.Object.Destroy(owner.gameObject);

@@ -962,8 +962,16 @@ namespace Immersive.Framework.SceneLifecycle
                     continue;
                 }
 
-                SceneCompositionResult participantResult =
-                    participant.OnSceneReleasing(scope, roots, reason);
+                SceneCompositionResult participantResult;
+                try
+                {
+                    participantResult = participant.OnSceneReleasing(scope, roots, reason);
+                }
+                catch (Exception exception) when (scope.Kind == SceneCompositionScopeKind.Session)
+                {
+                    issues.Add($"participant='{participant.GetType().Name}' threw '{exception.GetType().Name}' during Session release. {exception.Message}");
+                    continue;
+                }
                 if (!participantResult.Succeeded ||
                     !participantResult.Scope.Equals(scope) ||
                     participantResult.Operation != SceneCompositionOperation.Releasing)

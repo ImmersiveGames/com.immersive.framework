@@ -12,6 +12,7 @@ namespace Immersive.Framework.PersistentContent.Tests
         private static string _rejectParticipant;
         private static SceneCompositionScopeKind _rejectScopeKind;
         private static int _remainingRejections;
+        private static bool _throwOnRejection;
 
         [SerializeField]
         private string participantKey;
@@ -26,11 +27,13 @@ namespace Immersive.Framework.PersistentContent.Tests
         internal static void RejectRelease(
             string participantKey,
             SceneCompositionScopeKind scopeKind,
-            int rejectionCount)
+            int rejectionCount,
+            bool throwOnRejection = false)
         {
             _rejectParticipant = participantKey;
             _rejectScopeKind = scopeKind;
             _remainingRejections = Math.Max(0, rejectionCount);
+            _throwOnRejection = throwOnRejection;
         }
 
         internal static IReadOnlyList<Call> CallsFor(SceneCompositionOperation operation)
@@ -54,6 +57,7 @@ namespace Immersive.Framework.PersistentContent.Tests
             _rejectParticipant = string.Empty;
             _rejectScopeKind = SceneCompositionScopeKind.Session;
             _remainingRejections = 0;
+            _throwOnRejection = false;
         }
 
         public SceneCompositionResult OnSceneAvailable(
@@ -78,6 +82,10 @@ namespace Immersive.Framework.PersistentContent.Tests
                 string.Equals(participantKey, _rejectParticipant, StringComparison.Ordinal))
             {
                 _remainingRejections--;
+                if (_throwOnRejection)
+                {
+                    throw new InvalidOperationException("Injected Session release exception.");
+                }
                 return SceneCompositionResult.Rejected(
                     scope,
                     SceneCompositionOperation.Releasing,
