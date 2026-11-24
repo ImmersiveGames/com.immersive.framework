@@ -8,9 +8,12 @@ namespace Immersive.Framework.Reset.Tests
     {
         public static Action<GameObject> Enabled;
         public static Action<GameObject> Disabled;
+        public static Action<GameObject> ParentChanged;
 
         private void OnEnable() => Enabled?.Invoke(gameObject);
 
         private void OnDisable() => Disabled?.Invoke(gameObject);
+
+        private void OnTransformParentChanged() => ParentChanged?.Invoke(gameObject);
     }
 }

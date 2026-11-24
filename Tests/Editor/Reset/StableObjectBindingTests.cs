@@ -825,13 +825,19 @@ namespace Immersive.Framework.Reset.Tests
             Assert.IsTrue(_bindings.TryReleaseOwner(_ownerA, out diagnostic), diagnostic);
         }
 
-        [Test]
-        public async Task PendingAcquiredPartCleanup_RetainsOwnerUntilRetryConfirmsDestruction()
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task PendingAcquiredPartCleanup_RetainsOwnerUntilRetryConfirmsDestruction(
+            bool reparentDuringDetach)
         {
             const string id = "qa.stable.pending-composition-cleanup";
             GameObject root = CreateEntry(id, _routeA, false);
             GameObject prerequisitePrefab = Create("qa-pending-base-prefab");
             GameObject prefab = Create("qa-pending-dependent-prefab");
+            if (reparentDuringDetach)
+            {
+                prefab.AddComponent<ObjectEntryCompositionDisableProbe>();
+            }
             ObjectEntryCompositionProfile profile = CreateCompositionProfile("base", prerequisitePrefab);
             AddCompositionPart(profile, "dependent", prefab, "base");
             ObjectEntryCompositionAuthoring authoring = root.AddComponent<ObjectEntryCompositionAuthoring>();
@@ -879,10 +885,31 @@ namespace Immersive.Framework.Reset.Tests
             GameObject acquiredPart = root.transform.Find("qa-pending-dependent-prefab").gameObject;
             GameObject prerequisitePart = root.transform.Find("qa-pending-base-prefab").gameObject;
             Transform originalRootParent = root.transform.parent;
-            acquiredPart.transform.SetParent(null, true);
-            root.transform.SetParent(acquiredPart.transform, false);
+            if (reparentDuringDetach)
+            {
+                ObjectEntryCompositionDisableProbe.ParentChanged = instance =>
+                {
+                    if (ReferenceEquals(instance, acquiredPart) && instance.transform.parent == null)
+                    {
+                        root.transform.SetParent(acquiredPart.transform, false);
+                    }
+                };
+            }
+            else
+            {
+                acquiredPart.transform.SetParent(null, true);
+                root.transform.SetParent(acquiredPart.transform, false);
+            }
 
-            string pendingIssue = await _bindings.ReleaseOwnerAsync(_ownerA);
+            string pendingIssue;
+            try
+            {
+                pendingIssue = await _bindings.ReleaseOwnerAsync(_ownerA);
+            }
+            finally
+            {
+                ObjectEntryCompositionDisableProbe.ParentChanged = null;
+            }
 
             StringAssert.Contains("pending", pendingIssue.ToLowerInvariant());
             Assert.AreEqual(1, _bindings.BindingCount, "The physical owner record must remain available for cleanup retry.");
