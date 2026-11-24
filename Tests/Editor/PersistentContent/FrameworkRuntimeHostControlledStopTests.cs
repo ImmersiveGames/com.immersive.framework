@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
@@ -124,7 +125,8 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             HostSessionLifecycleTestProbe.ClearRecords();
             bool usesTwoPlayerCameraStopFixture = TestContext.CurrentContext.Test.Name.Contains(
                 "TwoJoinedPlayersCameraAndPause",
-                StringComparison.Ordinal);
+                StringComparison.Ordinal) ||
+                TestContext.CurrentContext.Test.Name == nameof(GameplayAttachRejection_RollsBackPreparationBindings);
             _originalEnterPlayModeOptionsEnabled =
                 EditorSettings.enterPlayModeOptionsEnabled;
             _originalEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
@@ -1398,6 +1400,56 @@ namespace Immersive.Framework.Authoring.Editor.Tests
             yield return null;
             _host = null;
             yield return new ExitPlayMode();
+        }
+
+        [UnityTest]
+        public IEnumerator GameplayAttachRejection_RollsBackPreparationBindings()
+        {
+            yield return new EnterPlayMode(expectDomainReload: false);
+            _host = CreateHost(LoadApplication(ApplicationAssetPath));
+            const string rejection = "Injected Gameplay attach rejection.";
+            PlayerActorPreparationRuntimeHostModule preparation = null;
+            ActivityParticipantSourceBindings activityBindings = null;
+            object routeRuntime = null;
+            object pauseModule = null;
+
+            Task<FrameworkGameFlowStartResult> startup = _host.StartAsync(host =>
+            {
+                Assert.That(host, Is.SameAs(_host));
+                preparation = host.GetComponent<PlayerActorPreparationRuntimeHostModule>();
+                Assert.That(preparation.IsReady, Is.True);
+                activityBindings = (ActivityParticipantSourceBindings)GetStartupBinding(
+                    host, "_activityParticipantSourceBindings");
+                routeRuntime = GetStartupBinding(host.CurrentGameFlowRuntime, "_routeLifecycleRuntime");
+                pauseModule = GetStartupBinding(host, "_pauseActivityBindingModule");
+                Assert.That(activityBindings.ContentSource, Is.Not.Null);
+                Assert.That(activityBindings.ReadinessSource, Is.SameAs(activityBindings.ContentSource));
+                Assert.That(GetStartupBinding(routeRuntime, "_playerSpatialEntryParticipant"), Is.SameAs(preparation));
+                Assert.That(GetStartupBinding(pauseModule, "_playerEvidence"), Is.SameAs(activityBindings.ContentSource));
+                return rejection;
+            });
+
+            while (!startup.IsCompleted)
+            {
+                yield return null;
+            }
+
+            FrameworkGameFlowStartResult result = startup.GetAwaiter().GetResult();
+            Assert.That(result.Started, Is.False);
+            Assert.That(result.Message, Does.Contain(rejection));
+            Assert.That(_host.LifecyclePhase, Is.EqualTo(FrameworkRuntimeHostPhase.Failed));
+            Assert.That(preparation.IsReady, Is.False);
+            Assert.That(activityBindings.ContentSource, Is.Null);
+            Assert.That(activityBindings.ReadinessSource, Is.Null);
+            Assert.That(GetStartupBinding(routeRuntime, "_playerSpatialEntryParticipant"), Is.Null);
+            Assert.That(GetStartupBinding(pauseModule, "_playerEvidence"), Is.Null);
+        }
+
+        private static object GetStartupBinding(object target, string field)
+        {
+            FieldInfo binding = target.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(binding, Is.Not.Null, field);
+            return binding.GetValue(target);
         }
 
         [UnityTest]

@@ -185,30 +185,23 @@ namespace Immersive.Framework.PlayerParticipation
                 issue = _diagnostic;
                 return false;
             }
-            if (!PlayerGameplayRuntimeHostModule.TryAttach(
-                    targetRuntimeHost,
-                    out _,
-                    out string gameplayIssue))
-            {
-                targetRuntimeHost.SetActivityContentExecutionParticipantSource(null);
-                targetRuntimeHost.SetPauseActivityBindingPlayerEvidence(null);
-                targetRuntimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
-                _activityLifecycleParticipant = null;
-                _preparationContext = null;
-                _sessionPhysicalScopeContext = default;
-                _hostEvidenceProjection = null;
-                _participationContext = null;
-                _runtimeHost = null;
-                _diagnostic =
-                    "Player Actor preparation could not compose the official Player gameplay runtime. " +
-                    gameplayIssue;
-                issue = _diagnostic;
-                return false;
-            }
             _diagnostic =
                 $"Player Actor preparation runtime is ready. session='{participationSnapshot.ContextId}'.";
-            BindActivityReconciliation();
             return true;
+        }
+
+        internal void RollbackStartupAttachment()
+        {
+            _runtimeHost.SetActivityContentExecutionParticipantSource(null);
+            _runtimeHost.SetPauseActivityBindingPlayerEvidence(null);
+            _runtimeHost.SetRoutePlayerSpatialEntryParticipant(null, out _);
+            _activityLifecycleParticipant = null;
+            _preparationContext = null;
+            _sessionPhysicalScopeContext = default;
+            _hostEvidenceProjection = null;
+            _participationContext = null;
+            _runtimeHost = null;
+            _diagnostic = "Player Actor preparation attachment was rolled back during startup.";
         }
 
         internal PlayerParticipationOperationResult TryOpenJoining(

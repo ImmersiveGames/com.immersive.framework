@@ -654,7 +654,13 @@ namespace Immersive.Framework.ApplicationLifecycle
         }
 
 
-        internal async Task<FrameworkGameFlowStartResult> StartAsync()
+        internal Task<FrameworkGameFlowStartResult> StartAsync() =>
+            StartAsync(static host => PlayerGameplayRuntimeHostModule.TryAttach(host, out _, out string issue)
+                ? null
+                : issue);
+
+        internal async Task<FrameworkGameFlowStartResult> StartAsync(
+            Func<FrameworkRuntimeHost, string> attachPlayerGameplay)
         {
             if (!TryBeginStartup())
             {
@@ -665,7 +671,7 @@ namespace Immersive.Framework.ApplicationLifecycle
             FrameworkGameFlowStartResult result;
             try
             {
-                result = await StartCoreAsync();
+                result = await StartCoreAsync(attachPlayerGameplay);
             }
             catch
             {
@@ -677,7 +683,8 @@ namespace Immersive.Framework.ApplicationLifecycle
             return result;
         }
 
-        private async Task<FrameworkGameFlowStartResult> StartCoreAsync()
+        private async Task<FrameworkGameFlowStartResult> StartCoreAsync(
+            Func<FrameworkRuntimeHost, string> attachPlayerGameplay)
         {
             if (!TryApplyApplicationFrameRatePolicy(
                     out string frameRateFailureMessage))
@@ -916,6 +923,22 @@ namespace Immersive.Framework.ApplicationLifecycle
                     _gameApplication,
                     failed);
                 return failed;
+            }
+            if (_gameApplication.PlayerSessionEnabled)
+            {
+                string gameplayIssue = attachPlayerGameplay(this);
+                if (gameplayIssue != null)
+                {
+                    playerActorPreparation.RollbackStartupAttachment();
+                    var failed = FrameworkGameFlowStartResult.Failed(
+                        "Player Actor preparation lifecycle attachment failed. " +
+                        "Player Actor preparation could not compose the official Player gameplay runtime. " +
+                        gameplayIssue);
+                    _state = FrameworkRuntimeState.FromGameFlowResult(_gameApplication, failed);
+                    return failed;
+                }
+
+                playerActorPreparation.BindActivityReconciliation();
             }
             if (_gameApplication.PlayerSessionEnabled &&
                 !PauseSessionPlayerInputBindingRuntimeHostModule.TryAttach(
