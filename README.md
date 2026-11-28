@@ -22,8 +22,11 @@ reimplementing their primitives.
 
 ## Requirements
 
-- Framework `1.2.0` targets Unity `6000.5.0f1` or newer in the supported
-  `6000.5` line and declares Composition `0.1.0-preview.3`, Foundation
+- The 1.2.2 source requires Unity `6000.6.10f1` or newer and declares
+  Unity UI (`com.unity.ugui` `2.6.0`) for the loading surface. The registry
+  example below uses the published 1.2.0 package.
+- Framework `1.2.0` requires Unity `6000.5.0f1` or newer and declares
+  Composition `0.1.0-preview.3`, Foundation
   `0.2.3`, Logging `0.2.4`, Cinemachine `3.1.7`, and Input System `1.19.0`.
   Composition remains a prerelease dependency; composition-dependent API
   contracts remain Experimental.

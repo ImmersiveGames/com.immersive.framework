@@ -2,6 +2,14 @@
 
 All notable package changes are documented in this file.
 
+## [1.2.2] — Release candidate
+
+- Declares Unity UI (`com.unity.ugui` `2.6.0`) as a package dependency, carrying
+  forward the fix already present in the 1.2.1 source. The published 1.2.0
+  package omitted this dependency, which caused compilation failures in clean
+  projects when the loading surface referenced `UnityEngine.UI`.
+- Retains the 1.2.1 source baseline of Unity `6000.6.10f1` or newer.
+
 ## [1.2.0] - 2026-11-15 — Stable package release
 
 This is a Stable package release under the per-contract policy in IF-ADR-047
